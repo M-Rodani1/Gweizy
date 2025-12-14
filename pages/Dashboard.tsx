@@ -13,7 +13,6 @@ import ShareResults from '../components/ShareResults';
 import SavingsLeaderboard from '../components/SavingsLeaderboard';
 import BestTimeWidget from '../components/BestTimeWidget';
 import RelativePriceIndicator from '../components/RelativePriceIndicator';
-import HourlyHeatmap from '../components/HourlyHeatmap';
 import { GasIcon } from '../components/icons';
 import { checkHealth, fetchCurrentGas, fetchPredictions } from '../src/api/gasApi';
 import { getCurrentAccount, onAccountsChanged } from '../src/utils/wallet';
@@ -135,11 +134,6 @@ const Dashboard: React.FC = () => {
 
           <div className="lg:col-span-2">
             <BestTimeWidget currentGas={currentGas} />
-          </div>
-
-          {/* 24-Hour Heatmap */}
-          <div className="lg:col-span-3">
-            <HourlyHeatmap />
           </div>
 
           {/* Gas Price Graph */}
