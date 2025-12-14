@@ -11,7 +11,11 @@ import sdk from '@farcaster/miniapp-sdk';
 function App() {
   // Signal to Base that the mini app is ready
   useEffect(() => {
-    sdk.actions.ready();
+    try {
+      sdk.actions.ready();
+    } catch (error) {
+      console.warn('Farcaster SDK not available:', error);
+    }
   }, []);
 
   return (
