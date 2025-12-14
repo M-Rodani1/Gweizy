@@ -29,7 +29,7 @@ Updated `backend/build.sh` to train models fresh on each Render deployment:
 ```bash
 echo "Training ML models (this may take 2-3 minutes)..."
 cd /opt/render/project/src/backend
-python3 scripts/train_directional_optimized.py || echo "⚠️  Model training failed, will use fallback predictions"
+python3 scripts/train_directional_optimized.py || echo " Model training failed, will use fallback predictions"
 ```
 
 ### Added Required Dependency
