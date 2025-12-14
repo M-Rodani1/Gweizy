@@ -39,12 +39,12 @@ Added `scipy==1.11.4` to `requirements.txt` (needed by training script)
 ## How It Works Now
 
 **When Render deploys**:
-1. ✅ Install system dependencies
-2. ✅ Upgrade pip/setuptools
-3. ✅ Install Python packages (including scipy)
-4. ✅ **Train ML models** using your database data
-5. ✅ Save models to `backend/models/saved_models/`
-6. ✅ Start the Flask app
+1.  Install system dependencies
+2.  Upgrade pip/setuptools
+3.  Install Python packages (including scipy)
+4. **Train ML models** using your database data
+5.  Save models to `backend/models/saved_models/`
+6.  Start the Flask app
 
 **Deployment timeline**:
 - Normal build: ~1-2 minutes
@@ -54,16 +54,16 @@ Added `scipy==1.11.4` to `requirements.txt` (needed by training script)
 ## Benefits
 
 ### Before This Fix
-- ❌ Models not loaded
-- ❌ Fallback predictions (useless)
-- ❌ Showing 0% R², 50% directional accuracy
-- ❌ No real ML happening
+-  Models not loaded
+-  Fallback predictions (useless)
+- Showing 0% R², 50% directional accuracy
+-  No real ML happening
 
 ### After This Fix
-- ✅ Models trained on actual data
-- ✅ Real predictions (59.83% directional accuracy)
-- ✅ Accuracy endpoint shows correct metrics
-- ✅ Full ML pipeline working
+- Models trained on actual data
+-  Real predictions (59.83% directional accuracy)
+- Accuracy endpoint shows correct metrics
+-  Full ML pipeline working
 
 ## What Happens Next
 
@@ -81,17 +81,17 @@ Watch your Render logs for:
 ```
 Training ML models (this may take 2-3 minutes)...
 [1/7] Loading data...
-✅ Loaded 26128 data points
+ Loaded 26128 data points
 [2/7] Creating optimized features...
-✅ Created 39 features
+ Created 39 features
 ...
-✅ Models saved successfully!
+ Models saved successfully!
 ```
 
 **Then on app startup**:
 ```
-✅ Loaded 1 ML models successfully
-✅ Loaded 1 scalers
+ Loaded 1 ML models successfully
+ Loaded 1 scalers
 ```
 
 **And in API logs**:
@@ -115,11 +115,11 @@ No more "Models not loaded" warnings!
 - But needs initial upload
 
 ### Why Option 1 (Training on Deploy) is Best
-- ✅ Free (uses deployment time)
-- ✅ Always fresh models with latest data
-- ✅ No cloud storage needed
-- ✅ Simple to maintain
-- ⚠️ Slightly longer deploys (worth it!)
+- Free (uses deployment time)
+-  Always fresh models with latest data
+-  No cloud storage needed
+-  Simple to maintain
+-  Slightly longer deploys (worth it!)
 
 ## Database Requirement
 
@@ -154,9 +154,9 @@ Render will auto-deploy on every push to `main`. The models will be retrained ea
 ## Summary
 
 Your Render deployment now:
-1. ✅ Trains ML models automatically
-2. ✅ Uses real predictions (not fallbacks)
-3. ✅ Shows correct accuracy metrics
-4. ✅ Provides genuine value to users
+1.  Trains ML models automatically
+2.  Uses real predictions (not fallbacks)
+3.  Shows correct accuracy metrics
+4.  Provides genuine value to users
 
-The "Models not loaded" warning is fixed! 🎉
+The "Models not loaded" warning is fixed! 
