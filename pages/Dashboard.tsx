@@ -104,7 +104,7 @@ const Dashboard: React.FC = () => {
               <GasIcon className="w-7 h-7 sm:w-8 sm:h-8 text-cyan-400 flex-shrink-0" />
               <div>
                 <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-100">Base Gas Optimizer</h1>
-                <p className="text-xs sm:text-sm text-gray-400 mt-1 hidden sm:block">ML-powered gas price predictions for Base network</p>
+                <p className="text-xs sm:text-sm text-gray-400 mt-1 hidden sm:block">Know the best times to transact on Base network</p>
               </div>
             </div>
 
@@ -196,7 +196,7 @@ const Dashboard: React.FC = () => {
         </main>
 
         <footer className="mt-8 text-center text-gray-500 text-sm">
-          <p>Powered by Machine Learning on Base • Chain ID: 8453</p>
+          <p>Pattern-based guidance for Base network • Chain ID: 8453</p>
         </footer>
       </div>
     </div>
