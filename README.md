@@ -2,22 +2,22 @@
 
 AI-powered gas price predictions for Base network. Save up to 40% on transaction fees with pattern-based insights and live blockchain data.
 
-## 🌐 Live URLs
+## Live URLs
 
 - **Frontend**: https://basegasfeesml.netlify.app
 - **Backend API**: https://basegasfeesml.onrender.com/api
 
-## ✨ Features
+## Features
 
-- 🚦 **Real-Time Gas Indicator** - Traffic light system shows if NOW is a good time to transact
-- ⏰ **Best Times Widget** - Shows cheapest/most expensive hours based on historical patterns
-- 📊 **24-Hour Predictions** - ML-powered forecasts for 1h, 4h, and 24h horizons
-- 💰 **Savings Calculator** - Estimate cost savings by waiting for optimal gas prices
-- 🔗 **Wallet Integration** - MetaMask support for Base network (Chain ID: 8453)
-- 📈 **Live Gas Data** - Direct Base RPC integration for real-time pricing
-- 📱 **Mobile-First Design** - Fully responsive, works on all devices
+- **Real-Time Gas Indicator** - Traffic light system shows if NOW is a good time to transact
+- **Best Times Widget** - Shows cheapest/most expensive hours based on historical patterns
+- **24-Hour Predictions** - ML-powered forecasts for 1h, 4h, and 24h horizons
+- **Savings Calculator** - Estimate cost savings by waiting for optimal gas prices
+- **Wallet Integration** - MetaMask support for Base network (Chain ID: 8453)
+- **Live Gas Data** - Direct Base RPC integration for real-time pricing
+- **Mobile-First Design** - Fully responsive, works on all devices
 
-## 🏗️ Project Structure
+## Project Structure
 
 ```
 gasFeesPrediction-main/
@@ -37,7 +37,7 @@ gasFeesPrediction-main/
 
 See [PROJECT_STRUCTURE.md](./PROJECT_STRUCTURE.md) for detailed structure information.
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Frontend Development
 ```bash
@@ -55,7 +55,7 @@ python app.py
 ```
 API runs on http://localhost:5000
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 **Frontend:**
 - React 19.2.3 + TypeScript
@@ -75,7 +75,7 @@ API runs on http://localhost:5000
 - Direct RPC integration
 - Live gas price fetching
 
-## 🎯 Base Network Integration
+## Base Network Integration
 
 - Live gas prices from Base RPC endpoints
 - Pattern analysis of Base network transactions
@@ -98,4 +98,3 @@ The application is fully optimised for mobile devices with:
 ## License
 
 MIT
-# Deployment Sun Dec 14 19:08:01 GMT 2025
