@@ -11,6 +11,9 @@ import UserTransactionHistory from '../components/UserTransactionHistory';
 import GasWasteCalculator from '../components/GasWasteCalculator';
 import ShareResults from '../components/ShareResults';
 import SavingsLeaderboard from '../components/SavingsLeaderboard';
+import BestTimeWidget from '../components/BestTimeWidget';
+import RelativePriceIndicator from '../components/RelativePriceIndicator';
+import HourlyHeatmap from '../components/HourlyHeatmap';
 import { GasIcon } from '../components/icons';
 import { checkHealth, fetchCurrentGas, fetchPredictions } from '../src/api/gasApi';
 import { getCurrentAccount, onAccountsChanged } from '../src/utils/wallet';
@@ -125,15 +128,30 @@ const Dashboard: React.FC = () => {
         </header>
 
         <main className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Week 1 Improvements: Relative Price Indicator + Best Time Widget */}
+          <div className="lg:col-span-1">
+            <RelativePriceIndicator currentGas={currentGas} />
+          </div>
+
+          <div className="lg:col-span-2">
+            <BestTimeWidget currentGas={currentGas} />
+          </div>
+
+          {/* 24-Hour Heatmap */}
+          <div className="lg:col-span-3">
+            <HourlyHeatmap />
+          </div>
+
+          {/* Gas Price Graph */}
           <div className="lg:col-span-3">
             <GasPriceGraph />
           </div>
-          
+
           {/* Prediction Cards */}
           <div className="lg:col-span-3">
             <PredictionCards />
           </div>
-          
+
           {/* Model Accuracy Dashboard */}
           <div className="lg:col-span-3">
             <ModelAccuracy />
