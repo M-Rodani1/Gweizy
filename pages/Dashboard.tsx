@@ -8,7 +8,6 @@ import SavingsCalculator from '../components/SavingsCalculator';
 import ModelAccuracy from '../components/ModelAccuracy';
 import WalletConnect from '../components/WalletConnect';
 import UserTransactionHistory from '../components/UserTransactionHistory';
-import GasWasteCalculator from '../components/GasWasteCalculator';
 import SavingsLeaderboard from '../components/SavingsLeaderboard';
 import BestTimeWidget from '../components/BestTimeWidget';
 import RelativePriceIndicator from '../components/RelativePriceIndicator';
@@ -166,9 +165,6 @@ const Dashboard: React.FC = () => {
                 <UserTransactionHistory address={walletAddress} />
               </div>
             )}
-            <div className="mt-6">
-              <GasWasteCalculator walletAddress={walletAddress} />
-            </div>
           </div>
           <div className="lg:col-span-2">
             <GasPriceTable />
