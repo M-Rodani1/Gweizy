@@ -6,16 +6,23 @@ import Docs from './pages/Docs';
 import Terms from './pages/legal/Terms';
 import Privacy from './pages/legal/Privacy';
 import About from './pages/legal/About';
-import sdk from '@farcaster/miniapp-sdk';
 
 function App() {
-  // Signal to Base that the mini app is ready
+  // Signal to Base that the mini app is ready (only in Farcaster context)
   useEffect(() => {
-    try {
-      sdk.actions.ready();
-    } catch (error) {
-      console.warn('Farcaster SDK not available:', error);
-    }
+    const initFarcaster = async () => {
+      try {
+        // Only load SDK in Farcaster environment
+        if (typeof window !== 'undefined' && window.parent !== window) {
+          const { default: sdk } = await import('@farcaster/miniapp-sdk');
+          sdk.actions.ready();
+        }
+      } catch (error) {
+        console.warn('Farcaster SDK not available:', error);
+      }
+    };
+
+    initFarcaster();
   }, []);
 
   return (
