@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { fetchHistoricalBaseGas } from '../src/utils/baseRpc';
 
 interface HourlyStats {
   hour: number;
@@ -17,35 +18,24 @@ const BestTimeWidget: React.FC<BestTimeWidgetProps> = ({ currentGas = 0 }) => {
 
   useEffect(() => {
     // Calculate hourly statistics from historical data
-    // In production, this should come from your API
     const calculateHourlyStats = async () => {
       try {
-        // Fetch historical data from API
-        const response = await fetch(`https://basegasfeesml.onrender.com/api/historical?hours=168`);
-        const data = await response.json();
-
-        console.log('🔍 API Response:', {
-          status: response.status,
-          dataKeys: Object.keys(data),
-          dataLength: data.data?.length || data.historical?.length || 0,
-          samplePoint: data.data?.[0] || data.historical?.[0] || null,
-          fullData: data
-        });
-
-        const historicalData = data.data || data.historical || [];
+        // Fetch LIVE data directly from Base network RPC
+        console.log('🔴 Fetching LIVE data from Base network...');
+        const historicalData = await fetchHistoricalBaseGas(168);
 
         if (historicalData.length > 0) {
           const hourlyData: { [key: number]: number[] } = {};
 
           // Group data by hour
-          historicalData.forEach((point: any) => {
-            const timestamp = new Date(point.time || point.timestamp);
+          historicalData.forEach((point) => {
+            const timestamp = new Date(point.time);
             const hour = timestamp.getUTCHours();
 
             if (!hourlyData[hour]) {
               hourlyData[hour] = [];
             }
-            hourlyData[hour].push(point.gwei || point.current_gas || 0);
+            hourlyData[hour].push(point.gwei);
           });
 
           // Calculate stats for each hour
@@ -71,23 +61,23 @@ const BestTimeWidget: React.FC<BestTimeWidgetProps> = ({ currentGas = 0 }) => {
           const hasValidData = stats.length > 0 && stats.some(s => s.avgGas > 0);
 
           if (hasValidData) {
-            console.log('Using API data:', stats.length, 'hours');
+            console.log('✅ Using LIVE Base network data:', stats.length, 'hours with data');
             setHourlyStats(stats);
           } else {
-            console.warn('API data is empty or all zeros, using fallback');
+            console.warn('⚠️ Live data is empty or all zeros, using fallback');
             setHourlyStats(getFallbackStats());
           }
         } else {
           // No data returned, use fallback
-          console.warn('No historical data returned from API, using fallback');
+          console.warn('⚠️ No live data returned from Base RPC, using fallback');
           setHourlyStats(getFallbackStats());
         }
       } catch (error) {
-        console.error('Failed to calculate hourly stats:', error);
-        // Use fallback data based on analysis
+        console.error('❌ Failed to fetch live Base data:', error);
+        // Use fallback data as last resort
         const fallbackStats = getFallbackStats();
         setHourlyStats(fallbackStats);
-        console.log('Using fallback stats:', fallbackStats);
+        console.log('📊 Using fallback stats due to error');
       } finally {
         setLoading(false);
       }

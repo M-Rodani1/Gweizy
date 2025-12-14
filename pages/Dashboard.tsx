@@ -14,6 +14,7 @@ import RelativePriceIndicator from '../components/RelativePriceIndicator';
 import { GasIcon } from '../components/icons';
 import { checkHealth, fetchCurrentGas, fetchPredictions } from '../src/api/gasApi';
 import { getCurrentAccount, onAccountsChanged } from '../src/utils/wallet';
+import { fetchLiveBaseGas } from '../src/utils/baseRpc';
 
 const Dashboard: React.FC = () => {
   const [showOnboarding, setShowOnboarding] = useState(
@@ -36,12 +37,13 @@ const Dashboard: React.FC = () => {
 
     const loadCalculatorData = async () => {
       try {
-        const [currentGasData, predictionsResult] = await Promise.all([
-          fetchCurrentGas(),
-          fetchPredictions()
-        ]);
+        // Fetch LIVE gas price from Base network RPC
+        const liveGas = await fetchLiveBaseGas();
+        setCurrentGas(liveGas.gwei);
+        console.log('🔴 LIVE Base gas price:', liveGas.gwei.toFixed(4), 'gwei');
 
-        setCurrentGas(currentGasData.current_gas);
+        // Still fetch predictions from API (if available)
+        const predictionsResult = await fetchPredictions();
 
         // Extract first prediction from each horizon
         const preds: { '1h': number; '4h': number; '24h': number } = {
