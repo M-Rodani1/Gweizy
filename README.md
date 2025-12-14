@@ -1,4 +1,4 @@
-# Base Gas Optimizer
+# Base Gas Optimiser
 
 AI-powered gas price predictions for Base network. Save up to 65% on transaction fees with ML-driven forecasts.
 
@@ -12,9 +12,10 @@ AI-powered gas price predictions for Base network. Save up to 65% on transaction
 
 - Real-time gas predictions (5-min, 15-min, 30-min, 1-hour forecasts)
 - Base wallet connection with MetaMask/Coinbase Wallet
-- Transaction cost estimator
+- Transaction cost calculator
 - ML-powered ensemble models with 87%+ accuracy
 - Farcaster Mini App integration
+- Mobile-optimised responsive design
 
 ## Tech Stack
 
@@ -51,6 +52,15 @@ npm run dev
 ## Documentation
 
 See [HACKATHON_SUBMISSION.md](HACKATHON_SUBMISSION.md) for complete hackathon submission details.
+
+## Mobile Optimisation
+
+The application is fully optimised for mobile devices with:
+- Responsive hamburger navigation menu
+- Touch-friendly buttons (minimum 44x44px touch targets)
+- Adaptive typography and spacing
+- Mobile-first responsive charts and graphs
+- Horizontal scroll prevention
 
 ## License
 
