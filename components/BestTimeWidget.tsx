@@ -21,15 +21,17 @@ const BestTimeWidget: React.FC<BestTimeWidgetProps> = ({ currentGas = 0 }) => {
     const calculateHourlyStats = async () => {
       try {
         // Fetch historical data from API
-        const response = await fetch(`${import.meta.env.VITE_API_URL || 'https://basegasfeesml.onrender.com/api'}/historical?hours=168`);
+        const response = await fetch(`https://basegasfeesml.onrender.com/api/historical?hours=168`);
         const data = await response.json();
 
-        if (data.historical) {
+        const historicalData = data.data || data.historical || [];
+
+        if (historicalData.length > 0) {
           const hourlyData: { [key: number]: number[] } = {};
 
           // Group data by hour
-          data.historical.forEach((point: any) => {
-            const timestamp = new Date(point.timestamp);
+          historicalData.forEach((point: any) => {
+            const timestamp = new Date(point.time || point.timestamp);
             const hour = timestamp.getUTCHours();
 
             if (!hourlyData[hour]) {
