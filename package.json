@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build && cp public/manifest.json dist/manifest.json 2>/dev/null || cp manifest.json dist/manifest.json 2>/dev/null || true",
+    "build": "vite build && cp public/manifest.json dist/manifest.json 2>/dev/null || cp manifest.json dist/manifest.json 2>/dev/null || true && cp public/_redirects dist/_redirects 2>/dev/null || true",
     "preview": "vite preview"
   },
   "dependencies": {

@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Landing from './pages/Landing';
 import Dashboard from './pages/Dashboard';
@@ -8,22 +8,8 @@ import Privacy from './pages/legal/Privacy';
 import About from './pages/legal/About';
 
 function App() {
-  // Signal to Base that the mini app is ready (only in Farcaster context)
-  useEffect(() => {
-    const initFarcaster = async () => {
-      try {
-        // Only load SDK in Farcaster environment
-        if (typeof window !== 'undefined' && window.parent !== window) {
-          const { default: sdk } = await import('@farcaster/miniapp-sdk');
-          sdk.actions.ready();
-        }
-      } catch (error) {
-        console.warn('Farcaster SDK not available:', error);
-      }
-    };
-
-    initFarcaster();
-  }, []);
+  // Farcaster SDK removed temporarily to diagnose issues
+  // Will re-add once app is stable
 
   return (
     <BrowserRouter>
