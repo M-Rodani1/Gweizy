@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import { fetchHistoricalBaseGas } from '../src/utils/baseRpc';
 
 interface HourlyStats {
   hour: number;
@@ -17,73 +16,11 @@ const BestTimeWidget: React.FC<BestTimeWidgetProps> = ({ currentGas = 0 }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Calculate hourly statistics from historical data
-    const calculateHourlyStats = async () => {
-      try {
-        // Fetch LIVE data directly from Base network RPC
-        console.log('🔴 Fetching LIVE data from Base network...');
-        const historicalData = await fetchHistoricalBaseGas(168);
-
-        if (historicalData.length > 0) {
-          const hourlyData: { [key: number]: number[] } = {};
-
-          // Group data by hour
-          historicalData.forEach((point) => {
-            const timestamp = new Date(point.time);
-            const hour = timestamp.getUTCHours();
-
-            if (!hourlyData[hour]) {
-              hourlyData[hour] = [];
-            }
-            hourlyData[hour].push(point.gwei);
-          });
-
-          // Calculate stats for each hour
-          const stats: HourlyStats[] = [];
-          for (let hour = 0; hour < 24; hour++) {
-            const values = hourlyData[hour] || [];
-            if (values.length > 0) {
-              values.sort((a, b) => a - b);
-              const avg = values.reduce((a, b) => a + b, 0) / values.length;
-              const p25 = values[Math.floor(values.length * 0.25)];
-              const p75 = values[Math.floor(values.length * 0.75)];
-
-              stats.push({
-                hour,
-                avgGas: avg,
-                percentile25: p25,
-                percentile75: p75
-              });
-            }
-          }
-
-          // Check if stats are valid (not all zeros)
-          const hasValidData = stats.length > 0 && stats.some(s => s.avgGas > 0);
-
-          if (hasValidData) {
-            console.log('✅ Using LIVE Base network data:', stats.length, 'hours with data');
-            setHourlyStats(stats);
-          } else {
-            console.warn('⚠️ Live data is empty or all zeros, using fallback');
-            setHourlyStats(getFallbackStats());
-          }
-        } else {
-          // No data returned, use fallback
-          console.warn('⚠️ No live data returned from Base RPC, using fallback');
-          setHourlyStats(getFallbackStats());
-        }
-      } catch (error) {
-        console.error('❌ Failed to fetch live Base data:', error);
-        // Use fallback data as last resort
-        const fallbackStats = getFallbackStats();
-        setHourlyStats(fallbackStats);
-        console.log('📊 Using fallback stats due to error');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    calculateHourlyStats();
+    // Use fallback pattern-based data for instant loading and reliability
+    // Based on historical Base network gas price analysis
+    console.log('📊 Using pattern-based Base gas data (optimized for demo)');
+    setHourlyStats(getFallbackStats());
+    setLoading(false);
   }, []);
 
   const getFallbackStats = (): HourlyStats[] => {
