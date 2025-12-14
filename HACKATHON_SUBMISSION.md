@@ -7,8 +7,8 @@
 ## Live URLs
 
 - **Frontend**: https://basegasfeesml.netlify.app
-- **Backend API**: https://basegasfeesprediction.onrender.com
-- **Config Endpoint**: https://basegasfeesprediction.onrender.com/config.json
+- **Backend API**: https://basegasfeesml.onrender.com
+- **Config Endpoint**: https://basegasfeesml.onrender.com/config.json
 - **GitHub Repository**: https://github.com/M-Rodani1/basegasfeesML
 
 ## Hackathon Requirements Met
@@ -29,7 +29,7 @@
 - **RPC**: https://mainnet.base.org
 
 ### 3. JSON Configuration Route
-- **Endpoint**: https://basegasfeesprediction.onrender.com/config.json
+- **Endpoint**: https://basegasfeesml.onrender.com/config.json
 - **Returns**: JSON configuration with:
   - App metadata (name, description, version)
   - Base network configuration (chain_id: 8453)

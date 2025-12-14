@@ -4,9 +4,9 @@ AI-powered gas price predictions for Base network. Save up to 65% on transaction
 
 ## Live URLs
 
-- **Frontend**: https://basegasfeesoptimiser.netlify.app
-- **Backend API**: https://basegasfeesprediction.onrender.com
-- **Config Endpoint**: https://basegasfeesprediction.onrender.com/config.json
+- **Frontend**: https://basegasfeesml.netlify.app
+- **Backend API**: https://basegasfeesml.onrender.com
+- **Config Endpoint**: https://basegasfeesml.onrender.com/config.json
 
 ## Features
 
