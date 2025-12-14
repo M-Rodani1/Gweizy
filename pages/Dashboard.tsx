@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import Logo from '../components/branding/Logo';
 import BestTimeWidget from '../components/BestTimeWidget';
+import HourlyHeatmap from '../components/HourlyHeatmap';
 
 const Dashboard: React.FC = () => {
   const [currentGas, setCurrentGas] = useState<number | null>(null);
@@ -77,6 +78,11 @@ const Dashboard: React.FC = () => {
           {/* Best Time Widget */}
           <div className="mb-6">
             <BestTimeWidget currentGas={currentGas || 0} />
+          </div>
+
+          {/* Hourly Heatmap */}
+          <div className="mb-6">
+            <HourlyHeatmap />
           </div>
 
           {/* Info Cards */}
