@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import Logo from '../components/branding/Logo';
 import BestTimeWidget from '../components/BestTimeWidget';
-import HourlyHeatmap from '../components/HourlyHeatmap';
+import RelativePriceIndicator from '../components/RelativePriceIndicator';
 
 const Dashboard: React.FC = () => {
   const [currentGas, setCurrentGas] = useState<number | null>(null);
@@ -75,14 +75,16 @@ const Dashboard: React.FC = () => {
             </div>
           </div>
 
+          {/* Relative Price Indicator */}
+          {currentGas !== null && !error && (
+            <div className="mb-6">
+              <RelativePriceIndicator currentGas={currentGas} />
+            </div>
+          )}
+
           {/* Best Time Widget */}
           <div className="mb-6">
             <BestTimeWidget currentGas={currentGas || 0} />
-          </div>
-
-          {/* Hourly Heatmap */}
-          <div className="mb-6">
-            <HourlyHeatmap />
           </div>
 
           {/* Info Cards */}
