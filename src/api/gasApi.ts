@@ -210,6 +210,27 @@ export async function fetchLeaderboard(): Promise<any> {
   }
 }
 
+/**
+ * Fetch global statistics for landing page
+ */
+export async function fetchGlobalStats(): Promise<any> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/stats`, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' },
+    });
+
+    if (!response.ok) {
+      throw new GasAPIError(`Failed to fetch stats: ${response.statusText}`, response.status);
+    }
+
+    return await response.json();
+  } catch (error) {
+    if (error instanceof GasAPIError) throw error;
+    throw new GasAPIError('Network error fetching stats');
+  }
+}
+
 // Export error class
 export { GasAPIError };
 

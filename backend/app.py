@@ -7,6 +7,7 @@ from flask import Flask, jsonify
 from flask_cors import CORS
 from api.routes import api_bp
 from api.base_config import base_config_bp
+from api.stats import stats_bp
 from api.middleware import limiter, error_handlers, log_request
 from config import Config
 from utils.logger import logger
@@ -56,6 +57,7 @@ def create_app():
     
     # Register blueprints
     app.register_blueprint(api_bp, url_prefix='/api')
+    app.register_blueprint(stats_bp, url_prefix='/api')
     app.register_blueprint(base_config_bp)  # No prefix - serves at root for /config.json
     
     @app.route('/')

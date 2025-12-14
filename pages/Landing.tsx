@@ -3,9 +3,35 @@ import { Link } from 'react-router-dom';
 import { Logo } from '../components/branding/Logo';
 import TrustBadge from '../components/branding/TrustBadges';
 import CountUp from 'react-countup';
+import { fetchGlobalStats } from '../src/api/gasApi';
 
 const Landing: React.FC = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
+  const [stats, setStats] = React.useState({
+    total_saved_k: 52,
+    accuracy_percent: 82,
+    predictions_k: 15
+  });
+
+  React.useEffect(() => {
+    const loadStats = async () => {
+      try {
+        const response = await fetchGlobalStats();
+        if (response.success && response.stats) {
+          setStats({
+            total_saved_k: response.stats.total_saved_k,
+            accuracy_percent: response.stats.accuracy_percent,
+            predictions_k: response.stats.predictions_k
+          });
+        }
+      } catch (error) {
+        console.error('Failed to load stats, using defaults:', error);
+        // Keep default values on error
+      }
+    };
+
+    loadStats();
+  }, []);
 
   return (
     <div className="min-h-screen bg-gray-900 text-white overflow-x-hidden">
@@ -143,19 +169,19 @@ const Landing: React.FC = () => {
           <div className="mt-12 grid grid-cols-3 gap-4 sm:gap-6 md:gap-8 max-w-2xl mx-auto px-4">
             <div>
               <div className="text-2xl sm:text-3xl md:text-4xl font-bold text-cyan-400">
-                $<CountUp end={52} duration={2} />K+
+                $<CountUp end={stats.total_saved_k} duration={2} />K+
               </div>
               <div className="text-gray-400 text-xs sm:text-sm">Total Saved</div>
             </div>
             <div>
               <div className="text-2xl sm:text-3xl md:text-4xl font-bold text-emerald-400">
-                <CountUp end={82} duration={2} />%
+                <CountUp end={stats.accuracy_percent} duration={2} />%
               </div>
               <div className="text-gray-400 text-xs sm:text-sm">Accuracy</div>
             </div>
             <div>
               <div className="text-2xl sm:text-3xl md:text-4xl font-bold text-cyan-400">
-                <CountUp end={15} duration={2} />K+
+                <CountUp end={stats.predictions_k} duration={2} />K+
               </div>
               <div className="text-gray-400 text-xs sm:text-sm">Predictions</div>
             </div>
