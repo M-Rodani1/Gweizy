@@ -30,7 +30,7 @@ const Landing: React.FC = () => {
           </h1>
 
           <p className="text-xl md:text-2xl text-gray-300 mb-8 max-w-2xl mx-auto">
-            Know the best times to transact and save up to <strong className="text-emerald-400">40%</strong> on gas fees
+            Real-time gas tracking with AI insights • Save up to <strong className="text-emerald-400">40%</strong> on transaction fees
           </p>
 
           <Link
@@ -66,20 +66,20 @@ const Landing: React.FC = () => {
           </h2>
 
           <div className="grid md:grid-cols-3 gap-6">
-            <div className="bg-gray-900 rounded-lg p-6">
+            <div className="bg-gray-900 rounded-lg p-6 border border-gray-800">
               <div className="text-5xl mb-4">🚦</div>
               <h3 className="text-xl font-bold text-white mb-2">Real-Time Indicator</h3>
-              <p className="text-gray-400">See if NOW is a good time to transact</p>
+              <p className="text-gray-400">Live traffic light shows if NOW is a good time</p>
             </div>
-            <div className="bg-gray-900 rounded-lg p-6">
+            <div className="bg-gray-900 rounded-lg p-6 border border-gray-800">
               <div className="text-5xl mb-4">⏰</div>
               <h3 className="text-xl font-bold text-white mb-2">Best Time Widget</h3>
-              <p className="text-gray-400">Know the cheapest hours to save money</p>
+              <p className="text-gray-400">See the cheapest and most expensive hours</p>
             </div>
-            <div className="bg-gray-900 rounded-lg p-6">
+            <div className="bg-gray-900 rounded-lg p-6 border border-gray-800">
               <div className="text-5xl mb-4">🗓️</div>
               <h3 className="text-xl font-bold text-white mb-2">24-Hour Heatmap</h3>
-              <p className="text-gray-400">Visual patterns at a glance</p>
+              <p className="text-gray-400">Interactive hourly gas price patterns</p>
             </div>
           </div>
         </div>
