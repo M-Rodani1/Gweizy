@@ -24,6 +24,14 @@ const BestTimeWidget: React.FC<BestTimeWidgetProps> = ({ currentGas = 0 }) => {
         const response = await fetch(`https://basegasfeesml.onrender.com/api/historical?hours=168`);
         const data = await response.json();
 
+        console.log('🔍 API Response:', {
+          status: response.status,
+          dataKeys: Object.keys(data),
+          dataLength: data.data?.length || data.historical?.length || 0,
+          samplePoint: data.data?.[0] || data.historical?.[0] || null,
+          fullData: data
+        });
+
         const historicalData = data.data || data.historical || [];
 
         if (historicalData.length > 0) {
