@@ -102,7 +102,7 @@ const WalletConnect: React.FC = () => {
           href="https://metamask.io/download/"
           target="_blank"
           rel="noopener noreferrer"
-          className="px-4 py-2 bg-cyan-500 hover:bg-cyan-600 rounded-md transition-colors text-sm font-medium"
+          className="px-5 py-2.5 bg-cyan-500 hover:bg-cyan-600 rounded-md transition-colors text-sm font-medium min-h-[44px] flex items-center"
         >
           Install Wallet
         </a>
@@ -112,11 +112,11 @@ const WalletConnect: React.FC = () => {
 
   if (!address) {
     return (
-      <div className="flex items-center space-x-2">
+      <div className="flex flex-col items-stretch gap-2">
         <button
           onClick={handleConnect}
           disabled={isConnecting}
-          className="px-4 py-2 bg-cyan-500 hover:bg-cyan-600 disabled:bg-gray-600 disabled:cursor-not-allowed rounded-md transition-colors text-sm font-medium"
+          className="px-5 py-2.5 bg-cyan-500 hover:bg-cyan-600 disabled:bg-gray-600 disabled:cursor-not-allowed rounded-md transition-colors text-sm font-medium min-h-[44px]"
         >
           {isConnecting ? 'Connecting...' : 'Connect Wallet'}
         </button>
@@ -133,7 +133,7 @@ const WalletConnect: React.FC = () => {
     <div className="relative">
       <button
         onClick={() => setShowDropdown(!showDropdown)}
-        className="flex items-center space-x-2 px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-md transition-colors text-sm font-medium"
+        className="flex items-center space-x-2 px-4 py-2.5 bg-gray-700 hover:bg-gray-600 rounded-md transition-colors text-sm font-medium min-h-[44px]"
       >
         <div className={`w-2 h-2 rounded-full ${isOnBaseNetwork ? 'bg-green-500' : 'bg-yellow-500'}`}></div>
         <span className="text-gray-200">{formatAddress(address)}</span>
@@ -160,14 +160,14 @@ const WalletConnect: React.FC = () => {
 
               <button
                 onClick={handleCopyAddress}
-                className="w-full text-left px-3 py-2 text-sm text-gray-200 hover:bg-gray-700 rounded transition-colors"
+                className="w-full text-left px-4 py-3 text-sm text-gray-200 hover:bg-gray-700 rounded transition-colors min-h-[44px]"
               >
                 📋 Copy Address
               </button>
 
               <button
                 onClick={handleViewOnBaseScan}
-                className="w-full text-left px-3 py-2 text-sm text-gray-200 hover:bg-gray-700 rounded transition-colors"
+                className="w-full text-left px-4 py-3 text-sm text-gray-200 hover:bg-gray-700 rounded transition-colors min-h-[44px]"
               >
                 🔍 View on BaseScan
               </button>
@@ -176,7 +176,7 @@ const WalletConnect: React.FC = () => {
 
               <button
                 onClick={handleDisconnect}
-                className="w-full text-left px-3 py-2 text-sm text-red-400 hover:bg-gray-700 rounded transition-colors"
+                className="w-full text-left px-4 py-3 text-sm text-red-400 hover:bg-gray-700 rounded transition-colors min-h-[44px]"
               >
                 Disconnect
               </button>

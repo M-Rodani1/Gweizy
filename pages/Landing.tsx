@@ -5,32 +5,99 @@ import TrustBadge from '../components/branding/TrustBadges';
 import CountUp from 'react-countup';
 
 const Landing: React.FC = () => {
+  const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
+
   return (
-    <div className="min-h-screen bg-gray-900 text-white">
+    <div className="min-h-screen bg-gray-900 text-white overflow-x-hidden">
       {/* Navigation */}
       <nav className="fixed top-0 w-full bg-gray-900/95 backdrop-blur-sm border-b border-gray-800 z-50">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <Logo />
-            <span className="text-xl font-bold text-white">Base Gas Optimiser</span>
-          </div>
-          
-          <div className="hidden md:flex items-center space-x-8">
-            <a href="#features" className="text-gray-300 hover:text-white transition">Features</a>
-            <a href="#pricing" className="text-gray-300 hover:text-white transition">Pricing</a>
-            <a href="#faq" className="text-gray-300 hover:text-white transition">FAQ</a>
-            <Link to="/docs" className="text-gray-300 hover:text-white transition">Docs</Link>
-          </div>
-          
-          <div className="flex items-center space-x-4">
-            <Link to="/app" className="text-gray-300 hover:text-white transition">Sign In</Link>
-            <Link 
-              to="/app" 
-              className="px-6 py-2 bg-gradient-to-r from-cyan-500 to-emerald-500 text-white rounded-lg font-semibold hover:shadow-lg transition"
+        <div className="max-w-7xl mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <Logo />
+              <span className="text-lg sm:text-xl font-bold text-white">Base Gas Optimiser</span>
+            </div>
+
+            <div className="hidden md:flex items-center space-x-8">
+              <a href="#features" className="text-gray-300 hover:text-white transition">Features</a>
+              <a href="#pricing" className="text-gray-300 hover:text-white transition">Pricing</a>
+              <a href="#faq" className="text-gray-300 hover:text-white transition">FAQ</a>
+              <Link to="/docs" className="text-gray-300 hover:text-white transition">Docs</Link>
+            </div>
+
+            <div className="hidden md:flex items-center space-x-4">
+              <Link to="/app" className="text-gray-300 hover:text-white transition">Sign In</Link>
+              <Link
+                to="/app"
+                className="px-6 py-2 bg-gradient-to-r from-cyan-500 to-emerald-500 text-white rounded-lg font-semibold hover:shadow-lg transition"
+              >
+                Get Started
+              </Link>
+            </div>
+
+            {/* Mobile menu button */}
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="md:hidden p-2 text-gray-300 hover:text-white focus:outline-none"
+              aria-label="Toggle menu"
             >
-              Get Started
-            </Link>
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                {mobileMenuOpen ? (
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                ) : (
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                )}
+              </svg>
+            </button>
           </div>
+
+          {/* Mobile menu */}
+          {mobileMenuOpen && (
+            <div className="md:hidden mt-4 pb-4 space-y-3 border-t border-gray-800 pt-4">
+              <a
+                href="#features"
+                className="block py-2 text-gray-300 hover:text-white transition"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Features
+              </a>
+              <a
+                href="#pricing"
+                className="block py-2 text-gray-300 hover:text-white transition"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Pricing
+              </a>
+              <a
+                href="#faq"
+                className="block py-2 text-gray-300 hover:text-white transition"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                FAQ
+              </a>
+              <Link
+                to="/docs"
+                className="block py-2 text-gray-300 hover:text-white transition"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Docs
+              </Link>
+              <Link
+                to="/app"
+                className="block py-2 text-gray-300 hover:text-white transition"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Sign In
+              </Link>
+              <Link
+                to="/app"
+                className="block w-full text-center px-6 py-3 bg-gradient-to-r from-cyan-500 to-emerald-500 text-white rounded-lg font-semibold hover:shadow-lg transition"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Get Started
+              </Link>
+            </div>
+          )}
         </div>
       </nav>
 
@@ -43,54 +110,54 @@ const Landing: React.FC = () => {
             </span>
           </div>
           
-          <h1 className="text-5xl md:text-7xl font-bold text-white mb-6 leading-tight">
+          <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-white mb-6 leading-tight">
             Stop Overpaying for
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-emerald-400">
               {" "}Base Gas Fees
             </span>
           </h1>
-          
-          <p className="text-xl md:text-2xl text-gray-300 mb-8 max-w-2xl mx-auto">
+
+          <p className="text-lg sm:text-xl md:text-2xl text-gray-300 mb-8 max-w-2xl mx-auto px-4">
             AI-powered predictions save you up to <strong className="text-emerald-400">65%</strong> on gas fees every single transaction
           </p>
           
-          <div className="flex flex-col sm:flex-row gap-4 justify-center mb-8">
-            <Link 
+          <div className="flex flex-col sm:flex-row gap-4 justify-center mb-8 px-4">
+            <Link
               to="/app"
-              className="px-8 py-4 bg-gradient-to-r from-cyan-500 to-emerald-500 text-white rounded-lg text-lg font-semibold hover:shadow-xl transition-all transform hover:scale-105"
+              className="px-8 py-4 bg-gradient-to-r from-cyan-500 to-emerald-500 text-white rounded-lg text-base sm:text-lg font-semibold hover:shadow-xl transition-all transform hover:scale-105 text-center min-h-[52px] flex items-center justify-center"
             >
               Get Started Free →
             </Link>
-            <button className="px-8 py-4 bg-gray-800 border border-gray-700 text-white rounded-lg text-lg font-semibold hover:bg-gray-700 transition-all">
+            <button className="px-8 py-4 bg-gray-800 border border-gray-700 text-white rounded-lg text-base sm:text-lg font-semibold hover:bg-gray-700 transition-all min-h-[52px]">
               Watch Demo ▶
             </button>
           </div>
-          
-          <div className="flex items-center justify-center gap-6 text-sm text-gray-400">
+
+          <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6 text-xs sm:text-sm text-gray-400 px-4">
             <span>✓ No credit card required</span>
             <span>✓ 7-day free trial</span>
             <span>✓ Cancel anytime</span>
           </div>
-          
+
           {/* Live Stats Counter */}
-          <div className="mt-12 grid grid-cols-3 gap-8 max-w-2xl mx-auto">
+          <div className="mt-12 grid grid-cols-3 gap-4 sm:gap-6 md:gap-8 max-w-2xl mx-auto px-4">
             <div>
-              <div className="text-3xl md:text-4xl font-bold text-cyan-400">
+              <div className="text-2xl sm:text-3xl md:text-4xl font-bold text-cyan-400">
                 $<CountUp end={52} duration={2} />K+
               </div>
-              <div className="text-gray-400 text-sm">Total Saved</div>
+              <div className="text-gray-400 text-xs sm:text-sm">Total Saved</div>
             </div>
             <div>
-              <div className="text-3xl md:text-4xl font-bold text-emerald-400">
+              <div className="text-2xl sm:text-3xl md:text-4xl font-bold text-emerald-400">
                 <CountUp end={82} duration={2} />%
               </div>
-              <div className="text-gray-400 text-sm">Accuracy</div>
+              <div className="text-gray-400 text-xs sm:text-sm">Accuracy</div>
             </div>
             <div>
-              <div className="text-3xl md:text-4xl font-bold text-cyan-400">
+              <div className="text-2xl sm:text-3xl md:text-4xl font-bold text-cyan-400">
                 <CountUp end={15} duration={2} />K+
               </div>
-              <div className="text-gray-400 text-sm">Predictions</div>
+              <div className="text-gray-400 text-xs sm:text-sm">Predictions</div>
             </div>
           </div>
         </div>

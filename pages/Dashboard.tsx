@@ -93,29 +93,29 @@ const Dashboard: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white font-sans p-4 sm:p-6 lg:p-8">
+    <div className="min-h-screen bg-gray-900 text-white font-sans p-4 sm:p-6 lg:p-8 overflow-x-hidden">
       <div className="max-w-7xl mx-auto">
-        <header className="mb-8">
-          <div className="flex items-center justify-between">
+        <header className="mb-6 sm:mb-8">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="flex items-center space-x-3">
-              <GasIcon className="w-8 h-8 text-cyan-400" />
+              <GasIcon className="w-7 h-7 sm:w-8 sm:h-8 text-cyan-400 flex-shrink-0" />
               <div>
-                <h1 className="text-3xl font-bold text-gray-100">Base Gas Optimizer</h1>
-                <p className="text-gray-400 mt-1">ML-powered gas price predictions for Base network</p>
+                <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-100">Base Gas Optimizer</h1>
+                <p className="text-xs sm:text-sm text-gray-400 mt-1 hidden sm:block">ML-powered gas price predictions for Base network</p>
               </div>
             </div>
-            
+
             {/* API Status Indicator & Wallet */}
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center justify-between sm:justify-end gap-3 sm:gap-4">
               <div className="flex items-center space-x-2">
                 <div className={`w-2 h-2 rounded-full ${
-                  apiStatus === 'online' ? 'bg-green-500' : 
-                  apiStatus === 'offline' ? 'bg-red-500' : 
+                  apiStatus === 'online' ? 'bg-green-500' :
+                  apiStatus === 'offline' ? 'bg-red-500' :
                   'bg-yellow-500'
                 }`}></div>
-                <span className="text-sm text-gray-400">
-                  {apiStatus === 'online' ? 'API Connected' : 
-                   apiStatus === 'offline' ? 'API Offline' : 
+                <span className="text-xs sm:text-sm text-gray-400">
+                  {apiStatus === 'online' ? 'API Connected' :
+                   apiStatus === 'offline' ? 'API Offline' :
                    'Checking...'}
                 </span>
               </div>

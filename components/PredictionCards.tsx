@@ -139,7 +139,7 @@ const PredictionCards: React.FC = () => {
   if (loading && cards.length === 0) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <div className="bg-gray-800 p-6 rounded-lg shadow-lg">
+        <div className="bg-gray-800 p-4 md:p-6 rounded-lg shadow-lg">
           <LoadingSpinner message="Loading predictions..." />
         </div>
       </div>
@@ -149,11 +149,11 @@ const PredictionCards: React.FC = () => {
   if (error) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <div className="bg-gray-800 p-6 rounded-lg shadow-lg">
+        <div className="bg-gray-800 p-4 md:p-6 rounded-lg shadow-lg">
           <p className="text-red-400 mb-4">⚠️ {error}</p>
           <button
             onClick={loadData}
-            className="px-4 py-2 bg-cyan-500 hover:bg-cyan-600 rounded-md transition-colors text-sm"
+            className="px-6 py-3 bg-cyan-500 hover:bg-cyan-600 rounded-md transition-colors text-sm min-h-[44px]"
           >
             Retry
           </button>
@@ -194,7 +194,7 @@ const PredictionCards: React.FC = () => {
         {cards.map((card) => (
           <div
             key={card.horizon}
-            className={`bg-gray-800 p-6 rounded-lg shadow-lg border-2 ${getColorClasses(card.color)} relative`}
+            className={`bg-gray-800 p-4 md:p-6 rounded-lg shadow-lg border-2 ${getColorClasses(card.color)} relative`}
           >
           {/* BEST TIME Badge */}
           {card.isBest && (
@@ -313,7 +313,7 @@ const PredictionCards: React.FC = () => {
             <p className="text-sm text-gray-300 leading-relaxed mb-3">{card.recommendation}</p>
             <button
               onClick={() => setShowExplanation(card.horizon)}
-              className="w-full py-2 bg-gray-700 hover:bg-gray-600 text-cyan-400 rounded-md text-sm transition"
+              className="w-full py-3 bg-gray-700 hover:bg-gray-600 text-cyan-400 rounded-md text-sm transition min-h-[44px]"
             >
               Why this prediction?
             </button>

@@ -72,7 +72,7 @@ const GasPriceGraph: React.FC = () => {
 
   if (loading && data.length === 0) {
     return (
-      <div className="bg-gray-800 p-4 sm:p-6 rounded-lg shadow-lg h-96">
+      <div className="bg-gray-800 p-4 sm:p-6 rounded-lg shadow-lg h-64 md:h-80 lg:h-96">
         <LoadingSpinner message="Loading gas price data..." />
       </div>
     );
@@ -80,7 +80,7 @@ const GasPriceGraph: React.FC = () => {
 
   if (error) {
     return (
-      <div className="bg-gray-800 p-4 sm:p-6 rounded-lg shadow-lg h-96">
+      <div className="bg-gray-800 p-4 sm:p-6 rounded-lg shadow-lg h-64 md:h-80 lg:h-96">
         <div className="flex flex-col items-center justify-center h-full">
           <p className="text-red-400 mb-4">⚠️ {error}</p>
           <button
@@ -95,17 +95,17 @@ const GasPriceGraph: React.FC = () => {
   }
 
   return (
-    <div className="bg-gray-800 p-4 sm:p-6 rounded-lg shadow-lg h-96">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4">
-        <h2 className="text-xl font-semibold text-gray-200 mb-2 sm:mb-0">
+    <div className="bg-gray-800 p-4 sm:p-6 rounded-lg shadow-lg h-64 md:h-80 lg:h-96">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-3">
+        <h2 className="text-lg sm:text-xl font-semibold text-gray-200">
           Gas Price Predictions - {timeScale.toUpperCase()}
         </h2>
-        <div className="flex space-x-1 bg-gray-700/50 p-1 rounded-md">
+        <div className="flex flex-wrap gap-1 bg-gray-700/50 p-1 rounded-md">
           {(['1h', '4h', '24h', 'historical'] as TimeScale[]).map((scale) => (
             <button
               key={scale}
               onClick={() => setTimeScale(scale)}
-              className={`px-3 py-1 text-sm font-medium rounded-md transition-colors ${
+              className={`px-3 py-2 text-sm font-medium rounded-md transition-colors min-w-[60px] ${
                 timeScale === scale
                   ? 'bg-cyan-500 text-white'
                   : 'text-gray-300 hover:bg-gray-600'
@@ -116,9 +116,9 @@ const GasPriceGraph: React.FC = () => {
           ))}
         </div>
       </div>
-      
+
       <ResponsiveContainer width="100%" height="85%">
-        <LineChart data={data} margin={{ top: 5, right: 20, left: -10, bottom: 20 }}>
+        <LineChart data={data} margin={{ top: 5, right: 10, left: 0, bottom: 20 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#4A5568" />
           <XAxis dataKey="time" stroke="#A0AEC0" />
           <YAxis stroke="#A0AEC0" />
