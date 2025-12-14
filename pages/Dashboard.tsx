@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import Logo from '../components/branding/Logo';
+import BestTimeWidget from '../components/BestTimeWidget';
 
 const Dashboard: React.FC = () => {
   const [currentGas, setCurrentGas] = useState<number | null>(null);
@@ -71,6 +72,11 @@ const Dashboard: React.FC = () => {
                 <div className="text-2xl sm:text-3xl font-bold text-red-400">No data available</div>
               )}
             </div>
+          </div>
+
+          {/* Best Time Widget */}
+          <div className="mb-6">
+            <BestTimeWidget currentGas={currentGas || 0} />
           </div>
 
           {/* Info Cards */}
