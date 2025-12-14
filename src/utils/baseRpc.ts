@@ -2,7 +2,23 @@
  * Fetch live gas prices directly from Base network RPC
  */
 
-const BASE_RPC_URL = 'https://mainnet.base.org';
+// Try multiple RPC endpoints (fallback if one is rate-limited)
+const BASE_RPC_URLS = [
+  'https://mainnet.base.org',
+  'https://base.llamarpc.com',
+  'https://base-rpc.publicnode.com'
+];
+
+let currentRpcIndex = 0;
+
+function getBaseRPC(): string {
+  return BASE_RPC_URLS[currentRpcIndex % BASE_RPC_URLS.length];
+}
+
+function rotateRPC(): void {
+  currentRpcIndex++;
+  console.log(`🔄 Switching to RPC: ${getBaseRPC()}`);
+}
 
 interface BlockData {
   baseFeePerGas: string;
@@ -26,7 +42,7 @@ export async function fetchLiveBaseGas(): Promise<{
   timestamp: number;
 }> {
   try {
-    const response = await fetch(BASE_RPC_URL, {
+    const response = await fetch(getBaseRPC(), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -65,7 +81,7 @@ export async function fetchHistoricalBaseGas(hoursBack: number = 168): Promise<A
 }>> {
   try {
     // Get latest block number
-    const latestBlockResponse = await fetch(BASE_RPC_URL, {
+    const latestBlockResponse = await fetch(getBaseRPC(), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -83,14 +99,15 @@ export async function fetchHistoricalBaseGas(hoursBack: number = 168): Promise<A
     const blocksPerHour = (60 * 60) / 2;
     const totalBlocks = Math.floor(hoursBack * blocksPerHour);
 
-    // Sample every ~30 blocks to get reasonable data points (~1 per minute)
-    const sampleInterval = 30;
-    const numSamples = Math.min(Math.floor(totalBlocks / sampleInterval), 500); // Max 500 samples
+    // Sample every ~120 blocks to get reasonable data points (~1 every 4 minutes)
+    // Reduced from 30 to avoid rate limiting
+    const sampleInterval = 120;
+    const numSamples = Math.min(Math.floor(totalBlocks / sampleInterval), 200); // Reduced from 500 to 200
 
-    console.log(`📊 Fetching ${numSamples} historical blocks from Base network...`);
+    console.log(`📊 Fetching ${numSamples} historical blocks from Base network (optimized for rate limits)...`);
 
-    // Fetch blocks in parallel (in batches to avoid overwhelming the RPC)
-    const batchSize = 20;
+    // Fetch blocks in parallel (in smaller batches to avoid rate limiting)
+    const batchSize = 10; // Reduced from 20 to 10
     const historicalData: Array<{
       time: string;
       gwei: number;
@@ -107,7 +124,7 @@ export async function fetchHistoricalBaseGas(hoursBack: number = 168): Promise<A
         const blockHex = '0x' + blockNum.toString(16);
 
         batchPromises.push(
-          fetch(BASE_RPC_URL, {
+          fetch(getBaseRPC(), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -138,9 +155,9 @@ export async function fetchHistoricalBaseGas(hoursBack: number = 168): Promise<A
         }
       }
 
-      // Small delay between batches to be respectful to the RPC
+      // Longer delay between batches to avoid rate limiting
       if (i + batchSize < numSamples) {
-        await new Promise(resolve => setTimeout(resolve, 100));
+        await new Promise(resolve => setTimeout(resolve, 500)); // Increased from 100ms to 500ms
       }
     }
 
