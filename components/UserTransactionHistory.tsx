@@ -131,36 +131,6 @@ const UserTransactionHistory: React.FC<UserTransactionHistoryProps> = ({ address
         </div>
       </div>
 
-      {/* Smart Recommendations */}
-      <div className="bg-gray-800 p-6 rounded-lg shadow-lg border border-gray-700">
-        <h3 className="text-lg font-semibold text-gray-200 mb-4">💡 Smart Recommendations</h3>
-        <div className="space-y-2 text-sm">
-          {data.recommendations && data.recommendations.usual_time ? (
-            <div className="text-gray-300">
-              You usually transact at <span className="text-cyan-400 font-medium">
-                {data.recommendations.usual_time}
-              </span>
-            </div>
-          ) : (
-            <div className="text-gray-400 italic">
-              Connect your wallet and make some transactions to see personalized recommendations
-            </div>
-          )}
-          {data.recommendations && data.recommendations.best_time && (
-            <div className="text-gray-300">
-              Best time for you: <span className="text-green-400 font-medium">
-                {data.recommendations.best_time}
-              </span>
-              {data.recommendations.avg_savings && (
-                <span className="text-gray-400 ml-2">
-                  (avg {data.recommendations.avg_savings.toFixed(0)}% cheaper)
-                </span>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-
       {/* Recent Transactions */}
       <div className="bg-gray-800 p-6 rounded-lg shadow-lg border border-gray-700">
         <h3 className="text-lg font-semibold text-gray-200 mb-4">

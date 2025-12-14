@@ -9,7 +9,6 @@ import ModelAccuracy from '../components/ModelAccuracy';
 import WalletConnect from '../components/WalletConnect';
 import UserTransactionHistory from '../components/UserTransactionHistory';
 import GasWasteCalculator from '../components/GasWasteCalculator';
-import ShareResults from '../components/ShareResults';
 import SavingsLeaderboard from '../components/SavingsLeaderboard';
 import BestTimeWidget from '../components/BestTimeWidget';
 import RelativePriceIndicator from '../components/RelativePriceIndicator';
@@ -170,16 +169,6 @@ const Dashboard: React.FC = () => {
             <div className="mt-6">
               <GasWasteCalculator walletAddress={walletAddress} />
             </div>
-            {walletAddress && (
-              <div className="mt-6">
-                <ShareResults
-                  savings={0.21}
-                  savingsPercent={30}
-                  period="month"
-                  walletAddress={walletAddress}
-                />
-              </div>
-            )}
           </div>
           <div className="lg:col-span-2">
             <GasPriceTable />
