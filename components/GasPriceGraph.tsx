@@ -1,39 +1,58 @@
 import React, { useState, useEffect } from 'react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { GraphDataPoint } from '../types';
+import { fetchPredictions, fetchCurrentGas } from '../src/api/gasApi';
+import LoadingSpinner from '../components/LoadingSpinner';
 
-interface HistoricalDataPoint {
-  time: string;
-  gwei: number;
-}
+type TimeScale = '1h' | '4h' | '24h' | 'historical';
 
 const GasPriceGraph: React.FC = () => {
-  const [data, setData] = useState<HistoricalDataPoint[]>([]);
+  const [timeScale, setTimeScale] = useState<TimeScale>('24h');
+  const [data, setData] = useState<GraphDataPoint[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [currentGas, setCurrentGas] = useState<number | null>(null);
 
   const loadData = async () => {
     try {
       setLoading(true);
       setError(null);
 
-      const response = await fetch('https://basegasfeesml.onrender.com/api/historical?hours=24');
-      if (!response.ok) {
-        throw new Error('Failed to fetch historical data');
+      // Fetch both predictions and current gas
+      const [predictionsResult, currentGasData] = await Promise.all([
+        fetchPredictions(),
+        fetchCurrentGas()
+      ]);
+
+      setCurrentGas(currentGasData.current_gas);
+
+      // Get data for selected timeframe
+      let selectedData = predictionsResult.predictions[timeScale] || [];
+
+      // For prediction timeframes (1h, 4h, 24h), add current gas as first point
+      if (timeScale !== 'historical' && currentGasData.current_gas) {
+        const currentPoint: GraphDataPoint = {
+          time: 'now',
+          gwei: currentGasData.current_gas,
+          predictedGwei: null
+        };
+
+        // Get the first predicted point for this timeframe
+        if (selectedData.length > 0 && selectedData[0].predictedGwei !== undefined) {
+          const firstPredicted: GraphDataPoint = {
+            time: selectedData[0].time,
+            gwei: null,
+            predictedGwei: selectedData[0].predictedGwei
+          };
+          // Combine current point + predicted point to show connection
+          selectedData = [currentPoint, firstPredicted, ...selectedData.slice(1)];
+        } else {
+          // If no predictions yet, just show current
+          selectedData = [currentPoint, ...selectedData];
+        }
       }
 
-      const result = await response.json();
-
-      // Format the data for the chart
-      const formattedData = result.data.map((point: any) => ({
-        time: new Date(point.time).toLocaleTimeString('en-US', {
-          hour: '2-digit',
-          minute: '2-digit',
-          hour12: false
-        }),
-        gwei: point.gwei
-      }));
-
-      setData(formattedData);
+      setData(selectedData);
 
     } catch (err) {
       console.error('Error loading graph data:', err);
@@ -46,77 +65,103 @@ const GasPriceGraph: React.FC = () => {
   useEffect(() => {
     loadData();
 
-    // Auto-refresh every 60 seconds
-    const interval = setInterval(loadData, 60000);
+    // Auto-refresh every 30 seconds
+    const interval = setInterval(loadData, 30000);
     return () => clearInterval(interval);
-  }, []);
+  }, [timeScale]);
 
   if (loading && data.length === 0) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-cyan-400">Loading historical data...</div>
+      <div className="bg-gray-800 p-4 sm:p-6 rounded-lg shadow-lg h-64 md:h-80 lg:h-96">
+        <LoadingSpinner message="Loading gas price data..." />
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center h-64">
-        <p className="text-red-400 mb-4">⚠️ {error}</p>
-        <button
-          onClick={loadData}
-          className="px-4 py-2 bg-cyan-500 hover:bg-cyan-600 rounded-md transition-colors"
-        >
-          Retry
-        </button>
-      </div>
-    );
-  }
-
-  if (data.length === 0) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-gray-400">No data available</div>
+      <div className="bg-gray-800 p-4 sm:p-6 rounded-lg shadow-lg h-64 md:h-80 lg:h-96">
+        <div className="flex flex-col items-center justify-center h-full">
+          <p className="text-red-400 mb-4">⚠️ {error}</p>
+          <button
+            onClick={loadData}
+            className="px-4 py-2 bg-cyan-500 hover:bg-cyan-600 rounded-md transition-colors"
+          >
+            Retry
+          </button>
+        </div>
       </div>
     );
   }
 
   return (
-    <ResponsiveContainer width="100%" height={300}>
-      <LineChart data={data} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="#4A5568" />
-        <XAxis
-          dataKey="time"
-          stroke="#A0AEC0"
-          tick={{ fontSize: 12 }}
-          interval="preserveStartEnd"
-        />
-        <YAxis
-          stroke="#A0AEC0"
-          tick={{ fontSize: 12 }}
-          label={{ value: 'Gwei', angle: -90, position: 'insideLeft', style: { fill: '#A0AEC0' } }}
-        />
-        <Tooltip
-          contentStyle={{
-            backgroundColor: '#1A202C',
-            borderColor: '#4A5568',
-            borderRadius: '8px'
-          }}
-          labelStyle={{ color: '#E2E8F0' }}
-          formatter={(value: any) => {
-            return [`${Number(value).toFixed(4)} gwei`, 'Gas Price'];
-          }}
-        />
-        <Line
-          type="monotone"
-          dataKey="gwei"
-          stroke="#4FD1C5"
-          strokeWidth={2}
-          dot={false}
-          activeDot={{ r: 6, fill: '#4FD1C5' }}
-        />
-      </LineChart>
-    </ResponsiveContainer>
+    <div className="bg-gray-800 p-4 sm:p-6 rounded-lg shadow-lg h-64 md:h-80 lg:h-96">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-3">
+        <h2 className="text-lg sm:text-xl font-semibold text-gray-200">
+          Gas Price Predictions - {timeScale.toUpperCase()}
+        </h2>
+        <div className="flex flex-wrap gap-1 bg-gray-700/50 p-1 rounded-md">
+          {(['1h', '4h', '24h', 'historical'] as TimeScale[]).map((scale) => (
+            <button
+              key={scale}
+              onClick={() => setTimeScale(scale)}
+              className={`px-3 py-2 text-sm font-medium rounded-md transition-colors min-w-[60px] ${
+                timeScale === scale
+                  ? 'bg-cyan-500 text-white'
+                  : 'text-gray-300 hover:bg-gray-600'
+              }`}
+            >
+              {scale === 'historical' ? 'History' : scale.toUpperCase()}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <ResponsiveContainer width="100%" height="85%">
+        <LineChart data={data} margin={{ top: 5, right: 10, left: 0, bottom: 20 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#4A5568" />
+          <XAxis dataKey="time" stroke="#A0AEC0" />
+          <YAxis stroke="#A0AEC0" />
+          <Tooltip
+            contentStyle={{
+              backgroundColor: '#1A202C',
+              borderColor: '#4A5568'
+            }}
+            labelStyle={{ color: '#E2E8F0' }}
+            formatter={(value: any, name: string) => {
+              if (value === null || value === undefined) return 'N/A';
+              return `${Number(value).toFixed(4)} gwei`;
+            }}
+            labelFormatter={(label: string) => {
+              if (label === 'now') return 'Current (Now)';
+              return `Time: ${label}`;
+            }}
+          />
+          <Legend wrapperStyle={{ color: '#E2E8F0', paddingTop: '20px' }} />
+          <Line
+            type="monotone"
+            dataKey="gwei"
+            name="Current/Actual Price"
+            stroke="#4FD1C5"
+            strokeWidth={3}
+            dot={{ r: 6, fill: '#4FD1C5' }}
+            activeDot={{ r: 8, stroke: '#81E6D9', strokeWidth: 2 }}
+            connectNulls={false}
+          />
+          <Line
+            type="monotone"
+            dataKey="predictedGwei"
+            name="Predicted Price"
+            stroke="#F6E05E"
+            strokeWidth={2}
+            strokeDasharray="5 5"
+            dot={{ r: 5, fill: '#F6E05E' }}
+            activeDot={{ r: 8, stroke: '#FAF089', strokeWidth: 2 }}
+            connectNulls={false}
+          />
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
   );
 };
 
