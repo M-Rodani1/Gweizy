@@ -34,8 +34,14 @@ try:
     import os
     
     for horizon in ['1h', '4h', '24h']:
-        model_path = f'backend/models/saved_models/model_{horizon}.pkl'
-        scaler_path = f'backend/models/saved_models/scaler_{horizon}.pkl'
+        # Try both paths to support different working directories
+        model_path = f'models/saved_models/model_{horizon}.pkl'
+        if not os.path.exists(model_path):
+            model_path = f'backend/models/saved_models/model_{horizon}.pkl'
+
+        scaler_path = f'models/saved_models/scaler_{horizon}.pkl'
+        if not os.path.exists(scaler_path):
+            scaler_path = f'backend/models/saved_models/scaler_{horizon}.pkl'
         
         if os.path.exists(model_path):
             model_data = joblib.load(model_path)
@@ -80,7 +86,10 @@ try:
                 pass
     
     # Load global feature names if available
-    feature_names_path = 'backend/models/saved_models/feature_names.pkl'
+    feature_names_path = 'models/saved_models/feature_names.pkl'
+    if not os.path.exists(feature_names_path):
+        feature_names_path = 'backend/models/saved_models/feature_names.pkl'
+
     if os.path.exists(feature_names_path):
         global_feature_names = joblib.load(feature_names_path)
         for horizon in ['1h', '4h', '24h']:
@@ -631,48 +640,50 @@ def get_accuracy():
             # This would need actual prediction vs actual data
             pass
         
-        # Get metrics from saved models (using new format)
-        import joblib
-        import os
-        
-        model_metrics = {}
-        for horizon in ['1h', '4h', '24h']:
-            try:
-                model_path = f'backend/models/saved_models/model_{horizon}.pkl'
-                if os.path.exists(model_path):
-                    model_data = joblib.load(model_path)
-                    if isinstance(model_data, dict) and 'metrics' in model_data:
-                        model_metrics[horizon] = model_data['metrics']
-            except Exception as e:
-                logger.warning(f"Could not load metrics for {horizon}: {e}")
-                pass
-        
-        # Aggregate metrics (use 1h as primary, or average across horizons)
-        if '1h' in model_metrics:
-            metrics = model_metrics['1h']
-            # Handle both percentage change models and absolute price models
+        # Get metrics from already-loaded models dict (loaded at startup)
+        # Try 1h model first as primary source
+        if '1h' in models and 'metrics' in models['1h']:
+            metrics = models['1h']['metrics']
             mae = metrics.get('mae', 0.000234)
             rmse = metrics.get('rmse', 0.000456)
             r2 = metrics.get('r2', 0.0)
             directional_accuracy = metrics.get('directional_accuracy', 0.5)
-            
-            # If model predicts percentage change, adjust MAE/RMSE display
-            # (they're in percentage units, not gwei)
-            predicts_pct = models.get('1h', {}).get('predicts_percentage_change', False) if '1h' in models else False
-            if predicts_pct:
-                # MAE and RMSE are in percentage, convert for display
-                # But keep them as-is since they represent % error
-                pass
+            logger.info(f"Using metrics from loaded 1h model: R²={r2:.4f}, DA={directional_accuracy:.4f}")
         else:
-            # Try to get from loaded models dict
-            if '1h' in models and 'metrics' in models['1h']:
-                metrics = models['1h']['metrics']
-                mae = metrics.get('mae', 0.000234)
-                rmse = metrics.get('rmse', 0.000456)
-                r2 = metrics.get('r2', 0.0)
-                directional_accuracy = metrics.get('directional_accuracy', 0.5)
-            else:
-                # Default values if no model data
+            # Fallback: try loading from disk directly
+            import joblib
+            import os
+
+            try:
+                # Try multiple possible paths
+                possible_paths = [
+                    'models/saved_models/model_1h.pkl',
+                    'backend/models/saved_models/model_1h.pkl',
+                    './models/saved_models/model_1h.pkl'
+                ]
+
+                model_data = None
+                for model_path in possible_paths:
+                    if os.path.exists(model_path):
+                        model_data = joblib.load(model_path)
+                        logger.info(f"Loaded model from {model_path}")
+                        break
+
+                if model_data and isinstance(model_data, dict) and 'metrics' in model_data:
+                    metrics = model_data['metrics']
+                    mae = metrics.get('mae', 0.000234)
+                    rmse = metrics.get('rmse', 0.000456)
+                    r2 = metrics.get('r2', 0.0)
+                    directional_accuracy = metrics.get('directional_accuracy', 0.5)
+                else:
+                    # Default values if no model data
+                    logger.warning("No model metrics found, using defaults")
+                    mae = 0.000234
+                    rmse = 0.000456
+                    r2 = 0.0
+                    directional_accuracy = 0.5
+            except Exception as e:
+                logger.error(f"Error loading model metrics: {e}")
                 mae = 0.000234
                 rmse = 0.000456
                 r2 = 0.0
