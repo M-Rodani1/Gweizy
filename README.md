@@ -1,53 +1,86 @@
-# Base Gas Optimiser
+# Base Gas Optimizer
 
-AI-powered gas price predictions for Base network. Save up to 65% on transaction fees with ML-driven forecasts.
+AI-powered gas price predictions for Base network. Save up to 40% on transaction fees with pattern-based insights and live blockchain data.
 
-## Live URLs
+## 🌐 Live URLs
 
 - **Frontend**: https://basegasfeesml.netlify.app
-- **Backend API**: https://basegasfeesml.onrender.com
-- **Config Endpoint**: https://basegasfeesml.onrender.com/config.json
+- **Backend API**: https://basegasfeesml.onrender.com/api
 
-## Features
+## ✨ Features
 
-- Real-time gas predictions (5-min, 15-min, 30-min, 1-hour forecasts)
-- Base wallet connection with MetaMask/Coinbase Wallet
-- Transaction cost calculator
-- ML-powered ensemble models with 87%+ accuracy
-- Farcaster Mini App integration
-- Mobile-optimised responsive design
+- 🚦 **Real-Time Gas Indicator** - Traffic light system shows if NOW is a good time to transact
+- ⏰ **Best Times Widget** - Shows cheapest/most expensive hours based on historical patterns
+- 📊 **24-Hour Predictions** - ML-powered forecasts for 1h, 4h, and 24h horizons
+- 💰 **Savings Calculator** - Estimate cost savings by waiting for optimal gas prices
+- 🔗 **Wallet Integration** - MetaMask support for Base network (Chain ID: 8453)
+- 📈 **Live Gas Data** - Direct Base RPC integration for real-time pricing
+- 📱 **Mobile-First Design** - Fully responsive, works on all devices
 
-## Tech Stack
+## 🏗️ Project Structure
 
-**Frontend**: React 19 + TypeScript + Tailwind CSS + Vite
-**Backend**: Flask + Scikit-learn + PostgreSQL
-**Blockchain**: Base Mainnet (Chain ID: 8453)
+```
+gasFeesPrediction-main/
+├── frontend/              # React + TypeScript Frontend
+│   ├── components/        # React components
+│   ├── pages/            # Landing & Dashboard pages
+│   ├── src/              # Utilities & API clients
+│   └── public/           # Static assets
+│
+├── backend/              # Python Flask ML Backend
+│   ├── api/              # API endpoints
+│   ├── models/           # ML models
+│   └── data/             # Data processing
+│
+└── Documentation/        # Project docs
+```
 
-## Local Development
+See [PROJECT_STRUCTURE.md](./PROJECT_STRUCTURE.md) for detailed structure information.
 
-### Backend
+## 🚀 Quick Start
+
+### Frontend Development
+```bash
+cd frontend
+npm install
+npm run dev
+```
+Open http://localhost:5173
+
+### Backend Development
 ```bash
 cd backend
 pip install -r requirements.txt
 python app.py
 ```
+API runs on http://localhost:5000
 
-### Frontend
-```bash
-npm install
-npm run dev
-```
+## 🛠️ Tech Stack
 
-## Deployment
+**Frontend:**
+- React 19.2.3 + TypeScript
+- Vite 6.4.1 (build tool)
+- Tailwind CSS (styling)
+- Recharts (data visualization)
+- Deployed on **Netlify**
 
-- Frontend: Netlify (auto-deploy from main branch)
-- Backend: Render (gunicorn WSGI server)
+**Backend:**
+- Python 3.x + Flask
+- Scikit-learn (ML models)
+- PostgreSQL (data storage)
+- Deployed on **Render**
 
-## Base Integration
+**Blockchain:**
+- Base Network (Chain ID: 8453)
+- Direct RPC integration
+- Live gas price fetching
 
-- Client-side Base RPC integration in [src/utils/baseIntegration.ts](src/utils/baseIntegration.ts)
-- Farcaster manifest at [public/.well-known/farcaster.json](public/.well-known/farcaster.json)
-- Base verification meta tag in [index.html](index.html)
+## 🎯 Base Network Integration
+
+- Live gas prices from Base RPC endpoints
+- Pattern analysis of Base network transactions
+- Optimized for Base L2 gas fee structure
+- Real-time blockchain data via `eth_getBlockByNumber`
 
 ## Documentation
 

@@ -7,10 +7,21 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
+# Frontend
+frontend/node_modules
+frontend/dist
+frontend/.vite
+frontend/dist-ssr
 *.local
+
+# Backend Python
+backend/__pycache__/
+backend/*.pyc
+backend/.pytest_cache/
+backend/.venv/
+backend/venv/
+backend/*.pkl
+backend/models/saved_models/
 
 # Editor directories and files
 .vscode/*
@@ -23,7 +34,7 @@ dist-ssr
 *.sln
 *.sw?
 
-# ML Model files (too large for GitHub)
-*.pkl
-backend/models/saved_models/
-backend/backend/models/saved_models/
+# Environment files
+.env
+.env.local
+.env.production

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Start Frontend Development Server
-cd "$(dirname "$0")"
+cd "$(dirname "$0")/frontend"
 
 echo "Starting Base Gas Optimizer Frontend..."
 echo ""
@@ -14,9 +14,9 @@ if [ ! -d "node_modules" ]; then
 fi
 
 echo "Starting Vite development server..."
-echo "   Frontend will be available at: http://localhost:3000"
+echo "   Frontend will be available at: http://localhost:5173"
 echo ""
-echo "Backend should be running on: http://localhost:5001"
+echo "Backend should be running on: http://localhost:5000"
 echo ""
 
 npm run dev
