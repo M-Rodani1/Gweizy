@@ -3,7 +3,7 @@ services:
     name: base-gas-optimizer-api
     env: python
     pythonVersion: 3.11.9
-    buildCommand: pip install --upgrade pip setuptools wheel && pip install --only-binary :all: pandas numpy scikit-learn scipy && pip install -r requirements.txt && python3 scripts/safe_train.py || echo "⚠️ Model training skipped"
+    buildCommand: pip install --upgrade pip setuptools wheel && pip install --only-binary :all: pandas numpy scikit-learn && pip install -r requirements.txt
     startCommand: python3 app.py
     envVars:
       - key: PORT
