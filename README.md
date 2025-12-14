@@ -1,0 +1,57 @@
+# Base Gas Optimizer
+
+AI-powered gas price predictions for Base network. Save up to 65% on transaction fees with ML-driven forecasts.
+
+## Live URLs
+
+- **Frontend**: https://basegasfeesoptimiser.netlify.app
+- **Backend API**: https://basegasfeesprediction.onrender.com
+- **Config Endpoint**: https://basegasfeesprediction.onrender.com/config.json
+
+## Features
+
+- Real-time gas predictions (5-min, 15-min, 30-min, 1-hour forecasts)
+- Base wallet connection with MetaMask/Coinbase Wallet
+- Transaction cost estimator
+- ML-powered ensemble models with 87%+ accuracy
+- Farcaster Mini App integration
+
+## Tech Stack
+
+**Frontend**: React 19 + TypeScript + Tailwind CSS + Vite
+**Backend**: Flask + Scikit-learn + PostgreSQL
+**Blockchain**: Base Mainnet (Chain ID: 8453)
+
+## Local Development
+
+### Backend
+```bash
+cd backend
+pip install -r requirements.txt
+python app.py
+```
+
+### Frontend
+```bash
+npm install
+npm run dev
+```
+
+## Deployment
+
+- Frontend: Netlify (auto-deploy from main branch)
+- Backend: Render (gunicorn WSGI server)
+
+## Base Integration
+
+- Client-side Base RPC integration in [src/utils/baseIntegration.ts](src/utils/baseIntegration.ts)
+- Farcaster manifest at [public/.well-known/farcaster.json](public/.well-known/farcaster.json)
+- Base verification meta tag in [index.html](index.html)
+
+## Documentation
+
+See [HACKATHON_SUBMISSION.md](HACKATHON_SUBMISSION.md) for complete hackathon submission details.
+
+## License
+
+MIT

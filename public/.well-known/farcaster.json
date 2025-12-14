@@ -1,0 +1,18 @@
+{
+  "accountAssociation": {
+    "header": "eyJmaWQiOjE2MDk1MTcsInR5cGUiOiJjdXN0b2R5Iiwia2V5IjoiMHhCN2ZmZkNlNjE5MkQ2RUQ1ODEwMUIxMjc5OTg3YUUwRTM5NWNBNzhDIn0",
+    "payload": "eyJkb21haW4iOiJiYXNlZ2FzZmVlc29wdGltaXNlci5uZXRsaWZ5LmFwcCJ9",
+    "signature": "7SJVJZoeW6qssH+SLsrYIQJlFKroAmNgVeXulGXGuFQqb0wbP8CHnVIu6vI6trqg+cAqKG2JcFi7iqw4GPIRFRw="
+  },
+  "miniapp": {
+    "version": "1",
+    "name": "Base Gas Optimizer",
+    "description": "AI-powered gas price predictions for Base network",
+    "iconUrl": "https://basegasfeesoptimiser.netlify.app/vite.svg",
+    "splashImageUrl": "https://basegasfeesoptimiser.netlify.app/vite.svg",
+    "homeUrl": "https://basegasfeesoptimiser.netlify.app",
+    "splashBackgroundColor": "#1a1b26",
+    "primaryCategory": "finance",
+    "tags": ["gas", "defi", "base", "optimization", "ml"]
+  }
+}

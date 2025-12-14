@@ -1,0 +1,5 @@
+{
+  "name": "Crypto Gas Price Dashboard",
+  "description": "A user interface displaying a crypto gas price graph, a leaderboard of gas prices across different networks, and a detailed transaction table. Provides a quick overview of current gas fees and trends.",
+  "requestFramePermissions": []
+}
