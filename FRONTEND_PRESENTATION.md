@@ -5,7 +5,7 @@
 
 ## [0:00 - 0:15] INTRODUCTION
 
-Hi! I'm [Name], and I built the frontend for Base Gas Optimizer. I'm going to show you how we created a real-time, mobile-first dashboard that helps Base users save money on gas fees.
+Hi! I'm senan, and I built the frontend for Base Gas Optimizer. I'm going to show you how we created a real-time, mobile-first dashboard that helps Base users save money on gas fees.
 
 **SHOW:** Frontend folder structure
 ```
