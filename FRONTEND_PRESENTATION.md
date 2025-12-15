@@ -1,11 +1,13 @@
-# Base Gas Optimizer - Frontend Code Snippets
-**What to display on screen during the video**
+# Base Gas Optimizer - Frontend Presentation
+**Duration:** 2:30 minutes | **Presenter:** Frontend Developer
 
 ---
 
 ## [0:00 - 0:15] INTRODUCTION
 
-**SHOW:** `frontend/` folder structure in VS Code
+Hi! I'm [Name], and I built the frontend for Base Gas Optimizer. I'm going to show you how we created a real-time, mobile-first dashboard that helps Base users save money on gas fees.
+
+**SHOW:** Frontend folder structure
 ```
 frontend/
 ├── components/       # React components
@@ -27,13 +29,15 @@ frontend/
 └── package.json     # Dependencies
 ```
 
+This is a React 19 + TypeScript frontend built with Vite, deployed on Netlify. We focused on three things: real-time updates, mobile-first design, and making complex ML predictions easy to understand.
+
 ---
 
 ## [0:15 - 0:35] THE TRAFFIC LIGHT SYSTEM - LOGIC
 
-**FILE:** `frontend/components/RelativePriceIndicator.tsx` lines 67-111
+The centerpiece is our traffic light gas indicator. It compares current gas prices to historical averages and tells you if NOW is a good time to transact.
 
-**CODE TO SHOW:**
+**SHOW:** Traffic light logic from `frontend/components/RelativePriceIndicator.tsx`
 ```typescript
 const getPriceLevel = (current: number, avg: number): PriceLevel => {
   const ratio = current / avg;
@@ -91,13 +95,15 @@ const getPriceLevel = (current: number, avg: number): PriceLevel => {
 🔴 Very High  > 150% of average  → Wait if Possible
 ```
 
+Five levels: Green means gas is 30% below average - transact now! Red means it's 50% above average - wait if you can. Simple visual feedback that saves users money.
+
 ---
 
 ## [0:35 - 0:50] THE TRAFFIC LIGHT SYSTEM - REAL-TIME UPDATES
 
-**FILE:** `frontend/components/RelativePriceIndicator.tsx` lines 24-65
+It updates every 5 minutes, comparing current gas to both the hourly average and 24-hour average. Users get instant, actionable advice.
 
-**CODE TO SHOW:**
+**SHOW:** Real-time update code from `frontend/components/RelativePriceIndicator.tsx`
 ```typescript
 useEffect(() => {
   const fetchAverages = async () => {
@@ -152,13 +158,15 @@ useEffect(() => {
 📈 Graphs: Every 30 seconds
 ```
 
+The component fetches historical data, groups by hour, calculates averages, and updates the traffic light automatically.
+
 ---
 
 ## [0:50 - 1:10] BEST TIME WIDGET
 
-**FILE:** `frontend/components/BestTimeWidget.tsx` lines 26-60
+We also show the best and worst times to transact based on Base network patterns.
 
-**CODE TO SHOW:**
+**SHOW:** Best time widget code from `frontend/components/BestTimeWidget.tsx`
 ```typescript
 useEffect(() => {
   const fetchData = async () => {
@@ -210,13 +218,15 @@ useEffect(() => {
    Save up to 60% by timing transactions
 ```
 
+We analyze 168 hours of historical data, group by UTC hour, and show the cheapest 3 hours on the left and most expensive 3 on the right. Users can plan their transactions around these patterns.
+
 ---
 
 ## [1:10 - 1:25] ML PREDICTION CARDS
 
-**FILE:** `frontend/components/PredictionCards.tsx` lines 80-103
+But the real power is in the ML predictions - 1 hour, 4 hours, and 24 hours ahead.
 
-**CODE TO SHOW:**
+**SHOW:** Prediction cards code from `frontend/components/PredictionCards.tsx`
 ```typescript
 // Determine recommendation based on prediction vs current
 if (predicted < current * 0.9) {
@@ -246,9 +256,9 @@ if (predicted < current * 0.9) {
 }
 ```
 
-**FILE:** `frontend/components/PredictionCards.tsx` lines 227-270
+Each prediction shows confidence level - High, Medium, or Low - based on the ML model's certainty. We also show a visual range slider indicating best-case to worst-case scenarios, so users understand the uncertainty.
 
-**RANGE SLIDER CODE:**
+**SHOW:** Range slider visualization code
 ```typescript
 {/* Visual Range Slider */}
 <div className="mt-3">
@@ -301,13 +311,15 @@ if (predicted < current * 0.9) {
 └──────────────────────────────────────┘
 ```
 
+The range slider makes ML predictions understandable. Users see the predicted value and the possible range in one visual.
+
 ---
 
 ## [1:25 - 1:45] WALLET INTEGRATION
 
-**FILE:** `frontend/src/utils/wallet.ts` lines 64-109
+We integrated MetaMask for wallet connection, with automatic Base network detection and switching.
 
-**CODE TO SHOW:**
+**SHOW:** Wallet connection code from `frontend/src/utils/wallet.ts`
 ```typescript
 export async function connectWallet(): Promise<string> {
   if (!window.ethereum) {
@@ -373,13 +385,17 @@ Block Explorer: https://basescan.org
 Native Currency: ETH
 ```
 
+When users connect, we check if they're on Base network. If not, we automatically prompt them to switch. If they don't have Base added, we add it for them with the correct RPC and block explorer.
+
+One click, and users are connected to Base network with their wallet.
+
 ---
 
 ## [1:45 - 2:00] LIVE BLOCKCHAIN DATA
 
-**FILE:** `frontend/src/utils/baseRpc.ts` lines 39-71
+For live gas prices, we fetch directly from the Base blockchain using JSON-RPC calls.
 
-**CODE TO SHOW:**
+**SHOW:** Base RPC integration code from `frontend/src/utils/baseRpc.ts`
 ```typescript
 export async function fetchLiveBaseGas(): Promise<number> {
   const rpcUrl = BASE_RPC_URLS[currentRpcIndex];
@@ -436,9 +452,9 @@ const BASE_RPC_URLS = [
 ];
 ```
 
-**FILE:** `frontend/pages/Dashboard.tsx` lines 82-91
+We call `eth_getBlockByNumber` to get the latest block's base fee, convert from hex to gwei. If one RPC is rate-limited, we automatically rotate to a backup. This ensures the dashboard always has live data.
 
-**AUTO-REFRESH CODE:**
+**SHOW:** Dashboard auto-refresh code from `frontend/pages/Dashboard.tsx`
 ```typescript
 // Auto-refresh data every 30 seconds
 useEffect(() => {
@@ -452,13 +468,15 @@ useEffect(() => {
 }, [apiStatus]);
 ```
 
+Everything updates every 30 seconds - predictions, graphs, current gas prices. Users get real-time data without refreshing the page.
+
 ---
 
 ## [2:00 - 2:15] MOBILE-FIRST DESIGN
 
-**FILE:** `frontend/components/RelativePriceIndicator.tsx` lines 166-178
+We built mobile-first. Every component adapts to screen size.
 
-**CODE TO SHOW:**
+**SHOW:** Responsive design code from `frontend/components/RelativePriceIndicator.tsx`
 ```typescript
 <div className={`
   bg-gradient-to-br from-gray-800 to-gray-900
@@ -509,13 +527,15 @@ lg:grid-cols-3   /* 3 columns on desktop */
 ✅ Keyboard navigation support
 ```
 
+Text scales from `text-sm` on mobile to `text-2xl` on desktop. Padding adjusts. Grids collapse to single column. All buttons meet the 44px minimum touch target for accessibility.
+
 ---
 
 ## [2:15 - 2:30] BUILD & DEPLOYMENT
 
-**FILE:** `frontend/vite.config.ts` lines 1-23
+Built with Vite for instant hot reload during development. Production build optimizes chunks, tree-shakes unused code, and copies the PWA manifest for offline support.
 
-**CODE TO SHOW:**
+**SHOW:** Vite config from `frontend/vite.config.ts`
 ```typescript
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, '.', '');
@@ -537,9 +557,7 @@ export default defineConfig(({ mode }) => {
 });
 ```
 
-**FILE:** `frontend/package.json` lines 6-9
-
-**BUILD SCRIPT:**
+**BUILD SCRIPT:** from `frontend/package.json`
 ```json
 {
   "scripts": {
@@ -563,19 +581,6 @@ export default defineConfig(({ mode }) => {
 }
 ```
 
-**FILE:** `frontend/vercel.json`
-
-**DEPLOYMENT CONFIG:**
-```json
-{
-  "buildCommand": "npm run build",
-  "outputDirectory": "dist",
-  "devCommand": "npm run dev",
-  "installCommand": "npm install",
-  "framework": "vite"
-}
-```
-
 **DEPLOYMENT STATS:**
 ```
 Platform: Netlify
@@ -585,6 +590,8 @@ Bundle Size: ~120KB gzipped
 First Load: < 2 seconds
 Framework: Vite + React 19
 ```
+
+Deployed on Netlify with automatic builds on every git push. The dashboard is live at basegasfeesml.netlify.app.
 
 **LIVE DASHBOARD:**
 ```
@@ -615,6 +622,12 @@ Framework: Vite + React 19
 ✅ Base RPC (live blockchain data)
 ```
 
+The result? A fast, mobile-friendly dashboard that makes complex ML predictions easy to understand. Users see color-coded traffic lights, hourly patterns, and real-time blockchain data - all updating automatically every 30 seconds.
+
+Built with React 19, TypeScript, Tailwind CSS, and Recharts. All open source on GitHub.
+
+Thanks for watching!
+
 ---
 
-**END OF CODE SNIPPETS**
+**END OF FRONTEND PRESENTATION**
