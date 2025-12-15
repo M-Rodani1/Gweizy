@@ -1,5 +1,4 @@
 # Base Gas Optimiser - Project Pitch
-**10-Minute Presentation**
 
 ---
 
