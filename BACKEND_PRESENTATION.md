@@ -188,8 +188,8 @@ Days 2 and 3 were machine learning hell.
 
 **BEFORE vs AFTER:**
 ```
-BEFORE: 23% R² accuracy ❌
-AFTER:  59.83% directional accuracy ✅
+BEFORE: 23% R² accuracy 
+AFTER:  59.83% directional accuracy 
 ```
 
 First attempt: Random Forest model with basic features. Hour of day, day of week, moving averages.
@@ -256,7 +256,7 @@ def _add_rolling_features(self, df):
     return df
 ```
 
-**RESULT:** ✅ 20+ engineered features from raw gas price data
+**RESULT:**  20+ engineered features from raw gas price data
 
 Features created:
 - **Lag features**: What was gas price 1 hour ago? 4 hours ago? 1 day ago?
@@ -275,7 +275,7 @@ After this feature engineering? 70% directional accuracy. This means we correctl
 ```
 1h Model Performance:
 ├── R² Score: 7.09%
-├── Directional Accuracy: 59.83% ✅
+├── Directional Accuracy: 59.83% 
 ├── MAE: 0.000275 gwei
 └── RMSE: 0.000442 gwei
 
@@ -553,9 +553,9 @@ All the backend code is open source on GitHub - Python, Flask, scikit-learn, all
 
 **KEY LEARNING:**
 ```
-✅ Base L2 gas prices ARE predictable
-✅ Time-based patterns are strong and consistent
-✅ 59.83% directional accuracy on 1h predictions
+ Base L2 gas prices ARE predictable
+ Time-based patterns are strong and consistent
+ 59.83% directional accuracy on 1h predictions
 ```
 
 And it's live at basegasfeesml.onrender.com - powering predictions for Base users right now.
