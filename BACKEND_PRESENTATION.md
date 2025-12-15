@@ -1,9 +1,9 @@
 # Base Gas Optimizer - Backend Presentation
-**Duration:** 2:30 minutes | **Presenter:** Mohamed (Backend & ML Developer)
+**Presenter:** Mohamed (Backend & ML Developer)
 
 ---
 
-## [0:00 - 0:15] INTRODUCTION
+## INTRODUCTION
 
 Hi! I'm Mohamed, and I handled the backend and ML for Base Gas Optimizer. I'm going to walk you through how we built the prediction engine that powers this tool.
 
@@ -22,7 +22,7 @@ This was 4 intense days of data collection, machine learning, and API developmen
 
 ---
 
-## [0:15 - 0:30] DAY 1: DATA COLLECTION - THE CHALLENGE
+## DAY 1: DATA COLLECTION - THE CHALLENGE
 
 Day 1 was all about getting data. We needed historical Base network gas prices to train our ML model and find patterns.
 
@@ -82,7 +82,7 @@ Wrong. We immediately hit rate limiting. The Base RPC started blocking us after 
 
 ---
 
-## [0:30 - 0:50] DAY 1: THE SOLUTION
+## DAY 1: THE SOLUTION
 
 **SHOW:** Fallback API from `backend/data/collector.py`
 ```python
@@ -136,7 +136,7 @@ This way, the dashboard ALWAYS works, even if we're rate-limited.
 
 ---
 
-## [0:50 - 1:10] DAY 2-3: FIRST MODEL ATTEMPT
+## DAY 2-3: FIRST MODEL ATTEMPT
 
 **SHOW:** Model training code from `backend/models/model_trainer.py`
 ```python
@@ -198,7 +198,7 @@ Result? 23% R-squared accuracy. Basically useless. The model was barely better t
 
 ---
 
-## [1:10 - 1:30] DAY 2-3: FEATURE ENGINEERING BREAKTHROUGH
+## DAY 2-3: FEATURE ENGINEERING BREAKTHROUGH
 
 The breakthrough came from feature engineering. I created over 100 features from the raw gas price data:
 
@@ -267,7 +267,7 @@ Features created:
 
 ---
 
-## [1:30 - 1:45] DAY 2-3: IMPROVED RESULTS
+## DAY 2-3: IMPROVED RESULTS
 
 After this feature engineering? 70% directional accuracy. This means we correctly predict whether gas will go UP or DOWN 70% of the time.
 
@@ -345,7 +345,7 @@ The key insight? Gas prices are HIGHLY time-dependent. There are strong patterns
 
 ---
 
-## [1:45 - 2:00] DAY 4: API DEVELOPMENT
+## DAY 4: API DEVELOPMENT
 
 Day 4 was API development. Built a Flask backend with several endpoints:
 
@@ -482,7 +482,7 @@ Final API response time: Under 200 milliseconds. Fast enough for real-time updat
 
 ---
 
-## [2:00 - 2:10] CHALLENGES RECAP
+## CHALLENGES RECAP
 
 Biggest backend challenges:
 
@@ -510,7 +510,7 @@ Three: Real-time performance. Had to optimize feature calculation to generate pr
 
 ---
 
-## [2:10 - 2:30] CONCLUSION
+## CONCLUSION
 
 Key learning? Base L2 gas prices ARE predictable. Time-based patterns are strong and consistent. The data proved it.
 

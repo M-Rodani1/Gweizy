@@ -1,9 +1,9 @@
 # Base Gas Optimizer - Frontend Presentation
-**Duration:** 2:30 minutes | **Presenter:** Frontend Developer
+**Presenter:** Frontend Developer
 
 ---
 
-## [0:00 - 0:15] INTRODUCTION
+## INTRODUCTION
 
 Hi! I'm senan, and I built the frontend for Base Gas Optimizer. I'm going to show you how we created a real-time, mobile-first dashboard that helps Base users save money on gas fees.
 
@@ -33,7 +33,7 @@ This is a React 19 + TypeScript frontend built with Vite, deployed on Netlify. W
 
 ---
 
-## [0:15 - 0:35] THE TRAFFIC LIGHT SYSTEM - LOGIC
+## THE TRAFFIC LIGHT SYSTEM - LOGIC
 
 The centerpiece is our traffic light gas indicator. It compares current gas prices to historical averages and tells you if NOW is a good time to transact.
 
@@ -99,7 +99,7 @@ Five levels: Green means gas is 30% below average - transact now! Red means it's
 
 ---
 
-## [0:35 - 0:50] THE TRAFFIC LIGHT SYSTEM - REAL-TIME UPDATES
+## THE TRAFFIC LIGHT SYSTEM - REAL-TIME UPDATES
 
 It updates every 5 minutes, comparing current gas to both the hourly average and 24-hour average. Users get instant, actionable advice.
 
@@ -162,7 +162,7 @@ The component fetches historical data, groups by hour, calculates averages, and 
 
 ---
 
-## [0:50 - 1:10] BEST TIME WIDGET
+## BEST TIME WIDGET
 
 We also show the best and worst times to transact based on Base network patterns.
 
@@ -222,7 +222,7 @@ We analyze 168 hours of historical data, group by UTC hour, and show the cheapes
 
 ---
 
-## [1:10 - 1:25] ML PREDICTION CARDS
+## ML PREDICTION CARDS
 
 But the real power is in the ML predictions - 1 hour, 4 hours, and 24 hours ahead.
 
@@ -315,7 +315,7 @@ The range slider makes ML predictions understandable. Users see the predicted va
 
 ---
 
-## [1:25 - 1:45] WALLET INTEGRATION
+## WALLET INTEGRATION
 
 We integrated MetaMask for wallet connection, with automatic Base network detection and switching.
 
@@ -391,7 +391,7 @@ One click, and users are connected to Base network with their wallet.
 
 ---
 
-## [1:45 - 2:00] LIVE BLOCKCHAIN DATA
+## LIVE BLOCKCHAIN DATA
 
 For live gas prices, we fetch directly from the Base blockchain using JSON-RPC calls.
 
@@ -472,7 +472,7 @@ Everything updates every 30 seconds - predictions, graphs, current gas prices. U
 
 ---
 
-## [2:00 - 2:15] MOBILE-FIRST DESIGN
+## MOBILE-FIRST DESIGN
 
 We built mobile-first. Every component adapts to screen size.
 
@@ -531,7 +531,7 @@ Text scales from `text-sm` on mobile to `text-2xl` on desktop. Padding adjusts. 
 
 ---
 
-## [2:15 - 2:30] BUILD & DEPLOYMENT
+## BUILD & DEPLOYMENT
 
 Built with Vite for instant hot reload during development. Production build optimizes chunks, tree-shakes unused code, and copies the PWA manifest for offline support.
 

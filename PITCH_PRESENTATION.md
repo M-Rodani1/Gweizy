@@ -1,9 +1,9 @@
 # Base Gas Optimizer - Pitch Presentation
-**Duration:** 3:00 minutes | **Project Pitch Video**
+**Project Pitch Video**
 
 ---
 
-## [0:00 - 0:20] THE PROBLEM
+## THE PROBLEM
 
 **SHOW:** Base network transaction screen with high gas fees
 
@@ -26,7 +26,7 @@ What if there was a way to predict these patterns and save money on every transa
 
 ---
 
-## [0:20 - 0:45] OUR SOLUTION
+## OUR SOLUTION
 
 **SHOW:** Base Gas Optimizer dashboard landing page
 
@@ -75,7 +75,7 @@ Machine learning predicts gas prices 1 hour, 4 hours, and 24 hours ahead - with 
 
 ---
 
-## [0:45 - 1:15] HOW IT WORKS
+## HOW IT WORKS
 
 **SHOW:** System architecture diagram or flow
 
@@ -141,7 +141,7 @@ Frontend built with React 19 + TypeScript. Everything updates automatically ever
 
 ---
 
-## [1:15 - 1:45] THE IMPACT
+## THE IMPACT
 
 **SHOW:** Savings calculator or comparison
 
@@ -187,7 +187,7 @@ We integrated MetaMask so users can connect their wallet, see their potential sa
 
 ---
 
-## [1:45 - 2:15] TECHNICAL ACHIEVEMENTS
+## TECHNICAL ACHIEVEMENTS
 
 **SHOW:** Code or tech stack visualization
 
@@ -259,7 +259,7 @@ Aggressive caching strategy ensures predictions load instantly.
 
 ---
 
-## [2:15 - 2:45] WHAT'S NEXT
+## WHAT'S NEXT
 
 **SHOW:** Roadmap or future features
 
@@ -307,7 +307,7 @@ All our code is open source on GitHub. We believe in building in public.
 
 ---
 
-## [2:45 - 3:00] THE CALL TO ACTION
+## THE CALL TO ACTION
 
 **SHOW:** Live dashboard URL
 
