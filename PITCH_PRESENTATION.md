@@ -1,15 +1,17 @@
-# Base Gas Optimiser - Pitch Presentation
-**Project Pitch Video**
+# Base Gas Optimiser - Project Pitch
+**10-Minute Presentation**
 
 ---
 
-## THE PROBLEM
+## 1. PROBLEM STATEMENT & MOTIVATION
 
 Every day, millions of transactions happen on Base network. Users pay gas fees without knowing if they're overpaying.
 
-The problem? Gas prices on Base fluctuate wildly - sometimes 2-3x higher depending on the time of day. Most users don't know when to transact, so they pay whatever the current price is.
+**The Problem:**
 
-**THE PAIN POINT:**
+Gas prices on Base fluctuate wildly - sometimes 2-3x higher depending on the time of day. Most users don't know when to transact, so they pay whatever the current price is.
+
+**The Pain Point:**
 ```
 Same transaction:
 ├── 9 PM (peak):    0.0043 gwei  💸 High cost
@@ -18,15 +20,17 @@ Same transaction:
 Problem: Users have no way to know this
 ```
 
-What if there was a way to predict these patterns and save money on every transaction?
+**Why This Matters:**
+
+For users making 10 transactions per week, timing their transactions during off-peak hours could save **up to 60%** on gas fees monthly. That's significant savings just by knowing WHEN to transact.
 
 ---
 
-## OUR SOLUTION
+## 2. SOLUTION & KEY FEATURES
 
-That's where Base Gas Optimiser comes in. We built an AI-powered platform that predicts Base network gas prices and tells users the BEST time to transact.
+**Base Gas Optimiser** - An AI-powered platform that predicts Base network gas prices and tells users the BEST time to transact.
 
-**THREE CORE FEATURES:**
+### Three Core Features:
 
 **1. Traffic Light Gas Indicator**
 ```
@@ -48,7 +52,7 @@ Real-time visual feedback. Users instantly know if NOW is a good time to transac
 └──────────────────┴──────────────────┘
 ```
 
-Historical pattern analysis. We analysed thousands of Base transactions to find the cheapest and most expensive hours. Users can plan ahead.
+Historical pattern analysis. We analysed thousands of Base transactions to identify the cheapest and most expensive hours.
 
 **3. ML-Powered Predictions**
 ```
@@ -59,284 +63,223 @@ Historical pattern analysis. We analysed thousands of Base transactions to find 
 Recommendation: Gas expected to rise. Transact now to save.
 ```
 
-Machine learning predicts gas prices 1 hour, 4 hours, and 24 hours ahead - with confidence levels so users know how certain the predictions are.
+Machine learning predicts gas prices 1, 4, and 24 hours ahead with confidence levels.
 
 ---
 
-## HOW IT WORKS
+## 3. HOW AI IS USED IN THE PROJECT
 
-Our platform has three layers:
+**AI/ML Powers Our Core Predictions**
 
-**LAYER 1: DATA COLLECTION**
+### Machine Learning Pipeline:
 
-Base RPC integration:
+**Data Collection:**
+- Live gas prices from Base blockchain via RPC every 5 minutes
+- Historical transaction data spanning multiple weeks
+- Base fee + priority fee analysis
+
+**Feature Engineering (20+ Features):**
 ```python
-# Fetch live gas from Base network
-latest_block = self.w3.eth.get_block('latest')
-base_fee = latest_block.get('baseFeePerGas', 0)
-
-# Sample recent transactions for priority fees
-transactions = block.transactions[:10]
-```
-
-We collect live gas price data directly from the Base blockchain via RPC. Every 5 minutes, we fetch the latest block and calculate total gas (base fee + priority fee).
-
-**Challenge:** RPC rate limiting.
-
-**Solution:** Multi-tier caching system (30s for current gas, 5min for historical data) + fallback API.
-
-**LAYER 2: MACHINE LEARNING**
-
-Feature engineering:
-```python
-# 20+ engineered features from raw gas data
+# Engineered features from raw gas data
 - Lag features: gas price 1h, 4h, 24h ago
 - Rolling statistics: moving averages, volatility
 - Time encoding: cyclical hour/day patterns
 - Momentum indicators: RSI, MACD, Bollinger Bands
 ```
 
-We don't just look at raw gas prices. We engineered over 20 features from the data:
-- **Lag features**: What was gas 1 hour ago? 4 hours ago?
-- **Rolling statistics**: Moving averages, volatility metrics
-- **Time patterns**: Cyclical encoding of hour and day
-- **Technical indicators**: Borrowed from trading - RSI, MACD
-
-Model performance metrics:
+**Model Architecture:**
 ```
-Model Performance:
-├── Directional Accuracy: 59.83%
-├── Model Type: Ensemble (RandomForest + GradientBoosting)
-├── Training: 100 trees, max depth 15
-└── Cross-validation: Time-series split (no data leakage)
+Model: Ensemble (RandomForest + GradientBoosting)
+├── RandomForest: 100 trees, max depth 15
+├── GradientBoosting: 100 trees, learning rate 0.1
+└── Cross-validation: Time-series split (prevents data leakage)
 ```
 
-The result? **59.83% directional accuracy** - we correctly predict whether gas will go UP or DOWN about 60% of the time.
+**Performance Metrics:**
+```
+✅ 59.83% directional accuracy
+   (Predicts UP/DOWN correctly 60% of the time)
+✅ R² Score: 7.09%
+✅ MAE: 0.000275 gwei
+✅ Sub-200ms API response time
+```
 
-**LAYER 3: REAL-TIME DASHBOARD**
+**Why This Works:**
 
-Frontend built with React 19 + TypeScript. Everything updates automatically every 30 seconds:
-- Current gas prices from live Base RPC
-- ML predictions with confidence ranges
-- Traffic light indicator
-- Historical patterns
+Gas prices are HIGHLY time-dependent. There are strong patterns:
+- Weekends are cheaper
+- Certain hours are consistently expensive
+- The ML model learned these patterns from Base network data
 
-**Mobile-first design** - works perfectly on phones, tablets, and desktop.
+**AI-Powered Explanations:**
+
+We also use Claude AI to generate natural language explanations of predictions, making complex ML insights understandable for everyday users.
 
 ---
 
-## THE IMPACT
+## 4. TARGET USERS & EXPECTED IMPACT
 
-Let's talk about real savings.
+### Who Benefits?
 
-**EXAMPLE SCENARIO:**
+**Primary Users:**
+- **DeFi traders** - Making multiple swaps daily
+- **NFT collectors** - Timing mints to save on gas
+- **DAOs** - Batching transactions during cheap hours
+- **Regular Base users** - Anyone making transactions
+
+### Expected Impact:
+
+**Cost Savings:**
 ```
-User wants to make 10 transactions per week on Base
+Example: User making 10 transactions/week
 
-Option A: Transact at peak times (9pm average)
-├── Gas price: 0.0043 gwei
-├── 10 transactions/week
-└── Monthly cost: ~$X
+Option A: Peak times (9pm average)
+└── Gas: 0.0043 gwei
 
-Option B: Use Base Gas Optimiser (3am average)
-├── Gas price: 0.0017 gwei
-├── 10 transactions/week
-└── Monthly cost: ~$Y
+Option B: Optimised timing (3am average)
+└── Gas: 0.0017 gwei
 
-💰 SAVINGS: Up to 60% on gas fees
-```
-
-For a user making 10 transactions per week, timing their transactions during off-peak hours saves **up to 60%** on gas fees monthly.
-
-**WHO BENEFITS?**
-
-```
-✅ DeFi traders - Making multiple swaps daily
-✅ NFT collectors - Minting during optimal times
-✅ DAOs - Batch transactions when gas is cheap
-✅ Regular users - Anyone making Base transactions
+💰 Savings: Up to 60% on gas fees monthly
 ```
 
-- **DeFi traders** making multiple swaps per day
-- **NFT collectors** timing their mints
-- **DAOs** batching transactions during cheap hours
-- **Any Base user** who wants to save money
+**Network Efficiency:**
 
-We integrated MetaMask so users can connect their wallet, see their potential savings, and execute transactions at the right time.
+When users transact at optimal times, the entire Base network benefits:
+- Less congestion during peak hours
+- More distributed transaction load
+- Better overall network performance
+
+**Accessibility:**
+
+Mobile-first design makes gas optimisation accessible to everyone:
+- Works perfectly on phones, tablets, desktop
+- Real-time updates every 30 seconds
+- No technical knowledge required
 
 ---
 
-## TECHNICAL ACHIEVEMENTS
+## 5. DEMO & WALKTHROUGH
 
-What makes this technically impressive?
+**Live Dashboard:** https://basegasfeesml.netlify.app
 
-**1. REAL-TIME BLOCKCHAIN DATA**
+### Key Interactions:
 
-Direct Base RPC integration:
-```typescript
-// Direct Base RPC integration
-const response = await fetch('https://mainnet.base.org', {
-  method: 'POST',
-  body: JSON.stringify({
-    jsonrpc: '2.0',
-    method: 'eth_getBlockByNumber',
-    params: ['latest', false]
-  })
-});
+**1. Landing Page**
+- Clear value proposition
+- Live gas price indicator
+- Call-to-action to view dashboard
 
-// Automatic RPC rotation if rate-limited
-BASE_RPC_URLS = [
-  'https://mainnet.base.org',
-  'https://base.llamarpc.com',
-  'https://base-rpc.publicnode.com'
-];
+**2. Traffic Light System**
+- Real-time colour-coded indicator (Green/Yellow/Red)
+- Shows current gas vs. hourly and 24h averages
+- Updates every 5 minutes
+
+**3. Best Times Display**
+- Side-by-side comparison: cheapest vs. most expensive hours
+- Based on 168 hours of historical data
+- Helps users plan transactions in advance
+
+**4. Prediction Cards**
+- Three time horizons: 1h, 4h, 24h
+- Each shows:
+  - Predicted gas price
+  - Confidence level (High/Medium/Low)
+  - Percentage change vs. current
+  - Visual range slider (best case → worst case)
+  - Actionable recommendation
+
+**5. MetaMask Integration**
+- One-click wallet connection
+- Automatic Base network detection
+- Auto-switch to Base if on wrong network
+- Seamless user experience
+
+**6. Technical Features**
+- Direct Base RPC integration (no third-party APIs)
+- Automatic RPC failover to backup endpoints
+- Aggressive caching for <200ms response times
+- Mobile-responsive design (44px touch targets)
+
+### API Endpoints:
+
+**Live API:** https://basegasfeesml.onrender.com/api
+
+```
+/api/current      → Current Base gas price
+/api/predictions  → ML predictions (1h, 4h, 24h)
+/api/explain      → AI-generated explanations
+/api/accuracy     → Model performance metrics
 ```
 
-We fetch live data directly from Base blockchain - no third-party APIs needed. With automatic failover to backup RPCs.
-
-**2. PRODUCTION-GRADE ML PIPELINE**
-
-Time-series cross-validation:
-```python
-# Time-series cross-validation
-X_train, X_test = train_test_split(
-    X_clean, y_clean,
-    test_size=0.2,
-    shuffle=False  # Critical for time series!
-)
-
-# Ensemble model
-models = [
-    RandomForestRegressor(n_estimators=100, max_depth=15),
-    GradientBoostingRegressor(n_estimators=100, learning_rate=0.1),
-    Ridge(alpha=1.0)
-]
-```
-
-Proper time-series cross-validation (no data leakage), ensemble modeling, and production deployment on Render.
-
-**3. MOBILE-FIRST, RESPONSIVE DESIGN**
-
-Responsive Tailwind classes:
-```typescript
-// Tailwind responsive classes
-className="text-6xl sm:text-7xl lg:text-8xl"  // Scales with screen
-className="p-4 sm:p-6 md:p-8"                  // Adaptive padding
-className="grid-cols-1 md:grid-cols-2 lg:grid-cols-3"  // Responsive grids
-```
-
-Every component adapts to screen size. 44px minimum touch targets for accessibility.
-
-**4. SUB-200MS API RESPONSE TIME**
-
-Caching configuration:
-```python
-CACHE_CONFIG = {
-    'current': 30,      # 30 seconds
-    'predictions': 60,  # 1 minute
-    'historical': 300   # 5 minutes
+**Example API Response:**
+```json
+{
+  "current": {
+    "current_gas": 0.002160,
+    "base_fee": 0.001944,
+    "priority_fee": 0.000216
+  },
+  "predictions": {
+    "1h": {
+      "predictedGwei": 0.002245,
+      "confidence": 0.75,
+      "direction": "up"
+    }
+  }
 }
-
-# Result: API response < 200ms
 ```
-
-Aggressive caching strategy ensures predictions load instantly.
 
 ---
 
-## WHAT'S NEXT
+## TECHNICAL STACK
 
-This is just the beginning. Here's what we're building next:
+**Frontend:**
+- React 19 + TypeScript
+- Vite (fast builds, HMR)
+- Tailwind CSS (mobile-first)
+- Recharts (data visualisation)
+- Deployed on **Netlify**
 
-**PHASE 2: ADVANCED FEATURES**
-```
-📱 Mobile App (iOS/Android)
-   └── Push notifications when gas drops
+**Backend:**
+- Python 3.11 + Flask
+- scikit-learn (ML models)
+- Web3 (Base RPC integration)
+- PostgreSQL (data storage)
+- Deployed on **Render**
 
-🔔 Alert System
-   └── "Gas just hit green - transact now!"
+**Blockchain:**
+- Base Network (Chain ID: 8453)
+- Direct RPC integration
+- MetaMask wallet support
 
-📊 Historical Analytics
-   └── Track your savings over time
-
-🤖 Telegram/Discord Bots
-   └── Get predictions in your favorite platform
-
-⛽ Gas Token Integration
-   └── Auto-execute transactions at optimal times
-```
-
-**1. Mobile App** - Native iOS/Android with push notifications
-**2. Alert System** - "Gas just hit green zone, transact now!"
-**3. Historical Savings Tracker** - Show users how much they've saved
-**4. Telegram/Discord Bots** - Get predictions without leaving your chat
-**5. Smart Contract Integration** - Auto-execute transactions when gas drops
-
-**OPEN SOURCE**
-
-Repository information:
-```
-Repository: github.com/M-Rodani1/basegasfeesML
-Tech Stack:
-├── Frontend: React 19, TypeScript, Tailwind CSS
-├── Backend: Python, Flask, scikit-learn
-├── Blockchain: Base Network (Chain ID: 8453)
-└── Deployment: Netlify + Render
-
-All code is open source under MIT license
-```
-
-All our code is open source on GitHub. We believe in building in public.
+**Open Source:**
+- Repository: github.com/M-Rodani1/basegasfeesML
+- MIT License
+- All code publicly available
 
 ---
 
-## THE CALL TO ACTION
+## WHAT WE BUILT IN 4 DAYS
 
-**TRY IT NOW:**
+**Day 1:** Data collection pipeline + RPC rate limiting solutions
 
-```
-🌐 Dashboard: https://basegasfeesml.netlify.app
-🔌 API: https://basegasfeesml.onrender.com/api
-💻 GitHub: github.com/M-Rodani1/basegasfeesML
-```
+**Day 2-3:** Feature engineering + ML model training (23% → 59.83% accuracy)
 
-Base Gas Optimiser is live RIGHT NOW. Visit **basegasfeesml.netlify.app** and start saving on gas fees today.
+**Day 4:** API development + Frontend integration + Deployment
 
-Connect your MetaMask wallet, see real-time predictions, and never overpay for gas again.
+**Key Achievement:** Built a production-ready gas prediction platform in under 96 hours.
 
-**THE VISION:**
-```
-Make Base network transactions CHEAPER for everyone.
+---
 
-Every user should know:
-├── When to transact (traffic light)
-├── Best times to save (pattern analysis)
-└── Future prices (ML predictions)
+## CLOSING
 
-Result: More efficient Base network for all
-```
+**Base Gas Optimiser** makes Base network transactions cheaper for everyone.
 
-Our vision? Make the Base network more efficient for everyone. When users transact at optimal times, the network benefits too - less congestion during peaks, more distributed usage.
+**Live Now:**
+- 🌐 Dashboard: https://basegasfeesml.netlify.app
+- 🔌 API: https://basegasfeesml.onrender.com/api
+- 💻 GitHub: github.com/M-Rodani1/basegasfeesML
 
-Built in 4 days for the Base Gas Optimiser hackathon. We're excited to keep building and making Base transactions cheaper for millions of users.
+**Our Vision:** Every Base user should know when to transact, what the best times are, and what future prices will be - making the entire network more efficient.
 
 **Thank you!**
-
----
-
-## KEY STATISTICS TO HIGHLIGHT
-
-```
-⚡ 59.83% directional accuracy on gas predictions
-💰 Up to 60% savings on transaction fees
-⏱️ Sub-200ms API response time
-📊 20+ engineered ML features
-🔄 Auto-refresh every 30 seconds
-📱 100% mobile responsive
-🌐 Live on Base mainnet (Chain ID: 8453)
-⭐ Open source (MIT license)
-```
-
----
-
-**END OF PITCH PRESENTATION**
