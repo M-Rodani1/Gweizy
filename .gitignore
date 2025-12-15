@@ -6,6 +6,7 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
+backend/logs/
 
 # Frontend
 frontend/node_modules
@@ -22,6 +23,7 @@ backend/.venv/
 backend/venv/
 backend/*.pkl
 backend/models/saved_models/
+backend/gas_data.db
 
 # Editor directories and files
 .vscode/*
@@ -39,4 +41,8 @@ backend/models/saved_models/
 # Environment files
 .env
 .env.local
-.env.production
+
+# Temporary files
+*.tmp
+*.swp
+*~
