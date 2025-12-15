@@ -214,14 +214,14 @@ frontend/
 
 ### Day 1 Outcomes
 
-✅ **Achievements:**
+ **Achievements:**
 - Data collection pipeline operational (2,000+ data points collected)
 - RPC rate limiting solved with fallback system
 - PostgreSQL database configured and indexed
 - Frontend scaffold complete with React + TypeScript
 - Tailwind CSS styling system configured
 
-❌ **Blockers:**
+ **Blockers:**
 - Not enough data yet for ML training (need minimum 7 days for pattern recognition)
 - No ML model built yet
 - Frontend has no real data to display
@@ -490,7 +490,7 @@ for train_index, test_index in tscv.split(X):
 
 ### Day 2-3 Outcomes
 
-✅ **Achievements:**
+ **Achievements:**
 - Engineered 23 features from raw gas data
 - Achieved 59.83% directional accuracy (far exceeds random 50%)
 - Built ensemble model (RandomForest + GradientBoosting)
@@ -501,7 +501,7 @@ for train_index, test_index in tscv.split(X):
 **Key Metrics:**
 ```
 MODEL PERFORMANCE:
-├── Directional Accuracy: 59.83% ✅
+├── Directional Accuracy: 59.83% 
 ├── R² Score: 7.09% (low but expected for volatile data)
 ├── MAE: 0.000275 gwei
 ├── RMSE: 0.000442 gwei
@@ -677,7 +677,7 @@ def get_accuracy():
 // frontend/components/RelativePriceIndicator.tsx
 interface PriceLevel {
   level: string;
-  color: string;
+  colour: string;
   recommendation: string;
 }
 
@@ -687,38 +687,38 @@ const getPriceLevel = (current: number, avg: number): PriceLevel => {
   if (ratio < 0.7) {
     return {
       level: 'Excellent',
-      color: 'green',
+      colour: 'green',
       recommendation: 'Great time to transact! Gas is 30% below average.'
     };
   } else if (ratio < 0.85) {
     return {
       level: 'Good',
-      color: 'green',
+      colour: 'green',
       recommendation: 'Good time to transact. Gas is below average.'
     };
   } else if (ratio < 1.15) {
     return {
       level: 'Average',
-      color: 'yellow',
+      colour: 'yellow',
       recommendation: 'Gas is near average. Transaction timing is flexible.'
     };
   } else if (ratio < 1.5) {
     return {
       level: 'High',
-      color: 'orange',
+      colour: 'orange',
       recommendation: 'Gas is above average. Consider waiting if possible.'
     };
   } else {
     return {
       level: 'Very High',
-      color: 'red',
+      colour: 'red',
       recommendation: 'Gas is 50% above average. Wait if you can.'
     };
   }
 };
 ```
 
-**Design Decision:** Use color psychology (green = go, red = stop) familiar to all users.
+**Design Decision:** Use colour psychology (green = go, red = stop) familiar to all users.
 
 ---
 
@@ -906,7 +906,7 @@ services:
 
 ### Day 4 Outcomes
 
-✅ **Achievements:**
+ **Achievements:**
 - 5 production API endpoints deployed
 - API response time <200ms (4x improvement from initial)
 - Complete React dashboard with real-time updates
@@ -957,14 +957,14 @@ services:
 
 | Challenge | Impact | Solution | Outcome |
 |-----------|--------|----------|---------|
-| No historical data | 🔴 Critical | Built custom data pipeline | 10,000+ data points collected |
-| RPC rate limiting | 🔴 Critical | Multi-tier fallback + caching | 99.9% uptime |
-| Low model accuracy (23%) | 🔴 Critical | Extensive feature engineering | 59.83% directional accuracy |
-| Slow API responses (800ms+) | 🟡 Major | Aggressive caching | <200ms response time |
-| Complex ML predictions | 🟡 Major | Traffic light UI metaphor | Users understand instantly |
-| Mobile UX | 🟢 Minor | Mobile-first design | Works on all devices |
-| CORS errors | 🟢 Minor | Proper Flask-CORS config | Frontend can access API |
-| Wrong Ethereum network | 🟢 Minor | Auto-switch to Base | One-click experience |
+| No historical data |  Critical | Built custom data pipeline | 10,000+ data points collected |
+| RPC rate limiting |  Critical | Multi-tier fallback + caching | 99.9% uptime |
+| Low model accuracy (23%) |  Critical | Extensive feature engineering | 59.83% directional accuracy |
+| Slow API responses (800ms+) |  Major | Aggressive caching | <200ms response time |
+| Complex ML predictions |  Major | Traffic light UI metaphor | Users understand instantly |
+| Mobile UX |  Minor | Mobile-first design | Works on all devices |
+| CORS errors |  Minor | Proper Flask-CORS config | Frontend can access API |
+| Wrong Ethereum network |  Minor | Auto-switch to Base | One-click experience |
 
 ---
 
@@ -1025,7 +1025,7 @@ services:
 
 ## Lessons Learned
 
-### What Went Well ✅
+### What Went Well 
 
 1. **Early data collection:** Starting data pipeline on Day 1 gave us enough data by Day 3
 2. **Parallel work:** Backend (Mohamed) and Frontend (Senan) worked simultaneously with clear API contract
@@ -1041,7 +1041,7 @@ services:
 4. **Better error handling:** Some error messages unclear to users
 5. **Load testing:** Didn't test what happens with 1000 concurrent users
 
-### Future Improvements 🚀
+### Future Improvements 
 
 **Technical:**
 - Collect more granular data (every minute instead of every 5 minutes)
