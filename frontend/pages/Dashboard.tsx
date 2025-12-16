@@ -11,6 +11,10 @@ import UserTransactionHistory from '../components/UserTransactionHistory';
 import SavingsLeaderboard from '../components/SavingsLeaderboard';
 import BestTimeWidget from '../components/BestTimeWidget';
 import RelativePriceIndicator from '../components/RelativePriceIndicator';
+import ValidationMetricsDashboard from '../components/ValidationMetricsDashboard';
+import NetworkIntelligencePanel from '../components/NetworkIntelligencePanel';
+import ModelStatusWidget from '../components/ModelStatusWidget';
+import FarcasterWidget from '../components/FarcasterWidget';
 import { GasIcon } from '../components/icons';
 import { checkHealth, fetchCurrentGas, fetchPredictions } from '../src/api/gasApi';
 import { getCurrentAccount, onAccountsChanged } from '../src/utils/wallet';
@@ -127,6 +131,11 @@ const Dashboard: React.FC = () => {
         </header>
 
         <main className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Farcaster Widget - Only shows when in Farcaster context */}
+          <div className="lg:col-span-3">
+            <FarcasterWidget />
+          </div>
+
           {/* Week 1 Improvements: Relative Price Indicator + Best Time Widget */}
           <div className="lg:col-span-1">
             <RelativePriceIndicator currentGas={currentGas} />
@@ -144,6 +153,22 @@ const Dashboard: React.FC = () => {
           {/* Prediction Cards */}
           <div className="lg:col-span-3">
             <PredictionCards />
+          </div>
+
+          {/* NEW: Enterprise ML Features */}
+          {/* Model Status Widget - Compact */}
+          <div className="lg:col-span-1">
+            <ModelStatusWidget />
+          </div>
+
+          {/* Network Intelligence Panel */}
+          <div className="lg:col-span-2">
+            <NetworkIntelligencePanel />
+          </div>
+
+          {/* Validation Metrics Dashboard - Full Width */}
+          <div className="lg:col-span-3">
+            <ValidationMetricsDashboard />
           </div>
 
           {/* Model Accuracy Dashboard */}
@@ -177,7 +202,7 @@ const Dashboard: React.FC = () => {
         </main>
 
         <footer className="mt-8 text-center text-gray-500 text-sm">
-          <p>Pattern-based guidance for Base network • Chain ID: 8453</p>
+          <p>AI-powered gas price predictions for Base network • Chain ID: 8453</p>
         </footer>
       </div>
     </div>
