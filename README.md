@@ -2,6 +2,8 @@
 
 AI-powered gas price predictions for Base network. Save up to 40% on transaction fees with pattern-based insights and live blockchain data.
 
+**Built for the QMUL AI Society x Coinbase Hackathon** - demonstrating how machine learning can optimise blockchain transaction costs on Base L2.
+
 ## Live URLs
 
 - **Frontend**: https://basegasfeesml.netlify.app
