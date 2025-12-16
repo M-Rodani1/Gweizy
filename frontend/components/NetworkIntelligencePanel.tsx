@@ -1,0 +1,390 @@
+import React, { useState, useEffect } from 'react';
+import { Network, Activity, Zap, TrendingUp, Box, Code, Gauge } from 'lucide-react';
+
+interface NetworkState {
+  current_block: number;
+  block_time_avg: number;
+  gas_price: number;
+  network_congestion: string;
+  congestion_score: number;
+  tx_per_block_avg: number;
+  block_utilization_avg: number;
+  contract_call_ratio: number;
+}
+
+interface CongestionHistory {
+  timestamps: string[];
+  congestion_scores: number[];
+  block_utilization: number[];
+  tx_counts: number[];
+}
+
+const NetworkIntelligencePanel: React.FC = () => {
+  const [networkState, setNetworkState] = useState<NetworkState | null>(null);
+  const [congestionHistory, setCongestionHistory] = useState<CongestionHistory | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isExpanded, setIsExpanded] = useState(true);
+
+  const API_BASE = import.meta.env.VITE_API_URL || 'https://basegasfeesml.onrender.com';
+
+  useEffect(() => {
+    fetchNetworkData();
+    const interval = setInterval(fetchNetworkData, 30000); // Refresh every 30 seconds
+    return () => clearInterval(interval);
+  }, []);
+
+  const fetchNetworkData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const [stateRes, historyRes] = await Promise.all([
+        fetch(`${API_BASE}/api/onchain/network-state`),
+        fetch(`${API_BASE}/api/onchain/congestion-history?hours=24`)
+      ]);
+
+      if (!stateRes.ok || !historyRes.ok) {
+        throw new Error('Failed to fetch network data');
+      }
+
+      const stateData = await stateRes.json();
+      const historyData = await historyRes.json();
+
+      setNetworkState(stateData);
+      setCongestionHistory(historyData);
+      setLoading(false);
+    } catch (err) {
+      console.error('Error fetching network data:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load network data');
+      setLoading(false);
+    }
+  };
+
+  const getCongestionColor = (level: string) => {
+    switch (level.toLowerCase()) {
+      case 'low': return 'text-green-400 bg-green-500/20';
+      case 'moderate': return 'text-yellow-400 bg-yellow-500/20';
+      case 'high': return 'text-orange-400 bg-orange-500/20';
+      case 'extreme': return 'text-red-400 bg-red-500/20';
+      default: return 'text-gray-400 bg-gray-500/20';
+    }
+  };
+
+  const getCongestionIcon = (level: string) => {
+    switch (level.toLowerCase()) {
+      case 'low': return '🟢';
+      case 'moderate': return '🟡';
+      case 'high': return '🟠';
+      case 'extreme': return '🔴';
+      default: return '⚪';
+    }
+  };
+
+  const formatPercentage = (value: number) => `${(value * 100).toFixed(1)}%`;
+
+  if (loading && !networkState) {
+    return (
+      <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-xl p-6">
+        <div className="flex items-center justify-center h-48">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-400"></div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error && !networkState) {
+    return (
+      <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-xl p-6">
+        <div className="text-center text-red-400">
+          <Activity className="w-8 h-8 mx-auto mb-2" />
+          <p>{error}</p>
+          <button
+            onClick={fetchNetworkData}
+            className="mt-4 px-4 py-2 bg-purple-500/20 hover:bg-purple-500/30 text-purple-400 rounded-lg transition-colors"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-xl overflow-hidden">
+      {/* Header */}
+      <div
+        className="p-4 border-b border-slate-700 cursor-pointer hover:bg-slate-700/30 transition-colors"
+        onClick={() => setIsExpanded(!isExpanded)}
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-purple-500/20 rounded-lg">
+              <Network className="w-5 h-5 text-purple-400" />
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-white">Network Intelligence</h3>
+              <p className="text-sm text-gray-400">On-chain metrics that drive predictions</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-4">
+            {networkState && (
+              <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg ${getCongestionColor(networkState.network_congestion)}`}>
+                <span className="text-lg">{getCongestionIcon(networkState.network_congestion)}</span>
+                <span className="text-sm font-medium capitalize">{networkState.network_congestion}</span>
+              </div>
+            )}
+            <svg
+              className={`w-5 h-5 text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </div>
+        </div>
+      </div>
+
+      {isExpanded && networkState && (
+        <div className="p-6 space-y-6">
+          {/* Congestion Gauge */}
+          <div className="bg-gradient-to-br from-purple-500/10 to-pink-500/10 border border-purple-500/30 rounded-lg p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Gauge className="w-5 h-5 text-purple-400" />
+                <h4 className="text-sm font-medium text-white">Network Congestion</h4>
+              </div>
+              <span className="text-2xl">{getCongestionIcon(networkState.network_congestion)}</span>
+            </div>
+
+            {/* Congestion Score Bar */}
+            <div className="relative h-8 bg-slate-700/50 rounded-full overflow-hidden mb-2">
+              <div
+                className="absolute inset-y-0 left-0 bg-gradient-to-r from-green-500 via-yellow-500 via-orange-500 to-red-500 transition-all duration-500"
+                style={{ width: `${networkState.congestion_score * 100}%` }}
+              />
+              <div className="absolute inset-0 flex items-center justify-center">
+                <span className="text-sm font-bold text-white drop-shadow-lg">
+                  {formatPercentage(networkState.congestion_score)}
+                </span>
+              </div>
+            </div>
+
+            <div className="flex justify-between text-xs text-gray-400 mt-1">
+              <span>Low</span>
+              <span>Moderate</span>
+              <span>High</span>
+              <span>Extreme</span>
+            </div>
+          </div>
+
+          {/* Key Metrics Grid */}
+          <div>
+            <h4 className="text-sm font-medium text-gray-400 mb-3">On-Chain Metrics</h4>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              {/* Block Utilization */}
+              <div className="bg-slate-700/50 rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Box className="w-4 h-4 text-blue-400" />
+                  <p className="text-xs text-gray-400">Block Utilization</p>
+                </div>
+                <p className="text-2xl font-bold text-white">
+                  {formatPercentage(networkState.block_utilization_avg)}
+                </p>
+                <div className="mt-2 h-1.5 bg-slate-600 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-blue-500 transition-all"
+                    style={{ width: `${networkState.block_utilization_avg * 100}%` }}
+                  />
+                </div>
+              </div>
+
+              {/* Transactions per Block */}
+              <div className="bg-slate-700/50 rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <TrendingUp className="w-4 h-4 text-green-400" />
+                  <p className="text-xs text-gray-400">Tx per Block</p>
+                </div>
+                <p className="text-2xl font-bold text-white">
+                  {networkState.tx_per_block_avg.toFixed(1)}
+                </p>
+                <p className="text-xs text-gray-500 mt-1">
+                  Average transactions
+                </p>
+              </div>
+
+              {/* Contract Call Ratio */}
+              <div className="bg-slate-700/50 rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Code className="w-4 h-4 text-purple-400" />
+                  <p className="text-xs text-gray-400">Contract Calls</p>
+                </div>
+                <p className="text-2xl font-bold text-white">
+                  {formatPercentage(networkState.contract_call_ratio)}
+                </p>
+                <p className="text-xs text-gray-500 mt-1">
+                  of all transactions
+                </p>
+              </div>
+
+              {/* Current Block */}
+              <div className="bg-slate-700/50 rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Activity className="w-4 h-4 text-cyan-400" />
+                  <p className="text-xs text-gray-400">Current Block</p>
+                </div>
+                <p className="text-xl font-bold text-white font-mono">
+                  {networkState.current_block.toLocaleString()}
+                </p>
+                <p className="text-xs text-gray-500 mt-1">
+                  Latest on Base
+                </p>
+              </div>
+
+              {/* Block Time */}
+              <div className="bg-slate-700/50 rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Zap className="w-4 h-4 text-yellow-400" />
+                  <p className="text-xs text-gray-400">Block Time</p>
+                </div>
+                <p className="text-2xl font-bold text-white">
+                  {networkState.block_time_avg.toFixed(1)}s
+                </p>
+                <p className="text-xs text-gray-500 mt-1">
+                  Average interval
+                </p>
+              </div>
+
+              {/* Gas Price */}
+              <div className="bg-slate-700/50 rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Activity className="w-4 h-4 text-orange-400" />
+                  <p className="text-xs text-gray-400">Current Gas</p>
+                </div>
+                <p className="text-2xl font-bold text-white">
+                  {networkState.gas_price.toFixed(6)}
+                </p>
+                <p className="text-xs text-gray-500 mt-1">
+                  Gwei
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* 24h Congestion History */}
+          {congestionHistory && congestionHistory.timestamps.length > 0 && (
+            <div>
+              <h4 className="text-sm font-medium text-gray-400 mb-3">24-Hour Congestion Pattern</h4>
+              <div className="bg-slate-700/30 rounded-lg p-4 border border-slate-600">
+                <div className="space-y-4">
+                  {/* Congestion Score Chart */}
+                  <div>
+                    <p className="text-xs text-gray-400 mb-2">Congestion Score</p>
+                    <div className="flex items-end gap-0.5 h-20">
+                      {congestionHistory.congestion_scores.map((score, idx) => {
+                        let color = 'bg-green-500/50';
+                        if (score > 0.7) color = 'bg-red-500/50';
+                        else if (score > 0.5) color = 'bg-orange-500/50';
+                        else if (score > 0.3) color = 'bg-yellow-500/50';
+
+                        return (
+                          <div
+                            key={idx}
+                            className={`flex-1 ${color} rounded-t hover:opacity-100 transition-opacity`}
+                            style={{ height: `${score * 100}%`, opacity: 0.7 }}
+                            title={`${new Date(congestionHistory.timestamps[idx]).toLocaleTimeString()}: ${formatPercentage(score)}`}
+                          />
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Block Utilization Chart */}
+                  <div>
+                    <p className="text-xs text-gray-400 mb-2">Block Utilization</p>
+                    <div className="flex items-end gap-0.5 h-16">
+                      {congestionHistory.block_utilization.map((util, idx) => (
+                        <div
+                          key={idx}
+                          className="flex-1 bg-blue-500/50 rounded-t hover:bg-blue-500/70 transition-colors"
+                          style={{ height: `${util * 100}%` }}
+                          title={`${new Date(congestionHistory.timestamps[idx]).toLocaleTimeString()}: ${formatPercentage(util)}`}
+                        />
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Transaction Volume Chart */}
+                  <div>
+                    <p className="text-xs text-gray-400 mb-2">Transaction Volume</p>
+                    <div className="flex items-end gap-0.5 h-16">
+                      {congestionHistory.tx_counts.map((count, idx) => {
+                        const maxCount = Math.max(...congestionHistory.tx_counts);
+                        const height = (count / maxCount) * 100;
+                        return (
+                          <div
+                            key={idx}
+                            className="flex-1 bg-purple-500/50 rounded-t hover:bg-purple-500/70 transition-colors"
+                            style={{ height: `${height}%` }}
+                            title={`${new Date(congestionHistory.timestamps[idx]).toLocaleTimeString()}: ${count} tx`}
+                          />
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-4 flex justify-between text-xs text-gray-500">
+                  <span>24h ago</span>
+                  <span>12h ago</span>
+                  <span>Now</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Insights */}
+          <div className="bg-purple-500/10 border border-purple-500/30 rounded-lg p-4">
+            <h4 className="text-sm font-medium text-purple-400 mb-3">Network Insights</h4>
+            <ul className="space-y-2 text-sm text-gray-300">
+              <li className="flex items-start gap-2">
+                <span className="text-purple-400 mt-0.5">•</span>
+                <span>
+                  {networkState.block_utilization_avg > 0.8
+                    ? "Blocks are heavily utilized - expect higher gas prices"
+                    : networkState.block_utilization_avg > 0.5
+                    ? "Moderate block utilization - gas prices may vary"
+                    : "Low block utilization - good time for transactions"}
+                </span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-purple-400 mt-0.5">•</span>
+                <span>
+                  {networkState.contract_call_ratio > 0.7
+                    ? "High contract interaction - complex transactions dominate"
+                    : "Balanced mix of transfers and contract calls"}
+                </span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-purple-400 mt-0.5">•</span>
+                <span>
+                  {networkState.tx_per_block_avg > 100
+                    ? "High transaction volume per block - network is active"
+                    : "Normal transaction volume - steady network activity"}
+                </span>
+              </li>
+            </ul>
+          </div>
+
+          {/* Footer */}
+          <div className="text-xs text-gray-400 text-center pt-4 border-t border-slate-700">
+            Real-time data from Base network • Updates every 30 seconds
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default NetworkIntelligencePanel;
