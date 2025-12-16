@@ -10,6 +10,7 @@ from models.feature_engineering import GasFeatureEngineer
 from models.model_trainer import GasModelTrainer
 from utils.base_scanner import BaseScanner
 from utils.logger import logger
+from utils.prediction_validator import PredictionValidator
 from api.cache import cached, clear_cache
 from datetime import datetime, timedelta
 import traceback
@@ -23,6 +24,7 @@ collector = BaseGasCollector()
 db = DatabaseManager()
 engineer = GasFeatureEngineer()
 scanner = BaseScanner()
+validator = PredictionValidator()
 
 
 # Load trained models
@@ -313,10 +315,20 @@ def get_predictions():
                         'avg_confidence': confidence
                     }
                     
-                    # Save prediction
+                    # Save prediction (old format for compatibility)
                     db.save_prediction(
                         horizon=horizon,
                         predicted_gas=pred_value,
+                        model_version='ensemble'
+                    )
+
+                    # Log prediction for validation
+                    horizon_hours = {'1h': 1, '4h': 4, '24h': 24}[horizon]
+                    target_time = datetime.now() + timedelta(hours=horizon_hours)
+                    validator.log_prediction(
+                        horizon=horizon,
+                        predicted_gas=pred_value,
+                        target_time=target_time,
                         model_version='ensemble'
                     )
                 except Exception as e:
@@ -430,6 +442,16 @@ def get_predictions():
                 db.save_prediction(
                     horizon=horizon,
                     predicted_gas=pred,
+                    model_version=model_data['model_name']
+                )
+
+                # Log prediction for validation
+                horizon_hours = {'1h': 1, '4h': 4, '24h': 24}[horizon]
+                target_time = datetime.now() + timedelta(hours=horizon_hours)
+                validator.log_prediction(
+                    horizon=horizon,
+                    predicted_gas=pred,
+                    target_time=target_time,
                     model_version=model_data['model_name']
                 )
         
