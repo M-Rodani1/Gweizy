@@ -1,4 +1,4 @@
-# Base Gas Optimizer
+# Base Gas Optimiser
 
 AI-powered gas price predictions for Base network. Save up to 40% on transaction fees with pattern-based insights and live blockchain data.
 
