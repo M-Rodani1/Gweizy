@@ -8,6 +8,10 @@ from flask_cors import CORS
 from api.routes import api_bp
 from api.base_config import base_config_bp
 from api.stats import stats_bp
+from api.validation_routes import validation_bp
+from api.onchain_routes import onchain_bp
+from api.retraining_routes import retraining_bp
+from api.farcaster_routes import farcaster_bp
 from api.middleware import limiter, error_handlers, log_request
 from config import Config
 from utils.logger import logger
@@ -58,6 +62,10 @@ def create_app():
     # Register blueprints
     app.register_blueprint(api_bp, url_prefix='/api')
     app.register_blueprint(stats_bp, url_prefix='/api')
+    app.register_blueprint(validation_bp, url_prefix='/api')
+    app.register_blueprint(onchain_bp, url_prefix='/api')
+    app.register_blueprint(retraining_bp, url_prefix='/api')
+    app.register_blueprint(farcaster_bp, url_prefix='/api')
     app.register_blueprint(base_config_bp)  # No prefix - serves at root for /config.json
     
     @app.route('/')
@@ -73,7 +81,24 @@ def create_app():
                 'transactions': '/api/transactions',
                 'accuracy': '/api/accuracy',
                 'config': '/api/config',
-                'stats': '/api/stats'
+                'stats': '/api/stats',
+                'validation': {
+                    'summary': '/api/validation/summary',
+                    'metrics': '/api/validation/metrics',
+                    'trends': '/api/validation/trends',
+                    'health': '/api/validation/health'
+                },
+                'onchain': {
+                    'network_state': '/api/onchain/network-state',
+                    'block_features': '/api/onchain/block-features/<block_number>',
+                    'congestion_history': '/api/onchain/congestion-history'
+                },
+                'retraining': {
+                    'status': '/api/retraining/status',
+                    'trigger': '/api/retraining/trigger (POST)',
+                    'history': '/api/retraining/history',
+                    'check_data': '/api/retraining/check-data'
+                }
             }
         })
     
