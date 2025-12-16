@@ -46,3 +46,7 @@ backend/gas_data.db
 *.tmp
 *.swp
 *~
+
+# Presentation files (keep local only)
+BACKEND_PRESENTATION.md
+FRONTEND_PRESENTATION.md
