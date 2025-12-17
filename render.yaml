@@ -1,0 +1,32 @@
+services:
+  # Main API server
+  - type: web
+    name: base-gas-optimizer-api
+    env: python
+    region: oregon
+    plan: free
+    buildCommand: pip install -r backend/requirements.txt
+    startCommand: cd backend && python app.py
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: PORT
+        value: 5001
+      - key: DEBUG
+        value: false
+      - key: COLLECTION_INTERVAL
+        value: 300
+
+  # Background data collection service
+  - type: worker
+    name: base-gas-data-collector
+    env: python
+    region: oregon
+    plan: free
+    buildCommand: pip install -r backend/requirements.txt
+    startCommand: cd backend && python services/data_pipeline.py
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: COLLECTION_INTERVAL
+        value: 300

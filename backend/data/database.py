@@ -21,13 +21,33 @@ class GasPrice(Base):
 
 class Prediction(Base):
     __tablename__ = 'predictions'
-    
+
     id = Column(Integer, primary_key=True)
     timestamp = Column(DateTime, default=datetime.now)
     horizon = Column(String)  # '1h', '4h', '24h'
     predicted_gas = Column(Float)
     actual_gas = Column(Float, nullable=True)
     model_version = Column(String)
+
+
+class OnChainFeatures(Base):
+    __tablename__ = 'onchain_features'
+
+    id = Column(Integer, primary_key=True)
+    timestamp = Column(DateTime, default=datetime.now)
+    block_number = Column(Integer)
+    tx_count = Column(Integer)
+    gas_used = Column(Integer)
+    gas_limit = Column(Integer)
+    gas_utilization = Column(Float)
+    base_fee_gwei = Column(Float)
+    avg_gas_price_gwei = Column(Float)
+    avg_priority_fee_gwei = Column(Float)
+    contract_calls = Column(Integer)
+    transfers = Column(Integer)
+    contract_call_ratio = Column(Float)
+    congestion_score = Column(Float)
+    block_time = Column(Float)
 
 
 class DatabaseManager:
@@ -93,7 +113,29 @@ class DatabaseManager:
             raise e
         finally:
             session.close()
-    
+
+    def save_onchain_features(self, features):
+        """Save on-chain features"""
+        session = self._get_session()
+        try:
+            # Convert timestamp if needed
+            if 'timestamp' in features and isinstance(features['timestamp'], str):
+                from dateutil import parser
+                features['timestamp'] = parser.parse(features['timestamp'])
+
+            onchain = OnChainFeatures(**features)
+            session.add(onchain)
+            session.commit()
+        except Exception as e:
+            session.rollback()
+            raise e
+        finally:
+            session.close()
+
+    def get_connection(self):
+        """Get raw database connection for custom queries"""
+        return self.engine.raw_connection()
+
     @property
     def session(self):
         """Backward compatibility - returns a new session"""
