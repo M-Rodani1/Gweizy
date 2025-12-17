@@ -189,7 +189,7 @@ class HybridPredictor:
                     'unit': 'gwei'
                 },
                 'alert': {
-                    'show_alert': spike_class >= 2,
+                    'show_alert': bool(spike_class >= 2),
                     'message': self._get_alert_message(class_name, confidence),
                     'severity': class_name
                 },
