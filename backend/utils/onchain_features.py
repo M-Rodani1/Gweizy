@@ -303,13 +303,14 @@ class OnChainFeatureExtractor:
                 return None
 
             # Average recent features
+            avg_util = float(np.mean([f['block_utilization'] for f in recent_features]))
             return {
-                'current_block': current_block,
-                'avg_utilization': np.mean([f['block_utilization'] for f in recent_features]),
-                'avg_tx_count': np.mean([f['tx_count'] for f in recent_features]),
-                'avg_base_fee': np.mean([f['base_fee'] for f in recent_features]),
-                'base_fee_trend': self._calculate_trend([f['base_fee'] for f in recent_features]),
-                'is_congested': np.mean([f['block_utilization'] for f in recent_features]) > 0.7,
+                'current_block': int(current_block),
+                'avg_utilization': float(np.mean([f['block_utilization'] for f in recent_features])),
+                'avg_tx_count': float(np.mean([f['tx_count'] for f in recent_features])),
+                'avg_base_fee': float(np.mean([f['base_fee'] for f in recent_features])),
+                'base_fee_trend': float(self._calculate_trend([f['base_fee'] for f in recent_features])),
+                'is_congested': bool(avg_util > 0.7),
                 'timestamp': datetime.now()
             }
 
