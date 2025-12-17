@@ -22,7 +22,9 @@ backend/.pytest_cache/
 backend/.venv/
 backend/venv/
 backend/*.pkl
-backend/models/saved_models/
+backend/models/saved_models/*
+!backend/models/saved_models/spike_detector*.pkl
+!backend/models/saved_models/.gitkeep
 backend/gas_data.db
 
 # Editor directories and files
