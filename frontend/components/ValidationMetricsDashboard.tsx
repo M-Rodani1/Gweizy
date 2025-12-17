@@ -61,8 +61,8 @@ const ValidationMetricsDashboard: React.FC = () => {
       setError(null);
 
       const [summaryRes, healthRes] = await Promise.all([
-        fetch(`${API_BASE}/api/validation/summary`),
-        fetch(`${API_BASE}/api/validation/health`)
+        fetch(`${API_BASE}/validation/summary`),
+        fetch(`${API_BASE}/validation/health`)
       ]);
 
       if (!summaryRes.ok || !healthRes.ok) {
@@ -84,7 +84,7 @@ const ValidationMetricsDashboard: React.FC = () => {
 
   const fetchTrends = async (horizon: string, days: number) => {
     try {
-      const response = await fetch(`${API_BASE}/api/validation/trends?horizon=${horizon}&days=${days}`);
+      const response = await fetch(`${API_BASE}/validation/trends?horizon=${horizon}&days=${days}`);
       if (!response.ok) throw new Error('Failed to fetch trends');
 
       const data = await response.json();
