@@ -40,8 +40,8 @@ const NetworkIntelligencePanel: React.FC = () => {
       setError(null);
 
       const [stateRes, historyRes] = await Promise.all([
-        fetch(`${API_BASE}/api/onchain/network-state`),
-        fetch(`${API_BASE}/api/onchain/congestion-history?hours=24`)
+        fetch(`${API_BASE}/onchain/network-state`),
+        fetch(`${API_BASE}/onchain/congestion-history?hours=24`)
       ]);
 
       if (!stateRes.ok || !historyRes.ok) {

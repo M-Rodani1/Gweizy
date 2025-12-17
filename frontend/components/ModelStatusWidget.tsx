@@ -57,9 +57,9 @@ const ModelStatusWidget: React.FC = () => {
       setError(null);
 
       const [statusRes, historyRes, dataRes] = await Promise.all([
-        fetch(`${API_BASE}/api/retraining/status`),
-        fetch(`${API_BASE}/api/retraining/history?limit=5`),
-        fetch(`${API_BASE}/api/retraining/check-data`)
+        fetch(`${API_BASE}/retraining/status`),
+        fetch(`${API_BASE}/retraining/history?limit=5`),
+        fetch(`${API_BASE}/retraining/check-data`)
       ]);
 
       if (!statusRes.ok || !historyRes.ok || !dataRes.ok) {
@@ -88,7 +88,7 @@ const ModelStatusWidget: React.FC = () => {
 
     try {
       setTriggering(true);
-      const response = await fetch(`${API_BASE}/api/retraining/trigger`, {
+      const response = await fetch(`${API_BASE}/retraining/trigger`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ force: false })
