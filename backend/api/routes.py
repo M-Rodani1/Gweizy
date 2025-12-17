@@ -110,10 +110,22 @@ except Exception as e:
 @api_bp.route('/health', methods=['GET'])
 def health():
     """Health check endpoint"""
+    # Check if hybrid predictor models are available
+    hybrid_models_loaded = False
+    try:
+        from models.hybrid_predictor import hybrid_predictor
+        if not hybrid_predictor.loaded:
+            hybrid_predictor.load_models()
+        hybrid_models_loaded = hybrid_predictor.loaded
+    except Exception as e:
+        logger.warning(f"Could not load hybrid predictor: {e}")
+
     return jsonify({
         'status': 'ok',
         'timestamp': datetime.now().isoformat(),
-        'models_loaded': len(models) > 0,
+        'models_loaded': len(models) > 0 or hybrid_models_loaded,
+        'hybrid_predictor_loaded': hybrid_models_loaded,
+        'legacy_models_loaded': len(models) > 0,
         'database_connected': True
     })
 

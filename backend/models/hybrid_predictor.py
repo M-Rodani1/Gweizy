@@ -45,13 +45,18 @@ class HybridPredictor:
         try:
             # Load spike detectors for all horizons
             for horizon in ['1h', '4h', '24h']:
+                # Try both relative and absolute paths
                 detector_path = os.path.join(self.models_dir, f'spike_detector_{horizon}.pkl')
+                if not os.path.exists(detector_path):
+                    # Try with backend/ prefix (for Render deployment)
+                    detector_path = os.path.join('backend', self.models_dir, f'spike_detector_{horizon}.pkl')
+
                 if os.path.exists(detector_path):
                     with open(detector_path, 'rb') as f:
                         self.spike_detectors[horizon] = pickle.load(f)
-                    logger.info(f"Loaded spike detector for {horizon}")
+                    logger.info(f"✓ Loaded spike detector for {horizon} from {detector_path}")
                 else:
-                    logger.warning(f"Spike detector not found: {detector_path}")
+                    logger.warning(f"⚠️  Spike detector not found: {detector_path}")
 
             self.loaded = len(self.spike_detectors) > 0
 
