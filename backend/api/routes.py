@@ -184,11 +184,111 @@ def historical():
 @api_bp.route('/predictions', methods=['GET'])
 @cached(ttl=60)  # Cache for 1 minute
 def get_predictions():
-    """Get ML-powered gas price predictions"""
+    """Get ML-powered gas price predictions using hybrid spike detection"""
     try:
         # Get current gas
         current = collector.get_current_gas()
-        
+
+        # Try hybrid predictor first (spike detection + classification)
+        try:
+            from models.hybrid_predictor import hybrid_predictor
+            import pandas as pd
+            from dateutil import parser
+
+            # Get recent data for hybrid predictor (needs at least 50 points)
+            recent_data = db.get_historical_data(hours=48)
+
+            if len(recent_data) >= 50:
+                # Convert to DataFrame format for hybrid predictor
+                recent_df = []
+                for d in recent_data:
+                    timestamp = d.get('timestamp', '')
+                    if isinstance(timestamp, str):
+                        try:
+                            dt = parser.parse(timestamp)
+                        except:
+                            dt = datetime.now()
+                    else:
+                        dt = timestamp if hasattr(timestamp, 'hour') else datetime.now()
+
+                    recent_df.append({
+                        'timestamp': dt,
+                        'gas_price': d.get('gwei', 0) or d.get('current_gas', 0),
+                        'base_fee': d.get('baseFee', 0) or d.get('base_fee', 0),
+                        'priority_fee': d.get('priorityFee', 0) or d.get('priority_fee', 0)
+                    })
+
+                df = pd.DataFrame(recent_df)
+
+                # Get hybrid predictions
+                hybrid_preds = hybrid_predictor.predict(df)
+
+                # Format for API response
+                prediction_data = {}
+                for horizon, pred in hybrid_preds.items():
+                    classification = pred['classification']
+                    prediction = pred['prediction']
+                    alert = pred['alert']
+                    recommendation = pred['recommendation']
+
+                    prediction_data[horizon] = [{
+                        'time': horizon,
+                        'predictedGwei': prediction['price'],
+                        'lowerBound': prediction['lower_bound'],
+                        'upperBound': prediction['upper_bound'],
+                        'confidence': classification['confidence'],
+                        'confidenceLevel': classification['class'],
+                        'confidenceEmoji': classification['emoji'],
+                        'confidenceColor': classification['color'],
+                        'classification': {
+                            'class': classification['class'],
+                            'emoji': classification['emoji'],
+                            'probabilities': classification['probabilities']
+                        },
+                        'alert': alert,
+                        'recommendation': recommendation
+                    }]
+
+                # Format historical data for graph
+                historical = []
+                for d in recent_data[-100:]:
+                    timestamp = d.get('timestamp', '')
+                    if isinstance(timestamp, str):
+                        try:
+                            dt = parser.parse(timestamp)
+                            time_str = dt.strftime('%H:%M')
+                        except:
+                            time_str = timestamp[:5] if len(timestamp) > 5 else timestamp
+                    else:
+                        time_str = str(timestamp)[:5]
+
+                    historical.append({
+                        'time': time_str,
+                        'gwei': round(d.get('gwei', 0) or d.get('current_gas', 0), 4)
+                    })
+
+                prediction_data['historical'] = historical
+
+                logger.info(f"Hybrid predictions - 1h: {classification['class']} ({classification['confidence']:.1%})")
+
+                return jsonify({
+                    'current': current,
+                    'predictions': prediction_data,
+                    'model_info': {
+                        'type': 'hybrid',
+                        'version': 'spike_detection_v1',
+                        'description': 'Classification-based prediction (Normal/Elevated/Spike)'
+                    }
+                })
+            else:
+                logger.warning(f"Not enough data for hybrid predictor: {len(recent_data)} records")
+
+        except Exception as e:
+            logger.warning(f"Hybrid predictor failed: {e}, falling back to legacy models")
+            import traceback
+            logger.warning(traceback.format_exc())
+
+        # Fallback to legacy models if hybrid fails
         if not models:
             logger.warning("Models not loaded, using fallback predictions")
             return jsonify({
