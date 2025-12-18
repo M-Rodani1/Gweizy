@@ -86,8 +86,7 @@ def get_congestion_history():
         Time series of network congestion metrics
     """
     try:
-        from scripts.collect_onchain_features import OnChainFeatures
-        from data.database import DatabaseManager
+        from data.database import DatabaseManager, OnChainFeatures
         from datetime import timedelta
 
         hours = int(request.args.get('hours', 24))
