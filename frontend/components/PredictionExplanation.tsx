@@ -132,7 +132,7 @@ const PredictionExplanation: React.FC<Props> = ({ horizon }) => {
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-2">
           <h3 className="text-xl font-bold text-white">
-            Why We Predict {data.prediction.toFixed(4)} Gwei
+            Why We Predict {data.prediction ? data.prediction.toFixed(4) : '0.0000'} Gwei
           </h3>
         </div>
         <button
@@ -225,7 +225,7 @@ const PredictionExplanation: React.FC<Props> = ({ horizon }) => {
                       </span>
                     </div>
                     <div className="text-xs text-gray-500 font-mono mt-1">
-                      Value: {factor.value.toFixed(4)}
+                      Value: {factor.value !== undefined && factor.value !== null ? factor.value.toFixed(4) : 'N/A'}
                     </div>
                   </div>
                 ))}
@@ -249,7 +249,7 @@ const PredictionExplanation: React.FC<Props> = ({ horizon }) => {
                       </span>
                     </div>
                     <div className="text-xs text-gray-500 font-mono mt-1">
-                      Value: {factor.value.toFixed(4)}
+                      Value: {factor.value !== undefined && factor.value !== null ? factor.value.toFixed(4) : 'N/A'}
                     </div>
                   </div>
                 ))}
@@ -269,7 +269,7 @@ const PredictionExplanation: React.FC<Props> = ({ horizon }) => {
                     <div className="flex justify-between items-center">
                       <span className="text-gray-300 text-sm">{case_.timestamp}</span>
                       <span className="text-cyan-400 font-mono text-sm font-bold">
-                        {case_.gas_price.toFixed(4)} gwei
+                        {case_.gas_price !== undefined && case_.gas_price !== null ? case_.gas_price.toFixed(4) : 'N/A'} gwei
                       </span>
                     </div>
                   </div>
@@ -278,8 +278,10 @@ const PredictionExplanation: React.FC<Props> = ({ horizon }) => {
                   <div className="flex justify-between items-center">
                     <span className="text-gray-400 text-sm">Historical Average:</span>
                     <span className="text-white font-mono text-sm font-bold">
-                      {(technical_details.similar_cases.reduce((sum, c) => sum + c.gas_price, 0) / 
-                        technical_details.similar_cases.length).toFixed(4)} gwei
+                      {technical_details.similar_cases.length > 0
+                        ? (technical_details.similar_cases.reduce((sum, c) => sum + (c.gas_price || 0), 0) /
+                           technical_details.similar_cases.length).toFixed(4)
+                        : 'N/A'} gwei
                     </span>
                   </div>
                 </div>
@@ -306,8 +308,12 @@ const PredictionExplanation: React.FC<Props> = ({ horizon }) => {
                     {Object.entries(technical_details.feature_importance).map(([feature, data]: [string, any], i) => (
                       <tr key={i} className="border-b border-gray-800 hover:bg-gray-800/50">
                         <td className="py-2 text-gray-300">{feature}</td>
-                        <td className="py-2 text-right text-cyan-400">{data.value.toFixed(4)}</td>
-                        <td className="py-2 text-right text-amber-400">{data.importance.toFixed(6)}</td>
+                        <td className="py-2 text-right text-cyan-400">
+                          {data.value !== undefined && data.value !== null ? data.value.toFixed(4) : 'N/A'}
+                        </td>
+                        <td className="py-2 text-right text-amber-400">
+                          {data.importance !== undefined && data.importance !== null ? data.importance.toFixed(6) : 'N/A'}
+                        </td>
                       </tr>
                     ))}
                   </tbody>

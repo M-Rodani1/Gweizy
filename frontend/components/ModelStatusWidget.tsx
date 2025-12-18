@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Cpu, CheckCircle, AlertTriangle, Clock, TrendingUp, Database, RefreshCw } from 'lucide-react';
+import { Cpu, CheckCircle, AlertTriangle, Clock, TrendingUp, Database, RefreshCw, Activity } from 'lucide-react';
 
 interface ModelStatus {
   model_status: 'healthy' | 'warning' | 'needs_retraining';
@@ -43,7 +43,7 @@ const ModelStatusWidget: React.FC = () => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [triggering, setTriggering] = useState(false);
 
-  const API_BASE = import.meta.env.VITE_API_URL || 'https://basegasfeesml.onrender.com';
+  const API_BASE = import.meta.env.VITE_API_URL || 'https://basegasfeesml.onrender.com/api';
 
   useEffect(() => {
     fetchModelData();
