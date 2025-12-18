@@ -120,7 +120,7 @@ const SavingsLeaderboard: React.FC<SavingsLeaderboardProps> = ({ walletAddress }
               </div>
               <div className="text-right">
                 <div className="text-sm font-bold text-green-400">
-                  ${entry.savings.toFixed(2)}
+                  ${entry.savings !== undefined && entry.savings !== null ? entry.savings.toFixed(2) : 'N/A'}
                 </div>
                 <div className="text-xs text-gray-400">Saved</div>
               </div>
@@ -139,7 +139,7 @@ const SavingsLeaderboard: React.FC<SavingsLeaderboardProps> = ({ walletAddress }
             </div>
             <div className="text-right">
               <div className="text-sm font-bold text-green-400">
-                ${userEntry.savings.toFixed(2)}
+                ${userEntry.savings !== undefined && userEntry.savings !== null ? userEntry.savings.toFixed(2) : 'N/A'}
               </div>
               <div className="text-xs text-gray-400">Saved</div>
             </div>

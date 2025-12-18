@@ -63,10 +63,12 @@ const UserTransactionHistory: React.FC<UserTransactionHistoryProps> = ({ address
   };
 
   const formatGasPrice = (gasPrice: number) => {
+    if (gasPrice === undefined || gasPrice === null) return 'N/A';
     return (gasPrice / 1e9).toFixed(4);
   };
 
   const formatUSD = (amount: number) => {
+    if (amount === undefined || amount === null) return 'N/A';
     return amount.toFixed(4);
   };
 
@@ -124,7 +126,7 @@ const UserTransactionHistory: React.FC<UserTransactionHistoryProps> = ({ address
             <div className="flex items-center justify-between">
               <span className="text-lg font-semibold text-gray-300">📈 Savings if optimized:</span>
               <span className="text-2xl font-bold text-green-400">
-                {data.savings_percentage.toFixed(0)}%
+                {data.savings_percentage !== undefined && data.savings_percentage !== null ? data.savings_percentage.toFixed(0) : '0'}%
               </span>
             </div>
           </div>

@@ -137,7 +137,10 @@ const ModelStatusWidget: React.FC = () => {
     }
   };
 
-  const formatPercentage = (value: number) => `${(value * 100).toFixed(1)}%`;
+  const formatPercentage = (value: number) => {
+    if (value === undefined || value === null) return 'N/A';
+    return `${(value * 100).toFixed(1)}%`;
+  };
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
     return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -225,7 +228,7 @@ const ModelStatusWidget: React.FC = () => {
                   <p className="text-xs text-gray-400">MAE</p>
                 </div>
                 <p className="text-lg font-bold text-white">
-                  {status.performance_summary.mae.toFixed(6)}
+                  {status.performance_summary.mae !== undefined && status.performance_summary.mae !== null ? status.performance_summary.mae.toFixed(6) : 'N/A'}
                 </p>
               </div>
               <div className="bg-slate-700/30 rounded-lg p-3 border border-slate-600">
