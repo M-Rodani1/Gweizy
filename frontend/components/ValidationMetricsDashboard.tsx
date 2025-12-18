@@ -60,19 +60,36 @@ const ValidationMetricsDashboard: React.FC = () => {
       setLoading(true);
       setError(null);
 
-      const [summaryRes, healthRes] = await Promise.all([
-        fetch(`${API_BASE}/validation/summary`),
-        fetch(`${API_BASE}/validation/health`)
+      const [metricsRes, healthRes] = await Promise.all([
+        fetch(`${API_BASE}/api/validation/metrics?horizon=all`),
+        fetch(`${API_BASE}/api/validation/health`)
       ]);
 
-      if (!summaryRes.ok || !healthRes.ok) {
+      // Handle 503 (no data yet) gracefully
+      if (metricsRes.status === 503 || healthRes.status === 503) {
+        setError('No validation data available yet. System is still collecting initial data.');
+        setLoading(false);
+        return;
+      }
+
+      if (!metricsRes.ok || !healthRes.ok) {
         throw new Error('Failed to fetch validation data');
       }
 
-      const summaryData = await summaryRes.json();
+      const metricsData = await metricsRes.json();
       const healthData = await healthRes.json();
 
-      setSummary(summaryData);
+      // Transform metrics API response (horizons) to component format
+      if (metricsData.horizons) {
+        const transformedSummary: ValidationSummary = {
+          '1h': metricsData.horizons['1h'] || { mae: 0, rmse: 0, r2_score: 0, directional_accuracy: 0, total_predictions: 0, validated_predictions: 0 },
+          '4h': metricsData.horizons['4h'] || { mae: 0, rmse: 0, r2_score: 0, directional_accuracy: 0, total_predictions: 0, validated_predictions: 0 },
+          '24h': metricsData.horizons['24h'] || { mae: 0, rmse: 0, r2_score: 0, directional_accuracy: 0, total_predictions: 0, validated_predictions: 0 },
+          overall: { mae: 0, rmse: 0, r2_score: 0, directional_accuracy: 0, total_predictions: 0, validated_predictions: 0 } as ValidationMetrics
+        };
+        setSummary(transformedSummary);
+      }
+
       setHealth(healthData);
       setLoading(false);
     } catch (err) {
@@ -84,8 +101,11 @@ const ValidationMetricsDashboard: React.FC = () => {
 
   const fetchTrends = async (horizon: string, days: number) => {
     try {
-      const response = await fetch(`${API_BASE}/validation/trends?horizon=${horizon}&days=${days}`);
-      if (!response.ok) throw new Error('Failed to fetch trends');
+      const response = await fetch(`${API_BASE}/api/validation/trends?horizon=${horizon}&days=${days}`);
+      if (!response.ok) {
+        console.warn('Trends not available yet');
+        return;
+      }
 
       const data = await response.json();
       setTrends(data);
@@ -112,8 +132,14 @@ const ValidationMetricsDashboard: React.FC = () => {
     }
   };
 
-  const formatPercentage = (value: number) => `${(value * 100).toFixed(1)}%`;
-  const formatMetric = (value: number) => value.toFixed(6);
+  const formatPercentage = (value: number | undefined) => {
+    if (value === undefined || value === null) return 'N/A';
+    return `${(value * 100).toFixed(1)}%`;
+  };
+  const formatMetric = (value: number | undefined) => {
+    if (value === undefined || value === null) return 'N/A';
+    return value.toFixed(6);
+  };
 
   if (loading && !summary) {
     return (
