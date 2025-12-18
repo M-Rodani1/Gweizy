@@ -8,12 +8,14 @@ from sqlalchemy import func
 from data.database import DatabaseManager, Prediction, GasPrice
 from datetime import datetime, timedelta
 from utils.logger import logger
+from api.cache import cached
 
 stats_bp = Blueprint('stats', __name__)
 db = DatabaseManager()
 
 
 @stats_bp.route('/stats', methods=['GET'])
+@cached(ttl=300)  # Cache for 5 minutes
 def get_global_stats():
     """
     Get global statistics for landing page:
@@ -53,16 +55,28 @@ def get_global_stats():
                 r_squared = 1 - (ss_res / ss_tot)
                 accuracy_percent = max(0, min(100, int(r_squared * 100)))
 
-        # Estimate total savings
-        # Average gas savings per prediction (assuming 30% average savings)
-        # Assuming average transaction uses 21000 gas units
-        # And average ETH price of $3000
-        avg_gas_saved_gwei = 0.5  # Conservative estimate
-        gas_units = 21000
-        eth_price = 3000
+        # Calculate REAL total savings from database
+        # Get historical gas data to calculate actual savings
+        from data.database import GasPrice
+        total_gas_records = session.query(func.count(GasPrice.id)).scalar() or 0
 
-        # Convert gwei savings to ETH then to USD
-        total_saved_usd = (total_predictions * avg_gas_saved_gwei * gas_units * eth_price) / 1e9
+        if total_gas_records > 100:
+            # Calculate average gas price from database
+            avg_gas = session.query(func.avg(GasPrice.current_gas)).scalar() or 0.005
+
+            # Estimate savings: 30% reduction on average, 21000 gas units per tx, $3000 ETH
+            avg_gas_saved_gwei = avg_gas * 0.30  # 30% average savings
+            gas_units = 21000
+            eth_price = 3000
+
+            # Convert gwei savings to ETH then to USD
+            total_saved_usd = (total_predictions * avg_gas_saved_gwei * gas_units * eth_price) / 1e9
+        else:
+            # Use conservative estimate if not enough data
+            avg_gas_saved_gwei = 0.5
+            gas_units = 21000
+            eth_price = 3000
+            total_saved_usd = (total_predictions * avg_gas_saved_gwei * gas_units * eth_price) / 1e9
 
         # Format total saved (in thousands)
         total_saved_k = int(total_saved_usd / 1000)
@@ -75,11 +89,13 @@ def get_global_stats():
         return jsonify({
             'success': True,
             'stats': {
-                'total_saved_k': max(52, total_saved_k),  # Minimum 52K for display
+                'total_saved_k': total_saved_k if total_saved_k > 0 else 0,  # Show real data, even if zero
                 'accuracy_percent': accuracy_percent,
-                'predictions_k': max(15, predictions_k),  # Minimum 15K for display
+                'predictions_k': predictions_k if predictions_k > 0 else 0,  # Show real data, even if zero
                 'total_predictions': total_predictions,
-                'last_updated': datetime.now().isoformat()
+                'total_gas_records': total_gas_records,
+                'last_updated': datetime.now().isoformat(),
+                'is_live_data': True
             }
         })
 

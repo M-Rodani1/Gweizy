@@ -211,7 +211,7 @@ export async function fetchLeaderboard(): Promise<any> {
 }
 
 /**
- * Fetch global statistics for landing page
+ * Fetch global statistics for landing page - LIVE DATA
  */
 export async function fetchGlobalStats(): Promise<any> {
   try {
@@ -221,28 +221,13 @@ export async function fetchGlobalStats(): Promise<any> {
     });
 
     if (!response.ok) {
-      console.warn(`Stats API returned ${response.status}, using fallback`);
-      return {
-        success: true,
-        stats: {
-          total_saved_k: 52,
-          accuracy_percent: 82,
-          predictions_k: 15
-        }
-      };
+      throw new GasAPIError(`Failed to fetch stats: ${response.statusText}`, response.status);
     }
 
     return await response.json();
   } catch (error) {
-    console.warn('Stats API failed, using fallback:', error);
-    return {
-      success: true,
-      stats: {
-        total_saved_k: 52,
-        accuracy_percent: 82,
-        predictions_k: 15
-      }
-    };
+    if (error instanceof GasAPIError) throw error;
+    throw new GasAPIError('Network error fetching stats');
   }
 }
 

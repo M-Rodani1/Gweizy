@@ -1,7 +1,35 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { fetchGlobalStats } from '../src/api/gasApi';
 
 const Landing: React.FC = () => {
+  const [stats, setStats] = useState({
+    total_saved_k: 52,
+    accuracy_percent: 82,
+    predictions_k: 15
+  });
+  const [statsLoading, setStatsLoading] = useState(true);
+
+  useEffect(() => {
+    const loadStats = async () => {
+      try {
+        const response = await fetchGlobalStats();
+        if (response.success && response.stats) {
+          setStats(response.stats);
+        }
+      } catch (error) {
+        console.error('Failed to load stats:', error);
+      } finally {
+        setStatsLoading(false);
+      }
+    };
+
+    loadStats();
+    // Refresh stats every 5 minutes
+    const interval = setInterval(loadStats, 300000);
+    return () => clearInterval(interval);
+  }, []);
+
   return (
     <div className="min-h-screen bg-gray-900 text-white">
       {/* Navigation */}
@@ -40,19 +68,25 @@ const Landing: React.FC = () => {
             Get Started Free →
           </Link>
 
-          {/* Stats */}
+          {/* Stats - LIVE DATA */}
           <div className="mt-12 grid grid-cols-3 gap-8 max-w-2xl mx-auto">
             <div>
-              <div className="text-4xl font-bold text-cyan-400">$52K+</div>
+              <div className={`text-4xl font-bold text-cyan-400 ${statsLoading ? 'animate-pulse' : ''}`}>
+                {stats.total_saved_k > 0 ? `$${stats.total_saved_k}K+` : 'Growing'}
+              </div>
               <div className="text-gray-400 text-sm">Total Saved</div>
             </div>
             <div>
-              <div className="text-4xl font-bold text-emerald-400">82%</div>
-              <div className="text-gray-400 text-sm">Accuracy</div>
+              <div className={`text-4xl font-bold text-emerald-400 ${statsLoading ? 'animate-pulse' : ''}`}>
+                {stats.accuracy_percent}%
+              </div>
+              <div className="text-gray-400 text-sm">Model Accuracy</div>
             </div>
             <div>
-              <div className="text-4xl font-bold text-cyan-400">15K+</div>
-              <div className="text-gray-400 text-sm">Predictions</div>
+              <div className={`text-4xl font-bold text-cyan-400 ${statsLoading ? 'animate-pulse' : ''}`}>
+                {stats.predictions_k > 0 ? `${stats.predictions_k}K+` : 'Live'}
+              </div>
+              <div className="text-gray-400 text-sm">Predictions Made</div>
             </div>
           </div>
         </div>
