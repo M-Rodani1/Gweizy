@@ -22,21 +22,12 @@ def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
     
-    # CORS configuration
+    # CORS configuration - Allow all origins for now
     CORS(app, resources={
         r"/api/*": {
-            "origins": [
-                "http://localhost:3000",
-                "http://localhost:5173",
-                "http://localhost:3001",
-                "https://*.vercel.app",
-                "https://*.netlify.app",
-                "https://basegasfeesml.netlify.app",
-                "https://basegasfeesoptimiser.netlify.app",
-                os.getenv('FRONTEND_URL', '*')
-            ],
+            "origins": "*",
             "methods": ["GET", "POST", "OPTIONS"],
-            "allow_headers": ["Content-Type"]
+            "allow_headers": ["Content-Type", "Authorization"]
         },
         r"/config.json": {
             "origins": ["*"],  # Allow all origins for Base platform
