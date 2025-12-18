@@ -16,6 +16,9 @@ from api.middleware import limiter, error_handlers, log_request
 from config import Config
 from utils.logger import logger
 import os
+import threading
+from services.gas_collector_service import GasCollectorService
+from services.onchain_collector_service import OnChainCollectorService
 
 
 def create_app():
@@ -96,7 +99,46 @@ def create_app():
     logger.info("Base Gas Optimizer API started")
     logger.info(f"Debug mode: {Config.DEBUG}")
     logger.info(f"Port: {Config.PORT}")
-    
+
+    # Start background data collection
+    def start_data_collection():
+        """Start data collection in background threads"""
+        try:
+            logger.info("="*60)
+            logger.info("STARTING BACKGROUND DATA COLLECTION")
+            logger.info(f"Collection interval: {Config.COLLECTION_INTERVAL} seconds")
+            logger.info("="*60)
+
+            gas_service = GasCollectorService(Config.COLLECTION_INTERVAL)
+            onchain_service = OnChainCollectorService(Config.COLLECTION_INTERVAL)
+
+            # Start gas price collection
+            gas_thread = threading.Thread(
+                target=gas_service.start,
+                name="GasCollector",
+                daemon=True
+            )
+            gas_thread.start()
+            logger.info("✓ Gas price collection started")
+
+            # Start on-chain collection
+            onchain_thread = threading.Thread(
+                target=onchain_service.start,
+                name="OnChainCollector",
+                daemon=True
+            )
+            onchain_thread.start()
+            logger.info("✓ On-chain features collection started")
+
+            logger.info("="*60)
+        except Exception as e:
+            logger.error(f"Failed to start data collection: {e}")
+
+    # Start collection in background (only in production or when explicitly enabled)
+    if not Config.DEBUG or os.getenv('ENABLE_DATA_COLLECTION', 'true').lower() == 'true':
+        collection_thread = threading.Thread(target=start_data_collection, daemon=True)
+        collection_thread.start()
+
     return app
 
 
