@@ -15,6 +15,7 @@ import ValidationMetricsDashboard from '../components/ValidationMetricsDashboard
 import NetworkIntelligencePanel from '../components/NetworkIntelligencePanel';
 import ModelStatusWidget from '../components/ModelStatusWidget';
 import FarcasterWidget from '../components/FarcasterWidget';
+import SocialProof from '../components/SocialProof';
 import { GasIcon } from '../components/icons';
 import { checkHealth, fetchCurrentGas, fetchPredictions } from '../src/api/gasApi';
 import { getCurrentAccount, onAccountsChanged } from '../src/utils/wallet';
@@ -129,6 +130,9 @@ const Dashboard: React.FC = () => {
             </div>
           </div>
         </header>
+
+        {/* Social Proof Banner */}
+        <SocialProof />
 
         <main className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Farcaster Widget - Only shows when in Farcaster context */}
