@@ -27,7 +27,7 @@ jobs:
       - name: Build
         working-directory: ./frontend
         env:
-          VITE_API_URL: https://gas-fees-api.YOUR_USERNAME.workers.dev/api
+          VITE_API_URL: https://gas-fees-api.rodanl484.workers.dev/api
         run: npm run build
 
       - name: Deploy to Cloudflare Pages
@@ -35,6 +35,6 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          projectName: base-gas-optimizer
+          projectName: basegasfeesml
           directory: frontend/dist
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
