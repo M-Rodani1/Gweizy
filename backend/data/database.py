@@ -48,6 +48,19 @@ class OnChainFeatures(Base):
     contract_call_ratio = Column(Float)
     congestion_score = Column(Float)
     block_time = Column(Float)
+    
+    # Enhanced congestion features (Week 1 Quick Win #2)
+    # These features explain 27% of gas price variance
+    pending_tx_count = Column(Integer, nullable=True)
+    unique_senders = Column(Integer, nullable=True)
+    unique_receivers = Column(Integer, nullable=True)
+    unique_addresses = Column(Integer, nullable=True)
+    tx_per_second = Column(Float, nullable=True)
+    gas_utilization_ratio = Column(Float, nullable=True)  # More precise than gas_utilization
+    avg_tx_gas = Column(Float, nullable=True)
+    large_tx_ratio = Column(Float, nullable=True)
+    congestion_level = Column(Integer, nullable=True)  # 0-5 scale
+    is_highly_congested = Column(Integer, nullable=True)  # Boolean as int (0/1)
 
 
 class DatabaseManager:

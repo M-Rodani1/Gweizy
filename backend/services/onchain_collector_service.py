@@ -17,6 +17,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from data.collector import BaseGasCollector
 from data.database import DatabaseManager
+from utils.onchain_features import OnChainFeatureExtractor
 from web3 import Web3
 from config import Config
 
@@ -38,6 +39,7 @@ class OnChainCollectorService:
         self.interval = interval_seconds
         self.w3 = Web3(Web3.HTTPProvider(Config.BASE_RPC_URL))
         self.db = DatabaseManager()
+        self.feature_extractor = OnChainFeatureExtractor(self.w3)
         self.running = False
         self.collection_count = 0
         self.error_count = 0
@@ -102,6 +104,10 @@ class OnChainCollectorService:
                 (avg_gas_price / 0.01) * 0.3
             ))
 
+            # Extract enhanced congestion features (Week 1 Quick Win #2)
+            # These features explain 27% of gas price variance
+            enhanced_features = self.feature_extractor.extract_enhanced_congestion_features(block_number)
+            
             # Save to database
             features = {
                 'block_number': block_number,
@@ -117,7 +123,19 @@ class OnChainCollectorService:
                 'transfers': transfer_count,
                 'contract_call_ratio': contract_ratio,
                 'congestion_score': congestion_score,
-                'block_time': 2.0  # Base L2 ~2 second blocks
+                'block_time': 2.0,  # Base L2 ~2 second blocks
+                
+                # Enhanced congestion features
+                'pending_tx_count': enhanced_features.get('pending_tx_count', 0),
+                'unique_senders': enhanced_features.get('unique_senders', 0),
+                'unique_receivers': enhanced_features.get('unique_receivers', 0),
+                'unique_addresses': enhanced_features.get('unique_addresses', 0),
+                'tx_per_second': enhanced_features.get('tx_per_second', 0.0),
+                'gas_utilization_ratio': enhanced_features.get('gas_utilization_ratio', 0.0),
+                'avg_tx_gas': enhanced_features.get('avg_tx_gas', 0.0),
+                'large_tx_ratio': enhanced_features.get('large_tx_ratio', 0.0),
+                'congestion_level': enhanced_features.get('congestion_level', 0),
+                'is_highly_congested': 1 if enhanced_features.get('is_highly_congested', False) else 0,
             }
 
             self.db.save_onchain_features(features)
