@@ -52,3 +52,25 @@ backend/gas_data.db
 # Presentation files (keep local only)
 BACKEND_PRESENTATION.md
 FRONTEND_PRESENTATION.md
+
+# Documentation markdown files (keep local only)
+*.md
+!README.md
+!PROJECT_STRUCTURE.md
+!HACKATHON_SUBMISSION.md
+!PITCH_PRESENTATION.md
+!DEVLOG.md
+!LIVE_DATA_SOURCES.md
+!CLOUDFLARE_SETUP.md
+!CLOUDFLARE_MANUAL_SETUP.md
+
+# PDF and LaTeX files
+*.pdf
+*.aux
+*.out
+*.tex
+*.toc
+
+# Testing documentation
+*.txt
+!requirements.txt
