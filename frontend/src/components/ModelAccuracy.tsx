@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
-import { fetchAccuracy } from '../src/api/gasApi';
+import { fetchAccuracy } from '../api/gasApi';
 import LoadingSpinner from './LoadingSpinner';
 
 interface AccuracyData {

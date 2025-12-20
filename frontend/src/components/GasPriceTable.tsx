@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { TableRowData } from '../types';
-import { fetchTransactions } from '../src/api/gasApi';
-import LoadingSpinner from './components/LoadingSpinner';
+import { fetchTransactions } from '../api/gasApi';
+import LoadingSpinner from './LoadingSpinner';
 
 const GasPriceTable: React.FC = () => {
   const [transactions, setTransactions] = useState<TableRowData[]>([]);

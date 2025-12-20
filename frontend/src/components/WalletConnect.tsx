@@ -9,7 +9,7 @@ import {
   getBaseScanAddressUrl,
   onAccountsChanged,
   onChainChanged
-} from '../src/utils/wallet';
+} from '../utils/wallet';
 
 const BASE_CHAIN_ID = 8453;
 

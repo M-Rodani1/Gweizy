@@ -3,7 +3,7 @@
  */
 
 import type { Meta, StoryObj } from '@storybook/react';
-import RelativePriceIndicator from '../components/RelativePriceIndicator';
+import RelativePriceIndicator from './RelativePriceIndicator';
 
 const meta: Meta<typeof RelativePriceIndicator> = {
   title: 'Components/RelativePriceIndicator',

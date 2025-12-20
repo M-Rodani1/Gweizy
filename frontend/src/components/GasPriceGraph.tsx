@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { GraphDataPoint } from '../types';
-import { fetchPredictions, fetchCurrentGas } from '../src/api/gasApi';
-import LoadingSpinner from './components/LoadingSpinner';
+import { fetchPredictions, fetchCurrentGas } from '../api/gasApi';
+import LoadingSpinner from './LoadingSpinner';
 
 type TimeScale = '1h' | '4h' | '24h' | 'historical';
 

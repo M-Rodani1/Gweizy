@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { fetchPredictions, fetchCurrentGas } from '../src/api/gasApi';
+import { fetchPredictions, fetchCurrentGas } from '../api/gasApi';
 import LoadingSpinner from './LoadingSpinner';
 import PredictionExplanation from './PredictionExplanation';
 

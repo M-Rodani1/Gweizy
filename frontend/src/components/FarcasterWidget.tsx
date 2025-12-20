@@ -1,5 +1,5 @@
 import React from 'react';
-import { useFarcaster } from '../src/contexts/FarcasterContext';
+import { useFarcaster } from '../contexts/FarcasterContext';
 
 const FarcasterWidget: React.FC = () => {
   const { isSDKLoaded, user, error, openUrl } = useFarcaster();

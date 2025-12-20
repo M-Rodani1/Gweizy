@@ -4,7 +4,7 @@
  */
 
 import React, { memo } from 'react';
-import RelativePriceIndicator from '../components/RelativePriceIndicator';
+import RelativePriceIndicator from './RelativePriceIndicator';
 
 interface MemoizedRelativePriceIndicatorProps {
   currentGas: number;

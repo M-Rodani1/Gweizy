@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { fetchHistoricalData } from '../src/api/gasApi';
+import { fetchHistoricalData } from '../api/gasApi';
 
 interface GasWasteCalculatorProps {
   walletAddress?: string | null;

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { fetchLeaderboard } from '../src/api/gasApi';
+import { fetchLeaderboard } from '../api/gasApi';
 
 interface LeaderboardEntry {
   address: string;

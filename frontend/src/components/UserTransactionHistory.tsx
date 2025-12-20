@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { fetchUserHistory } from '../src/api/gasApi';
+import { fetchUserHistory } from '../api/gasApi';
 import LoadingSpinner from './LoadingSpinner';
 
 interface Transaction {
