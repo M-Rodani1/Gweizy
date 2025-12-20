@@ -190,7 +190,7 @@ const ModelAccuracy: React.FC = () => {
           )}
 
           {/* Prediction vs Actual Graph */}
-          {chartData.length > 0 && (
+          {Array.isArray(chartData) && chartData.length > 0 && (
             <div className="mb-6">
               <h3 className="text-lg font-semibold text-gray-200 mb-4">
                 Prediction vs Actual (Last 24 Hours)
@@ -246,7 +246,7 @@ const ModelAccuracy: React.FC = () => {
                 <div className="text-sm text-gray-400 mb-1">Performance Over Time</div>
                 <div className="text-lg font-semibold text-gray-200">
                   Our model has been <span className="text-green-400 font-bold">
-                    {(data.directional_accuracy * 100).toFixed(0)}%
+                    {data.directional_accuracy !== undefined && data.directional_accuracy !== null ? (data.directional_accuracy * 100).toFixed(0) : 'N/A'}%
                   </span> accurate over the past week
                 </div>
               </div>

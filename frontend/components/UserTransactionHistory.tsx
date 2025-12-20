@@ -96,6 +96,9 @@ const UserTransactionHistory: React.FC<UserTransactionHistoryProps> = ({ address
 
   if (!data) return null;
 
+  // Ensure transactions is an array
+  const transactions = Array.isArray(data.transactions) ? data.transactions : [];
+
   return (
     <div className="space-y-6">
       {/* Savings Potential Card */}
@@ -111,7 +114,7 @@ const UserTransactionHistory: React.FC<UserTransactionHistoryProps> = ({ address
           </div>
           <div className="flex justify-between">
             <span className="text-gray-400">• Transactions:</span>
-            <span className="text-gray-200 font-medium">{data.total_transactions}</span>
+            <span className="text-gray-200 font-medium">{data.total_transactions || 0}</span>
           </div>
           <div className="flex justify-between">
             <span className="text-gray-400">• Total gas paid:</span>
@@ -138,8 +141,8 @@ const UserTransactionHistory: React.FC<UserTransactionHistoryProps> = ({ address
         <h3 className="text-lg font-semibold text-gray-200 mb-4">
           Your Recent Base Transactions
         </h3>
-        
-        {data.transactions.length === 0 ? (
+
+        {transactions.length === 0 ? (
           <p className="text-gray-400 text-sm">No transactions found.</p>
         ) : (
           <div className="overflow-x-auto">
@@ -154,7 +157,7 @@ const UserTransactionHistory: React.FC<UserTransactionHistoryProps> = ({ address
                 </tr>
               </thead>
               <tbody>
-                {data.transactions.map((tx) => (
+                {transactions.map((tx) => (
                   <tr key={tx.hash} className="border-b border-gray-700/50 hover:bg-gray-700/30">
                     <td className="py-2">
                       <a

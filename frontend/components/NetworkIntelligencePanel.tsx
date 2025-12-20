@@ -253,7 +253,7 @@ const NetworkIntelligencePanel: React.FC = () => {
                   <p className="text-xs text-gray-400">Contract Calls</p>
                 </div>
                 <p className="text-2xl font-bold text-white">
-                  {formatPercentage(networkState.contract_call_ratio)}
+                  {networkState.contract_call_ratio !== undefined && networkState.contract_call_ratio !== null ? formatPercentage(networkState.contract_call_ratio) : 'N/A'}
                 </p>
                 <p className="text-xs text-gray-500 mt-1">
                   of all transactions
@@ -305,7 +305,7 @@ const NetworkIntelligencePanel: React.FC = () => {
           </div>
 
           {/* 24h Congestion History */}
-          {congestionHistory && congestionHistory.timestamps.length > 0 && (
+          {congestionHistory && Array.isArray(congestionHistory.timestamps) && congestionHistory.timestamps.length > 0 && (
             <div>
               <h4 className="text-sm font-medium text-gray-400 mb-3">24-Hour Congestion Pattern</h4>
               <div className="bg-slate-700/30 rounded-lg p-4 border border-slate-600">
@@ -395,7 +395,7 @@ const NetworkIntelligencePanel: React.FC = () => {
               <li className="flex items-start gap-2">
                 <span className="text-purple-400 mt-0.5">•</span>
                 <span>
-                  {networkState.contract_call_ratio > 0.7
+                  {(networkState.contract_call_ratio !== undefined && networkState.contract_call_ratio !== null && networkState.contract_call_ratio > 0.7)
                     ? "High contract interaction - complex transactions dominate"
                     : "Balanced mix of transfers and contract calls"}
                 </span>

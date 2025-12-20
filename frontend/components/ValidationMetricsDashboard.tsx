@@ -65,10 +65,10 @@ const ValidationMetricsDashboard: React.FC = () => {
         fetch(`${API_BASE}/validation/health`)
       ]);
 
-      // Handle 503 (no data yet) gracefully
+      // Handle 503 (no data yet) gracefully - hide component instead of showing error
       if (metricsRes.status === 503 || healthRes.status === 503) {
-        setError('No validation data available yet. System is still collecting initial data.');
         setLoading(false);
+        // Don't show the component if there's no data yet
         return;
       }
 
@@ -151,6 +151,11 @@ const ValidationMetricsDashboard: React.FC = () => {
     );
   }
 
+  // Don't show the component if there's no data available yet
+  if (!summary && !loading) {
+    return null;
+  }
+
   if (error && !summary) {
     return (
       <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-xl p-6">
@@ -207,7 +212,7 @@ const ValidationMetricsDashboard: React.FC = () => {
       {isExpanded && summary && (
         <div className="p-6 space-y-6">
           {/* Health Status */}
-          {health && health.issues.length > 0 && (
+          {health && Array.isArray(health.issues) && health.issues.length > 0 && (
             <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4">
               <div className="flex items-start gap-3">
                 <AlertTriangle className="w-5 h-5 text-yellow-400 mt-0.5" />
@@ -338,7 +343,7 @@ const ValidationMetricsDashboard: React.FC = () => {
           </div>
 
           {/* Trends */}
-          {trends && trends.dates.length > 0 && (
+          {trends && Array.isArray(trends.dates) && trends.dates.length > 0 && (
             <div>
               <div className="flex items-center justify-between mb-3">
                 <h4 className="text-sm font-medium text-gray-400">Performance Trends</h4>

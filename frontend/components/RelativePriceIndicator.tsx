@@ -27,7 +27,7 @@ const RelativePriceIndicator: React.FC<RelativePriceIndicatorProps> = ({
         const response = await fetch(`${import.meta.env.VITE_API_URL || 'https://basegasfeesml.onrender.com/api'}/historical?hours=24`);
         const data = await response.json();
 
-        if (data.historical && data.historical.length > 0) {
+        if (data && data.historical && Array.isArray(data.historical) && data.historical.length > 0) {
           const currentHour = new Date().getUTCHours();
 
           // Calculate current hour average
@@ -65,7 +65,8 @@ const RelativePriceIndicator: React.FC<RelativePriceIndicatorProps> = ({
   }, []);
 
   const getPriceLevel = (current: number, avg: number): PriceLevel => {
-    const ratio = current / avg;
+    // Prevent division by zero or Infinity
+    const ratio = avg === 0 ? (current > 0 ? Infinity : 0) : current / avg;
 
     if (ratio < 0.7) {
       return {
@@ -123,8 +124,10 @@ const RelativePriceIndicator: React.FC<RelativePriceIndicatorProps> = ({
   }
 
   const status = getPriceLevel(currentGas, hourlyAverage || dayAverage);
-  const savingsVsHigh = hourlyAverage > 0 ?
-    Math.round(((hourlyAverage * 1.5 - currentGas) / (hourlyAverage * 1.5)) * 100) : 0;
+  // Prevent division by zero
+  const divisor = hourlyAverage * 1.5;
+  const savingsVsHigh = divisor > 0 ?
+    Math.round(((divisor - currentGas) / divisor) * 100) : 0;
 
   // Map colors to actual Tailwind classes
   const colorClasses = {
@@ -163,7 +166,7 @@ const RelativePriceIndicator: React.FC<RelativePriceIndicatorProps> = ({
   const colors = colorClasses[status.color as keyof typeof colorClasses] || colorClasses.yellow;
 
   return (
-    <div className={`bg-gradient-to-br from-gray-800 to-gray-900 p-4 sm:p-6 rounded-lg shadow-lg border-2 ${colors.border} ${className}`}>
+    <div className={`bg-gradient-to-br from-gray-800 to-gray-900 p-4 sm:p-6 rounded-2xl shadow-2xl border-2 ${colors.border} card-hover ${className}`}>
       {/* Status Indicator */}
       <div className="text-center mb-4">
         <div className="text-6xl sm:text-7xl mb-3 animate-pulse">

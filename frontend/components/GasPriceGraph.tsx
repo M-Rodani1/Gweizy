@@ -24,13 +24,13 @@ const GasPriceGraph: React.FC = () => {
         fetchCurrentGas()
       ]);
 
-      setCurrentGas(currentGasData.current_gas);
+      setCurrentGas(currentGasData?.current_gas || null);
 
-      // Get data for selected timeframe
-      let selectedData = predictionsResult.predictions[timeScale] || [];
+      // Get data for selected timeframe - with safe access
+      let selectedData = predictionsResult?.predictions?.[timeScale] || [];
 
       // For prediction timeframes (1h, 4h, 24h), add current gas as first point
-      if (timeScale !== 'historical' && currentGasData.current_gas) {
+      if (timeScale !== 'historical' && currentGasData?.current_gas) {
         const currentPoint: GraphDataPoint = {
           time: 'now',
           gwei: currentGasData.current_gas,
@@ -38,7 +38,7 @@ const GasPriceGraph: React.FC = () => {
         };
 
         // Get the first predicted point for this timeframe
-        if (selectedData.length > 0 && selectedData[0].predictedGwei !== undefined) {
+        if (Array.isArray(selectedData) && selectedData.length > 0 && selectedData[0]?.predictedGwei !== undefined) {
           const firstPredicted: GraphDataPoint = {
             time: selectedData[0].time,
             gwei: null,
@@ -95,9 +95,9 @@ const GasPriceGraph: React.FC = () => {
   }
 
   return (
-    <div className="bg-gray-800 p-4 sm:p-6 rounded-lg shadow-lg h-64 md:h-80 lg:h-96">
+    <div className="bg-gradient-to-br from-gray-800 to-gray-900 p-4 sm:p-6 rounded-2xl shadow-2xl border border-gray-700/50 card-hover h-64 md:h-80 lg:h-96">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-3">
-        <h2 className="text-lg sm:text-xl font-semibold text-gray-200">
+        <h2 className="text-lg sm:text-xl font-bold bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
           Gas Price Predictions - {timeScale.toUpperCase()}
         </h2>
         <div className="flex flex-wrap gap-1 bg-gray-700/50 p-1 rounded-md">

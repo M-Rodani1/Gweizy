@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 
 interface HourData {
   hour: number;
@@ -21,7 +21,7 @@ const HourlyHeatmap: React.FC<HourlyHeatmapProps> = ({ className = '' }) => {
         const response = await fetch(`${import.meta.env.VITE_API_URL || 'https://basegasfeesml.onrender.com/api'}/historical?hours=168`);
         const data = await response.json();
 
-        if (data.historical) {
+        if (data && data.historical && Array.isArray(data.historical)) {
           const hourlyMap: { [key: number]: number[] } = {};
 
           // Group by hour
@@ -94,16 +94,23 @@ const HourlyHeatmap: React.FC<HourlyHeatmapProps> = ({ className = '' }) => {
     );
   }
 
-  const minGas = hourlyData && hourlyData.length > 0
-    ? Math.min(...hourlyData.map(h => h.avgGas))
-    : 0;
-  const maxGas = hourlyData && hourlyData.length > 0
-    ? Math.max(...hourlyData.map(h => h.avgGas))
-    : 0;
+  // Memoize min/max calculations
+  const { minGas, maxGas } = useMemo(() => {
+    if (!hourlyData || hourlyData.length === 0) {
+      return { minGas: 0, maxGas: 0 };
+    }
+    return {
+      minGas: Math.min(...hourlyData.map(h => h.avgGas)),
+      maxGas: Math.max(...hourlyData.map(h => h.avgGas))
+    };
+  }, [hourlyData]);
+
   const currentHour = new Date().getUTCHours();
 
-  const getColor = (gas: number) => {
-    const normalized = (gas - minGas) / (maxGas - minGas);
+  // Memoize color calculation function
+  const getColor = useCallback((gas: number) => {
+    // Prevent division by zero
+    const normalized = maxGas === minGas ? 0 : (gas - minGas) / (maxGas - minGas);
 
     // Green (cheap) to Red (expensive) gradient
     if (normalized < 0.33) {
@@ -119,7 +126,7 @@ const HourlyHeatmap: React.FC<HourlyHeatmapProps> = ({ className = '' }) => {
       const intensity = 0.3 + (normalized - 0.67) * 2;
       return `rgba(239, 68, 68, ${intensity})`;
     }
-  };
+  }, [minGas, maxGas]);
 
   const formatHour = (hour: number) => {
     return hour.toString().padStart(2, '0');
@@ -217,14 +224,18 @@ const HourlyHeatmap: React.FC<HourlyHeatmapProps> = ({ className = '' }) => {
 
           <div className="mt-3 pt-3 border-t border-gray-600">
             <div className="text-xs text-gray-400">vs. 24h average</div>
-            <div className={`text-sm font-semibold ${
-              hourlyData[selectedHour].avgGas < (maxGas + minGas) / 2
-                ? 'text-green-400'
-                : 'text-red-400'
-            }`}>
-              {hourlyData[selectedHour].avgGas < (maxGas + minGas) / 2 ? '↓ Below' : '↑ Above'} average
-              ({Math.abs(Math.round(((hourlyData[selectedHour].avgGas - (maxGas + minGas) / 2) / ((maxGas + minGas) / 2)) * 100))}%)
-            </div>
+            {(() => {
+              const selectedData = hourlyData[selectedHour];
+              const avg = (maxGas + minGas) / 2;
+              const percentage = avg === 0 ? 0 : Math.abs(Math.round(((selectedData?.avgGas || 0) - avg) / avg * 100));
+              const isBelow = (selectedData?.avgGas || 0) < avg;
+
+              return (
+                <div className={`text-sm font-semibold ${isBelow ? 'text-green-400' : 'text-red-400'}`}>
+                  {isBelow ? '↓ Below' : '↑ Above'} average ({percentage}%)
+                </div>
+              );
+            })()}
           </div>
         </div>
       )}

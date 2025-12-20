@@ -54,6 +54,12 @@ export async function fetchLiveBaseGas(): Promise<{
     });
 
     const data = await response.json();
+
+    // Validate RPC response
+    if (!data.result || !data.result.baseFeePerGas) {
+      throw new Error('Invalid RPC response: missing block data');
+    }
+
     const block: BlockData = data.result;
 
     const baseFee = hexToGwei(block.baseFeePerGas);

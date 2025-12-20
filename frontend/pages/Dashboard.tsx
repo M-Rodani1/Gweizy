@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import OnboardingFlow from '../components/onboarding/OnboardingFlow';
+import StickyHeader from '../components/StickyHeader';
+import HeroSection from '../components/HeroSection';
 import GasPriceGraph from '../components/GasPriceGraph';
 import GasLeaderboard from '../components/GasLeaderboard';
 import GasPriceTable from '../components/GasPriceTable';
 import PredictionCards from '../components/PredictionCards';
 import SavingsCalculator from '../components/SavingsCalculator';
 import ModelAccuracy from '../components/ModelAccuracy';
-import WalletConnect from '../components/WalletConnect';
 import UserTransactionHistory from '../components/UserTransactionHistory';
 import SavingsLeaderboard from '../components/SavingsLeaderboard';
 import BestTimeWidget from '../components/BestTimeWidget';
@@ -16,8 +17,7 @@ import NetworkIntelligencePanel from '../components/NetworkIntelligencePanel';
 import ModelStatusWidget from '../components/ModelStatusWidget';
 import FarcasterWidget from '../components/FarcasterWidget';
 import SocialProof from '../components/SocialProof';
-import { GasIcon } from '../components/icons';
-import { checkHealth, fetchCurrentGas, fetchPredictions } from '../src/api/gasApi';
+import { checkHealth, fetchPredictions } from '../src/api/gasApi';
 import { getCurrentAccount, onAccountsChanged } from '../src/utils/wallet';
 import { fetchLiveBaseGas } from '../src/utils/baseRpc';
 
@@ -43,28 +43,40 @@ const Dashboard: React.FC = () => {
     const loadCalculatorData = async () => {
       try {
         // Fetch LIVE gas price from Base network RPC
-        const liveGas = await fetchLiveBaseGas();
-        setCurrentGas(liveGas.gwei);
-        console.log('🔴 LIVE Base gas price:', liveGas.gwei !== undefined && liveGas.gwei !== null ? liveGas.gwei.toFixed(4) : 'N/A', 'gwei');
+        try {
+          const liveGas = await fetchLiveBaseGas();
+          if (liveGas && liveGas.gwei !== undefined && liveGas.gwei !== null) {
+            setCurrentGas(liveGas.gwei);
+            console.log('🔴 LIVE Base gas price:', liveGas.gwei.toFixed(4), 'gwei');
+          }
+        } catch (rpcErr) {
+          console.error('RPC fetch failed, will use API fallback:', rpcErr);
+          // Continue to fetch from API
+        }
 
         // Still fetch predictions from API (if available)
-        const predictionsResult = await fetchPredictions();
+        try {
+          const predictionsResult = await fetchPredictions();
 
-        // Extract first prediction from each horizon
-        const preds: { '1h': number; '4h': number; '24h': number } = {
-          '1h': 0,
-          '4h': 0,
-          '24h': 0
-        };
+          // Extract first prediction from each horizon
+          const preds: { '1h': number; '4h': number; '24h': number } = {
+            '1h': 0,
+            '4h': 0,
+            '24h': 0
+          };
 
-        (['1h', '4h', '24h'] as const).forEach((horizon) => {
-          const horizonData = predictionsResult.predictions[horizon];
-          if (horizonData && horizonData.length > 0 && horizonData[0].predictedGwei) {
-            preds[horizon] = horizonData[0].predictedGwei;
-          }
-        });
+          (['1h', '4h', '24h'] as const).forEach((horizon) => {
+            const horizonData = predictionsResult?.predictions?.[horizon];
+            if (Array.isArray(horizonData) && horizonData.length > 0 && horizonData[0]?.predictedGwei) {
+              preds[horizon] = horizonData[0].predictedGwei;
+            }
+          });
 
-        setPredictions(preds);
+          setPredictions(preds);
+        } catch (apiErr) {
+          console.error('API predictions fetch failed:', apiErr);
+          // App continues with default predictions
+        }
       } catch (err) {
         console.error('Error loading calculator data:', err);
       }
@@ -100,41 +112,18 @@ const Dashboard: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white font-sans p-4 sm:p-6 lg:p-8 overflow-x-hidden">
-      <div className="max-w-7xl mx-auto">
-        <header className="mb-6 sm:mb-8">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div className="flex items-center space-x-3">
-              <GasIcon className="w-7 h-7 sm:w-8 sm:h-8 text-cyan-400 flex-shrink-0" />
-              <div>
-                <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-100">Base Gas Optimizer</h1>
-                <p className="text-xs sm:text-sm text-gray-400 mt-1 hidden sm:block">Know the best times to transact on Base network</p>
-              </div>
-            </div>
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-900 to-black text-white font-sans overflow-x-hidden">
+      {/* Sticky Header */}
+      <StickyHeader apiStatus={apiStatus} currentGas={currentGas} />
 
-            {/* API Status Indicator & Wallet */}
-            <div className="flex items-center justify-between sm:justify-end gap-3 sm:gap-4">
-              <div className="flex items-center space-x-2">
-                <div className={`w-2 h-2 rounded-full ${
-                  apiStatus === 'online' ? 'bg-green-500' :
-                  apiStatus === 'offline' ? 'bg-red-500' :
-                  'bg-yellow-500'
-                }`}></div>
-                <span className="text-xs sm:text-sm text-gray-400">
-                  {apiStatus === 'online' ? 'API Connected' :
-                   apiStatus === 'offline' ? 'API Offline' :
-                   'Checking...'}
-                </span>
-              </div>
-              <WalletConnect />
-            </div>
-          </div>
-        </header>
-
+      <div className="w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {/* Social Proof Banner */}
         <SocialProof />
 
-        <main className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Hero Section */}
+        <HeroSection currentGas={currentGas} predictions={predictions} />
+
+        <main className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Farcaster Widget - Only shows when in Farcaster context */}
           <div className="lg:col-span-3">
             <FarcasterWidget />
@@ -205,8 +194,13 @@ const Dashboard: React.FC = () => {
           </div>
         </main>
 
-        <footer className="mt-8 text-center text-gray-500 text-sm">
-          <p>AI-powered gas price predictions for Base network • Chain ID: 8453</p>
+        <footer className="mt-12 py-8 text-center border-t border-gray-800">
+          <p className="text-gray-400 text-sm mb-2">
+            AI-powered gas price predictions for Base network
+          </p>
+          <p className="text-gray-500 text-xs">
+            Chain ID: 8453 • Built with ML • Powered by Base
+          </p>
         </footer>
       </div>
     </div>

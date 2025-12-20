@@ -77,7 +77,7 @@ const GasPriceTable: React.FC = () => {
           </tr>
         </thead>
         <tbody>
-          {transactions.map((row, index) => (
+          {Array.isArray(transactions) && transactions.length > 0 ? transactions.map((row, index) => (
             <tr key={`${row.txHash}-${index}`} className="border-b border-gray-700 hover:bg-gray-700/50">
               <td className="p-3 font-mono text-sm text-cyan-400">{row.txHash}</td>
               <td className="p-3">
@@ -86,10 +86,10 @@ const GasPriceTable: React.FC = () => {
                 </span>
               </td>
               <td className="p-3 text-gray-300">{row.age}</td>
-              <td className="p-3 text-right text-gray-300">{row.gasUsed.toLocaleString()}</td>
-              <td className="p-3 text-right font-semibold text-teal-300">{row.gasPrice.toFixed(4)}</td>
+              <td className="p-3 text-right text-gray-300">{row.gasUsed !== undefined && row.gasUsed !== null ? row.gasUsed.toLocaleString() : 'N/A'}</td>
+              <td className="p-3 text-right font-semibold text-teal-300">{row.gasPrice !== undefined && row.gasPrice !== null ? row.gasPrice.toFixed(4) : 'N/A'}</td>
             </tr>
-          ))}
+          )) : null}
         </tbody>
       </table>
       

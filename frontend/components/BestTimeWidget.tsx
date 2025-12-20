@@ -70,10 +70,10 @@ const BestTimeWidget: React.FC<BestTimeWidgetProps> = ({ currentGas = 0 }) => {
   };
 
   return (
-    <div className="bg-gray-800 p-4 sm:p-6 rounded-lg shadow-lg">
+    <div className="bg-gradient-to-br from-gray-800 to-gray-900 p-4 sm:p-6 rounded-2xl shadow-2xl border border-gray-700/50 card-hover">
       <div className="flex items-center gap-2 mb-4">
         <span className="text-xl sm:text-2xl">⏰</span>
-        <h3 className="text-lg sm:text-xl font-bold text-gray-100">Best Times to Transact</h3>
+        <h3 className="text-lg sm:text-xl font-bold bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">Best Times to Transact</h3>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
@@ -88,9 +88,9 @@ const BestTimeWidget: React.FC<BestTimeWidgetProps> = ({ currentGas = 0 }) => {
             {bestHours && bestHours.length > 0 ? bestHours.map((h) => (
               <div key={h.hour} className="flex items-center justify-between text-xs sm:text-sm">
                 <span className="font-mono font-bold text-gray-100">{formatHour(h.hour)}</span>
-                <span className="text-gray-400">{h.avgGas !== undefined && h.avgGas !== null ? h.avgGas.toFixed(4) : 'N/A'} gwei</span>
+                <span className="text-gray-300">{h.avgGas !== undefined && h.avgGas !== null ? h.avgGas.toFixed(4) : 'N/A'} gwei</span>
               </div>
-            )) : <div className="text-xs text-gray-400">No data available</div>}
+            )) : <div className="text-xs text-gray-300">No data available</div>}
           </div>
 
           <div className="text-xs sm:text-sm text-green-300 font-semibold">
@@ -109,9 +109,9 @@ const BestTimeWidget: React.FC<BestTimeWidgetProps> = ({ currentGas = 0 }) => {
             {worstHours && worstHours.length > 0 ? worstHours.map((h) => (
               <div key={h.hour} className="flex items-center justify-between text-xs sm:text-sm">
                 <span className="font-mono font-bold text-gray-100">{formatHour(h.hour)}</span>
-                <span className="text-gray-400">{h.avgGas !== undefined && h.avgGas !== null ? h.avgGas.toFixed(4) : 'N/A'} gwei</span>
+                <span className="text-gray-300">{h.avgGas !== undefined && h.avgGas !== null ? h.avgGas.toFixed(4) : 'N/A'} gwei</span>
               </div>
-            )) : <div className="text-xs text-gray-400">No data available</div>}
+            )) : <div className="text-xs text-gray-300">No data available</div>}
           </div>
 
           <div className="text-xs sm:text-sm text-red-300 font-semibold">
@@ -133,7 +133,7 @@ const BestTimeWidget: React.FC<BestTimeWidgetProps> = ({ currentGas = 0 }) => {
               currentGas < avgGas ? 'text-green-400' :
               currentGas > avgGas * 1.2 ? 'text-red-400' : 'text-yellow-400'
             }`}>
-              {currentGas < avgGas ? '↓' : '↑'} {Math.abs(Math.round(((currentGas - avgGas) / avgGas) * 100))}%
+              {currentGas < avgGas ? '↓' : '↑'} {avgGas > 0 ? Math.abs(Math.round(((currentGas - avgGas) / avgGas) * 100)) : 0}%
             </span>
           </div>
         </div>

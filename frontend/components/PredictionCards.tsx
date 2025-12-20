@@ -36,14 +36,14 @@ const PredictionCards: React.FC = () => {
         fetchCurrentGas()
       ]);
 
-      const current = currentGasData.current_gas;
+      const current = currentGasData?.current_gas || 0;
       const newCards: PredictionCard[] = [];
 
       // First pass: collect all predictions to find the best one
       const horizonPredictions: { horizon: string; predicted: number }[] = [];
       (['1h', '4h', '24h'] as const).forEach((horizon) => {
-        const predictions = predictionsResult.predictions[horizon];
-        if (predictions && predictions.length > 0) {
+        const predictions = predictionsResult?.predictions?.[horizon];
+        if (Array.isArray(predictions) && predictions.length > 0) {
           const firstPrediction = predictions[0];
           const predicted = firstPrediction.predictedGwei || 0;
           if (predicted > 0) {
@@ -61,18 +61,19 @@ const PredictionCards: React.FC = () => {
 
       // Process each prediction horizon
       (['1h', '4h', '24h'] as const).forEach((horizon) => {
-        const predictions = predictionsResult.predictions[horizon];
-        if (predictions && predictions.length > 0) {
+        const predictions = predictionsResult?.predictions?.[horizon];
+        if (Array.isArray(predictions) && predictions.length > 0) {
           const firstPrediction = predictions[0];
-          const predicted = firstPrediction.predictedGwei || 0;
-          const lowerBound = firstPrediction.lowerBound;
-          const upperBound = firstPrediction.upperBound;
-          const confidence = firstPrediction.confidence;
-          const confidenceLevel = firstPrediction.confidenceLevel || 'medium';
-          const confidenceEmoji = firstPrediction.confidenceEmoji || '';
-          const confidenceColor = firstPrediction.confidenceColor || 'yellow';
-          
-          const changePercent = ((predicted - current) / current) * 100;
+          const predicted = firstPrediction?.predictedGwei || 0;
+          const lowerBound = firstPrediction?.lowerBound;
+          const upperBound = firstPrediction?.upperBound;
+          const confidence = firstPrediction?.confidence;
+          const confidenceLevel = firstPrediction?.confidenceLevel || 'medium';
+          const confidenceEmoji = firstPrediction?.confidenceEmoji || '';
+          const confidenceColor = firstPrediction?.confidenceColor || 'yellow';
+
+          // Prevent division by zero
+          const changePercent = current === 0 ? 0 : ((predicted - current) / current) * 100;
           
           // Check if this is the best prediction (considering confidence)
           const isBest = bestPrediction && bestPrediction.horizon === horizon && confidenceLevel === 'high';

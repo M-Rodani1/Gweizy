@@ -1,5 +1,30 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import sdk from '@farcaster/miniapp-sdk';
+
+// Safely import SDK using dynamic import - works with ES modules
+let sdk: any = null;
+let sdkLoadPromise: Promise<any> | null = null;
+
+/**
+ * Load Farcaster SDK dynamically
+ * Uses dynamic import instead of require() for ES module compatibility
+ */
+async function loadFarcasterSDK(): Promise<any> {
+  if (sdk) return sdk;
+  if (sdkLoadPromise) return sdkLoadPromise;
+  
+  sdkLoadPromise = (async () => {
+    try {
+      const module = await import('@farcaster/miniapp-sdk');
+      sdk = module.default;
+      return module.default;
+    } catch (err) {
+      console.warn('Farcaster SDK not available:', err);
+      return null;
+    }
+  })();
+  
+  return sdkLoadPromise;
+}
 
 interface FarcasterContextType {
   isSDKLoaded: boolean;
@@ -41,6 +66,17 @@ export const FarcasterProvider: React.FC<FarcasterProviderProps> = ({ children }
   useEffect(() => {
     const initFarcaster = async () => {
       try {
+        // Load SDK dynamically
+        const loadedSdk = await loadFarcasterSDK();
+        if (!loadedSdk) {
+          console.log('Farcaster SDK not loaded - features disabled');
+          setIsSDKLoaded(false);
+          return;
+        }
+        
+        // Update sdk reference
+        sdk = loadedSdk;
+
         // Check if we're in a Farcaster miniapp environment
         const isInFarcaster = window.parent !== window;
 
@@ -50,21 +86,28 @@ export const FarcasterProvider: React.FC<FarcasterProviderProps> = ({ children }
           return;
         }
 
-        // Initialize the SDK
-        await sdk.actions.ready();
+        // Wrap SDK calls in try-catch to prevent crashes
+        try {
+          // Initialize the SDK
+          await sdk.actions.ready();
 
-        // Get context
-        const farcasterContext = await sdk.context;
-        setContext(farcasterContext);
+          // Get context
+          const farcasterContext = await sdk.context;
+          setContext(farcasterContext);
 
-        // Get user info if available
-        if (farcasterContext?.user) {
-          setUser(farcasterContext.user);
-          console.log('Farcaster user:', farcasterContext.user);
+          // Get user info if available
+          if (farcasterContext?.user) {
+            setUser(farcasterContext.user);
+            console.log('Farcaster user:', farcasterContext.user);
+          }
+
+          setIsSDKLoaded(true);
+          console.log('Farcaster SDK loaded successfully');
+        } catch (sdkError) {
+          // SDK failed but don't crash the app
+          console.warn('Farcaster SDK initialization failed, continuing without SDK:', sdkError);
+          setIsSDKLoaded(false);
         }
-
-        setIsSDKLoaded(true);
-        console.log('Farcaster SDK loaded successfully');
 
       } catch (err) {
         console.error('Failed to initialize Farcaster SDK:', err);
@@ -77,7 +120,7 @@ export const FarcasterProvider: React.FC<FarcasterProviderProps> = ({ children }
   }, []);
 
   const openUrl = (url: string) => {
-    if (isSDKLoaded && sdk.actions.openUrl) {
+    if (isSDKLoaded && sdk && sdk.actions && sdk.actions.openUrl) {
       sdk.actions.openUrl(url);
     } else {
       window.open(url, '_blank');
@@ -85,7 +128,7 @@ export const FarcasterProvider: React.FC<FarcasterProviderProps> = ({ children }
   };
 
   const signMessage = async (message: string): Promise<string | null> => {
-    if (!isSDKLoaded || !sdk.actions.signMessage) {
+    if (!isSDKLoaded || !sdk || !sdk.actions || !sdk.actions.signMessage) {
       console.warn('Farcaster SDK not available for signing');
       return null;
     }

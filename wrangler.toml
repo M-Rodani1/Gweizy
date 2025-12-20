@@ -5,13 +5,12 @@ compatibility_date = "2024-01-01"
 # KV namespace for caching API responses
 [[kv_namespaces]]
 binding = "GAS_CACHE"
-id = "YOUR_KV_NAMESPACE_ID"  # Replace after creating KV namespace
+id = "c0a5b66e1c9342b286e47d709d6f9158"
 
-# Routes - Worker will handle /api/* requests
-routes = [
-  { pattern = "*/api/*", zone_name = "YOUR_DOMAIN" }  # Replace with your domain
-]
+# Cron trigger - Keep Render backend alive
+[triggers]
+crons = ["*/10 * * * *"]  # Run every 10 minutes
 
-# Environment variables (optional)
+# Environment variables
 [vars]
 BACKEND_API = "https://basegasfeesml.onrender.com/api"
