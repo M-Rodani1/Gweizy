@@ -1,7 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from '../App';
-import ErrorBoundary from '../components/ErrorBoundary';
+import ErrorBoundary from './components/ErrorBoundary';
 import { QueryProvider } from './providers/QueryProvider';
 import { ToastProvider } from './providers/ToastProvider';
 import { OfflineIndicator } from './components/OfflineIndicator';

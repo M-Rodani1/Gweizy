@@ -74,3 +74,4 @@ FRONTEND_PRESENTATION.md
 # Testing documentation
 *.txt
 !requirements.txt
+.wrangler/
