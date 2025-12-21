@@ -12,6 +12,7 @@ from api.validation_routes import validation_bp
 from api.onchain_routes import onchain_bp
 from api.retraining_routes import retraining_bp
 from api.farcaster_routes import farcaster_bp
+from api.cron_routes import cron_bp
 from api.middleware import limiter, error_handlers, log_request
 from config import Config
 from utils.logger import logger
@@ -60,6 +61,7 @@ def create_app():
     app.register_blueprint(onchain_bp, url_prefix='/api')
     app.register_blueprint(retraining_bp, url_prefix='/api')
     app.register_blueprint(farcaster_bp, url_prefix='/api')
+    app.register_blueprint(cron_bp, url_prefix='/api')
     app.register_blueprint(base_config_bp)  # No prefix - serves at root for /config.json
     
     @app.route('/')

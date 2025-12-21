@@ -174,9 +174,32 @@ export default {
     }
   },
 
-  // Scheduled event handler for keep-alive
+  // Scheduled event handler for automated maintenance
   async scheduled(event, env, ctx) {
-    ctx.waitUntil(keepRenderAlive(env, true));
+    const cronTime = new Date(event.scheduledTime);
+    const hour = cronTime.getUTCHours();
+    const minute = cronTime.getUTCMinutes();
+    const dayOfWeek = cronTime.getUTCDay();
+
+    console.log(`[CRON] Triggered at ${cronTime.toISOString()}`);
+
+    // Every 10 minutes: Keep Render backend alive
+    if (minute % 10 === 0) {
+      console.log('[CRON] Running keep-alive ping');
+      ctx.waitUntil(keepRenderAlive(env, true));
+    }
+
+    // Sunday 2 AM: Retrain models
+    if (dayOfWeek === 0 && hour === 2 && minute === 0) {
+      console.log('[CRON] Triggering weekly model retraining');
+      ctx.waitUntil(triggerModelRetraining(env));
+    }
+
+    // Every 6 hours: Health check
+    if (hour % 6 === 0 && minute === 0) {
+      console.log('[CRON] Running health check');
+      ctx.waitUntil(performHealthCheck(env));
+    }
   }
 };
 
@@ -253,5 +276,105 @@ async function logMetrics(env, metrics) {
   } catch (error) {
     // Fail silently - don't break the request
     console.error('Failed to log metrics:', error);
+  }
+}
+
+/**
+ * Trigger model retraining on backend
+ */
+async function triggerModelRetraining(env) {
+  try {
+    console.log('[RETRAIN] Calling backend retraining endpoint...');
+
+    const response = await fetch(`${BACKEND_API}/cron/retrain`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'User-Agent': 'Cloudflare-Worker-Cron/1.0',
+        'X-Cron-Trigger': 'weekly-retrain'
+      },
+      body: JSON.stringify({
+        trigger: 'scheduled',
+        timestamp: new Date().toISOString()
+      })
+    });
+
+    const result = await response.json();
+
+    if (response.ok) {
+      console.log('[RETRAIN] ✅ Success:', result);
+
+      // Store retraining result in KV
+      await env.GAS_CACHE.put('last_retrain_result', JSON.stringify({
+        timestamp: new Date().toISOString(),
+        success: true,
+        result
+      }), {
+        expirationTtl: 604800 // Keep for 7 days
+      });
+    } else {
+      console.error('[RETRAIN] ❌ Failed:', result);
+
+      // Store failure for monitoring
+      await env.GAS_CACHE.put('last_retrain_result', JSON.stringify({
+        timestamp: new Date().toISOString(),
+        success: false,
+        error: result
+      }), {
+        expirationTtl: 604800 // Keep for 7 days
+      });
+    }
+
+    return result;
+  } catch (error) {
+    console.error('[RETRAIN] Error triggering retraining:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Perform health check on models
+ */
+async function performHealthCheck(env) {
+  try {
+    console.log('[HEALTH] Running model health check...');
+
+    const response = await fetch(`${BACKEND_API}/cron/health-check`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'User-Agent': 'Cloudflare-Worker-Cron/1.0'
+      }
+    });
+
+    const health = await response.json();
+
+    console.log('[HEALTH] Result:', health.healthy ? '✅ Healthy' : '⚠️ Degraded');
+
+    if (!health.healthy) {
+      console.warn('[HEALTH] Alerts:', health.alerts);
+
+      // TODO: Send notification (email/Discord/Slack)
+      // For now, just log to KV for monitoring
+      await env.GAS_CACHE.put('health_alert', JSON.stringify({
+        timestamp: new Date().toISOString(),
+        alerts: health.alerts
+      }), {
+        expirationTtl: 86400 // Keep for 24 hours
+      });
+    }
+
+    // Store latest health check
+    await env.GAS_CACHE.put('last_health_check', JSON.stringify({
+      timestamp: new Date().toISOString(),
+      health
+    }), {
+      expirationTtl: 21600 // Keep for 6 hours
+    });
+
+    return health;
+  } catch (error) {
+    console.error('[HEALTH] Error during health check:', error);
+    return { healthy: false, error: error.message };
   }
 }
