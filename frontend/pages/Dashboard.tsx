@@ -112,66 +112,66 @@ const Dashboard: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-900 to-black text-white font-sans overflow-x-hidden">
+    <div style={{ minHeight: '100vh', background: 'var(--bg)', color: 'var(--text)' }}>
       {/* Sticky Header */}
       <StickyHeader apiStatus={apiStatus} currentGas={currentGas} />
 
-      <div className="w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <div className="container" style={{ padding: 'var(--space-lg) var(--space-xl)', paddingTop: 'var(--space-2xl)' }}>
         {/* Social Proof Banner */}
         <SocialProof />
 
         {/* Hero Section */}
         <HeroSection currentGas={currentGas} predictions={predictions} />
 
-        <main className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <main style={{ display: 'grid', gridTemplateColumns: 'repeat(12, 1fr)', gap: 'var(--space-xl)' }}>
           {/* Farcaster Widget - Only shows when in Farcaster context */}
-          <div className="lg:col-span-3">
+          <div style={{ gridColumn: 'span 12' }}>
             <FarcasterWidget />
           </div>
 
           {/* Week 1 Improvements: Relative Price Indicator + Best Time Widget */}
-          <div className="lg:col-span-1">
+          <div style={{ gridColumn: 'span 12 / span 4' }}>
             <RelativePriceIndicator currentGas={currentGas} />
           </div>
 
-          <div className="lg:col-span-2">
+          <div style={{ gridColumn: 'span 12 / span 8' }}>
             <BestTimeWidget currentGas={currentGas} />
           </div>
 
           {/* Gas Price Graph */}
-          <div className="lg:col-span-3">
+          <div style={{ gridColumn: 'span 12' }}>
             <GasPriceGraph />
           </div>
 
           {/* Prediction Cards */}
-          <div className="lg:col-span-3">
+          <div style={{ gridColumn: 'span 12' }}>
             <PredictionCards />
           </div>
 
           {/* NEW: Enterprise ML Features */}
           {/* Model Status Widget - Compact */}
-          <div className="lg:col-span-1">
+          <div style={{ gridColumn: 'span 12 / span 4' }}>
             <ModelStatusWidget />
           </div>
 
           {/* Network Intelligence Panel */}
-          <div className="lg:col-span-2">
+          <div style={{ gridColumn: 'span 12 / span 8' }}>
             <NetworkIntelligencePanel />
           </div>
 
           {/* Validation Metrics Dashboard - Full Width */}
-          <div className="lg:col-span-3">
+          <div style={{ gridColumn: 'span 12' }}>
             <ValidationMetricsDashboard />
           </div>
 
           {/* Model Accuracy Dashboard */}
-          <div className="lg:col-span-3">
+          <div style={{ gridColumn: 'span 12' }}>
             <ModelAccuracy />
           </div>
 
-          <div className="lg:col-span-1">
+          <div style={{ gridColumn: 'span 12 / span 4' }}>
             <GasLeaderboard />
-            <div className="mt-6">
+            <div style={{ marginTop: 'var(--space-lg)' }}>
               {currentGas > 0 && (
                 <SavingsCalculator
                   currentGas={currentGas}
@@ -181,24 +181,24 @@ const Dashboard: React.FC = () => {
               )}
             </div>
             {walletAddress && (
-              <div className="mt-6">
+              <div style={{ marginTop: 'var(--space-lg)' }}>
                 <UserTransactionHistory address={walletAddress} />
               </div>
             )}
           </div>
-          <div className="lg:col-span-2">
+          <div style={{ gridColumn: 'span 12 / span 8' }}>
             <GasPriceTable />
-            <div className="mt-6">
+            <div style={{ marginTop: 'var(--space-lg)' }}>
               <SavingsLeaderboard walletAddress={walletAddress} />
             </div>
           </div>
         </main>
 
-        <footer className="mt-12 py-8 text-center border-t border-gray-800">
-          <p className="text-gray-400 text-sm mb-2">
+        <footer style={{ marginTop: 'var(--space-3xl)', padding: 'var(--space-2xl) 0', textAlign: 'center', borderTop: '1px solid var(--border)' }}>
+          <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: 'var(--space-sm)' }}>
             AI-powered gas price predictions for Base network
           </p>
-          <p className="text-gray-500 text-xs">
+          <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
             Chain ID: 8453 • Built with ML • Powered by Base
           </p>
         </footer>
