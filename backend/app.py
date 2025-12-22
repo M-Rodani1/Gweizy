@@ -136,18 +136,12 @@ def create_app():
         except Exception as e:
             logger.error(f"Failed to start data collection: {e}")
 
-    # Start collection in background (only if not using separate worker process)
-    # When running with Gunicorn + worker.py, background threads are disabled
-    use_worker_process = os.getenv('USE_WORKER_PROCESS', 'false').lower() == 'true'
-
-    if not use_worker_process:
-        if not Config.DEBUG or os.getenv('ENABLE_DATA_COLLECTION', 'true').lower() == 'true':
-            logger.info("Starting data collection in background threads (no separate worker)")
-            collection_thread = threading.Thread(target=start_data_collection, daemon=True)
-            collection_thread.start()
-    else:
-        logger.info("Data collection disabled in web process (using separate worker process)")
-        logger.info("Worker process handles all data collection")
+    # Start collection in background threads
+    # Works with Gunicorn using --preload flag
+    if not Config.DEBUG or os.getenv('ENABLE_DATA_COLLECTION', 'true').lower() == 'true':
+        logger.info("Starting data collection in background threads")
+        collection_thread = threading.Thread(target=start_data_collection, daemon=True)
+        collection_thread.start()
 
     return app
 
