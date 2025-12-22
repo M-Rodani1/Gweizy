@@ -136,12 +136,18 @@ def create_app():
         except Exception as e:
             logger.error(f"Failed to start data collection: {e}")
 
-    # Start collection in background threads
-    # Works with Gunicorn using --preload flag
-    if not Config.DEBUG or os.getenv('ENABLE_DATA_COLLECTION', 'true').lower() == 'true':
-        logger.info("Starting data collection in background threads")
-        collection_thread = threading.Thread(target=start_data_collection, daemon=True)
-        collection_thread.start()
+    # Start collection in background threads (only if not using separate worker process)
+    # On Railway: Use separate worker process (worker.py)
+    # On Render/local: Use background threads
+    use_worker_process = os.getenv('USE_WORKER_PROCESS', 'false').lower() == 'true'
+
+    if not use_worker_process:
+        if not Config.DEBUG or os.getenv('ENABLE_DATA_COLLECTION', 'true').lower() == 'true':
+            logger.info("Starting data collection in background threads")
+            collection_thread = threading.Thread(target=start_data_collection, daemon=True)
+            collection_thread.start()
+    else:
+        logger.info("Skipping background threads - using separate worker process")
 
     return app
 
