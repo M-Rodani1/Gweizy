@@ -41,12 +41,17 @@ const Landing: React.FC = () => {
                 Hackathon Winner
               </span>
             </div>
-            <Link
-              to="/app"
-              className="px-6 py-2 bg-gradient-to-r from-cyan-500 to-emerald-500 text-white rounded-lg font-semibold hover:shadow-lg transition"
-            >
-              Launch App
-            </Link>
+            <div className="flex items-center gap-6">
+              <Link to="/pricing" className="text-gray-300 hover:text-white transition">
+                Pricing
+              </Link>
+              <Link
+                to="/app"
+                className="px-6 py-2 bg-gradient-to-r from-cyan-500 to-emerald-500 text-white rounded-lg font-semibold hover:shadow-lg transition"
+              >
+                Launch App
+              </Link>
+            </div>
           </div>
         </div>
       </nav>
