@@ -169,13 +169,8 @@ def model_stats():
         session = db._get_session()
 
         try:
-            # Get latest performance metrics from database
-            from sqlalchemy import desc, func
-            latest_metrics = session.query(db.ModelPerformanceMetrics)\
-                .order_by(desc(db.ModelPerformanceMetrics.timestamp))\
-                .first()
-
             # Get data collection stats
+            from sqlalchemy import func
             gas_count = session.query(func.count()).select_from(db.GasPrice).scalar()
             onchain_count = session.query(func.count()).select_from(db.OnChainFeatures).scalar()
 
@@ -190,20 +185,19 @@ def model_stats():
                 last_trained = max(os.path.getmtime(f) for f in model_files)
                 last_trained = datetime.fromtimestamp(last_trained)
 
-            # Build response
+            # Get actual model performance from prediction validator
+            # This uses real predictions vs actuals from the database
+            health_check = validator.check_model_health(threshold_mae=0.01)
+
+            # Build performance metrics from validator results
             performance = {}
             for horizon in ['1h', '4h', '24h']:
-                if latest_metrics:
-                    r2 = getattr(latest_metrics, f'r2_{horizon}', 0)
-                    mae = getattr(latest_metrics, f'mae_{horizon}', 0)
-                    dir_acc = getattr(latest_metrics, f'directional_accuracy_{horizon}', 0)
-                else:
-                    r2 = mae = dir_acc = 0
+                horizon_metrics = health_check.get('metrics', {}).get(horizon, {})
 
                 performance[horizon] = {
-                    "r2": float(r2) if r2 else 0,
-                    "mae": float(mae) if mae else 0,
-                    "directional_accuracy": float(dir_acc) if dir_acc else 0
+                    "r2": float(horizon_metrics.get('r2', 0)),
+                    "mae": float(horizon_metrics.get('mae', 0)),
+                    "directional_accuracy": float(horizon_metrics.get('directional_accuracy', 0))
                 }
 
             return jsonify({
@@ -213,7 +207,8 @@ def model_stats():
                     "onchain_features": onchain_count
                 },
                 "last_trained": last_trained.isoformat() if last_trained else None,
-                "metrics_timestamp": latest_metrics.timestamp.isoformat() if latest_metrics else None
+                "healthy": health_check.get('healthy', True),
+                "alerts": health_check.get('alerts', [])
             })
 
         finally:
