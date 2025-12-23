@@ -1,6 +1,6 @@
 """
 Main Flask Application
-Base Gas Price Prediction System
+Base Gas Price Prediction System - ML-powered gas fee predictions
 """
 
 from flask import Flask, jsonify
