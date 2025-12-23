@@ -27,48 +27,25 @@ def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
     
-    # CORS configuration - Allow all origins with regex pattern for Cloudflare Pages
-    import re
-
-    def is_allowed_origin(origin):
-        """Check if origin is allowed - matches Cloudflare Pages URLs and localhost"""
-        if not origin:
-            return False
-
-        allowed_patterns = [
-            r'^https://basegasfeesml\.pages\.dev$',  # Production
-            r'^https://[a-f0-9]+\.basegasfeesml\.pages\.dev$',  # Preview URLs
-            r'^http://localhost:\d+$',  # Local development
-            r'^.*$'  # Allow all as fallback
-        ]
-
-        for pattern in allowed_patterns:
-            if re.match(pattern, origin):
-                return True
-        return False
-
+    # CORS configuration - Allow all origins
     CORS(app,
          resources={
              r"/api/*": {
-                 "origins": is_allowed_origin,
-                 "methods": ["GET", "POST", "OPTIONS"],
-                 "allow_headers": ["Content-Type", "Authorization"],
-                 "supports_credentials": False
+                 "origins": "*",
+                 "methods": ["GET", "POST", "OPTIONS", "PUT", "DELETE"],
+                 "allow_headers": ["Content-Type", "Authorization"]
              },
              r"/config.json": {
-                 "origins": is_allowed_origin,
+                 "origins": "*",
                  "methods": ["GET", "OPTIONS"],
-                 "allow_headers": ["Content-Type"],
-                 "supports_credentials": False
+                 "allow_headers": ["Content-Type"]
              },
              r"/manifest.json": {
-                 "origins": is_allowed_origin,
+                 "origins": "*",
                  "methods": ["GET", "OPTIONS"],
-                 "allow_headers": ["Content-Type"],
-                 "supports_credentials": False
+                 "allow_headers": ["Content-Type"]
              }
-         },
-         supports_credentials=False)
+         })
     
     # Rate limiting
     limiter.init_app(app)
