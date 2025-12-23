@@ -1084,8 +1084,8 @@ def stats():
                 'stats': None
             })
         
-        gas_prices = [d.current_gas for d in data]
-        
+        gas_prices = [d.get('gwei', 0) for d in data]
+
         stats = {
             'hours': hours,
             'count': len(gas_prices),
