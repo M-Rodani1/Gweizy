@@ -109,10 +109,10 @@ def get_congestion_history():
             congestion_data = [{
                 'timestamp': f.timestamp.isoformat(),
                 'block_number': f.block_number,
-                'utilization': f.block_utilization,
+                'utilization': f.gas_utilization,
                 'tx_count': f.tx_count,
-                'base_fee': f.base_fee,
-                'congestion_level': _get_congestion_level(f.block_utilization)
+                'base_fee': f.base_fee_gwei,
+                'congestion_level': _get_congestion_level(f.gas_utilization)
             } for f in features]
 
             # Calculate summary stats
