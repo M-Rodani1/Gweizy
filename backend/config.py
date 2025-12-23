@@ -18,7 +18,10 @@ class Config:
     OWLRACLE_API_KEY = os.getenv('OWLRACLE_API_KEY', '')
     
     # Database
-    DATABASE_URL = os.getenv('DATABASE_URL', 'sqlite:///gas_data.db')
+    # Use /data for persistent storage on Railway, fallback to local for development
+    DATABASE_URL = os.getenv('DATABASE_URL',
+                            'sqlite:////data/gas_data.db' if os.path.exists('/data')
+                            else 'sqlite:///gas_data.db')
     
     # Data Collection
     COLLECTION_INTERVAL = 60  # 1 minute (changed from 300s for better spike capture)
