@@ -270,7 +270,8 @@ def trigger_simple_retraining():
         logger.info("Starting simple model retraining...")
 
         # Run the retraining script
-        script_path = "backend/scripts/retrain_models_simple.py"
+        # On Railway, working directory is /app/backend, so use relative path
+        script_path = "scripts/retrain_models_simple.py"
 
         # Execute the script and capture output
         result = subprocess.run(
