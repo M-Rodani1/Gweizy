@@ -117,7 +117,7 @@ const GasPriceGraph: React.FC = () => {
         </div>
       </div>
 
-      <ResponsiveContainer width="100%" height="85%">
+      <ResponsiveContainer width="100%" height="85%" minHeight={200}>
         <LineChart data={data} margin={{ top: 5, right: 10, left: 0, bottom: 20 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#4A5568" />
           <XAxis dataKey="time" stroke="#A0AEC0" />
