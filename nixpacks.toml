@@ -1,5 +1,7 @@
 [phases.setup]
-nixPkgs = ["python311"]
+nixPkgs = ["python313"]
 
 [phases.install]
-cmds = ["pip install -r backend/requirements.txt"]
+cmds = [
+  "pip install --no-cache-dir -r backend/requirements.txt"
+]
