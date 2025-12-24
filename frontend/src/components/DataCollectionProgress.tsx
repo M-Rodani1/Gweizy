@@ -28,7 +28,14 @@ const DataCollectionProgress: React.FC = () => {
   const fetchDataQuality = async () => {
     try {
       setError(null);
-      const response = await fetch(`${API_BASE}/retraining/check-data`);
+      // Add cache-busting timestamp to ensure fresh data
+      const response = await fetch(`${API_BASE}/retraining/check-data?t=${Date.now()}`, {
+        cache: 'no-cache',
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
+      });
 
       if (!response.ok) {
         throw new Error('Failed to fetch data quality');
