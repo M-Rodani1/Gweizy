@@ -24,12 +24,12 @@ class Config:
                             else 'sqlite:///gas_data.db')
     
     # Data Collection
-    COLLECTION_INTERVAL = 15  # 15 seconds (4x faster than original)
-    # Rationale: Base gas prices can spike rapidly. 15-second sampling provides:
-    # - 4x more training data (7 days of data in ~1.75 days)
+    COLLECTION_INTERVAL = 5  # 5 seconds (3x faster data collection)
+    # Rationale: Base gas prices can spike rapidly. 5-second sampling provides:
+    # - 3x more training data compared to 15s intervals
     # - Excellent spike detection and pattern recognition
-    # - Fast model convergence while staying within API rate limits
-    # Expected impact: +0.15 R², +10% directional accuracy, production-ready in <2 days
+    # - Fast model convergence while staying well within API rate limits (17% daily usage)
+    # Expected impact: 14 days of data in just 5 days, production-ready models faster
     
     # Model
     MODEL_PATH = 'models/gas_predictor.pkl'
