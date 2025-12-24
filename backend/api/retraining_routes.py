@@ -229,8 +229,8 @@ def check_training_data():
             else:
                 date_range_days = 0
 
-            # Recommended: At least 6 months of data
-            recommended_days = 180
+            # Recommended: At least 30 days of data for quality predictions
+            recommended_days = 30
             sufficient = date_range_days >= recommended_days
 
             return jsonify({
