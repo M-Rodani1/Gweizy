@@ -15,6 +15,7 @@ import RelativePriceIndicator from '../src/components/RelativePriceIndicator';
 import ValidationMetricsDashboard from '../src/components/ValidationMetricsDashboard';
 import NetworkIntelligencePanel from '../src/components/NetworkIntelligencePanel';
 import ModelStatusWidget from '../src/components/ModelStatusWidget';
+import DataCollectionProgress from '../src/components/DataCollectionProgress';
 import FarcasterWidget from '../src/components/FarcasterWidget';
 import SocialProof from '../src/components/SocialProof';
 import { checkHealth, fetchPredictions } from '../src/api/gasApi';
@@ -146,6 +147,11 @@ const Dashboard: React.FC = () => {
           {/* Prediction Cards */}
           <div style={{ gridColumn: 'span 12' }}>
             <PredictionCards />
+          </div>
+
+          {/* Data Collection Progress */}
+          <div style={{ gridColumn: 'span 12' }}>
+            <DataCollectionProgress />
           </div>
 
           {/* NEW: Enterprise ML Features */}
