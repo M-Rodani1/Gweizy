@@ -5,6 +5,9 @@ Base Gas Price Prediction System - ML-powered gas fee predictions
 
 from flask import Flask, jsonify
 from flask_cors import CORS
+from flask_socketio import SocketIO, emit
+import sentry_sdk
+from sentry_sdk.integrations.flask import FlaskIntegration
 from api.routes import api_bp
 from api.base_config import base_config_bp
 from api.stats import stats_bp
@@ -22,6 +25,18 @@ import os
 import threading
 from services.gas_collector_service import GasCollectorService
 from services.onchain_collector_service import OnChainCollectorService
+
+# Initialize Sentry for error tracking
+sentry_dsn = os.getenv('SENTRY_DSN')
+if sentry_dsn:
+    sentry_sdk.init(
+        dsn=sentry_dsn,
+        integrations=[FlaskIntegration()],
+        traces_sample_rate=0.1,  # 10% performance monitoring
+        profiles_sample_rate=0.1,
+        environment='production' if not Config.DEBUG else 'development'
+    )
+    logger.info("Sentry error tracking initialized")
 
 
 def create_app():
@@ -150,61 +165,67 @@ def create_app():
     logger.info(f"Debug mode: {Config.DEBUG}")
     logger.info(f"Port: {Config.PORT}")
 
-    # Start background data collection
-    def start_data_collection():
-        """Start data collection in background threads"""
-        try:
-            logger.info("="*60)
-            logger.info("STARTING BACKGROUND DATA COLLECTION")
-            logger.info(f"Collection interval: {Config.COLLECTION_INTERVAL} seconds")
-            logger.info("="*60)
-
-            gas_service = GasCollectorService(Config.COLLECTION_INTERVAL)
-            onchain_service = OnChainCollectorService(Config.COLLECTION_INTERVAL)
-
-            # Start gas price collection
-            gas_thread = threading.Thread(
-                target=gas_service.start,
-                name="GasCollector",
-                daemon=True
-            )
-            gas_thread.start()
-            logger.info("✓ Gas price collection started")
-
-            # Start on-chain collection
-            onchain_thread = threading.Thread(
-                target=onchain_service.start,
-                name="OnChainCollector",
-                daemon=True
-            )
-            onchain_thread.start()
-            logger.info("✓ On-chain features collection started")
-
-            logger.info("="*60)
-        except Exception as e:
-            logger.error(f"Failed to start data collection: {e}")
-
-    # Start collection in background threads (only if not using separate worker process)
-    # On Railway: Use separate worker process (worker.py)
-    # On Render/local: Use background threads
-    use_worker_process = os.getenv('USE_WORKER_PROCESS', 'false').lower() == 'true'
-
-    if not use_worker_process:
-        if not Config.DEBUG or os.getenv('ENABLE_DATA_COLLECTION', 'true').lower() == 'true':
-            logger.info("Starting data collection in background threads")
-            collection_thread = threading.Thread(target=start_data_collection, daemon=True)
-            collection_thread.start()
-    else:
-        logger.info("Skipping background threads - using separate worker process")
-
     return app
 
 
 app = create_app()
 
+# Initialize SocketIO for WebSocket support
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
+
+# Store socketio reference in app
+app.socketio = socketio
+
+# Start data collection with socketio after both are initialized
+use_worker_process = os.getenv('USE_WORKER_PROCESS', 'false').lower() == 'true'
+
+if not use_worker_process:
+    if not Config.DEBUG or os.getenv('ENABLE_DATA_COLLECTION', 'true').lower() == 'true':
+        logger.info("Starting data collection in background threads with WebSocket support")
+
+        # Import here to avoid circular dependency
+        def start_collection_with_socketio():
+            from services.gas_collector_service import GasCollectorService
+            from services.onchain_collector_service import OnChainCollectorService
+
+            logger.info("="*60)
+            logger.info("STARTING BACKGROUND DATA COLLECTION")
+            logger.info(f"Collection interval: {Config.COLLECTION_INTERVAL} seconds")
+            logger.info("="*60)
+
+            gas_service = GasCollectorService(Config.COLLECTION_INTERVAL, socketio=socketio)
+            onchain_service = OnChainCollectorService(Config.COLLECTION_INTERVAL)
+
+            gas_thread = threading.Thread(target=gas_service.start, name="GasCollector", daemon=True)
+            gas_thread.start()
+            logger.info("✓ Gas price collection started")
+
+            onchain_thread = threading.Thread(target=onchain_service.start, name="OnChainCollector", daemon=True)
+            onchain_thread.start()
+            logger.info("✓ On-chain features collection started")
+
+            logger.info("="*60)
+
+        collection_thread = threading.Thread(target=start_collection_with_socketio, daemon=True)
+        collection_thread.start()
+else:
+    logger.info("Skipping background threads - using separate worker process")
+
+@socketio.on('connect')
+def handle_connect():
+    """Handle client WebSocket connection"""
+    logger.info('Client connected to WebSocket')
+    emit('connection_established', {'message': 'Connected to gas price updates'})
+
+@socketio.on('disconnect')
+def handle_disconnect():
+    """Handle client WebSocket disconnection"""
+    logger.info('Client disconnected from WebSocket')
+
 
 if __name__ == '__main__':
-    app.run(
+    socketio.run(
+        app,
         debug=Config.DEBUG,
         port=Config.PORT,
         host='0.0.0.0'

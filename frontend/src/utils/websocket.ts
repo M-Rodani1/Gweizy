@@ -1,132 +1,84 @@
 /**
  * WebSocket utility for real-time updates
- * Provides WebSocket connection management for live gas price updates
+ * Provides Socket.IO connection management for live gas price updates
  */
 
-import { featureFlags } from './featureFlags';
+import { io, Socket } from 'socket.io-client';
 
-interface WebSocketCallbacks {
-  onMessage?: (data: any) => void;
-  onError?: (error: Event) => void;
-  onClose?: () => void;
-  onOpen?: () => void;
-}
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
-class WebSocketManager {
-  private ws: WebSocket | null = null;
-  private url: string;
-  private callbacks: WebSocketCallbacks = {};
+class WebSocketService {
+  private socket: Socket | null = null;
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 5;
-  private reconnectDelay = 1000;
-  private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  private reconnectDelay = 2000;
 
-  constructor(url: string) {
-    this.url = url;
+  connect(): Socket {
+    if (this.socket?.connected) {
+      return this.socket;
+    }
+
+    this.socket = io(API_URL, {
+      transports: ['websocket', 'polling'],
+      reconnection: true,
+      reconnectionAttempts: this.maxReconnectAttempts,
+      reconnectionDelay: this.reconnectDelay,
+    });
+
+    this.socket.on('connect', () => {
+      console.log('WebSocket connected');
+      this.reconnectAttempts = 0;
+    });
+
+    this.socket.on('disconnect', (reason) => {
+      console.log('WebSocket disconnected:', reason);
+    });
+
+    this.socket.on('connect_error', (error) => {
+      console.error('WebSocket connection error:', error);
+      this.reconnectAttempts++;
+
+      if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+        console.error('Max reconnection attempts reached');
+      }
+    });
+
+    this.socket.on('connection_established', (data) => {
+      console.log('WebSocket connection established:', data.message);
+    });
+
+    return this.socket;
   }
 
-  /**
-   * Connect to WebSocket server
-   */
-  connect(callbacks: WebSocketCallbacks = {}): void {
-    if (!featureFlags.isEnabled('WEBSOCKET_ENABLED')) {
-      console.log('WebSocket disabled by feature flag');
-      return;
-    }
-
-    if (this.ws?.readyState === WebSocket.OPEN) {
-      console.log('WebSocket already connected');
-      return;
-    }
-
-    this.callbacks = callbacks;
-
-    try {
-      this.ws = new WebSocket(this.url);
-
-      this.ws.onopen = () => {
-        console.log('WebSocket connected');
-        this.reconnectAttempts = 0;
-        this.callbacks.onOpen?.();
-      };
-
-      this.ws.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          this.callbacks.onMessage?.(data);
-        } catch (error) {
-          console.error('Failed to parse WebSocket message:', error);
-        }
-      };
-
-      this.ws.onerror = (error) => {
-        console.error('WebSocket error:', error);
-        this.callbacks.onError?.(error);
-      };
-
-      this.ws.onclose = () => {
-        console.log('WebSocket closed');
-        this.callbacks.onClose?.();
-        this.attemptReconnect();
-      };
-    } catch (error) {
-      console.error('Failed to create WebSocket:', error);
-      this.attemptReconnect();
-    }
-  }
-
-  /**
-   * Attempt to reconnect
-   */
-  private attemptReconnect(): void {
-    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-      console.error('Max reconnection attempts reached');
-      return;
-    }
-
-    this.reconnectAttempts++;
-    const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1);
-
-    console.log(`Attempting to reconnect in ${delay}ms (attempt ${this.reconnectAttempts})`);
-
-    this.reconnectTimer = setTimeout(() => {
-      this.connect(this.callbacks);
-    }, delay);
-  }
-
-  /**
-   * Send message through WebSocket
-   */
-  send(data: any): void {
-    if (this.ws?.readyState === WebSocket.OPEN) {
-      this.ws.send(JSON.stringify(data));
-    } else {
-      console.warn('WebSocket is not connected');
-    }
-  }
-
-  /**
-   * Disconnect from WebSocket server
-   */
   disconnect(): void {
-    if (this.reconnectTimer) {
-      clearTimeout(this.reconnectTimer);
-      this.reconnectTimer = null;
-    }
-
-    if (this.ws) {
-      this.ws.close();
-      this.ws = null;
+    if (this.socket) {
+      this.socket.disconnect();
+      this.socket = null;
     }
   }
 
-  /**
-   * Check if WebSocket is connected
-   */
+  on(event: string, callback: (...args: any[]) => void): void {
+    if (!this.socket) {
+      this.connect();
+    }
+    this.socket?.on(event, callback);
+  }
+
+  off(event: string, callback?: (...args: any[]) => void): void {
+    this.socket?.off(event, callback);
+  }
+
+  emit(event: string, data?: any): void {
+    if (!this.socket) {
+      this.connect();
+    }
+    this.socket?.emit(event, data);
+  }
+
   isConnected(): boolean {
-    return this.ws?.readyState === WebSocket.OPEN;
+    return this.socket?.connected ?? false;
   }
 }
 
-// Singleton instance (would need WebSocket server URL)
-// export const gasPriceWebSocket = new WebSocketManager('wss://your-websocket-server.com');
+export const websocketService = new WebSocketService();
+export default websocketService;

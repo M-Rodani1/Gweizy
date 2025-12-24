@@ -34,11 +34,12 @@ logger = logging.getLogger(__name__)
 class GasCollectorService:
     """Background service for continuous gas price collection"""
 
-    def __init__(self, interval_seconds=300, register_signals=True):
+    def __init__(self, interval_seconds=300, register_signals=True, socketio=None):
         """
         Args:
             interval_seconds: Collection interval (default 300 = 5 minutes)
             register_signals: Whether to register signal handlers (False for background threads)
+            socketio: Optional SocketIO instance for real-time updates
         """
         self.interval = interval_seconds
         self.collector = BaseGasCollector()
@@ -46,6 +47,7 @@ class GasCollectorService:
         self.running = False
         self.collection_count = 0
         self.error_count = 0
+        self.socketio = socketio
 
         # Register signal handlers for graceful shutdown (only in main thread)
         if register_signals:
@@ -88,6 +90,20 @@ class GasCollectorService:
                         f"(base: {data['base_fee']:.6f}, priority: {data['priority_fee']:.6f}) "
                         f"[{elapsed:.2f}s]"
                     )
+
+                    # Emit WebSocket update if available
+                    if self.socketio:
+                        try:
+                            self.socketio.emit('gas_price_update', {
+                                'current_gas': data['current_gas'],
+                                'base_fee': data['base_fee'],
+                                'priority_fee': data['priority_fee'],
+                                'timestamp': data.get('timestamp', datetime.now().isoformat()),
+                                'collection_count': self.collection_count
+                            })
+                            logger.debug("WebSocket update emitted")
+                        except Exception as ws_error:
+                            logger.warning(f"Failed to emit WebSocket update: {ws_error}")
 
                     # Log stats every 12 collections (1 hour)
                     if self.collection_count % 12 == 0:

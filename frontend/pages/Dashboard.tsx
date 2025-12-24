@@ -23,6 +23,8 @@ const ValidationMetricsDashboard = lazy(() => import('../src/components/Validati
 const NetworkIntelligencePanel = lazy(() => import('../src/components/NetworkIntelligencePanel'));
 const FarcasterWidget = lazy(() => import('../src/components/FarcasterWidget'));
 const SocialProof = lazy(() => import('../src/components/SocialProof'));
+const GasAlertSettings = lazy(() => import('../src/components/GasAlertSettings'));
+const TransactionCostCalculator = lazy(() => import('../src/components/TransactionCostCalculator'));
 
 // Loading component for Suspense
 const ComponentLoader = () => (
@@ -151,6 +153,20 @@ const Dashboard: React.FC = () => {
           <div style={{ gridColumn: 'span 12 / span 8' }}>
             <Suspense fallback={<ComponentLoader />}>
               <BestTimeWidget currentGas={currentGas} />
+            </Suspense>
+          </div>
+
+          {/* Transaction Cost Calculator */}
+          <div style={{ gridColumn: 'span 12 / span 6' }}>
+            <Suspense fallback={<ComponentLoader />}>
+              <TransactionCostCalculator currentGas={currentGas} ethPrice={3000} />
+            </Suspense>
+          </div>
+
+          {/* Gas Price Alerts */}
+          <div style={{ gridColumn: 'span 12 / span 6' }}>
+            <Suspense fallback={<ComponentLoader />}>
+              <GasAlertSettings currentGas={currentGas} />
             </Suspense>
           </div>
 
