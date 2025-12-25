@@ -28,6 +28,7 @@ const SocialProof = lazy(() => import('../src/components/SocialProof'));
 const GasAlertSettings = lazy(() => import('../src/components/GasAlertSettings'));
 const TransactionCostCalculator = lazy(() => import('../src/components/TransactionCostCalculator'));
 const GasPatternHeatmap = lazy(() => import('../src/components/GasPatternHeatmap'));
+const TransactionQueue = lazy(() => import('../src/components/TransactionQueue'));
 
 const Dashboard: React.FC = () => {
   const [showOnboarding, setShowOnboarding] = useState(
@@ -159,6 +160,11 @@ const Dashboard: React.FC = () => {
           {/* Gas Price Alerts */}
           <LazySection style={{ gridColumn: 'span 12 / span 6' }} rootMargin="200px">
             <GasAlertSettings currentGas={currentGas} />
+          </LazySection>
+
+          {/* Transaction Queue */}
+          <LazySection style={{ gridColumn: 'span 12' }} rootMargin="200px">
+            <TransactionQueue currentGas={currentGas} ethPrice={ethPrice} />
           </LazySection>
 
           {/* Gas Price Graph */}
