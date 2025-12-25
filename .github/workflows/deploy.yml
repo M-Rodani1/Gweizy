@@ -27,7 +27,7 @@ jobs:
       working-directory: ./frontend
       run: npm run build
       env:
-        VITE_API_URL: ${{ secrets.VITE_API_URL || 'https://basegasfeesml-production.up.railway.app' }}
+        VITE_API_URL: ${{ secrets.VITE_API_URL || 'https://basegasfeesml-production.up.railway.app/api' }}
 
     - name: Deploy to Cloudflare Pages
       uses: cloudflare/wrangler-action@v3
