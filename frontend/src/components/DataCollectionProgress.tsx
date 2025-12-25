@@ -150,7 +150,7 @@ const DataCollectionProgress: React.FC = () => {
         </div>
 
         {/* Enhanced Progress Bar with Segments */}
-        <div className="relative">
+        <div className="relative pb-6">
           <div className="w-full bg-slate-700/50 rounded-full h-6 overflow-hidden shadow-inner border border-slate-600">
             <div
               className={`h-full ${getProgressColor()} transition-all duration-700 ease-out relative overflow-hidden`}
@@ -173,26 +173,36 @@ const DataCollectionProgress: React.FC = () => {
           </div>
 
           {/* Milestone markers */}
-          <div className="absolute top-0 w-full h-6 flex justify-between items-center pointer-events-none">
+          <div className="absolute top-0 left-0 w-full h-6 pointer-events-none">
             {[0, 25, 50, 75, 100].map((milestone) => (
               <div
                 key={milestone}
-                className="relative"
+                className="absolute top-0 h-6"
                 style={{ left: `${milestone}%`, transform: 'translateX(-50%)' }}
               >
-                <div className={`w-0.5 h-6 ${dataQuality.progress_percent >= milestone ? 'bg-white/40' : 'bg-slate-500/40'}`}></div>
-                <div className={`absolute -bottom-5 left-1/2 -translate-x-1/2 text-xs font-medium ${
-                  dataQuality.progress_percent >= milestone ? 'text-white' : 'text-gray-500'
-                }`}>
-                  {milestone}%
-                </div>
+                <div className={`w-px h-full ${dataQuality.progress_percent >= milestone ? 'bg-white/30' : 'bg-slate-500/30'}`}></div>
+              </div>
+            ))}
+          </div>
+
+          {/* Milestone labels below the bar */}
+          <div className="absolute top-8 left-0 w-full flex justify-between pointer-events-none">
+            {[0, 25, 50, 75, 100].map((milestone) => (
+              <div
+                key={milestone}
+                className={`text-xs font-medium transition-colors ${
+                  dataQuality.progress_percent >= milestone ? 'text-cyan-400' : 'text-gray-600'
+                }`}
+                style={{ width: '30px', marginLeft: milestone === 0 ? '0' : '-15px', textAlign: 'center' }}
+              >
+                {milestone}%
               </div>
             ))}
           </div>
         </div>
 
         {/* Days progress indicator */}
-        <div className="mt-8 flex justify-between text-xs">
+        <div className="mt-2 flex justify-between text-xs">
           <div className="text-gray-400">
             Started: {formatDate(dataQuality.oldest_timestamp).split(' ')[0]}
           </div>
