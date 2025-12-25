@@ -17,21 +17,24 @@ jobs:
       with:
         node-version: '20'
         cache: 'npm'
+        cache-dependency-path: 'frontend/package-lock.json'
 
     - name: Install dependencies
+      working-directory: ./frontend
       run: npm ci
 
     - name: Build
+      working-directory: ./frontend
       run: npm run build
       env:
-        VITE_API_URL: ${{ secrets.VITE_API_URL }}
+        VITE_API_URL: ${{ secrets.VITE_API_URL || 'https://basegasfeesml-production.up.railway.app' }}
 
     - name: Deploy to Cloudflare Pages
       uses: cloudflare/wrangler-action@v3
       with:
         apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        command: pages deploy dist --project-name=basegasfeesml
+        command: pages deploy frontend/dist --project-name=basegasfeesml
 
   deploy-backend:
     runs-on: ubuntu-latest
@@ -46,10 +49,22 @@ jobs:
         echo "Deployment will start automatically"
 
     - name: Wait for deployment
-      run: sleep 30
+      run: sleep 60
 
     - name: Health Check
       run: |
         echo "Checking backend health..."
-        curl -f https://basegasfeesml-production.up.railway.app/api/health || exit 1
-        echo "Backend is healthy!"
+        max_attempts=5
+        attempt=1
+        while [ $attempt -le $max_attempts ]; do
+          echo "Health check attempt $attempt of $max_attempts..."
+          if curl -f -s https://basegasfeesml-production.up.railway.app/api/health > /dev/null; then
+            echo "✓ Backend is healthy!"
+            exit 0
+          fi
+          echo "  Not ready yet, waiting 15 seconds..."
+          sleep 15
+          attempt=$((attempt + 1))
+        done
+        echo "✗ Backend health check failed after $max_attempts attempts"
+        exit 1
