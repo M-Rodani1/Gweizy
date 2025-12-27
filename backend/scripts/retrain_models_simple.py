@@ -17,7 +17,22 @@ from models.advanced_features import create_advanced_features
 from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
 from sklearn.preprocessing import RobustScaler
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+from sklearn.model_selection import RandomizedSearchCV, TimeSeriesSplit
 import joblib
+
+# Hyperparameter search space for RandomForest
+RF_PARAM_DISTRIBUTIONS = {
+    'n_estimators': [50, 100, 200, 300],
+    'max_depth': [10, 15, 20, 30, None],
+    'min_samples_split': [2, 5, 10, 15],
+    'min_samples_leaf': [1, 2, 4, 8],
+    'max_features': ['sqrt', 'log2', 0.5, 0.7],
+}
+
+# Whether to use hyperparameter tuning (set False for faster training)
+USE_HYPERPARAMETER_TUNING = True
+TUNING_ITERATIONS = 15  # Number of random combinations to try
+CV_FOLDS = 3  # Cross-validation folds
 
 
 def fetch_training_data(hours=720):
@@ -157,16 +172,44 @@ def train_model(X, y_tuple, horizon, min_samples=100):
     X_test_scaled = scaler.transform(X_test)
 
     # Train Random Forest model on log-scale targets
-    print(f"📊 Training Random Forest (log-scale)...")
-    model = RandomForestRegressor(
-        n_estimators=100,
-        max_depth=15,
-        min_samples_split=5,
-        min_samples_leaf=2,
-        random_state=42,
-        n_jobs=-1
-    )
-    model.fit(X_train_scaled, y_log_train)
+    if USE_HYPERPARAMETER_TUNING and len(X_train) >= 1000:
+        print(f"📊 Training Random Forest with hyperparameter tuning...")
+        print(f"   Testing {TUNING_ITERATIONS} parameter combinations with {CV_FOLDS}-fold CV")
+
+        # Use TimeSeriesSplit for proper time series cross-validation
+        tscv = TimeSeriesSplit(n_splits=CV_FOLDS)
+
+        base_model = RandomForestRegressor(random_state=42, n_jobs=-1)
+
+        search = RandomizedSearchCV(
+            base_model,
+            RF_PARAM_DISTRIBUTIONS,
+            n_iter=TUNING_ITERATIONS,
+            cv=tscv,
+            scoring='neg_mean_absolute_error',
+            random_state=42,
+            n_jobs=-1,
+            verbose=0
+        )
+
+        search.fit(X_train_scaled, y_log_train)
+        model = search.best_estimator_
+
+        print(f"   Best parameters found:")
+        for param, value in search.best_params_.items():
+            print(f"     {param}: {value}")
+        print(f"   Best CV MAE: {-search.best_score_:.6f}")
+    else:
+        print(f"📊 Training Random Forest (log-scale)...")
+        model = RandomForestRegressor(
+            n_estimators=100,
+            max_depth=15,
+            min_samples_split=5,
+            min_samples_leaf=2,
+            random_state=42,
+            n_jobs=-1
+        )
+        model.fit(X_train_scaled, y_log_train)
 
     # Evaluate on log scale
     y_log_pred = model.predict(X_test_scaled)
@@ -204,11 +247,26 @@ def train_model(X, y_tuple, horizon, min_samples=100):
     print(f"   Median Actual: {median_actual:.6f} gwei")
     print(f"   Median Predicted: {median_pred:.6f} gwei")
 
+    # Feature importance analysis
+    feature_names = list(X_clean.columns)
+    importances = model.feature_importances_
+    indices = np.argsort(importances)[::-1]
+
+    print(f"\n📈 Top 10 Most Important Features:")
+    for i in range(min(10, len(feature_names))):
+        idx = indices[i]
+        print(f"   {i+1}. {feature_names[idx]}: {importances[idx]:.4f}")
+
+    # Store best hyperparameters if tuning was used
+    best_params = model.get_params() if USE_HYPERPARAMETER_TUNING else None
+
     return {
         'model': model,
         'scaler': scaler,
         'feature_names': list(X_clean.columns),
         'uses_log_scale': True,  # Flag for prediction inference
+        'best_params': best_params,
+        'feature_importances': dict(zip(feature_names, importances.tolist())),
         'metrics': {
             'mae': mae,
             'rmse': rmse,
@@ -232,13 +290,16 @@ def save_model(model_data, horizon, output_dir='backend/models/saved_models'):
     filepath = os.path.join(output_dir, f'model_{horizon}.pkl')
     save_data = {
         'model': model_data['model'],
-        'model_name': 'RandomForest_LogScale',
+        'model_name': 'RandomForest_LogScale_Tuned' if USE_HYPERPARAMETER_TUNING else 'RandomForest_LogScale',
         'metrics': model_data['metrics'],
         'trained_at': datetime.now().isoformat(),
         'feature_names': model_data['feature_names'],
         'scaler_type': 'RobustScaler',
         'uses_log_scale': True,  # IMPORTANT: Predictions need exp() transformation
-        'predicts_percentage_change': False
+        'predicts_percentage_change': False,
+        'best_params': model_data.get('best_params'),
+        'feature_importances': model_data.get('feature_importances'),
+        'hyperparameter_tuning_used': USE_HYPERPARAMETER_TUNING
     }
     joblib.dump(save_data, filepath)
     print(f"💾 Saved model to {filepath}")
@@ -287,6 +348,12 @@ def main():
         print("✅ Retraining Complete!")
         print("="*70)
 
+        if USE_HYPERPARAMETER_TUNING:
+            print("\n🔧 Hyperparameter tuning was ENABLED")
+            print(f"   Tested {TUNING_ITERATIONS} combinations with {CV_FOLDS}-fold TimeSeriesSplit CV")
+        else:
+            print("\n🔧 Hyperparameter tuning was DISABLED (using defaults)")
+
         print("\n📊 Model Performance Summary:")
         for horizon, model_data in results.items():
             metrics = model_data['metrics']
@@ -299,6 +366,9 @@ def main():
             print(f"  Features: {len(model_data['feature_names'])}")
             print(f"  Median Actual: {metrics['median_actual']:.6f} gwei")
             print(f"  Median Predicted: {metrics['median_pred']:.6f} gwei")
+            if model_data.get('best_params'):
+                print(f"  Best n_estimators: {model_data['best_params'].get('n_estimators')}")
+                print(f"  Best max_depth: {model_data['best_params'].get('max_depth')}")
 
         print("\n" + "="*70)
         print("📋 Next Steps:")
