@@ -30,14 +30,8 @@ const SavingsLeaderboard: React.FC<SavingsLeaderboardProps> = ({ walletAddress }
       } catch (err) {
         console.error('Error loading leaderboard:', err);
         setError(err instanceof Error ? err.message : 'Failed to load leaderboard');
-        // Use mock data on error
-        setLeaderboard([
-          { address: '0x1234...5678', savings: 12.45, rank: 1, badge: '🥇', streak: 7 },
-          { address: '0x8765...4321', savings: 8.90, rank: 2, badge: '🥈', streak: 5 },
-          { address: '0xabcd...efgh', savings: 6.78, rank: 3, badge: '🥉', streak: 3 },
-          { address: '0x9876...5432', savings: 5.23, rank: 4, streak: 2 },
-          { address: '0xfedc...ba98', savings: 4.56, rank: 5, streak: 1 }
-        ]);
+        // Don't use mock data - show empty state instead
+        setLeaderboard([]);
       } finally {
         setLoading(false);
       }

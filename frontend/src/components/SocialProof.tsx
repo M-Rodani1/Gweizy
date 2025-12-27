@@ -1,6 +1,50 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { fetchGlobalStats } from '../api/gasApi';
 
-const SocialProof = () => {
+interface Stats {
+  total_saved_k: number;
+  accuracy_percent: number;
+  predictions_k: number;
+}
+
+const SocialProof: React.FC = () => {
+  const [stats, setStats] = useState<Stats | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadStats = async () => {
+      try {
+        const data = await fetchGlobalStats();
+        setStats({
+          total_saved_k: data.total_saved_k || 0,
+          accuracy_percent: data.accuracy_percent || 0,
+          predictions_k: data.predictions_k || 0
+        });
+      } catch (err) {
+        console.error('Failed to fetch global stats:', err);
+        // No fallback - show loading state or zeros
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadStats();
+    const interval = setInterval(loadStats, 300000); // Refresh every 5 minutes
+    return () => clearInterval(interval);
+  }, []);
+
+  const formatSaved = (value: number) => {
+    if (value >= 1000) return `$${(value / 1000).toFixed(0)}M+`;
+    if (value >= 1) return `$${value.toFixed(0)}K+`;
+    return '$0';
+  };
+
+  const formatPredictions = (value: number) => {
+    if (value >= 1000) return `${(value / 1000).toFixed(0)}M+`;
+    if (value >= 1) return `${value.toFixed(0)}K+`;
+    return '0';
+  };
+
   return (
     <div className="bg-gradient-to-r from-cyan-500/10 to-emerald-500/10 border border-cyan-500/30 rounded-lg p-4 md:p-6 mb-6">
       <div className="flex flex-col md:flex-row items-center justify-between gap-4">
@@ -22,11 +66,15 @@ const SocialProof = () => {
           </div>
         </div>
 
-        {/* Stats */}
+        {/* Stats - Live from API */}
         <div className="flex gap-6 md:gap-8">
           <div className="text-center">
             <div className="text-2xl md:text-3xl font-bold text-white">
-              $50K+
+              {loading ? (
+                <span className="animate-pulse">---</span>
+              ) : (
+                formatSaved(stats?.total_saved_k || 0)
+              )}
             </div>
             <div className="text-xs md:text-sm text-gray-400">
               Saved in Fees
@@ -34,7 +82,11 @@ const SocialProof = () => {
           </div>
           <div className="text-center">
             <div className="text-2xl md:text-3xl font-bold text-white">
-              95%
+              {loading ? (
+                <span className="animate-pulse">--</span>
+              ) : (
+                `${stats?.accuracy_percent || 0}%`
+              )}
             </div>
             <div className="text-xs md:text-sm text-gray-400">
               Accuracy
@@ -42,7 +94,11 @@ const SocialProof = () => {
           </div>
           <div className="text-center">
             <div className="text-2xl md:text-3xl font-bold text-white">
-              5K+
+              {loading ? (
+                <span className="animate-pulse">---</span>
+              ) : (
+                formatPredictions(stats?.predictions_k || 0)
+              )}
             </div>
             <div className="text-xs md:text-sm text-gray-400">
               Predictions

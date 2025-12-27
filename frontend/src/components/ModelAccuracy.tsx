@@ -21,7 +21,7 @@ const ModelAccuracy: React.FC = () => {
   const [data, setData] = useState<AccuracyData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(true);
 
   const loadData = async () => {
     try {
