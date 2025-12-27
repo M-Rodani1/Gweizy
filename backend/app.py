@@ -17,6 +17,7 @@ from api.farcaster_routes import farcaster_bp
 from api.cron_routes import cron_bp
 from api.analytics_routes import analytics_bp
 from api.alert_routes import alert_bp
+from api.agent_routes import agent_bp
 from api.middleware import limiter, error_handlers, log_request
 from config import Config
 from utils.logger import logger
@@ -84,6 +85,7 @@ def create_app():
     app.register_blueprint(cron_bp, url_prefix='/api')
     app.register_blueprint(analytics_bp, url_prefix='/api/analytics')
     app.register_blueprint(alert_bp, url_prefix='/api')
+    app.register_blueprint(agent_bp, url_prefix='/api')
     app.register_blueprint(base_config_bp)  # No prefix - serves at root for /config.json
     
     # Add HTTP caching headers
@@ -159,6 +161,12 @@ def create_app():
                     'model_health': '/api/analytics/model-health',
                     'collection_stats': '/api/analytics/collection-stats',
                     'recent_predictions': '/api/analytics/recent-predictions'
+                },
+                'agent': {
+                    'recommend': '/api/agent/recommend (GET/POST)',
+                    'status': '/api/agent/status',
+                    'actions': '/api/agent/actions',
+                    'simulate': '/api/agent/simulate (POST)'
                 }
             }
         })
