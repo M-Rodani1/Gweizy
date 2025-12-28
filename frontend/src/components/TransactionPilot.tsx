@@ -37,7 +37,7 @@ const TransactionPilot: React.FC<TransactionPilotProps> = ({ ethPrice = 3000 }) 
   const [countdown, setCountdown] = useState<number | null>(null);
   const [showScheduleModal, setShowScheduleModal] = useState(false);
 
-  const API_URL = import.meta.env.VITE_API_URL || 'https://basegasfeesml-production.up.railway.app';
+  const API_URL = import.meta.env.VITE_API_URL || 'https://basegasfeesml-production.up.railway.app/api';
 
   const currentGas = multiChainGas[selectedChain.id]?.gasPrice || 0;
   const gasUnits = TX_GAS_ESTIMATES[selectedTxType];
@@ -48,7 +48,7 @@ const TransactionPilot: React.FC<TransactionPilotProps> = ({ ethPrice = 3000 }) 
     try {
       setLoading(true);
       setError(null);
-      const response = await fetch(`${API_URL}/api/agent/recommend?urgency=${urgency}`, {
+      const response = await fetch(`${API_URL}/agent/recommend?urgency=${urgency}`, {
         signal: AbortSignal.timeout(10000) // 10 second timeout
       });
       const data = await response.json();
