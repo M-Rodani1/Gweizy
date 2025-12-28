@@ -1,6 +1,4 @@
-const CACHE_NAME = 'base-gas-optimizer-v1';
-const API_CACHE_NAME = 'base-gas-api-v1';
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+const CACHE_NAME = 'base-gas-optimizer-v2';
 
 const STATIC_ASSETS = [
   '/',
@@ -8,23 +6,28 @@ const STATIC_ASSETS = [
   '/logo.svg'
 ];
 
-// Install event - cache static assets
+// Install event - cache static assets and clear old API cache
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(STATIC_ASSETS);
-    })
+    Promise.all([
+      caches.open(CACHE_NAME).then((cache) => {
+        return cache.addAll(STATIC_ASSETS);
+      }),
+      // Clear any old API caches to avoid CORS issues
+      caches.delete('base-gas-api-v1')
+    ])
   );
   self.skipWaiting();
 });
 
-// Activate event - clean up old caches
+// Activate event - clean up ALL old caches
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames.map((cacheName) => {
-          if (cacheName !== CACHE_NAME && cacheName !== API_CACHE_NAME) {
+          // Only keep the current cache version
+          if (cacheName !== CACHE_NAME) {
             return caches.delete(cacheName);
           }
         })
@@ -34,7 +37,7 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// Fetch event - network-first strategy for API, cache-first for static assets
+// Fetch event - network-only for API, cache-first for static assets
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
@@ -44,34 +47,9 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // API requests - network-first with stale-while-revalidate
-  if (url.pathname.includes('/api/')) {
-    event.respondWith(
-      caches.open(API_CACHE_NAME).then(async (cache) => {
-        try {
-          const response = await fetch(request);
-          if (response.ok) {
-            // Clone and cache the fresh response
-            cache.put(request, response.clone());
-          }
-          return response;
-        } catch (error) {
-          // Network failed, try cache
-          const cachedResponse = await cache.match(request);
-          if (cachedResponse) {
-            const cachedDate = new Date(cachedResponse.headers.get('date') || 0);
-            const now = new Date();
-
-            // Return cached response if it's still fresh enough
-            if (now - cachedDate < CACHE_DURATION) {
-              return cachedResponse;
-            }
-          }
-          // If no valid cache, throw the original error
-          throw error;
-        }
-      })
-    );
+  // API requests - always go to network, no caching (to avoid CORS issues)
+  if (url.pathname.includes('/api/') || url.hostname.includes('railway.app')) {
+    // Don't intercept - let the browser handle it directly
     return;
   }
 
