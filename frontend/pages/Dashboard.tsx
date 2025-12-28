@@ -86,6 +86,9 @@ const Dashboard: React.FC = () => {
           <p className="text-xs text-gray-600 mt-1">
             {selectedChain.name} • Chain ID: {selectedChain.id} • Powered by DQN Neural Networks
           </p>
+          <p className="text-xs text-cyan-500 mt-1">
+            v2.0 - AI Pilot Edition (Dec 28, 2025)
+          </p>
           <div className="mt-4 flex justify-center gap-4 text-xs text-gray-500">
             <a href="/analytics" className="hover:text-cyan-400 transition-colors">Analytics</a>
             <a href="/docs" className="hover:text-cyan-400 transition-colors">Docs</a>
