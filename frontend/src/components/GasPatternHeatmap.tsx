@@ -252,19 +252,36 @@ const GasPatternHeatmap: React.FC = () => {
 
           {/* Heatmap grid */}
           <div className="grid grid-cols-24 gap-0.5">
-            {data.hourly.map((hour) => (
-              <div
-                key={hour.hour}
-                className={`h-10 rounded-sm ${getHeatColor(hour.avg_gwei, hourlyMin, hourlyMax)} cursor-pointer transition-transform hover:scale-110 relative group`}
-                title={`${formatHour(hour.hour)}: ${hour.avg_gwei.toFixed(6)} gwei avg`}
-              >
-                {/* Tooltip */}
-                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-slate-900 border border-slate-600 rounded text-xs text-white whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none">
-                  <div className="font-medium">{formatHour(hour.hour)}</div>
-                  <div className="text-gray-400">Avg: {hour.avg_gwei.toFixed(6)} gwei</div>
+            {data.hourly.map((hour, index) => {
+              const currentHour = new Date().getHours();
+              const isCurrentHour = hour.hour === currentHour;
+
+              return (
+                <div
+                  key={hour.hour}
+                  className={`
+                    h-10 rounded-sm ${getHeatColor(hour.avg_gwei, hourlyMin, hourlyMax)}
+                    cursor-pointer transition-transform hover:scale-110 relative group
+                    heatmap-cell ${isCurrentHour ? 'current-hour-marker ring-2 ring-cyan-400 ring-offset-1 ring-offset-slate-800' : ''}
+                  `}
+                  style={{ animationDelay: `${index * 30}ms` }}
+                  title={`${formatHour(hour.hour)}: ${hour.avg_gwei.toFixed(6)} gwei avg`}
+                >
+                  {/* Current hour indicator */}
+                  {isCurrentHour && (
+                    <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-cyan-400 rounded-full animate-pulse" />
+                  )}
+                  {/* Tooltip */}
+                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-slate-900 border border-slate-600 rounded text-xs text-white whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none">
+                    <div className="font-medium flex items-center gap-1">
+                      {formatHour(hour.hour)}
+                      {isCurrentHour && <span className="text-cyan-400">(Now)</span>}
+                    </div>
+                    <div className="text-gray-400 font-mono">Avg: {hour.avg_gwei.toFixed(6)} gwei</div>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           {/* Legend */}

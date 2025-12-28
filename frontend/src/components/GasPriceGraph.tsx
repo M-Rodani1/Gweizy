@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Area, ComposedChart } from 'recharts';
 import { GraphDataPoint } from '../types';
 import { fetchPredictions, fetchCurrentGas } from '../api/gasApi';
 import LoadingSpinner from './LoadingSpinner';
@@ -118,17 +118,29 @@ const GasPriceGraph: React.FC = () => {
       </div>
 
       <ResponsiveContainer width="100%" height="85%" minHeight={200}>
-        <LineChart data={data} margin={{ top: 5, right: 10, left: 0, bottom: 20 }}>
+        <ComposedChart data={data} margin={{ top: 5, right: 10, left: 0, bottom: 20 }}>
+          <defs>
+            <linearGradient id="colorGwei" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor="#4FD1C5" stopOpacity={0.4}/>
+              <stop offset="95%" stopColor="#4FD1C5" stopOpacity={0.05}/>
+            </linearGradient>
+            <linearGradient id="colorPredicted" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor="#F6E05E" stopOpacity={0.3}/>
+              <stop offset="95%" stopColor="#F6E05E" stopOpacity={0.05}/>
+            </linearGradient>
+          </defs>
           <CartesianGrid strokeDasharray="3 3" stroke="#4A5568" />
           <XAxis dataKey="time" stroke="#A0AEC0" />
           <YAxis stroke="#A0AEC0" />
           <Tooltip
             contentStyle={{
               backgroundColor: '#1A202C',
-              borderColor: '#4A5568'
+              borderColor: '#4A5568',
+              borderRadius: '8px',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
             }}
             labelStyle={{ color: '#E2E8F0' }}
-            formatter={(value: any, name: string) => {
+            formatter={(value: any) => {
               if (value === null || value === undefined) return 'N/A';
               return `${Number(value).toFixed(4)} gwei`;
             }}
@@ -138,28 +150,32 @@ const GasPriceGraph: React.FC = () => {
             }}
           />
           <Legend wrapperStyle={{ color: '#E2E8F0', paddingTop: '20px' }} />
-          <Line
+          {/* Filled area for current price */}
+          <Area
             type="monotone"
             dataKey="gwei"
             name="Current/Actual Price"
             stroke="#4FD1C5"
             strokeWidth={3}
+            fill="url(#colorGwei)"
             dot={{ r: 6, fill: '#4FD1C5' }}
             activeDot={{ r: 8, stroke: '#81E6D9', strokeWidth: 2 }}
             connectNulls={false}
           />
-          <Line
+          {/* Filled area for predicted price */}
+          <Area
             type="monotone"
             dataKey="predictedGwei"
             name="Predicted Price"
             stroke="#F6E05E"
             strokeWidth={2}
             strokeDasharray="5 5"
+            fill="url(#colorPredicted)"
             dot={{ r: 5, fill: '#F6E05E' }}
             activeDot={{ r: 8, stroke: '#FAF089', strokeWidth: 2 }}
             connectNulls={false}
           />
-        </LineChart>
+        </ComposedChart>
       </ResponsiveContainer>
     </div>
   );

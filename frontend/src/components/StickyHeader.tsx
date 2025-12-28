@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import WalletConnect from './WalletConnect';
 import ChainSelector from './ChainSelector';
+import ThemeToggle from './ui/ThemeToggle';
 import { useChain } from '../contexts/ChainContext';
 
 interface StickyHeaderProps {
@@ -69,6 +70,9 @@ const StickyHeader: React.FC<StickyHeaderProps> = ({ apiStatus, currentGas }) =>
           <div className="flex items-center justify-between sm:justify-end gap-3 sm:gap-4">
             {/* Chain Selector */}
             <ChainSelector showGasPrices={true} compact={isScrolled} />
+
+            {/* Theme Toggle */}
+            <ThemeToggle />
 
             {/* API Status */}
             <div className="flex items-center space-x-2 px-3 py-1.5 rounded-full bg-gray-800/50 backdrop-blur-sm border border-gray-700/50">

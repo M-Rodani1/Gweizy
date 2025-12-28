@@ -1,11 +1,22 @@
 import React from 'react';
 import { useChain, useChainComparison } from '../contexts/ChainContext';
 import { TX_GAS_ESTIMATES, TransactionType } from '../config/chains';
+import Sparkline from './ui/Sparkline';
+import { formatGwei, formatUsd } from '../utils/formatNumber';
 
 interface MultiChainComparisonProps {
   txType?: TransactionType;
   ethPrice?: number;
 }
+
+// Chain gradient icon mapping
+const CHAIN_ICON_CLASS: Record<number, string> = {
+  1: 'chain-icon-eth',      // Ethereum
+  8453: 'chain-icon-base',  // Base
+  42161: 'chain-icon-arb',  // Arbitrum
+  10: 'chain-icon-op',      // Optimism
+  137: 'chain-icon-poly',   // Polygon
+};
 
 const MultiChainComparison: React.FC<MultiChainComparisonProps> = ({
   txType = 'swap',
@@ -48,33 +59,42 @@ const MultiChainComparison: React.FC<MultiChainComparisonProps> = ({
             ? ((mostExpensiveCost - costUsd) / mostExpensiveCost) * 100
             : 0;
 
+          // Generate mock sparkline data based on gas price
+          const sparklineData = Array.from({ length: 12 }, (_, i) => {
+            const basePrice = gas?.gasPrice || 0.001;
+            const variance = basePrice * 0.2;
+            return basePrice + (Math.random() - 0.5) * variance;
+          });
+
           return (
             <button
               key={chain.id}
               onClick={() => setSelectedChainId(chain.id)}
               className={`
                 w-full px-4 py-3 flex items-center justify-between
-                hover:bg-gray-700/30 transition-colors
-                ${isSelected ? 'bg-gray-700/50' : ''}
+                hover:bg-gray-700/30 transition-all card-interactive
+                ${isSelected ? 'bg-gray-700/50 ring-1 ring-cyan-500/30' : ''}
               `}
             >
               <div className="flex items-center gap-3">
-                {/* Rank */}
+                {/* Rank with gradient */}
                 <div className={`
-                  w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold
-                  ${isCheapest ? 'bg-green-500 text-white' : 'bg-gray-700 text-gray-400'}
+                  w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold
+                  ${isCheapest ? 'bg-gradient-to-br from-green-400 to-emerald-600 text-white shadow-lg shadow-green-500/30' : 'bg-gray-700 text-gray-400'}
                 `}>
                   {index + 1}
                 </div>
 
-                {/* Chain info */}
+                {/* Chain info with gradient icon */}
                 <div className="flex items-center gap-2">
-                  <span className="text-lg">{chain.icon}</span>
+                  <div className={`chain-icon ${CHAIN_ICON_CLASS[chain.id] || 'bg-gray-600'}`}>
+                    <span className="text-sm">{chain.icon}</span>
+                  </div>
                   <div className="text-left">
                     <div className="flex items-center gap-2">
                       <span className="font-medium text-white">{chain.name}</span>
                       {isCheapest && (
-                        <span className="px-1.5 py-0.5 text-xs bg-green-500/20 text-green-400 rounded">
+                        <span className="px-1.5 py-0.5 text-xs bg-green-500/20 text-green-400 rounded font-semibold">
                           Best
                         </span>
                       )}
@@ -84,28 +104,39 @@ const MultiChainComparison: React.FC<MultiChainComparisonProps> = ({
                         </span>
                       )}
                     </div>
-                    <div className="text-xs text-gray-500">
-                      {gas?.gasPrice?.toFixed(4) || '...'} gwei
+                    <div className="text-xs text-gray-400 font-mono">
+                      {formatGwei(gas?.gasPrice || 0)} gwei
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* Cost */}
-              <div className="text-right">
-                <div className="font-mono font-bold text-white">
-                  ${costUsd.toFixed(4)}
+              {/* Right side: Sparkline + Cost */}
+              <div className="flex items-center gap-3">
+                {/* Mini sparkline showing trend */}
+                <Sparkline
+                  data={sparklineData}
+                  width={48}
+                  height={20}
+                  color={isCheapest ? '#22c55e' : '#06b6d4'}
+                />
+
+                {/* Cost */}
+                <div className="text-right min-w-[70px]">
+                  <div className="font-mono font-bold text-white">
+                    {formatUsd(costUsd)}
+                  </div>
+                  {savingsPercent > 0 && !isCheapest && (
+                    <div className="text-xs text-red-400 font-mono">
+                      +{savingsPercent.toFixed(0)}% more
+                    </div>
+                  )}
+                  {isCheapest && (
+                    <div className="text-xs text-green-400 font-semibold">
+                      Cheapest
+                    </div>
+                  )}
                 </div>
-                {savingsPercent > 0 && !isCheapest && (
-                  <div className="text-xs text-red-400">
-                    +{savingsPercent.toFixed(0)}% more
-                  </div>
-                )}
-                {isCheapest && index > 0 && (
-                  <div className="text-xs text-green-400">
-                    Cheapest
-                  </div>
-                )}
               </div>
             </button>
           );

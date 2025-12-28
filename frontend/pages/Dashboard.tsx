@@ -4,6 +4,7 @@ import TransactionPilot from '../src/components/TransactionPilot';
 import MultiChainComparison from '../src/components/MultiChainComparison';
 import CompactForecast from '../src/components/CompactForecast';
 import { LazySection } from '../src/components/LazySection';
+import CollapsibleSection from '../src/components/ui/CollapsibleSection';
 import { checkHealth } from '../src/api/gasApi';
 import { useChain } from '../src/contexts/ChainContext';
 import { useEthPrice } from '../src/hooks/useEthPrice';
@@ -37,31 +38,43 @@ const Dashboard: React.FC = () => {
       {/* Header */}
       <StickyHeader apiStatus={apiStatus} currentGas={currentGas} />
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        {/* Hero: AI Transaction Pilot */}
-        <div className="mb-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Hero: AI Transaction Pilot - Sticky on scroll */}
+        <div className="mb-8 lg:sticky lg:top-20 lg:z-40">
           <TransactionPilot ethPrice={ethPrice} />
         </div>
 
         {/* Main Grid */}
-        <div className="grid grid-cols-12 gap-6">
+        <div className="grid grid-cols-12 gap-8">
           {/* Left Column: Chain Comparison + Forecast */}
-          <div className="col-span-12 lg:col-span-4 space-y-6">
+          <div className="col-span-12 lg:col-span-4 space-y-8">
             <MultiChainComparison txType="swap" ethPrice={ethPrice} />
             <CompactForecast />
           </div>
 
-          {/* Right Column: Transaction Management */}
+          {/* Right Column: Transaction Management - Collapsible */}
           <div className="col-span-12 lg:col-span-8 space-y-6">
-            {/* Scheduled Transactions */}
-            <LazySection>
-              <ScheduledTransactionsList />
-            </LazySection>
+            {/* Scheduled Transactions - Collapsible */}
+            <CollapsibleSection
+              title="Scheduled Transactions"
+              icon="📅"
+              defaultExpanded={false}
+            >
+              <LazySection>
+                <ScheduledTransactionsList />
+              </LazySection>
+            </CollapsibleSection>
 
-            {/* Gas Alerts */}
-            <LazySection>
-              <GasAlertSettings currentGas={currentGas} />
-            </LazySection>
+            {/* Gas Alerts - Collapsible */}
+            <CollapsibleSection
+              title="Gas Price Alerts"
+              icon="🔔"
+              defaultExpanded={false}
+            >
+              <LazySection>
+                <GasAlertSettings currentGas={currentGas} />
+              </LazySection>
+            </CollapsibleSection>
           </div>
 
           {/* Full Width: Charts */}
