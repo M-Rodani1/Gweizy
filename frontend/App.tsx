@@ -8,6 +8,7 @@ import Landing from './pages/Landing';
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const Docs = lazy(() => import('./pages/Docs'));
 const Pricing = lazy(() => import('./pages/Pricing'));
+const Analytics = lazy(() => import('./pages/Analytics'));
 const Terms = lazy(() => import('./pages/legal/Terms'));
 const Privacy = lazy(() => import('./pages/legal/Privacy'));
 const About = lazy(() => import('./pages/legal/About'));
@@ -20,6 +21,7 @@ function App() {
           <Routes>
             <Route path="/" element={<Landing />} />
             <Route path="/app" element={<Dashboard />} />
+            <Route path="/analytics" element={<Analytics />} />
             <Route path="/docs" element={<Docs />} />
             <Route path="/pricing" element={<Pricing />} />
             <Route path="/terms" element={<Terms />} />
