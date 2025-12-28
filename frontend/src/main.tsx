@@ -49,4 +49,4 @@ if (root) {
     </React.StrictMode>
   );
 }
-// Cache bust Sat Dec 28 13:32:00 CET 2025
+// Cache bust Sat Dec 28 14:45:00 CET 2025 - force redeploy
