@@ -270,22 +270,22 @@ class AgentService:
         action_name = self.ACTION_NAMES[action_idx]
 
         # Calculate confidence from Q-value spread
-        q_range = np.max(q_values) - np.min(q_values)
-        confidence = min(1.0, q_range / 2.0)  # Normalize to 0-1
+        q_range = float(np.max(q_values) - np.min(q_values))
+        confidence = float(min(1.0, q_range / 2.0))  # Normalize to 0-1
 
         # Build Q-values dict
         q_dict = {self.ACTION_NAMES[i]: float(q_values[i]) for i in range(4)}
 
         # Calculate recommended gas price
         if action_name == 'SUBMIT_LOW':
-            recommended_gas = current_gas * 0.9
+            recommended_gas = float(current_gas * 0.9)
         elif action_name == 'SUBMIT_HIGH':
-            recommended_gas = current_gas * 1.1
+            recommended_gas = float(current_gas * 1.1)
         else:
-            recommended_gas = current_gas
+            recommended_gas = float(current_gas)
 
         # Estimate savings
-        expected_savings = self._estimate_savings(action_name, current_gas, predictions)
+        expected_savings = float(self._estimate_savings(action_name, current_gas, predictions))
 
         # Generate reasoning
         reasoning = self._generate_reasoning(
