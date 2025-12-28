@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useChain } from '../contexts/ChainContext';
+import { useScheduler } from '../contexts/SchedulerContext';
 import { TX_GAS_ESTIMATES, TransactionType } from '../config/chains';
+import ScheduleTransactionModal from './ScheduleTransactionModal';
 
 interface AgentRecommendation {
   action: string;
@@ -26,11 +28,13 @@ const TX_TYPES: { type: TransactionType; label: string; icon: string }[] = [
 
 const TransactionPilot: React.FC<TransactionPilotProps> = ({ ethPrice = 3000 }) => {
   const { selectedChain, multiChainGas, bestChainForTx } = useChain();
+  const { pendingCount, readyCount } = useScheduler();
   const [selectedTxType, setSelectedTxType] = useState<TransactionType>('swap');
   const [urgency, setUrgency] = useState(0.5);
   const [recommendation, setRecommendation] = useState<AgentRecommendation | null>(null);
   const [loading, setLoading] = useState(true);
   const [countdown, setCountdown] = useState<number | null>(null);
+  const [showScheduleModal, setShowScheduleModal] = useState(false);
 
   const API_URL = import.meta.env.VITE_API_URL || 'https://basegasfeesml-production.up.railway.app';
 
@@ -243,11 +247,12 @@ const TransactionPilot: React.FC<TransactionPilotProps> = ({ ethPrice = 3000 }) 
               <button className={`flex-1 py-3 px-6 rounded-xl font-bold text-white transition-all ${actionConfig.buttonClass}`}>
                 {actionConfig.buttonText}
               </button>
-              {recommendation?.action === 'WAIT' && (
-                <button className="py-3 px-6 rounded-xl font-bold bg-white/10 text-white hover:bg-white/20 transition-all">
-                  Execute Anyway
-                </button>
-              )}
+              <button
+                onClick={() => setShowScheduleModal(true)}
+                className="py-3 px-6 rounded-xl font-bold bg-white/10 text-white hover:bg-white/20 transition-all"
+              >
+                Schedule
+              </button>
             </div>
           </div>
         )}
@@ -290,8 +295,24 @@ const TransactionPilot: React.FC<TransactionPilotProps> = ({ ethPrice = 3000 }) 
 
       {/* Footer */}
       <div className="px-6 py-3 bg-gray-800/50 border-t border-gray-700/30 flex items-center justify-between">
-        <div className="text-xs text-gray-500">
-          Updates every 30s • {selectedChain.name} Chain
+        <div className="flex items-center gap-3">
+          <div className="text-xs text-gray-500">
+            Updates every 30s • {selectedChain.name}
+          </div>
+          {(pendingCount > 0 || readyCount > 0) && (
+            <div className="flex items-center gap-2">
+              {pendingCount > 0 && (
+                <span className="px-2 py-0.5 text-xs bg-yellow-500/20 text-yellow-400 rounded-full">
+                  {pendingCount} scheduled
+                </span>
+              )}
+              {readyCount > 0 && (
+                <span className="px-2 py-0.5 text-xs bg-green-500/20 text-green-400 rounded-full animate-pulse">
+                  {readyCount} ready!
+                </span>
+              )}
+            </div>
+          )}
         </div>
         <button
           onClick={fetchRecommendation}
@@ -300,6 +321,14 @@ const TransactionPilot: React.FC<TransactionPilotProps> = ({ ethPrice = 3000 }) 
           Refresh
         </button>
       </div>
+
+      {/* Schedule Modal */}
+      <ScheduleTransactionModal
+        isOpen={showScheduleModal}
+        onClose={() => setShowScheduleModal(false)}
+        defaultTxType={selectedTxType}
+        suggestedTargetGas={currentGas * 0.85}
+      />
     </div>
   );
 };

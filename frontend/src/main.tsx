@@ -6,6 +6,7 @@ import ErrorBoundary from './components/ErrorBoundary';
 import { QueryProvider } from './providers/QueryProvider';
 import { ToastProvider } from './providers/ToastProvider';
 import { ChainProvider } from './contexts/ChainContext';
+import { SchedulerProvider } from './contexts/SchedulerContext';
 import { OfflineIndicator } from './components/OfflineIndicator';
 import { registerServiceWorker } from './utils/registerSW';
 import './index.css';
@@ -36,10 +37,12 @@ if (root) {
       <ErrorBoundary>
         <QueryProvider>
           <ChainProvider>
-            <ToastProvider>
-              <OfflineIndicator />
-              <App />
-            </ToastProvider>
+            <SchedulerProvider>
+              <ToastProvider>
+                <OfflineIndicator />
+                <App />
+              </ToastProvider>
+            </SchedulerProvider>
           </ChainProvider>
         </QueryProvider>
       </ErrorBoundary>

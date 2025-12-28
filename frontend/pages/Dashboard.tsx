@@ -9,7 +9,7 @@ import { useChain } from '../src/contexts/ChainContext';
 import { useEthPrice } from '../src/hooks/useEthPrice';
 
 // Lazy load secondary components
-const TransactionQueue = lazy(() => import('../src/components/TransactionQueue'));
+const ScheduledTransactionsList = lazy(() => import('../src/components/ScheduledTransactionsList'));
 const GasAlertSettings = lazy(() => import('../src/components/GasAlertSettings'));
 const GasPriceGraph = lazy(() => import('../src/components/GasPriceGraph'));
 const GasPatternHeatmap = lazy(() => import('../src/components/GasPatternHeatmap'));
@@ -53,9 +53,9 @@ const Dashboard: React.FC = () => {
 
           {/* Right Column: Transaction Management */}
           <div className="col-span-12 lg:col-span-8 space-y-6">
-            {/* Transaction Queue */}
+            {/* Scheduled Transactions */}
             <LazySection>
-              <TransactionQueue currentGas={currentGas} ethPrice={ethPrice} />
+              <ScheduledTransactionsList />
             </LazySection>
 
             {/* Gas Alerts */}
