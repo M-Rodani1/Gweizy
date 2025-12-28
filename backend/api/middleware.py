@@ -36,21 +36,38 @@ def log_request(app):
         return response
 
 
+def add_cors_headers(response):
+    """Add CORS headers to a response"""
+    response.headers['Access-Control-Allow-Origin'] = '*'
+    response.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS, PUT, DELETE'
+    response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, Cache-Control, Pragma'
+    return response
+
+
 def error_handlers(app):
     """Register error handlers"""
-    
+
     @app.errorhandler(404)
     def not_found(error):
         logger.warning(f"404 Not Found: {request.path}")
-        return jsonify({'error': 'Endpoint not found'}), 404
-    
+        response = jsonify({'error': 'Endpoint not found'})
+        return add_cors_headers(response), 404
+
     @app.errorhandler(500)
     def internal_error(error):
         logger.error(f"500 Internal Error: {str(error)}")
-        return jsonify({'error': 'Internal server error'}), 500
-    
+        response = jsonify({'error': 'Internal server error'})
+        return add_cors_headers(response), 500
+
     @app.errorhandler(429)
     def ratelimit_handler(e):
         logger.warning(f"Rate limit exceeded: {request.remote_addr}")
-        return jsonify({'error': 'Rate limit exceeded. Try again later.'}), 429
+        response = jsonify({'error': 'Rate limit exceeded. Try again later.'})
+        return add_cors_headers(response), 429
+
+    @app.errorhandler(503)
+    def service_unavailable(error):
+        logger.error(f"503 Service Unavailable: {str(error)}")
+        response = jsonify({'error': 'Service temporarily unavailable'})
+        return add_cors_headers(response), 503
 

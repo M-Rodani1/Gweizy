@@ -90,11 +90,17 @@ def create_app():
     app.register_blueprint(multichain_bp, url_prefix='/api')
     app.register_blueprint(base_config_bp)  # No prefix - serves at root for /config.json
     
-    # Add HTTP caching headers
+    # Add HTTP caching and CORS headers
     @app.after_request
-    def add_cache_headers(response):
-        """Add appropriate caching headers based on endpoint"""
+    def add_headers(response):
+        """Add caching and CORS headers to all responses"""
         from flask import request
+
+        # Always add CORS headers (belt and suspenders with flask-cors)
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        response.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS, PUT, DELETE'
+        response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, Cache-Control, Pragma'
+        response.headers['Access-Control-Max-Age'] = '3600'
 
         # Only cache GET requests
         if request.method == 'GET':
