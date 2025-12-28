@@ -67,21 +67,21 @@ const Landing: React.FC = () => {
               </div>
 
               <h1 style={{ fontSize: '3.5rem', fontWeight: 700, lineHeight: 1.1, marginBottom: 'var(--space-lg)' }}>
-                Save Up to 40% on{' '}
-                <span style={{ color: 'var(--accent)' }}>Base Gas Fees</span>
+                <span style={{ color: 'var(--accent)' }}>AI Transaction Pilot</span>{' '}
+                for Base Network
               </h1>
 
               <p style={{ fontSize: '1.25rem', color: 'var(--text-secondary)', marginBottom: 'var(--space-md)', lineHeight: 1.6 }}>
-                AI-powered predictions tell you exactly when to transact on Base
+                DQN Neural Network tells you exactly when to transact. Save up to 40% on gas fees.
               </p>
 
               <p style={{ fontSize: '1rem', color: 'var(--text-muted)', marginBottom: 'var(--space-2xl)' }}>
-                Built in 96 hours. Trusted by thousands. Backed by Coinbase.
+                Multi-chain support: Base, Ethereum, Arbitrum, Optimism, Polygon
               </p>
 
               <div style={{ display: 'flex', gap: 'var(--space-md)', flexWrap: 'wrap', marginBottom: 'var(--space-2xl)' }}>
-                <Link to="/app" className="btn btn-primary" style={{ padding: '1rem 2rem', fontSize: '1.125rem' }}>
-                  Get Started Free →
+                <Link to="/app" className="btn btn-primary" style={{ padding: '1rem 2rem', fontSize: '1.125rem', background: 'linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%)' }}>
+                  Launch AI Pilot →
                 </Link>
                 <a href="#how-it-works" className="btn btn-secondary" style={{ padding: '1rem 2rem', fontSize: '1.125rem' }}>
                   See How It Works
