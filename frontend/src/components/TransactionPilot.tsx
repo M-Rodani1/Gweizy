@@ -33,6 +33,7 @@ const TransactionPilot: React.FC<TransactionPilotProps> = ({ ethPrice = 3000 }) 
   const [urgency, setUrgency] = useState(0.5);
   const [recommendation, setRecommendation] = useState<AgentRecommendation | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [countdown, setCountdown] = useState<number | null>(null);
   const [showScheduleModal, setShowScheduleModal] = useState(false);
 
@@ -46,11 +47,15 @@ const TransactionPilot: React.FC<TransactionPilotProps> = ({ ethPrice = 3000 }) 
   const fetchRecommendation = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${API_URL}/api/agent/recommend?urgency=${urgency}`);
+      setError(null);
+      const response = await fetch(`${API_URL}/api/agent/recommend?urgency=${urgency}`, {
+        signal: AbortSignal.timeout(10000) // 10 second timeout
+      });
       const data = await response.json();
 
       if (data.success) {
         setRecommendation(data.recommendation);
+        setError(null);
 
         // Set countdown if action is WAIT
         if (data.recommendation.action === 'WAIT') {
@@ -60,9 +65,12 @@ const TransactionPilot: React.FC<TransactionPilotProps> = ({ ethPrice = 3000 }) 
         } else {
           setCountdown(null);
         }
+      } else {
+        setError('Agent unavailable');
       }
     } catch (err) {
       console.error('Failed to fetch recommendation:', err);
+      setError('Failed to connect to agent');
     } finally {
       setLoading(false);
     }
@@ -192,6 +200,37 @@ const TransactionPilot: React.FC<TransactionPilotProps> = ({ ethPrice = 3000 }) 
         {loading && !recommendation ? (
           <div className="h-40 flex items-center justify-center">
             <div className="w-8 h-8 border-2 border-gray-600 border-t-cyan-400 rounded-full animate-spin" />
+          </div>
+        ) : error || !recommendation ? (
+          <div className="relative rounded-xl p-6 bg-gradient-to-r from-gray-600 to-gray-700 bg-opacity-10 border border-white/10">
+            <div className="text-center">
+              <div className="text-3xl font-bold text-white mb-2">
+                {currentGas > 0 ? 'Gas Looks Good' : 'Connecting...'}
+              </div>
+              <div className="text-white/70 mb-4">
+                {error || 'Agent is analyzing network conditions'}
+              </div>
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                <div className="bg-black/20 rounded-lg p-3">
+                  <div className="text-xs text-white/50">Current Gas</div>
+                  <div className="text-lg font-mono font-bold text-cyan-400">
+                    {currentGas.toFixed(4)} gwei
+                  </div>
+                </div>
+                <div className="bg-black/20 rounded-lg p-3">
+                  <div className="text-xs text-white/50">Est. Cost</div>
+                  <div className="text-lg font-mono font-bold text-white">
+                    ${estimatedCostUsd.toFixed(4)}
+                  </div>
+                </div>
+              </div>
+              <button
+                onClick={fetchRecommendation}
+                className="px-6 py-2 bg-cyan-500 hover:bg-cyan-600 text-white rounded-lg transition-colors"
+              >
+                Retry Connection
+              </button>
+            </div>
           </div>
         ) : (
           <div className={`relative rounded-xl p-6 bg-gradient-to-r ${actionConfig.gradient} bg-opacity-10 border border-white/10 shadow-lg ${actionConfig.bgGlow}`}>
