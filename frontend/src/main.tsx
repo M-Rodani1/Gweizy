@@ -5,6 +5,7 @@ import App from '../App';
 import ErrorBoundary from './components/ErrorBoundary';
 import { QueryProvider } from './providers/QueryProvider';
 import { ToastProvider } from './providers/ToastProvider';
+import { ChainProvider } from './contexts/ChainContext';
 import { OfflineIndicator } from './components/OfflineIndicator';
 import { registerServiceWorker } from './utils/registerSW';
 import './index.css';
@@ -34,10 +35,12 @@ if (root) {
     <React.StrictMode>
       <ErrorBoundary>
         <QueryProvider>
-          <ToastProvider>
-            <OfflineIndicator />
-            <App />
-          </ToastProvider>
+          <ChainProvider>
+            <ToastProvider>
+              <OfflineIndicator />
+              <App />
+            </ToastProvider>
+          </ChainProvider>
         </QueryProvider>
       </ErrorBoundary>
     </React.StrictMode>

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { GasIcon } from './icons';
 import WalletConnect from './WalletConnect';
+import ChainSelector from './ChainSelector';
+import { useChain } from '../contexts/ChainContext';
 
 interface StickyHeaderProps {
   apiStatus: 'checking' | 'online' | 'offline';
@@ -9,6 +10,10 @@ interface StickyHeaderProps {
 
 const StickyHeader: React.FC<StickyHeaderProps> = ({ apiStatus, currentGas }) => {
   const [isScrolled, setIsScrolled] = useState(false);
+  const { selectedChain, multiChainGas } = useChain();
+
+  // Use chain-specific gas if available
+  const displayGas = multiChainGas[selectedChain.id]?.gasPrice || currentGas;
 
   useEffect(() => {
     const handleScroll = () => {
@@ -29,12 +34,15 @@ const StickyHeader: React.FC<StickyHeaderProps> = ({ apiStatus, currentGas }) =>
     >
       <div className="w-full mx-auto px-4 sm:px-6 lg:px-8 py-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          {/* Logo and Title */}
           <div className="flex items-center space-x-3">
             <div className="relative">
-              <GasIcon className={`w-7 h-7 sm:w-8 sm:h-8 text-cyan-400 flex-shrink-0 transition-transform duration-300 ${
+              <div className={`flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-purple-600 transition-transform duration-300 ${
                 isScrolled ? 'scale-90' : 'scale-100'
-              }`} />
-              {isScrolled && currentGas > 0 && (
+              }`}>
+                <span className="text-xl font-bold text-white">G</span>
+              </div>
+              {isScrolled && displayGas > 0 && (
                 <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full animate-pulse" />
               )}
             </div>
@@ -42,22 +50,27 @@ const StickyHeader: React.FC<StickyHeaderProps> = ({ apiStatus, currentGas }) =>
               <h1 className={`font-bold text-gray-100 transition-all duration-300 ${
                 isScrolled ? 'text-lg sm:text-xl' : 'text-xl sm:text-2xl md:text-3xl'
               }`}>
-                Base Gas Optimizer
+                Gweizy
               </h1>
               {!isScrolled && (
                 <p className="text-xs sm:text-sm text-gray-400 mt-1 hidden sm:block animate-fade-in">
-                  Know the best times to transact on Base network
+                  AI-Powered Multi-Chain Gas Optimizer
                 </p>
               )}
-              {isScrolled && currentGas > 0 && (
+              {isScrolled && displayGas > 0 && (
                 <p className="text-xs text-cyan-400 font-semibold animate-fade-in">
-                  {currentGas.toFixed(2)} Gwei
+                  {selectedChain.icon} {displayGas.toFixed(4)} gwei
                 </p>
               )}
             </div>
           </div>
 
+          {/* Right side controls */}
           <div className="flex items-center justify-between sm:justify-end gap-3 sm:gap-4">
+            {/* Chain Selector */}
+            <ChainSelector showGasPrices={true} compact={isScrolled} />
+
+            {/* API Status */}
             <div className="flex items-center space-x-2 px-3 py-1.5 rounded-full bg-gray-800/50 backdrop-blur-sm border border-gray-700/50">
               <div className={`w-2 h-2 rounded-full transition-all duration-300 ${
                 apiStatus === 'online' ? 'bg-green-500 shadow-lg shadow-green-500/50' :
@@ -70,6 +83,8 @@ const StickyHeader: React.FC<StickyHeaderProps> = ({ apiStatus, currentGas }) =>
                  'Checking...'}
               </span>
             </div>
+
+            {/* Wallet Connect */}
             <WalletConnect />
           </div>
         </div>
