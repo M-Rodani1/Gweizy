@@ -1,7 +1,6 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { fetchPredictions, fetchCurrentGas } from '../api/gasApi';
 import LoadingSpinner from './LoadingSpinner';
-import PredictionExplanation from './PredictionExplanation';
 
 interface PredictionCard {
   horizon: '1h' | '4h' | '24h';
@@ -350,7 +349,30 @@ const PredictionCards: React.FC = () => {
               </button>
             </div>
             <div className="p-6">
-              <PredictionExplanation horizon={showExplanation as '1h' | '4h' | '24h'} />
+              <div className="space-y-4">
+                <div className="bg-gray-800 rounded-lg p-4">
+                  <h4 className="text-cyan-400 font-semibold mb-2">How We Predict Gas Prices</h4>
+                  <p className="text-gray-300 text-sm">
+                    Our ML models analyze historical gas patterns, network congestion, and time-based trends
+                    to forecast future gas prices for the {showExplanation} horizon.
+                  </p>
+                </div>
+                <div className="bg-gray-800 rounded-lg p-4">
+                  <h4 className="text-cyan-400 font-semibold mb-2">Confidence Levels</h4>
+                  <ul className="text-gray-300 text-sm space-y-2">
+                    <li><span className="text-green-400">High confidence:</span> Models strongly agree on prediction</li>
+                    <li><span className="text-yellow-400">Medium confidence:</span> Moderate agreement between models</li>
+                    <li><span className="text-red-400">Low confidence:</span> High uncertainty - use caution</li>
+                  </ul>
+                </div>
+                <div className="bg-gray-800 rounded-lg p-4">
+                  <h4 className="text-cyan-400 font-semibold mb-2">Prediction Range</h4>
+                  <p className="text-gray-300 text-sm">
+                    The range shows best-case and worst-case scenarios based on historical volatility patterns.
+                    Wider ranges indicate higher uncertainty.
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
         </div>
