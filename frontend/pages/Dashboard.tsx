@@ -145,26 +145,26 @@ const Dashboard: React.FC = () => {
           </LazySection>
 
           {/* Week 1 Improvements: Relative Price Indicator + Best Time Widget */}
-          <div style={{ gridColumn: 'span 12 / span 4' }}>
+          <div style={{ gridColumn: 'span 4' }}>
             <RelativePriceIndicator currentGas={currentGas} />
           </div>
 
-          <LazySection style={{ gridColumn: 'span 12 / span 8' }} rootMargin="150px">
+          <LazySection style={{ gridColumn: 'span 8' }} rootMargin="150px">
             <BestTimeWidget currentGas={currentGas} />
           </LazySection>
 
           {/* AI Agent Recommendation */}
-          <LazySection style={{ gridColumn: 'span 12 / span 6' }} rootMargin="150px">
+          <LazySection style={{ gridColumn: 'span 6' }} rootMargin="150px">
             <AgentRecommendation currentGas={currentGas} />
           </LazySection>
 
           {/* Transaction Cost Calculator */}
-          <LazySection style={{ gridColumn: 'span 12 / span 6' }} rootMargin="200px">
+          <LazySection style={{ gridColumn: 'span 6' }} rootMargin="200px">
             <TransactionCostCalculator currentGas={currentGas} ethPrice={ethPrice} />
           </LazySection>
 
           {/* Gas Price Alerts */}
-          <LazySection style={{ gridColumn: 'span 12 / span 6' }} rootMargin="200px">
+          <LazySection style={{ gridColumn: 'span 6' }} rootMargin="200px">
             <GasAlertSettings currentGas={currentGas} />
           </LazySection>
 
@@ -195,12 +195,12 @@ const Dashboard: React.FC = () => {
 
           {/* NEW: Enterprise ML Features */}
           {/* Model Status Widget - Compact */}
-          <div style={{ gridColumn: 'span 12 / span 4' }}>
+          <div style={{ gridColumn: 'span 4' }}>
             <ModelStatusWidget />
           </div>
 
           {/* Network Intelligence Panel */}
-          <LazySection style={{ gridColumn: 'span 12 / span 8' }} rootMargin="300px">
+          <LazySection style={{ gridColumn: 'span 8' }} rootMargin="300px">
             <NetworkIntelligencePanel />
           </LazySection>
 
@@ -214,7 +214,7 @@ const Dashboard: React.FC = () => {
             <ModelAccuracy />
           </LazySection>
 
-          <LazySection style={{ gridColumn: 'span 12 / span 4' }} rootMargin="500px">
+          <LazySection style={{ gridColumn: 'span 4' }} rootMargin="500px">
             <div>
               <GasLeaderboard />
               <div style={{ marginTop: 'var(--space-lg)' }}>
@@ -234,7 +234,7 @@ const Dashboard: React.FC = () => {
             </div>
           </LazySection>
 
-          <LazySection style={{ gridColumn: 'span 12 / span 8' }} rootMargin="500px">
+          <LazySection style={{ gridColumn: 'span 8' }} rootMargin="500px">
             <div>
               <GasPriceTable />
               <div style={{ marginTop: 'var(--space-lg)' }}>
