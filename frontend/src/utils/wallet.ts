@@ -1,4 +1,5 @@
 // Wallet connection utilities for MetaMask/Coinbase Wallet
+import { SUPPORTED_CHAINS } from '../config/chains';
 
 declare global {
   interface Window {
@@ -58,10 +59,61 @@ export async function getCurrentChainId(): Promise<number | null> {
   }
 }
 
+const toHex = (value: bigint): string => `0x${value.toString(16)}`;
+
+const parseUnits = (value: string, decimals: number): bigint => {
+  const [whole, fraction = ''] = value.split('.');
+  const padded = fraction.padEnd(decimals, '0').slice(0, decimals);
+  const wholeValue = whole ? BigInt(whole) : 0n;
+  const fractionValue = padded ? BigInt(padded) : 0n;
+  return wholeValue * 10n ** BigInt(decimals) + fractionValue;
+};
+
+export const gweiToWeiHex = (gwei: string): string => toHex(parseUnits(gwei, 9));
+export const ethToWeiHex = (eth: string): string => toHex(parseUnits(eth, 18));
+
+const getChainParams = (chainId: number) => {
+  const chain = SUPPORTED_CHAINS[chainId];
+  if (!chain) return null;
+  return {
+    chainId: `0x${chainId.toString(16)}`,
+    chainName: chain.name,
+    nativeCurrency: chain.nativeCurrency,
+    rpcUrls: chain.rpcUrls,
+    blockExplorerUrls: [chain.blockExplorer]
+  };
+};
+
+export async function switchToChain(chainId: number): Promise<void> {
+  if (!window.ethereum) {
+    throw new Error('No wallet detected.');
+  }
+  const chainParams = getChainParams(chainId);
+  if (!chainParams) {
+    throw new Error('Unsupported chain.');
+  }
+
+  try {
+    await window.ethereum.request({
+      method: 'wallet_switchEthereumChain',
+      params: [{ chainId: chainParams.chainId }]
+    });
+  } catch (switchError: any) {
+    if (switchError.code === 4902) {
+      await window.ethereum.request({
+        method: 'wallet_addEthereumChain',
+        params: [chainParams]
+      });
+    } else {
+      throw switchError;
+    }
+  }
+}
+
 /**
- * Connect wallet and switch to Base network
+ * Connect wallet and optionally switch to target network
  */
-export async function connectWallet(): Promise<string> {
+export async function connectWallet(targetChainId: number = BASE_CHAIN_ID_DECIMAL): Promise<string> {
   if (!window.ethereum) {
     throw new Error('No wallet detected. Please install MetaMask or Coinbase Wallet.');
   }
@@ -77,35 +129,53 @@ export async function connectWallet(): Promise<string> {
 
   const address = accounts[0];
 
-  // Switch to Base network
-  try {
-    await window.ethereum.request({
-      method: 'wallet_switchEthereumChain',
-      params: [{ chainId: BASE_CHAIN_ID }], // Base = 8453 = 0x2105
-    });
-  } catch (switchError: any) {
-    // If Base network not added, add it
-    if (switchError.code === 4902) {
-      await window.ethereum.request({
-        method: 'wallet_addEthereumChain',
-        params: [{
-          chainId: BASE_CHAIN_ID,
-          chainName: 'Base',
-          nativeCurrency: {
-            name: 'Ether',
-            symbol: 'ETH',
-            decimals: 18
-          },
-          rpcUrls: ['https://mainnet.base.org'],
-          blockExplorerUrls: ['https://basescan.org']
-        }]
-      });
-    } else {
-      throw switchError;
-    }
-  }
+  // Switch to target network
+  await switchToChain(targetChainId);
 
   return address;
+}
+
+interface SendTransactionParams {
+  to: string;
+  valueEth?: string;
+  gasPriceGwei?: string;
+  gasLimit?: string;
+  data?: string;
+}
+
+export async function sendTransaction(params: SendTransactionParams): Promise<string> {
+  if (!window.ethereum) {
+    throw new Error('No wallet detected.');
+  }
+  const from = await getCurrentAccount();
+  if (!from) {
+    throw new Error('Wallet not connected.');
+  }
+
+  const tx: Record<string, string> = {
+    from,
+    to: params.to
+  };
+
+  if (params.valueEth !== undefined) {
+    tx.value = ethToWeiHex(params.valueEth);
+  }
+  if (params.gasPriceGwei) {
+    tx.gasPrice = gweiToWeiHex(params.gasPriceGwei);
+  }
+  if (params.gasLimit) {
+    tx.gas = toHex(BigInt(params.gasLimit));
+  }
+  if (params.data) {
+    tx.data = params.data;
+  }
+
+  const txHash = await window.ethereum.request({
+    method: 'eth_sendTransaction',
+    params: [tx]
+  });
+
+  return txHash as string;
 }
 
 /**
@@ -184,4 +254,3 @@ export function onChainChanged(callback: (chainId: string) => void): () => void 
     }
   };
 }
-

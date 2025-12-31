@@ -7,6 +7,7 @@ import CompactForecast from '../src/components/CompactForecast';
 import { LazySection } from '../src/components/LazySection';
 import CollapsibleSection from '../src/components/ui/CollapsibleSection';
 import ApiStatusPanel from '../src/components/ApiStatusPanel';
+import PersonalizationPanel from '../src/components/PersonalizationPanel';
 import { checkHealth } from '../src/api/gasApi';
 import { useChain } from '../src/contexts/ChainContext';
 import { useEthPrice } from '../src/hooks/useEthPrice';
@@ -50,9 +51,19 @@ const Dashboard: React.FC = () => {
         <div className="grid grid-cols-12 gap-8">
           {/* Left Column: Chain Comparison + Forecast */}
           <div className="col-span-12 lg:col-span-4 space-y-8">
-            <ApiStatusPanel />
-            <MultiChainComparison txType="swap" ethPrice={ethPrice} />
-            <CompactForecast />
+            <div className="space-y-4">
+              <div className="text-[11px] tracking-[0.2em] text-gray-500 uppercase">Profile</div>
+              <PersonalizationPanel />
+            </div>
+            <div className="space-y-4">
+              <div className="text-[11px] tracking-[0.2em] text-gray-500 uppercase">Network Insights</div>
+              <MultiChainComparison txType="swap" ethPrice={ethPrice} />
+              <CompactForecast />
+            </div>
+            <div className="space-y-4">
+              <div className="text-[11px] tracking-[0.2em] text-gray-500 uppercase">System</div>
+              <ApiStatusPanel />
+            </div>
           </div>
 
           {/* Right Column: Transaction Management - Collapsible */}

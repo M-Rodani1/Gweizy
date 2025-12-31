@@ -7,6 +7,7 @@ import { QueryProvider } from './providers/QueryProvider';
 import { ToastProvider } from './providers/ToastProvider';
 import { ChainProvider } from './contexts/ChainContext';
 import { SchedulerProvider } from './contexts/SchedulerContext';
+import { PreferencesProvider } from './contexts/PreferencesContext';
 import { OfflineIndicator } from './components/OfflineIndicator';
 import { registerServiceWorker } from './utils/registerSW';
 import './index.css';
@@ -36,14 +37,16 @@ if (root) {
     <React.StrictMode>
       <ErrorBoundary>
         <QueryProvider>
-          <ChainProvider>
-            <SchedulerProvider>
-              <ToastProvider>
-                <OfflineIndicator />
-                <App />
-              </ToastProvider>
-            </SchedulerProvider>
-          </ChainProvider>
+          <PreferencesProvider>
+            <ChainProvider>
+              <SchedulerProvider>
+                <ToastProvider>
+                  <OfflineIndicator />
+                  <App />
+                </ToastProvider>
+              </SchedulerProvider>
+            </ChainProvider>
+          </PreferencesProvider>
         </QueryProvider>
       </ErrorBoundary>
     </React.StrictMode>

@@ -7,6 +7,7 @@ interface MultiChainGas {
   timestamp: number;
   loading: boolean;
   error: string | null;
+  source?: 'live' | 'cached';
 }
 
 interface ChainContextType {
@@ -36,6 +37,45 @@ interface ChainContextType {
 const ChainContext = createContext<ChainContextType | undefined>(undefined);
 
 const STORAGE_KEY = 'gweizy_selected_chain';
+const GAS_CACHE_PREFIX = 'gweizy_chain_gas_v1:';
+const GAS_CACHE_TTL_MS = 60 * 1000;
+const RPC_TIMEOUT_MS = 5000;
+
+const getGasCacheKey = (chainId: number): string => `${GAS_CACHE_PREFIX}${chainId}`;
+
+const readCachedGas = (chainId: number): MultiChainGas | null => {
+  if (typeof window === 'undefined') return null;
+  const key = getGasCacheKey(chainId);
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { gasPrice: number; timestamp: number };
+    if (Date.now() - parsed.timestamp > GAS_CACHE_TTL_MS) {
+      localStorage.removeItem(key);
+      return null;
+    }
+    return {
+      chainId,
+      gasPrice: parsed.gasPrice,
+      timestamp: parsed.timestamp,
+      loading: false,
+      error: null,
+      source: 'cached'
+    };
+  } catch {
+    return null;
+  }
+};
+
+const writeCachedGas = (chainId: number, gasPrice: number, timestamp: number) => {
+  if (typeof window === 'undefined') return;
+  try {
+    const key = getGasCacheKey(chainId);
+    localStorage.setItem(key, JSON.stringify({ gasPrice, timestamp }));
+  } catch {
+    // Ignore cache failures.
+  }
+};
 
 export const ChainProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   // Load saved chain from localStorage or use default
@@ -76,6 +116,8 @@ export const ChainProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     try {
       // Try each RPC until one works
       for (const rpcUrl of chain.rpcUrls) {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), RPC_TIMEOUT_MS);
         try {
           const response = await fetch(rpcUrl, {
             method: 'POST',
@@ -85,7 +127,8 @@ export const ChainProvider: React.FC<{ children: ReactNode }> = ({ children }) =
               method: 'eth_gasPrice',
               params: [],
               id: 1
-            })
+            }),
+            signal: controller.signal
           });
 
           if (!response.ok) continue;
@@ -94,22 +137,35 @@ export const ChainProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           if (data.result) {
             const gasPriceWei = parseInt(data.result, 16);
             const gasPriceGwei = gasPriceWei / 1e9;
+            const timestamp = Date.now();
+            writeCachedGas(chainId, gasPriceGwei, timestamp);
 
             return {
               chainId,
               gasPrice: gasPriceGwei,
-              timestamp: Date.now(),
+              timestamp,
               loading: false,
-              error: null
+              error: null,
+              source: 'live'
             };
           }
         } catch {
           continue;
+        } finally {
+          clearTimeout(timeoutId);
         }
       }
 
+      const cached = readCachedGas(chainId);
+      if (cached) {
+        return cached;
+      }
       return { chainId, gasPrice: 0, timestamp: Date.now(), loading: false, error: 'All RPCs failed' };
     } catch (err) {
+      const cached = readCachedGas(chainId);
+      if (cached) {
+        return cached;
+      }
       return { chainId, gasPrice: 0, timestamp: Date.now(), loading: false, error: 'Fetch failed' };
     }
   }, []);
@@ -126,7 +182,8 @@ export const ChainProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         gasPrice: multiChainGas[chain.id]?.gasPrice || 0,
         timestamp: Date.now(),
         loading: true,
-        error: null
+        error: null,
+        source: multiChainGas[chain.id]?.source
       };
     });
     setMultiChainGas(loadingState);

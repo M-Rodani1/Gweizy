@@ -1,13 +1,17 @@
 import React, { useState } from 'react';
+import { Clock } from 'lucide-react';
 import { useScheduler, ScheduledTransaction } from '../contexts/SchedulerContext';
 import { useChain } from '../contexts/ChainContext';
-import { SUPPORTED_CHAINS, TX_GAS_ESTIMATES } from '../config/chains';
+import { SUPPORTED_CHAINS } from '../config/chains';
+import ChainBadge from './ChainBadge';
 import ScheduleTransactionModal from './ScheduleTransactionModal';
+import ExecuteTransactionModal from './ExecuteTransactionModal';
 
 const ScheduledTransactionsList: React.FC = () => {
   const { transactions, removeTransaction, markExecuted, markCancelled, pendingCount, readyCount } = useScheduler();
   const { multiChainGas } = useChain();
   const [showModal, setShowModal] = useState(false);
+  const [executeTx, setExecuteTx] = useState<ScheduledTransaction | null>(null);
   const [filter, setFilter] = useState<'all' | 'pending' | 'ready' | 'completed'>('all');
 
   const filteredTransactions = transactions.filter(tx => {
@@ -50,7 +54,7 @@ const ScheduledTransactionsList: React.FC = () => {
       {/* Header */}
       <div className="px-4 py-3 border-b border-gray-700/50 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <span className="text-lg">⏰</span>
+          <Clock className="w-4 h-4 text-cyan-400" />
           <h3 className="font-semibold text-white">Scheduled Transactions</h3>
           {pendingCount > 0 && (
             <span className="px-2 py-0.5 text-xs bg-yellow-500/20 text-yellow-400 rounded-full">
@@ -93,7 +97,9 @@ const ScheduledTransactionsList: React.FC = () => {
       {/* Transaction List */}
       {filteredTransactions.length === 0 ? (
         <div className="p-8 text-center">
-          <div className="text-4xl mb-3">⏰</div>
+          <div className="flex justify-center mb-3">
+            <Clock className="w-8 h-8 text-gray-500" />
+          </div>
           <div className="text-gray-400 mb-2">No scheduled transactions</div>
           <div className="text-sm text-gray-500">
             Schedule transactions to execute when gas prices drop
@@ -118,7 +124,13 @@ const ScheduledTransactionsList: React.FC = () => {
               <div key={tx.id} className="p-4 hover:bg-gray-700/20 transition-colors">
                 <div className="flex items-start justify-between mb-2">
                   <div className="flex items-center gap-2">
-                    <span className="text-lg">{chain?.icon || '?'}</span>
+                    {chain ? (
+                      <ChainBadge chain={chain} size="sm" />
+                    ) : (
+                      <div className="w-6 h-6 rounded-full bg-gray-700 text-xs text-white flex items-center justify-center">
+                        ?
+                      </div>
+                    )}
                     <div>
                       <div className="flex items-center gap-2">
                         <span className="font-medium text-white">{tx.txType}</span>
@@ -163,7 +175,7 @@ const ScheduledTransactionsList: React.FC = () => {
                 <div className="flex gap-2">
                   {tx.status === 'ready' && (
                     <button
-                      onClick={() => markExecuted(tx.id)}
+                      onClick={() => setExecuteTx(tx)}
                       className="flex-1 py-2 bg-green-500 hover:bg-green-600 text-white text-sm rounded-lg transition-colors"
                     >
                       Execute Now
@@ -196,6 +208,23 @@ const ScheduledTransactionsList: React.FC = () => {
       <ScheduleTransactionModal
         isOpen={showModal}
         onClose={() => setShowModal(false)}
+      />
+
+      <ExecuteTransactionModal
+        isOpen={!!executeTx}
+        onClose={() => setExecuteTx(null)}
+        chainId={executeTx?.chainId || 8453}
+        txType={executeTx?.txType}
+        gasGwei={executeTx ? Math.min(multiChainGas[executeTx.chainId]?.gasPrice || executeTx.targetGasPrice, executeTx.maxGasPrice) : null}
+        defaultToAddress={executeTx?.toAddress}
+        defaultAmountEth={executeTx?.amount}
+        defaultData={executeTx?.data}
+        onExecuted={() => {
+          if (executeTx) {
+            markExecuted(executeTx.id);
+          }
+          setExecuteTx(null);
+        }}
       />
     </div>
   );

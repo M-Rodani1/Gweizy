@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import { ChevronDown, Info } from 'lucide-react';
 import { useChain } from '../contexts/ChainContext';
 import { useScheduler } from '../contexts/SchedulerContext';
 import { TransactionType, TX_GAS_ESTIMATES } from '../config/chains';
 import ChainBadge from './ChainBadge';
 import { getTxLabel } from '../config/transactions';
+import { usePreferences } from '../contexts/PreferencesContext';
 
 interface ScheduleTransactionModalProps {
   isOpen: boolean;
@@ -26,8 +28,10 @@ const TX_TYPE_OPTIONS: { type: TransactionType; label: string }[] = [
 const EXPIRY_OPTIONS = [
   { value: 1, label: '1 hour' },
   { value: 4, label: '4 hours' },
+  { value: 6, label: '6 hours' },
   { value: 12, label: '12 hours' },
   { value: 24, label: '24 hours' },
+  { value: 48, label: '2 days' },
   { value: 72, label: '3 days' },
   { value: 168, label: '1 week' },
 ];
@@ -35,18 +39,23 @@ const EXPIRY_OPTIONS = [
 const ScheduleTransactionModal: React.FC<ScheduleTransactionModalProps> = ({
   isOpen,
   onClose,
-  defaultTxType = 'swap',
+  defaultTxType,
   suggestedTargetGas
 }) => {
   const { selectedChain, multiChainGas, enabledChains } = useChain();
   const { addTransaction } = useScheduler();
+  const { preferences, updatePreferences } = usePreferences();
 
-  const [txType, setTxType] = useState<TransactionType>(defaultTxType);
+  const [txType, setTxType] = useState<TransactionType>(defaultTxType || preferences.defaultTxType);
   const [chainId, setChainId] = useState(selectedChain.id);
   const [targetGasPrice, setTargetGasPrice] = useState('');
   const [maxGasPrice, setMaxGasPrice] = useState('');
-  const [expiryHours, setExpiryHours] = useState(24);
+  const [expiryHours, setExpiryHours] = useState(preferences.schedule.expiryHours);
   const [notifyEnabled, setNotifyEnabled] = useState(true);
+  const [showAdvanced, setShowAdvanced] = useState(preferences.showAdvancedFields);
+  const [toAddress, setToAddress] = useState('');
+  const [amountEth, setAmountEth] = useState('');
+  const [data, setData] = useState('');
 
   const currentGas = multiChainGas[chainId]?.gasPrice || 0;
   const gasUnits = TX_GAS_ESTIMATES[txType];
@@ -54,12 +63,28 @@ const ScheduleTransactionModal: React.FC<ScheduleTransactionModalProps> = ({
   // Set suggested target on open
   useEffect(() => {
     if (isOpen) {
-      const suggested = suggestedTargetGas || currentGas * 0.85;
-      setTargetGasPrice(suggested.toFixed(6));
-      setMaxGasPrice((currentGas * 1.1).toFixed(6));
+      const baseTarget = suggestedTargetGas ?? (currentGas > 0 ? currentGas * preferences.schedule.targetMultiplier : 0);
+      const baseMax = currentGas > 0 ? currentGas * preferences.schedule.maxMultiplier : 0;
+      setTargetGasPrice(baseTarget ? baseTarget.toFixed(6) : '');
+      setMaxGasPrice(baseMax ? baseMax.toFixed(6) : '');
       setChainId(selectedChain.id);
+      setTxType(defaultTxType || preferences.defaultTxType);
+      setExpiryHours(preferences.schedule.expiryHours);
+      setShowAdvanced(preferences.showAdvancedFields);
+      setToAddress('');
+      setAmountEth('');
+      setData('');
     }
-  }, [isOpen, suggestedTargetGas, currentGas, selectedChain.id]);
+  }, [
+    isOpen,
+    suggestedTargetGas,
+    currentGas,
+    selectedChain.id,
+    defaultTxType,
+    preferences.defaultTxType,
+    preferences.schedule,
+    preferences.showAdvancedFields
+  ]);
 
   // Request notification permission
   useEffect(() => {
@@ -73,9 +98,16 @@ const ScheduleTransactionModal: React.FC<ScheduleTransactionModalProps> = ({
 
     const target = parseFloat(targetGasPrice);
     const max = parseFloat(maxGasPrice);
+    const trimmedTo = toAddress.trim();
+    const trimmedAmount = amountEth.trim();
+    const trimmedData = data.trim();
 
     if (isNaN(target) || target <= 0) {
       alert('Please enter a valid target gas price');
+      return;
+    }
+    if (trimmedTo && !/^0x[a-fA-F0-9]{40}$/.test(trimmedTo)) {
+      alert('Please enter a valid recipient address');
       return;
     }
 
@@ -83,8 +115,13 @@ const ScheduleTransactionModal: React.FC<ScheduleTransactionModalProps> = ({
       chainId,
       txType,
       targetGasPrice: target,
-      maxGasPrice: max || target * 1.5,
-      expiresAt: Date.now() + expiryHours * 60 * 60 * 1000
+      maxGasPrice: max || target * preferences.schedule.maxMultiplier,
+      expiresAt: Date.now() + expiryHours * 60 * 60 * 1000,
+      ...(trimmedTo ? { toAddress: trimmedTo } : {}),
+      ...(trimmedAmount ? { amount: trimmedAmount } : {}),
+      ...(trimmedData
+        ? { data: trimmedData.startsWith('0x') ? trimmedData : `0x${trimmedData}` }
+        : {})
     });
 
     onClose();
@@ -104,6 +141,7 @@ const ScheduleTransactionModal: React.FC<ScheduleTransactionModalProps> = ({
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-white text-2xl leading-none"
+            aria-label="Close schedule modal"
           >
             ×
           </button>
@@ -178,14 +216,16 @@ const ScheduleTransactionModal: React.FC<ScheduleTransactionModalProps> = ({
               </div>
             </div>
             <div className="mt-2 flex gap-2">
-              {[0.7, 0.8, 0.9].map(mult => (
+              {[preferences.schedule.targetMultiplier, 0.7, 0.8, 0.9].filter((value, index, arr) => arr.indexOf(value) === index).map(mult => (
                 <button
                   key={mult}
                   type="button"
                   onClick={() => setTargetGasPrice((currentGas * mult).toFixed(6))}
                   className="px-3 py-1 text-xs bg-gray-800 text-gray-300 rounded hover:bg-gray-700 transition-colors"
                 >
-                  {Math.round((1 - mult) * 100)}% below
+                  {mult === preferences.schedule.targetMultiplier
+                    ? `Profile (${Math.round((1 - mult) * 100)}% below)`
+                    : `${Math.round((1 - mult) * 100)}% below`}
                 </button>
               ))}
             </div>
@@ -204,6 +244,15 @@ const ScheduleTransactionModal: React.FC<ScheduleTransactionModalProps> = ({
               placeholder="0.001"
               className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white font-mono focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
             />
+            <div className="mt-2">
+              <button
+                type="button"
+                onClick={() => setMaxGasPrice((currentGas * preferences.schedule.maxMultiplier).toFixed(6))}
+                className="px-3 py-1 text-xs bg-gray-800 text-gray-300 rounded hover:bg-gray-700 transition-colors"
+              >
+                Profile cap (+{Math.round((preferences.schedule.maxMultiplier - 1) * 100)}%)
+              </button>
+            </div>
           </div>
 
           {/* Expiry */}
@@ -244,12 +293,74 @@ const ScheduleTransactionModal: React.FC<ScheduleTransactionModalProps> = ({
                 w-12 h-6 rounded-full transition-colors relative
                 ${notifyEnabled ? 'bg-cyan-500' : 'bg-gray-700'}
               `}
+              aria-pressed={notifyEnabled}
+              aria-label="Toggle push notifications"
             >
               <div className={`
                 w-5 h-5 bg-white rounded-full absolute top-0.5 transition-transform
                 ${notifyEnabled ? 'translate-x-6' : 'translate-x-0.5'}
               `} />
             </button>
+          </div>
+
+          {/* Advanced Fields */}
+          <div className="border border-gray-800 rounded-lg bg-gray-900/40">
+            <button
+              type="button"
+              onClick={() => {
+                const next = !showAdvanced;
+                setShowAdvanced(next);
+                updatePreferences({ showAdvancedFields: next });
+              }}
+              className="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-300"
+            >
+              <span className="flex items-center gap-2">
+                <Info className="w-4 h-4 text-cyan-400" />
+                Advanced transaction details
+              </span>
+              <ChevronDown className={`w-4 h-4 transition-transform ${showAdvanced ? 'rotate-180' : ''}`} />
+            </button>
+            {showAdvanced && (
+              <div className="px-4 pb-4 space-y-3 text-sm">
+                <div>
+                  <label className="text-xs text-gray-400">Recipient (optional)</label>
+                  <input
+                    type="text"
+                    value={toAddress}
+                    onChange={(e) => setToAddress(e.target.value)}
+                    placeholder="0x..."
+                    className="mt-2 w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white font-mono focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                  />
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs text-gray-400">Amount (ETH)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.0001"
+                      value={amountEth}
+                      onChange={(e) => setAmountEth(e.target.value)}
+                      placeholder="0.0"
+                      className="mt-2 w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white font-mono focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-400">Calldata (hex)</label>
+                    <input
+                      type="text"
+                      value={data}
+                      onChange={(e) => setData(e.target.value)}
+                      placeholder="0x"
+                      className="mt-2 w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white font-mono focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                    />
+                  </div>
+                </div>
+                <p className="text-xs text-gray-500">
+                  These fields carry into one-click execution when the schedule triggers.
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Summary */}
@@ -261,6 +372,14 @@ const ScheduleTransactionModal: React.FC<ScheduleTransactionModalProps> = ({
               gas drops to <span className="text-green-400">{targetGasPrice || '...'} gwei</span>
               {' '}(currently {currentGas.toFixed(6)} gwei)
             </div>
+            <div className="text-xs text-gray-500 mt-2">
+              Estimated gas: {gasUnits.toLocaleString()} • Max cap {maxGasPrice || 'auto'} gwei
+            </div>
+            {toAddress && (
+              <div className="text-xs text-gray-500 mt-1">
+                Recipient: <span className="text-gray-300">{toAddress}</span>
+              </div>
+            )}
           </div>
 
           {/* Actions */}

@@ -6,8 +6,10 @@ import { TX_GAS_ESTIMATES, TransactionType } from '../config/chains';
 import { API_CONFIG, getApiUrl } from '../config/api';
 import { TX_TYPE_META, getTxShortLabel } from '../config/transactions';
 import ScheduleTransactionModal from './ScheduleTransactionModal';
+import ExecuteTransactionModal from './ExecuteTransactionModal';
 import ConfidenceRing from './ui/ConfidenceRing';
 import { formatGwei, formatUsd } from '../utils/formatNumber';
+import { usePreferences } from '../contexts/PreferencesContext';
 
 interface AgentRecommendation {
   action: string;
@@ -34,13 +36,16 @@ const TX_TYPES: { type: TransactionType; label: string; Icon: React.ComponentTyp
 const TransactionPilot: React.FC<TransactionPilotProps> = ({ ethPrice = 3000 }) => {
   const { selectedChain, multiChainGas, bestChainForTx, setSelectedChainId } = useChain();
   const { pendingCount, readyCount } = useScheduler();
-  const [selectedTxType, setSelectedTxType] = useState<TransactionType>('swap');
-  const [urgency, setUrgency] = useState(0.5);
+  const { preferences, updatePreferences } = usePreferences();
+  const [selectedTxType, setSelectedTxType] = useState<TransactionType>(preferences.defaultTxType);
+  const [urgency, setUrgency] = useState(preferences.urgency);
   const [recommendation, setRecommendation] = useState<AgentRecommendation | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [countdown, setCountdown] = useState<number | null>(null);
   const [showScheduleModal, setShowScheduleModal] = useState(false);
+  const [showExecuteModal, setShowExecuteModal] = useState(false);
+  const [executeGasGwei, setExecuteGasGwei] = useState<number | null>(null);
   const [showChainToast, setShowChainToast] = useState(false);
 
   const currentGas = multiChainGas[selectedChain.id]?.gasPrice || 0;
@@ -100,6 +105,14 @@ const TransactionPilot: React.FC<TransactionPilotProps> = ({ ethPrice = 3000 }) 
     const interval = setInterval(fetchRecommendation, 30000);
     return () => clearInterval(interval);
   }, [fetchRecommendation]);
+
+  useEffect(() => {
+    setSelectedTxType(preferences.defaultTxType);
+  }, [preferences.defaultTxType]);
+
+  useEffect(() => {
+    setUrgency(preferences.urgency);
+  }, [preferences.urgency]);
 
   useEffect(() => {
     if (countdown === null || countdown <= 0) return;
@@ -192,6 +205,39 @@ const TransactionPilot: React.FC<TransactionPilotProps> = ({ ethPrice = 3000 }) 
     ? getPrimaryActionLabel(recommendation.action)
     : actionConfig.buttonText;
 
+  const handleTxTypeSelect = (type: TransactionType) => {
+    setSelectedTxType(type);
+    updatePreferences({ defaultTxType: type, strategy: 'custom' });
+  };
+
+  const handleUrgencyChange = (value: number) => {
+    setUrgency(value);
+    updatePreferences({ urgency: value, strategy: 'custom' });
+  };
+
+  const getActionGasGwei = () => {
+    if (recommendation?.recommended_gas) {
+      return recommendation.recommended_gas;
+    }
+    if (recommendation?.action === 'SUBMIT_LOW') {
+      return currentGas * 0.9;
+    }
+    if (recommendation?.action === 'SUBMIT_HIGH') {
+      return currentGas * 1.2;
+    }
+    return currentGas;
+  };
+
+  const handlePrimaryAction = () => {
+    if (recommendation?.action === 'WAIT') {
+      setShowScheduleModal(true);
+      return;
+    }
+    const gas = getActionGasGwei();
+    setExecuteGasGwei(gas > 0 ? gas : null);
+    setShowExecuteModal(true);
+  };
+
   const handleSwitchChain = () => {
     if (bestChainForTx) {
       setSelectedChainId(bestChainForTx.chainId);
@@ -262,7 +308,7 @@ const TransactionPilot: React.FC<TransactionPilotProps> = ({ ethPrice = 3000 }) 
             {TX_TYPES.map(({ type, label, Icon }) => (
               <button
                 key={type}
-                onClick={() => setSelectedTxType(type)}
+                onClick={() => handleTxTypeSelect(type)}
                 className={`
                   px-4 py-3 min-h-[44px] rounded-lg flex items-center gap-2 transition-all w-full
                   ${selectedTxType === type
@@ -289,7 +335,7 @@ const TransactionPilot: React.FC<TransactionPilotProps> = ({ ethPrice = 3000 }) 
               max="1"
               step="0.1"
               value={urgency}
-              onChange={(e) => setUrgency(parseFloat(e.target.value))}
+              onChange={(e) => handleUrgencyChange(parseFloat(e.target.value))}
               className="w-full h-3 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-cyan-400"
             />
             <div className="flex justify-between text-xs text-gray-500 mt-1">
@@ -400,7 +446,10 @@ const TransactionPilot: React.FC<TransactionPilotProps> = ({ ethPrice = 3000 }) 
 
               {/* Action buttons - Improvement #10 */}
               <div className="flex flex-col sm:flex-row gap-3 sm:static sticky bottom-3 bg-gray-900/80 p-3 rounded-xl border border-white/10 backdrop-blur">
-                <button className={`flex-1 py-3 px-6 min-h-[44px] rounded-xl font-bold text-white transition-all ${actionConfig.buttonClass}`}>
+                <button
+                  onClick={handlePrimaryAction}
+                  className={`flex-1 py-3 px-6 min-h-[44px] rounded-xl font-bold text-white transition-all ${actionConfig.buttonClass}`}
+                >
                   {primaryActionLabel}
                 </button>
                 <button
@@ -452,6 +501,14 @@ const TransactionPilot: React.FC<TransactionPilotProps> = ({ ethPrice = 3000 }) 
         onClose={() => setShowScheduleModal(false)}
         defaultTxType={selectedTxType}
         suggestedTargetGas={currentGas * 0.85}
+      />
+
+      <ExecuteTransactionModal
+        isOpen={showExecuteModal}
+        onClose={() => setShowExecuteModal(false)}
+        chainId={selectedChain.id}
+        txType={selectedTxType}
+        gasGwei={executeGasGwei}
       />
     </div>
   );
