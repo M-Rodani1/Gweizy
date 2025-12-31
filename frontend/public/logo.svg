@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="Base Gas Optimizer">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#06b6d4" />
+      <stop offset="100%" stop-color="#22c55e" />
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="96" fill="#0f172a" />
+  <circle cx="256" cy="256" r="176" fill="url(#bg)" />
+  <path
+    d="M304 96 L176 300 H248 L216 416 L352 212 H276 Z"
+    fill="#0f172a"
+  />
+</svg>

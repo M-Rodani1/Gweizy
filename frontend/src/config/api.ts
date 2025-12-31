@@ -3,19 +3,28 @@
  * All API endpoints and configuration in one place
  */
 
+const DEFAULT_API_BASE_URL = 'https://basegasfeesml.onrender.com/api';
+
+function normalizeApiBaseUrl(url: string): string {
+  const trimmed = url.replace(/\/+$/, '');
+  return trimmed.endsWith('/api') ? trimmed : `${trimmed}/api`;
+}
+
 export const API_CONFIG = {
-  BASE_URL: import.meta.env.VITE_API_URL || 'https://basegasfeesml.onrender.com/api',
+  BASE_URL: normalizeApiBaseUrl(import.meta.env.VITE_API_URL || DEFAULT_API_BASE_URL),
   ENDPOINTS: {
     HEALTH: '/health',
     CURRENT: '/current',
     PREDICTIONS: '/predictions',
     HISTORICAL: '/historical',
+    GAS_PATTERNS: '/gas/patterns',
     TRANSACTIONS: '/transactions',
     CONFIG: '/config',
     ACCURACY: '/accuracy',
     USER_HISTORY: '/user-history',
     LEADERBOARD: '/leaderboard',
-    STATS: '/stats'
+    STATS: '/stats',
+    AGENT_RECOMMEND: '/agent/recommend'
   },
   TIMEOUT: 10000, // 10 seconds
   RETRY_ATTEMPTS: 3,

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, Clock, TrendingDown, TrendingUp, Loader2 } from 'lucide-react';
+import { API_CONFIG, getApiUrl } from '../config/api';
 
 interface HourlyPattern {
   hour: number;
@@ -32,8 +33,6 @@ const GasPatternHeatmap: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [view, setView] = useState<'hourly' | 'daily'>('hourly');
 
-  const API_BASE = import.meta.env.VITE_API_URL || 'https://basegasfeesml-production.up.railway.app/api';
-
   const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
   const HOURS = Array.from({ length: 24 }, (_, i) => i);
 
@@ -44,7 +43,7 @@ const GasPatternHeatmap: React.FC = () => {
   const fetchPatternData = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${API_BASE}/gas/patterns`);
+      const response = await fetch(getApiUrl(API_CONFIG.ENDPOINTS.GAS_PATTERNS));
 
       if (!response.ok) {
         // Generate mock data if API not available

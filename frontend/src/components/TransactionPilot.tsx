@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useChain } from '../contexts/ChainContext';
 import { useScheduler } from '../contexts/SchedulerContext';
 import { TX_GAS_ESTIMATES, TransactionType } from '../config/chains';
+import { API_CONFIG, getApiUrl } from '../config/api';
 import ScheduleTransactionModal from './ScheduleTransactionModal';
 import ConfidenceRing from './ui/ConfidenceRing';
 import { formatGwei, formatUsd } from '../utils/formatNumber';
@@ -40,8 +41,6 @@ const TransactionPilot: React.FC<TransactionPilotProps> = ({ ethPrice = 3000 }) 
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [showChainToast, setShowChainToast] = useState(false);
 
-  const API_URL = import.meta.env.VITE_API_URL || 'https://basegasfeesml-production.up.railway.app/api';
-
   const currentGas = multiChainGas[selectedChain.id]?.gasPrice || 0;
   const gasUnits = TX_GAS_ESTIMATES[selectedTxType];
   const estimatedCostEth = (currentGas * gasUnits) / 1e9;
@@ -60,9 +59,12 @@ const TransactionPilot: React.FC<TransactionPilotProps> = ({ ethPrice = 3000 }) 
     try {
       setLoading(true);
       setError(null);
-      const response = await fetch(`${API_URL}/agent/recommend?urgency=${urgency}`, {
-        signal: AbortSignal.timeout(10000)
-      });
+      const response = await fetch(
+        getApiUrl(API_CONFIG.ENDPOINTS.AGENT_RECOMMEND, { urgency }),
+        {
+          signal: AbortSignal.timeout(API_CONFIG.TIMEOUT)
+        }
+      );
       const data = await response.json();
 
       if (data.success) {
@@ -84,7 +86,7 @@ const TransactionPilot: React.FC<TransactionPilotProps> = ({ ethPrice = 3000 }) 
     } finally {
       setLoading(false);
     }
-  }, [API_URL, urgency]);
+  }, [urgency]);
 
   useEffect(() => {
     fetchRecommendation();

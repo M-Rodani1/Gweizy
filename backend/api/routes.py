@@ -199,6 +199,109 @@ def historical():
         return jsonify({'error': str(e)}), 500
 
 
+@api_bp.route('/gas/patterns', methods=['GET'])
+@cached(ttl=300)  # Cache for 5 minutes
+def gas_patterns():
+    """Get hourly and daily gas price patterns for heatmap views."""
+    try:
+        hours = request.args.get('hours', 168, type=int)
+        data = db.get_historical_data(hours=hours)
+
+        if not data:
+            return jsonify({'success': False, 'error': 'No historical data available'}), 404
+
+        from dateutil import parser
+
+        hourly_groups = {hour: [] for hour in range(24)}
+        daily_groups = {day: [] for day in range(7)}
+        all_values = []
+
+        for entry in data:
+            timestamp = entry.get('timestamp', '')
+            if not timestamp:
+                continue
+            try:
+                dt = parser.parse(timestamp) if isinstance(timestamp, str) else timestamp
+            except Exception:
+                continue
+
+            gwei = entry.get('gwei')
+            if gwei is None:
+                gwei = entry.get('current_gas')
+            if gwei is None:
+                continue
+
+            all_values.append(gwei)
+            hourly_groups[dt.hour].append(gwei)
+            daily_groups[dt.weekday()].append(gwei)
+
+        if not all_values:
+            return jsonify({'success': False, 'error': 'No valid gas data available'}), 404
+
+        overall_avg = sum(all_values) / len(all_values)
+
+        hourly = []
+        for hour in range(24):
+            samples = hourly_groups[hour]
+            if samples:
+                avg_gwei = sum(samples) / len(samples)
+                min_gwei = min(samples)
+                max_gwei = max(samples)
+            else:
+                avg_gwei = overall_avg
+                min_gwei = overall_avg
+                max_gwei = overall_avg
+
+            hourly.append({
+                'hour': hour,
+                'avg_gwei': round(avg_gwei, 8),
+                'min_gwei': round(min_gwei, 8),
+                'max_gwei': round(max_gwei, 8),
+                'sample_count': len(samples)
+            })
+
+        daily = []
+        for day in range(7):
+            samples = daily_groups[day]
+            if samples:
+                avg_gwei = sum(samples) / len(samples)
+                min_gwei = min(samples)
+                max_gwei = max(samples)
+            else:
+                avg_gwei = overall_avg
+                min_gwei = overall_avg
+                max_gwei = overall_avg
+
+            daily.append({
+                'day': day,
+                'avg_gwei': round(avg_gwei, 8),
+                'min_gwei': round(min_gwei, 8),
+                'max_gwei': round(max_gwei, 8)
+            })
+
+        cheapest_hour = min(hourly, key=lambda h: h['avg_gwei'])['hour']
+        most_expensive_hour = max(hourly, key=lambda h: h['avg_gwei'])['hour']
+        cheapest_day = min(daily, key=lambda d: d['avg_gwei'])['day']
+        most_expensive_day = max(daily, key=lambda d: d['avg_gwei'])['day']
+
+        return jsonify({
+            'success': True,
+            'data': {
+                'hourly': hourly,
+                'daily': daily,
+                'overall_avg': round(overall_avg, 8),
+                'cheapest_hour': cheapest_hour,
+                'most_expensive_hour': most_expensive_hour,
+                'cheapest_day': cheapest_day,
+                'most_expensive_day': most_expensive_day
+            }
+        })
+
+    except Exception as e:
+        logger.error(f"Error in /gas/patterns: {traceback.format_exc()}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 @api_bp.route('/predictions', methods=['GET'])
 @cached(ttl=60)  # Cache for 1 minute
 def get_predictions():

@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
+import { API_CONFIG, getApiUrl } from '../config/api';
 
 interface AgentResponse {
   success: boolean;
@@ -28,11 +29,11 @@ const AgentRecommendation: React.FC<AgentRecommendationProps> = ({ currentGas = 
   const [error, setError] = useState<string | null>(null);
   const [urgency, setUrgency] = useState(0.5);
 
-  const API_URL = import.meta.env.VITE_API_URL || 'https://basegasfeesml-production.up.railway.app';
-
   const fetchRecommendation = useCallback(async () => {
     try {
-      const response = await fetch(`${API_URL}/api/agent/recommend?urgency=${urgency}`);
+      const response = await fetch(
+        getApiUrl(API_CONFIG.ENDPOINTS.AGENT_RECOMMEND, { urgency })
+      );
       const data = await response.json();
 
       if (data.success) {
@@ -47,7 +48,7 @@ const AgentRecommendation: React.FC<AgentRecommendationProps> = ({ currentGas = 
     } finally {
       setLoading(false);
     }
-  }, [API_URL, urgency]);
+  }, [urgency]);
 
   useEffect(() => {
     fetchRecommendation();
