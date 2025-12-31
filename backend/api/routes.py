@@ -431,134 +431,17 @@ def get_predictions():
 
         # Wrap entire ML prediction pipeline in try-catch for graceful fallback
         try:
-            # Prepare features - recent_data is now a list of dicts
-            # Convert to DataFrame format with proper datetime
-            import pandas as pd
-            from dateutil import parser
+            from models.feature_pipeline import build_feature_matrix
 
-            recent_df = []
-            for d in recent_data:
-                timestamp = d.get('timestamp', '')
-                # Parse timestamp string to datetime
-                if isinstance(timestamp, str):
-                    try:
-                        dt = parser.parse(timestamp)
-                    except:
-                        dt = datetime.now()
-                else:
-                    dt = timestamp if hasattr(timestamp, 'hour') else datetime.now()
-
-                recent_df.append({
-                    'timestamp': dt,
-                    'gas': d.get('gwei', 0) or d.get('current_gas', 0),
-                    'base_fee': d.get('baseFee', 0) or d.get('base_fee', 0),
-                    'priority_fee': d.get('priorityFee', 0) or d.get('priority_fee', 0),
-                    'block_number': 0  # Not in dict format
-                })
-
-            # Convert to DataFrame for feature engineering
-            df_recent = pd.DataFrame(recent_df)
-            if 'gas' in df_recent.columns:
-                df_recent['gas_price'] = df_recent['gas']
-
-            # Create advanced features
-            from models.advanced_features import create_advanced_features
-            features, _ = create_advanced_features(df_recent)
-
-            # Add external features (same as training)
-            df_recent['timestamp'] = pd.to_datetime(df_recent['timestamp'], format='mixed', errors='coerce')
-            df_recent = df_recent.sort_values('timestamp').reset_index(drop=True)
-
-            # Add external features
-            df_recent['estimated_block_time'] = 2.0
-            df_recent['recent_volatility'] = df_recent['gas_price'].rolling(window=12, min_periods=1).std().fillna(0)
-            df_recent['congestion_score'] = (df_recent['recent_volatility'] / df_recent['gas_price'].rolling(window=12, min_periods=1).mean()).fillna(0)
-            df_recent['gas_change'] = df_recent['gas_price'].diff().abs().fillna(0)
-            df_recent['time_since_spike'] = 0
-            if len(df_recent) > 0:
-                spike_threshold = df_recent['gas_price'].quantile(0.9) if len(df_recent) > 1 else df_recent['gas_price'].iloc[0]
-                for i in range(1, len(df_recent)):
-                    if df_recent.iloc[i]['gas_price'] > spike_threshold:
-                        df_recent.iloc[i, df_recent.columns.get_loc('time_since_spike')] = 0
-                    else:
-                        df_recent.iloc[i, df_recent.columns.get_loc('time_since_spike')] = df_recent.iloc[i-1, df_recent.columns.get_loc('time_since_spike')] + 1
-            df_recent['momentum_1h'] = df_recent['gas_price'].pct_change(12).fillna(0)
-            df_recent['momentum_4h'] = df_recent['gas_price'].pct_change(48).fillna(0)
-
-            # Merge external features with features DataFrame
-            external_features = ['estimated_block_time', 'recent_volatility', 'congestion_score',
-                                'time_since_spike', 'momentum_1h', 'momentum_4h']
-            for feat in external_features:
-                if feat in df_recent.columns:
-                    features[feat] = df_recent[feat].values[:len(features)]
-
+            features, _, _ = build_feature_matrix(recent_data, include_external_features=True)
             features = features.fillna(0)
 
-            # Try to use ensemble predictor first
-            use_ensemble = False
-            try:
-                from models.ensemble_predictor import ensemble_predictor
-                if ensemble_predictor.load_models():
-                    use_ensemble = True
-                    logger.info("Using ensemble predictor with confidence intervals")
-            except Exception as e:
-                logger.warning(f"Ensemble model not available: {e}")
-
-            # Make predictions with or without ensemble
+            # Make predictions with standard models
             prediction_data = {}
             model_info = {}
 
             for horizon in ['1h', '4h', '24h']:
-                if use_ensemble:
-                    try:
-                        # Use ensemble predictor
-                        result = ensemble_predictor.predict_with_confidence(features)
-
-                        pred_value = float(result['prediction'][0])
-                        lower_bound = float(result['lower_bound'][0])
-                        upper_bound = float(result['upper_bound'][0])
-                        confidence = float(result['confidence_score'][0])
-
-                        conf_level, emoji, color = ensemble_predictor.get_confidence_level(confidence)
-
-                        prediction_data[horizon] = [{
-                            'time': horizon,
-                            'predictedGwei': pred_value,
-                            'lowerBound': lower_bound,
-                            'upperBound': upper_bound,
-                            'confidence': confidence,
-                            'confidenceLevel': conf_level,
-                            'confidenceEmoji': emoji,
-                            'confidenceColor': color
-                        }]
-
-                        model_info[horizon] = {
-                            'type': 'ensemble',
-                            'models': list(ensemble_predictor.models.keys()),
-                            'avg_confidence': confidence
-                        }
-
-                        # Save prediction (old format for compatibility)
-                        db.save_prediction(
-                            horizon=horizon,
-                            predicted_gas=pred_value,
-                            model_version='ensemble'
-                        )
-
-                        # Log prediction for validation
-                        horizon_hours = {'1h': 1, '4h': 4, '24h': 24}[horizon]
-                        target_time = datetime.now() + timedelta(hours=horizon_hours)
-                        validator.log_prediction(
-                            horizon=horizon,
-                            predicted_gas=pred_value,
-                            target_time=target_time,
-                            model_version='ensemble'
-                        )
-                    except Exception as e:
-                        logger.warning(f"Ensemble prediction failed for {horizon}: {e}, falling back to standard")
-                        use_ensemble = False
-
-                if not use_ensemble and horizon in models:
+                if horizon in models:
                     # Fallback to standard models
                     model_data = models[horizon]
                     model = model_data['model']
@@ -673,7 +556,7 @@ def get_predictions():
 
                     db.save_prediction(
                         horizon=horizon,
-                        predicted_gas=pred,
+                        predicted_gas=pred_value,
                         model_version=model_data['model_name']
                     )
 
@@ -682,7 +565,7 @@ def get_predictions():
                     target_time = datetime.now() + timedelta(hours=horizon_hours)
                     validator.log_prediction(
                         horizon=horizon,
-                        predicted_gas=pred,
+                        predicted_gas=pred_value,
                         target_time=target_time,
                         model_version=model_data['model_name']
                     )

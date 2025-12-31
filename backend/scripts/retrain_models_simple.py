@@ -13,20 +13,21 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
-from models.advanced_features import create_advanced_features
+from models.feature_pipeline import build_feature_matrix, build_horizon_targets, normalize_gas_dataframe
 from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
 from sklearn.preprocessing import RobustScaler
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.model_selection import RandomizedSearchCV, TimeSeriesSplit
+from sklearn.pipeline import Pipeline
 import joblib
 
 # Hyperparameter search space for RandomForest
 RF_PARAM_DISTRIBUTIONS = {
-    'n_estimators': [50, 100, 200, 300],
-    'max_depth': [10, 15, 20, 30, None],
-    'min_samples_split': [2, 5, 10, 15],
-    'min_samples_leaf': [1, 2, 4, 8],
-    'max_features': ['sqrt', 'log2', 0.5, 0.7],
+    'model__n_estimators': [50, 100, 200, 300],
+    'model__max_depth': [10, 15, 20, 30, None],
+    'model__min_samples_split': [2, 5, 10, 15],
+    'model__min_samples_leaf': [1, 2, 4, 8],
+    'model__max_features': ['sqrt', 'log2', 0.5, 0.7],
 }
 
 # Whether to use hyperparameter tuning (set False for faster training)
@@ -62,21 +63,7 @@ def prepare_features(data):
     """Prepare features using the same pipeline as production"""
     print("\n📊 Creating features (same as production)...")
 
-    # Convert to DataFrame
-    df = pd.DataFrame(data)
-
-    # Parse timestamps and sort
-    df['timestamp'] = pd.to_datetime(df['timestamp'], format='mixed', errors='coerce')
-    df = df.dropna(subset=['timestamp']).sort_values('timestamp').reset_index(drop=True)
-
-    # Handle gas price column names
-    if 'gas_price' not in df.columns:
-        if 'gwei' in df.columns:
-            df['gas_price'] = df['gwei']
-        elif 'current_gas' in df.columns:
-            df['gas_price'] = df['current_gas']
-        else:
-            raise ValueError("No gas price column found")
+    df = normalize_gas_dataframe(data)
 
     print(f"   Data range: {df['timestamp'].min()} to {df['timestamp'].max()}")
     print(f"   Gas price range: {df['gas_price'].min():.6f} to {df['gas_price'].max():.6f} gwei")
@@ -104,36 +91,32 @@ def prepare_features(data):
 
         print(f"   Capped extreme outliers to bounds: [{lower_bound:.4f}, {upper_bound:.4f}]")
 
-    # IMPROVEMENT 2: Log-scale transformation for better handling of wide ranges
-    # Add small epsilon to avoid log(0)
+    # Build features using shared pipeline
+    X, feature_meta, df = build_feature_matrix(df, include_external_features=True)
+
+    # Log-scale transformation for better handling of wide ranges
     epsilon = 1e-8
-    df['gas_price_log'] = np.log(df['gas_price'] + epsilon)
-
-    print(f"   Using log-scale predictions for better outlier handling")
-
-    # Create advanced features using the same function as production
-    X, y_original = create_advanced_features(df)
-
-    # Use log-scaled target
-    y = df['gas_price_log']
+    y = np.log(df['gas_price'] + epsilon)
 
     print(f"✅ Created {X.shape[1]} features from {len(df)} records")
+    if feature_meta.get('sample_rate_minutes'):
+        print(f"   Detected sample rate: {feature_meta['sample_rate_minutes']:.2f} minutes")
 
-    # Create targets for different horizons
-    # 1h = 12 steps (at 5min intervals), 4h = 48 steps, 24h = 288 steps
-    y_1h = y.shift(-12)
-    y_4h = y.shift(-48)
-    y_24h = y.shift(-288)
+    steps_per_hour = feature_meta.get('steps_per_hour', 12)
 
-    # Also return original scale targets for metrics calculation
-    y_1h_original = y_original.shift(-12)
-    y_4h_original = y_original.shift(-48)
-    y_24h_original = y_original.shift(-288)
+    targets_log = build_horizon_targets(y, steps_per_hour)
+    targets_original = build_horizon_targets(df['gas_price'], steps_per_hour)
 
-    return X, (y_1h, y_1h_original), (y_4h, y_4h_original), (y_24h, y_24h_original)
+    return (
+        X,
+        (targets_log['1h'], targets_original['1h']),
+        (targets_log['4h'], targets_original['4h']),
+        (targets_log['24h'], targets_original['24h']),
+        feature_meta
+    )
 
 
-def train_model(X, y_tuple, horizon, min_samples=100):
+def train_model(X, y_tuple, horizon, min_samples=100, feature_meta=None):
     """
     Train a single model for given horizon
 
@@ -172,12 +155,8 @@ def train_model(X, y_tuple, horizon, min_samples=100):
     print(f"   Train samples: {len(X_train)}")
     print(f"   Test samples: {len(X_test)}")
 
-    # Scale features with RobustScaler
-    scaler = RobustScaler()
-    X_train_scaled = scaler.fit_transform(X_train)
-    X_test_scaled = scaler.transform(X_test)
-
     # Train Random Forest model on log-scale targets
+    search = None
     if USE_HYPERPARAMETER_TUNING and len(X_train) >= 1000:
         print(f"📊 Training Random Forest with hyperparameter tuning...")
         print(f"   Testing {TUNING_ITERATIONS} parameter combinations with {CV_FOLDS}-fold CV")
@@ -186,9 +165,13 @@ def train_model(X, y_tuple, horizon, min_samples=100):
         tscv = TimeSeriesSplit(n_splits=CV_FOLDS)
 
         base_model = RandomForestRegressor(random_state=42, n_jobs=-1)
+        pipeline = Pipeline([
+            ('scaler', RobustScaler()),
+            ('model', base_model)
+        ])
 
         search = RandomizedSearchCV(
-            base_model,
+            pipeline,
             RF_PARAM_DISTRIBUTIONS,
             n_iter=TUNING_ITERATIONS,
             cv=tscv,
@@ -198,8 +181,10 @@ def train_model(X, y_tuple, horizon, min_samples=100):
             verbose=0
         )
 
-        search.fit(X_train_scaled, y_log_train)
-        model = search.best_estimator_
+        search.fit(X_train, y_log_train)
+        best_pipeline = search.best_estimator_
+        scaler = best_pipeline.named_steps['scaler']
+        model = best_pipeline.named_steps['model']
 
         print(f"   Best parameters found:")
         for param, value in search.best_params_.items():
@@ -207,17 +192,23 @@ def train_model(X, y_tuple, horizon, min_samples=100):
         print(f"   Best CV MAE: {-search.best_score_:.6f}")
     else:
         print(f"📊 Training Random Forest (log-scale)...")
-        model = RandomForestRegressor(
-            n_estimators=100,
-            max_depth=15,
-            min_samples_split=5,
-            min_samples_leaf=2,
-            random_state=42,
-            n_jobs=-1
-        )
-        model.fit(X_train_scaled, y_log_train)
+        pipeline = Pipeline([
+            ('scaler', RobustScaler()),
+            ('model', RandomForestRegressor(
+                n_estimators=100,
+                max_depth=15,
+                min_samples_split=5,
+                min_samples_leaf=2,
+                random_state=42,
+                n_jobs=-1
+            ))
+        ])
+        pipeline.fit(X_train, y_log_train)
+        scaler = pipeline.named_steps['scaler']
+        model = pipeline.named_steps['model']
 
     # Evaluate on log scale
+    X_test_scaled = scaler.transform(X_test)
     y_log_pred = model.predict(X_test_scaled)
 
     # Convert predictions back to original scale
@@ -264,7 +255,7 @@ def train_model(X, y_tuple, horizon, min_samples=100):
         print(f"   {i+1}. {feature_names[idx]}: {importances[idx]:.4f}")
 
     # Store best hyperparameters if tuning was used
-    best_params = model.get_params() if USE_HYPERPARAMETER_TUNING else None
+    best_params = search.best_params_ if USE_HYPERPARAMETER_TUNING and len(X_train) >= 1000 else None
 
     return {
         'model': model,
@@ -273,6 +264,9 @@ def train_model(X, y_tuple, horizon, min_samples=100):
         'uses_log_scale': True,  # Flag for prediction inference
         'best_params': best_params,
         'feature_importances': dict(zip(feature_names, importances.tolist())),
+        'feature_pipeline': feature_meta or {},
+        'sample_rate_minutes': (feature_meta or {}).get('sample_rate_minutes'),
+        'steps_per_hour': (feature_meta or {}).get('steps_per_hour'),
         'metrics': {
             'mae': mae,
             'rmse': rmse,
@@ -300,6 +294,9 @@ def save_model(model_data, horizon, output_dir='backend/models/saved_models'):
         'metrics': model_data['metrics'],
         'trained_at': datetime.now().isoformat(),
         'feature_names': model_data['feature_names'],
+        'feature_pipeline': model_data.get('feature_pipeline', {}),
+        'sample_rate_minutes': model_data.get('sample_rate_minutes'),
+        'steps_per_hour': model_data.get('steps_per_hour'),
         'scaler_type': 'RobustScaler',
         'uses_log_scale': True,  # IMPORTANT: Predictions need exp() transformation
         'predicts_percentage_change': False,
@@ -339,12 +336,12 @@ def main():
         data = fetch_training_data(hours=720)  # 30 days
 
         # Step 2: Prepare features
-        X, y_1h, y_4h, y_24h = prepare_features(data)
+        X, y_1h, y_4h, y_24h, feature_meta = prepare_features(data)
 
         # Step 3: Train models for each horizon
         results = {}
         for horizon, y in [('1h', y_1h), ('4h', y_4h), ('24h', y_24h)]:
-            model_data = train_model(X, y, horizon)
+            model_data = train_model(X, y, horizon, feature_meta=feature_meta)
             if model_data:
                 results[horizon] = model_data
                 save_model(model_data, horizon)

@@ -363,17 +363,8 @@ class ModelRetrainer:
 
     def _retrain_ensemble(self) -> Dict:
         """Retrain ensemble models (RandomForest + GradientBoosting)"""
-        try:
-            # Use existing ensemble training script
-            from models.ensemble_predictor import train_ensemble_models
-
-            result = train_ensemble_models()
-            logger.info("Ensemble training completed successfully")
-            return {'success': True, 'result': result}
-
-        except Exception as e:
-            logger.error(f"Error training ensemble: {e}")
-            return {'success': False, 'error': str(e)}
+        logger.error("Ensemble retraining is not configured (missing ensemble predictor).")
+        return {'success': False, 'error': 'Ensemble predictor not configured'}
 
     def _validate_new_models(self, backup_path: str) -> bool:
         """

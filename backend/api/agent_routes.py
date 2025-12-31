@@ -362,18 +362,10 @@ def _get_predictions() -> dict:
         if not historical or not models:
             return {'1h': current_gas, '4h': current_gas, '24h': current_gas}
 
-        import pandas as pd
-        from models.advanced_features import create_advanced_features
+        from models.feature_pipeline import build_feature_matrix
         import numpy as np
 
-        df = pd.DataFrame(historical)
-        df['timestamp'] = pd.to_datetime(df['timestamp'], format='mixed')
-        df = df.sort_values('timestamp')
-
-        if 'gas_price' not in df.columns:
-            df['gas_price'] = df.get('gwei', df.get('current_gas', 0.01))
-
-        X, _ = create_advanced_features(df)
+        X, _, _ = build_feature_matrix(historical, include_external_features=True)
 
         predictions = {}
         for horizon in ['1h', '4h', '24h']:

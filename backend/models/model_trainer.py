@@ -4,6 +4,7 @@ from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
 from sklearn.linear_model import Ridge
 from sklearn.model_selection import train_test_split, cross_val_score, TimeSeriesSplit  # Week 1 Quick Win #4: Time-series CV
 from sklearn.preprocessing import RobustScaler  # Week 1 Quick Win #3: RobustScaler for outlier handling
+from sklearn.pipeline import Pipeline
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 import joblib
 import os
@@ -15,6 +16,7 @@ class GasModelTrainer:
         self.models = {}
         self.best_models = {}
         self.scalers = {}  # Store RobustScalers for each horizon (Week 1 Quick Win #3)
+        self.feature_names = []
         
     def train_all_models(self, X, y_1h, y_4h, y_24h):
         """
@@ -48,6 +50,9 @@ class GasModelTrainer:
             
             X_aligned = X.loc[common_idx]
             y_aligned = y.loc[common_idx]
+
+            if not self.feature_names:
+                self.feature_names = list(X_aligned.columns)
             
             print(f"   After alignment: {len(X_aligned)} samples")
             
@@ -100,7 +105,7 @@ class GasModelTrainer:
             
             # Week 1 Quick Win #4: Time-series cross-validation for model evaluation
             print(f"📊 Running time-series cross-validation...")
-            cv_scores = self._time_series_cross_validate(X_train_scaled, y_train)
+            cv_scores = self._time_series_cross_validate(X_train, y_train)
             print(f"   CV R² scores: {cv_scores['r2_mean']:.4f} ± {cv_scores['r2_std']:.4f}")
             
             # Train multiple model types (on scaled features)
@@ -239,22 +244,25 @@ class GasModelTrainer:
         tscv = TimeSeriesSplit(n_splits=n_splits)
         
         # Test with a simple model to get CV scores
-        test_model = RandomForestRegressor(
-            n_estimators=50,  # Smaller for faster CV
-            max_depth=10,
-            random_state=42,
-            n_jobs=-1
-        )
+        pipeline = Pipeline([
+            ('scaler', RobustScaler()),
+            ('model', RandomForestRegressor(
+                n_estimators=50,  # Smaller for faster CV
+                max_depth=10,
+                random_state=42,
+                n_jobs=-1
+            ))
+        ])
         
         cv_r2_scores = cross_val_score(
-            test_model, X, y,
+            pipeline, X, y,
             cv=tscv,
             scoring='r2',
             n_jobs=-1
         )
         
         cv_mae_scores = -cross_val_score(
-            test_model, X, y,
+            pipeline, X, y,
             cv=tscv,
             scoring='neg_mean_absolute_error',
             n_jobs=-1
@@ -298,6 +306,7 @@ class GasModelTrainer:
                 'model_name': model_info['name'],
                 'metrics': model_info['metrics'],
                 'trained_at': datetime.now().isoformat(),
+                'feature_names': self.feature_names,
                 'feature_scaler': scaler,  # Week 1 Quick Win #3: RobustScaler
                 'scaler_type': 'RobustScaler',  # For compatibility checking
             }
@@ -340,4 +349,3 @@ if __name__ == "__main__":
     
     # Save best models
     trainer.save_models()
-

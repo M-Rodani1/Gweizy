@@ -61,11 +61,11 @@ class GasFeatureEngineer:
             if col in df.columns:
                 df[col] = df[col].fillna(0)
         
-        # Fill NaN in lag/rolling features with forward fill then backward fill then 0
+        # Fill NaN in lag/rolling features with forward fill then zero to avoid future leakage
         lag_cols = [col for col in df.columns if 'lag' in col or 'rolling' in col or 'change' in col]
         for col in lag_cols:
             if col in df.columns:
-                df[col] = df[col].ffill().bfill().fillna(0)
+                df[col] = df[col].ffill().fillna(0)
         
         print(f"✅ Prepared {len(df)} training samples with {len(df.columns)} features")
         
@@ -124,12 +124,12 @@ class GasFeatureEngineer:
                         df.sort_values('timestamp'),
                         onchain_df.sort_values('timestamp'),
                         on='timestamp',
-                        direction='nearest',
+                        direction='backward',
                         tolerance=pd.Timedelta(minutes=5),
                         suffixes=('', '_onchain')
                     )
                     
-                    # Fill missing values with forward fill, then backward fill, then zero
+                    # Fill missing values with forward fill, then zero to avoid future leakage
                     # This allows training even when enhanced features are sparse
                     enhanced_cols = [
                         'pending_tx_count', 'unique_addresses', 'tx_per_second',
@@ -138,8 +138,8 @@ class GasFeatureEngineer:
                     ]
                     for col in enhanced_cols:
                         if col in df.columns:
-                            # Forward fill, then backward fill, then zero
-                            df[col] = df[col].ffill().bfill().fillna(0).infer_objects(copy=False)
+                            # Forward fill, then zero
+                            df[col] = df[col].ffill().fillna(0).infer_objects(copy=False)
                     
                     print(f"✅ Joined {len(onchain_data)} onchain feature records")
                 else:
@@ -287,27 +287,10 @@ class GasFeatureEngineer:
         This method now uses advanced features if available, otherwise falls back to basic features
         """
         try:
-            # Try to use advanced features
-            from models.advanced_features import create_advanced_features
-            
-            df = pd.DataFrame(recent_data)
-            if 'timestamp' in df.columns:
-                if not pd.api.types.is_datetime64_any_dtype(df['timestamp']):
-                    df['timestamp'] = pd.to_datetime(df['timestamp'])
-            
-            # Ensure we have gas_price column
-            if 'gas_price' not in df.columns:
-                if 'current_gas' in df.columns:
-                    df['gas_price'] = df['current_gas']
-                elif 'gwei' in df.columns:
-                    df['gas_price'] = df['gwei']
-                elif 'gas' in df.columns:
-                    df['gas_price'] = df['gas']
-            
-            X, _ = create_advanced_features(df)
-            
-            # Get the latest row (most recent data)
-            return X.iloc[[-1]]
+            from models.feature_pipeline import build_feature_matrix
+
+            features, _, _ = build_feature_matrix(recent_data, include_external_features=True)
+            return features.iloc[[-1]]
         except Exception as e:
             # Fallback to basic features
             import logging
@@ -341,4 +324,3 @@ if __name__ == "__main__":
     print(f"\n📊 Data shape: {df.shape}")
     print(f"📊 Features: {engineer.get_feature_columns(df)}")
     print(f"\n📊 Sample data:\n{df.head()}")
-

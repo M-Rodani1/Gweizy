@@ -93,7 +93,6 @@ def generate_predictions_frame():
     """Generate frame showing predictions"""
     try:
         from data.database import DatabaseManager
-        from models.ensemble_predictor import ensemble_predictor
 
         db = DatabaseManager()
 
