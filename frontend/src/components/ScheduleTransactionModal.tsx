@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useChain } from '../contexts/ChainContext';
 import { useScheduler } from '../contexts/SchedulerContext';
 import { TransactionType, TX_GAS_ESTIMATES } from '../config/chains';
+import ChainBadge from './ChainBadge';
+import { getTxLabel } from '../config/transactions';
 
 interface ScheduleTransactionModalProps {
   isOpen: boolean;
@@ -10,15 +12,15 @@ interface ScheduleTransactionModalProps {
   suggestedTargetGas?: number;
 }
 
-const TX_TYPE_OPTIONS: { type: TransactionType; label: string; icon: string }[] = [
-  { type: 'swap', label: 'Token Swap', icon: '🔄' },
-  { type: 'bridge', label: 'Bridge', icon: '🌉' },
-  { type: 'nftMint', label: 'NFT Mint', icon: '🎨' },
-  { type: 'transfer', label: 'ETH Transfer', icon: '📤' },
-  { type: 'erc20Transfer', label: 'Token Transfer', icon: '💰' },
-  { type: 'approve', label: 'Token Approve', icon: '✅' },
-  { type: 'nftTransfer', label: 'NFT Transfer', icon: '🖼️' },
-  { type: 'contractDeploy', label: 'Deploy Contract', icon: '📜' },
+const TX_TYPE_OPTIONS: { type: TransactionType; label: string }[] = [
+  { type: 'swap', label: getTxLabel('swap') },
+  { type: 'bridge', label: getTxLabel('bridge') },
+  { type: 'nftMint', label: getTxLabel('nftMint') },
+  { type: 'transfer', label: getTxLabel('transfer') },
+  { type: 'erc20Transfer', label: getTxLabel('erc20Transfer') },
+  { type: 'approve', label: getTxLabel('approve') },
+  { type: 'nftTransfer', label: getTxLabel('nftTransfer') },
+  { type: 'contractDeploy', label: getTxLabel('contractDeploy') },
 ];
 
 const EXPIRY_OPTIONS = [
@@ -127,7 +129,9 @@ const ScheduleTransactionModal: React.FC<ScheduleTransactionModalProps> = ({
                     }
                   `}
                 >
-                  <div className="text-xl mb-1">{chain.icon}</div>
+                  <div className="flex justify-center mb-1">
+                    <ChainBadge chain={chain} size="sm" />
+                  </div>
                   <div className="text-xs text-gray-300">{chain.shortName}</div>
                   <div className="text-xs text-cyan-400 font-mono">
                     {multiChainGas[chain.id]?.gasPrice?.toFixed(4) || '...'}
@@ -147,9 +151,9 @@ const ScheduleTransactionModal: React.FC<ScheduleTransactionModalProps> = ({
               onChange={(e) => setTxType(e.target.value as TransactionType)}
               className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
             >
-              {TX_TYPE_OPTIONS.map(({ type, label, icon }) => (
+              {TX_TYPE_OPTIONS.map(({ type, label }) => (
                 <option key={type} value={type}>
-                  {icon} {label} (~{TX_GAS_ESTIMATES[type].toLocaleString()} gas)
+                  {label} (~{TX_GAS_ESTIMATES[type].toLocaleString()} gas)
                 </option>
               ))}
             </select>

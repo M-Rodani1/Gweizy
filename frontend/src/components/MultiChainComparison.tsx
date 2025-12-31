@@ -1,6 +1,8 @@
 import React from 'react';
+import { Network } from 'lucide-react';
 import { useChain, useChainComparison } from '../contexts/ChainContext';
 import { TX_GAS_ESTIMATES, TransactionType } from '../config/chains';
+import ChainBadge from './ChainBadge';
 import Sparkline from './ui/Sparkline';
 import { formatGwei, formatUsd } from '../utils/formatNumber';
 
@@ -8,15 +10,6 @@ interface MultiChainComparisonProps {
   txType?: TransactionType;
   ethPrice?: number;
 }
-
-// Chain gradient icon mapping
-const CHAIN_ICON_CLASS: Record<number, string> = {
-  1: 'chain-icon-eth',      // Ethereum
-  8453: 'chain-icon-base',  // Base
-  42161: 'chain-icon-arb',  // Arbitrum
-  10: 'chain-icon-op',      // Optimism
-  137: 'chain-icon-poly',   // Polygon
-};
 
 const MultiChainComparison: React.FC<MultiChainComparisonProps> = ({
   txType = 'swap',
@@ -42,7 +35,7 @@ const MultiChainComparison: React.FC<MultiChainComparisonProps> = ({
       {/* Header */}
       <div className="px-4 py-3 border-b border-gray-700/50 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <span className="text-lg">⛽</span>
+          <Network className="w-4 h-4 text-cyan-400" />
           <h3 className="font-semibold text-white">Multi-Chain Gas</h3>
         </div>
         {isLoading && (
@@ -87,9 +80,7 @@ const MultiChainComparison: React.FC<MultiChainComparisonProps> = ({
 
                 {/* Chain info with gradient icon */}
                 <div className="flex items-center gap-2">
-                  <div className={`chain-icon ${CHAIN_ICON_CLASS[chain.id] || 'bg-gray-600'}`}>
-                    <span className="text-sm">{chain.icon}</span>
-                  </div>
+                  <ChainBadge chain={chain} size="sm" />
                   <div className="text-left">
                     <div className="flex items-center gap-2">
                       <span className="font-medium text-white">{chain.name}</span>

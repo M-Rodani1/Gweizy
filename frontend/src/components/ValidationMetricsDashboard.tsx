@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Activity, TrendingUp, Target, CheckCircle, AlertTriangle } from 'lucide-react';
+import { API_CONFIG, getApiUrl } from '../config/api';
 
 interface ValidationMetrics {
   mae: number;
@@ -41,8 +42,6 @@ const ValidationMetricsDashboard: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [isExpanded, setIsExpanded] = useState(true);
 
-  const API_BASE = import.meta.env.VITE_API_URL || 'https://basegasfeesml.onrender.com';
-
   useEffect(() => {
     fetchValidationData();
     const interval = setInterval(fetchValidationData, 60000); // Refresh every minute
@@ -61,8 +60,8 @@ const ValidationMetricsDashboard: React.FC = () => {
       setError(null);
 
       const [metricsRes, healthRes] = await Promise.all([
-        fetch(`${API_BASE}/validation/metrics?horizon=all`),
-        fetch(`${API_BASE}/validation/health`)
+        fetch(getApiUrl(API_CONFIG.ENDPOINTS.VALIDATION_METRICS, { horizon: 'all' })),
+        fetch(getApiUrl(API_CONFIG.ENDPOINTS.VALIDATION_HEALTH))
       ]);
 
       // Handle 503 (no data yet) gracefully - hide component instead of showing error
@@ -101,7 +100,7 @@ const ValidationMetricsDashboard: React.FC = () => {
 
   const fetchTrends = async (horizon: string, days: number) => {
     try {
-      const response = await fetch(`${API_BASE}/validation/trends?horizon=${horizon}&days=${days}`);
+      const response = await fetch(getApiUrl(API_CONFIG.ENDPOINTS.VALIDATION_TRENDS, { horizon, days }));
       if (!response.ok) {
         console.warn('Trends not available yet');
         return;

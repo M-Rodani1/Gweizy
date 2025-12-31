@@ -1,6 +1,19 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import {
+  Activity,
+  Brain,
+  Calculator,
+  CheckCircle,
+  Clock,
+  Coins,
+  Grid3x3,
+  TrendingUp,
+  Trophy,
+  Zap
+} from 'lucide-react';
 import { fetchGlobalStats } from '../src/api/gasApi';
+import Logo from '../src/components/branding/Logo';
 
 const Landing: React.FC = () => {
   const [stats, setStats] = useState({
@@ -30,26 +43,36 @@ const Landing: React.FC = () => {
   }, []);
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg)', color: 'var(--text)' }}>
+    <div className="landing-shell" style={{ minHeight: '100vh' }}>
       {/* Navigation */}
-      <nav style={{
-        position: 'fixed',
-        top: 0,
-        width: '100%',
-        background: 'var(--surface)',
-        backdropFilter: 'blur(12px)',
-        borderBottom: '1px solid var(--border)',
-        zIndex: 50
-      }}>
+      <nav
+        style={{
+          position: 'fixed',
+          top: 0,
+          width: '100%',
+          background: 'rgba(10, 14, 26, 0.7)',
+          backdropFilter: 'blur(16px)',
+          borderBottom: '1px solid var(--border)',
+          zIndex: 50
+        }}
+      >
         <div className="container" style={{ padding: 'var(--space-lg) var(--space-xl)' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-md)' }}>
-              <span style={{ fontSize: '1.25rem', fontWeight: 700 }}>Base Gas Optimiser</span>
-              <span className="badge badge-accent">Hackathon Winner</span>
+              <div className="icon-tile">
+                <Logo size="sm" />
+              </div>
+              <span style={{ fontSize: '1.1rem', fontWeight: 600, letterSpacing: '-0.01em' }}>
+                Gweizy
+              </span>
+              <span className="badge badge-accent" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+                <Trophy size={14} />
+                Hackathon Winner
+              </span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-lg)' }}>
               <Link to="/pricing" className="btn btn-ghost">Pricing</Link>
-              <Link to="/app" className="btn btn-primary">Launch App</Link>
+              <Link to="/app" className="btn btn-primary">Launch AI Pilot</Link>
             </div>
           </div>
         </div>
@@ -62,26 +85,27 @@ const Landing: React.FC = () => {
 
             {/* Left: Hero Content */}
             <div>
-              <div className="badge badge-accent" style={{ marginBottom: 'var(--space-lg)' }}>
-                <span>🏆</span> AI Hack Nation 2024 Winner
+              <div className="badge badge-accent" style={{ marginBottom: 'var(--space-lg)', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+                <Trophy size={14} />
+                AI Hack Nation 2024 Winner
               </div>
 
-              <h1 style={{ fontSize: '3.5rem', fontWeight: 700, lineHeight: 1.1, marginBottom: 'var(--space-lg)' }}>
+              <h1 className="hero-title" style={{ marginBottom: 'var(--space-lg)' }}>
                 <span style={{ color: 'var(--accent)' }}>AI Transaction Pilot</span>{' '}
-                for Base Network
+                for Base and beyond
               </h1>
 
-              <p style={{ fontSize: '1.25rem', color: 'var(--text-secondary)', marginBottom: 'var(--space-md)', lineHeight: 1.6 }}>
-                DQN Neural Network tells you exactly when to transact. Save up to 40% on gas fees.
+              <p className="hero-subtitle" style={{ marginBottom: 'var(--space-md)' }}>
+                A DQN agent that tells you when to submit, wait, or rebid. Cut gas spend by up to 40%.
               </p>
 
-              <p style={{ fontSize: '1rem', color: 'var(--text-muted)', marginBottom: 'var(--space-2xl)' }}>
-                Multi-chain support: Base, Ethereum, Arbitrum, Optimism, Polygon
+              <p className="hero-kicker" style={{ marginBottom: 'var(--space-2xl)' }}>
+                Live coverage: Base, Ethereum, Arbitrum, Optimism, Polygon
               </p>
 
               <div style={{ display: 'flex', gap: 'var(--space-md)', flexWrap: 'wrap', marginBottom: 'var(--space-2xl)' }}>
-                <Link to="/app" className="btn btn-primary" style={{ padding: '1rem 2rem', fontSize: '1.125rem', background: 'linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%)' }}>
-                  Launch AI Pilot →
+                <Link to="/app" className="btn btn-primary" style={{ padding: '1rem 2rem', fontSize: '1.125rem' }}>
+                  Launch AI Pilot
                 </Link>
                 <a href="#how-it-works" className="btn btn-secondary" style={{ padding: '1rem 2rem', fontSize: '1.125rem' }}>
                   See How It Works
@@ -156,7 +180,7 @@ const Landing: React.FC = () => {
                   {/* Recommendation */}
                   <div className="card" style={{ marginTop: 'var(--space-md)', padding: 'var(--space-md)', background: 'var(--success-bg)', border: '1px solid var(--success-border)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
-                      <span style={{ fontSize: '1.5rem' }}>✅</span>
+                      <CheckCircle size={18} color="var(--success)" />
                       <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--success)' }}>
                         Good time to transact - Gas is 25% below average
                       </div>
@@ -181,26 +205,32 @@ const Landing: React.FC = () => {
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 'var(--space-xl)' }}>
             <div className="card" style={{ padding: 'var(--space-xl)', textAlign: 'center' }}>
-              <div style={{ fontSize: '3rem', marginBottom: 'var(--space-md)' }}>📊</div>
+              <div className="icon-tile" style={{ margin: '0 auto var(--space-md)' }}>
+                <Activity size={22} />
+              </div>
               <h3 style={{ marginBottom: 'var(--space-md)' }}>1. Real-Time Analysis</h3>
               <p style={{ color: 'var(--text-secondary)', lineHeight: 1.7 }}>
-                Our system monitors Base network activity every minute, tracking gas prices, congestion, and transaction patterns
+                We track Base network activity every minute, measuring congestion, gas prices, and load.
               </p>
             </div>
 
             <div className="card" style={{ padding: 'var(--space-xl)', textAlign: 'center' }}>
-              <div style={{ fontSize: '3rem', marginBottom: 'var(--space-md)' }}>🤖</div>
-              <h3 style={{ marginBottom: 'var(--space-md)' }}>2. AI Predictions</h3>
+              <div className="icon-tile" style={{ margin: '0 auto var(--space-md)' }}>
+                <Brain size={22} />
+              </div>
+              <h3 style={{ marginBottom: 'var(--space-md)' }}>2. AI Decisions</h3>
               <p style={{ color: 'var(--text-secondary)', lineHeight: 1.7 }}>
-                Machine learning models predict gas prices for the next 1, 4, and 24 hours with high accuracy
+                A reinforcement model predicts the right moment to submit, wait, or bid higher.
               </p>
             </div>
 
             <div className="card" style={{ padding: 'var(--space-xl)', textAlign: 'center' }}>
-              <div style={{ fontSize: '3rem', marginBottom: 'var(--space-md)' }}>💰</div>
+              <div className="icon-tile" style={{ margin: '0 auto var(--space-md)' }}>
+                <Coins size={22} />
+              </div>
               <h3 style={{ marginBottom: 'var(--space-md)' }}>3. Save Money</h3>
               <p style={{ color: 'var(--text-secondary)', lineHeight: 1.7 }}>
-                Get instant recommendations on when to transact, saving up to 40% on gas fees compared to peak times
+                Optimize timing and save up to 40% versus peak-hour submissions.
               </p>
             </div>
           </div>
@@ -219,19 +249,24 @@ const Landing: React.FC = () => {
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 'var(--space-lg)' }}>
             {[
-              { icon: '🚦', title: 'Traffic Light System', desc: 'Instant visual indicator shows if NOW is a good time to transact' },
-              { icon: '⏰', title: 'Best Time Widget', desc: 'See exactly when gas is cheapest today' },
-              { icon: '📈', title: 'Price Predictions', desc: 'ML-powered forecasts for 1h, 4h, and 24h ahead' },
-              { icon: '🗓️', title: '24-Hour Heatmap', desc: 'Interactive hourly breakdown shows gas price patterns' },
-              { icon: '💸', title: 'Savings Calculator', desc: 'Calculate exactly how much you could save' },
-              { icon: '⚡', title: 'Real-Time Updates', desc: 'Live data refreshed every 30 seconds' }
-            ].map((feature, i) => (
-              <div key={i} className="card" style={{ padding: 'var(--space-lg)' }}>
-                <div style={{ fontSize: '2.5rem', marginBottom: 'var(--space-md)' }}>{feature.icon}</div>
-                <h4 style={{ marginBottom: 'var(--space-sm)' }}>{feature.title}</h4>
-                <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', lineHeight: 1.6 }}>{feature.desc}</p>
-              </div>
-            ))}
+              { icon: Activity, title: 'Signal Lights', desc: 'Instant visual indicator shows if now is a good time to transact.' },
+              { icon: Clock, title: 'Best Time Widget', desc: 'See when gas is cheapest today, not just current price.' },
+              { icon: TrendingUp, title: 'Price Predictions', desc: 'ML-powered forecasts for 1h, 4h, and 24h ahead.' },
+              { icon: Grid3x3, title: '24-Hour Heatmap', desc: 'Interactive hourly breakdown shows gas patterns.' },
+              { icon: Calculator, title: 'Savings Calculator', desc: 'Estimate exactly how much you could save.' },
+              { icon: Zap, title: 'Real-Time Updates', desc: 'Live data refreshed every 30 seconds.' }
+            ].map((feature, i) => {
+              const Icon = feature.icon;
+              return (
+                <div key={i} className="card" style={{ padding: 'var(--space-lg)' }}>
+                  <div className="icon-tile" style={{ marginBottom: 'var(--space-md)' }}>
+                    <Icon size={18} />
+                  </div>
+                  <h4 style={{ marginBottom: 'var(--space-sm)' }}>{feature.title}</h4>
+                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', lineHeight: 1.6 }}>{feature.desc}</p>
+                </div>
+              );
+            })}
           </div>
         </div>
       </section>

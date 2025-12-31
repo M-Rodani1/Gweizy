@@ -4,8 +4,7 @@
  */
 
 import { io, Socket } from 'socket.io-client';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+import { getApiOrigin } from '../config/api';
 
 class WebSocketService {
   private socket: Socket | null = null;
@@ -18,7 +17,7 @@ class WebSocketService {
       return this.socket;
     }
 
-    this.socket = io(API_URL, {
+    this.socket = io(getApiOrigin(), {
       transports: ['websocket', 'polling'],
       reconnection: true,
       reconnectionAttempts: this.maxReconnectAttempts,

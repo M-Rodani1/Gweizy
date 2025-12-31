@@ -3,6 +3,8 @@ import WalletConnect from './WalletConnect';
 import ChainSelector from './ChainSelector';
 import ThemeToggle from './ui/ThemeToggle';
 import { useChain } from '../contexts/ChainContext';
+import ChainBadge from './ChainBadge';
+import Logo from './branding/Logo';
 
 interface StickyHeaderProps {
   apiStatus: 'checking' | 'online' | 'offline';
@@ -38,29 +40,30 @@ const StickyHeader: React.FC<StickyHeaderProps> = ({ apiStatus, currentGas }) =>
           {/* Logo and Title */}
           <div className="flex items-center space-x-3">
             <div className="relative">
-              <div className={`flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-purple-600 transition-transform duration-300 ${
+              <div className={`flex items-center justify-center w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-slate-900/70 border border-cyan-500/20 transition-transform duration-300 ${
                 isScrolled ? 'scale-90' : 'scale-100'
               }`}>
-                <span className="text-xl font-bold text-white">G</span>
+                <Logo size={isScrolled ? 'sm' : 'md'} />
               </div>
               {isScrolled && displayGas > 0 && (
-                <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full animate-pulse" />
+                <div className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-400 rounded-full animate-pulse" />
               )}
             </div>
             <div>
-              <h1 className={`font-bold text-gray-100 transition-all duration-300 ${
+              <h1 className={`font-semibold text-gray-100 tracking-tight transition-all duration-300 ${
                 isScrolled ? 'text-lg sm:text-xl' : 'text-xl sm:text-2xl md:text-3xl'
               }`}>
                 Gweizy
               </h1>
               {!isScrolled && (
                 <p className="text-xs sm:text-sm text-gray-400 mt-1 hidden sm:block animate-fade-in">
-                  AI-Powered Multi-Chain Gas Optimizer
+                  AI-guided timing for multi-chain gas
                 </p>
               )}
               {isScrolled && displayGas > 0 && (
-                <p className="text-xs text-cyan-400 font-semibold animate-fade-in">
-                  {selectedChain.icon} {displayGas.toFixed(4)} gwei
+                <p className="text-xs text-cyan-400 font-semibold animate-fade-in flex items-center gap-2">
+                  <ChainBadge chain={selectedChain} size="sm" />
+                  {displayGas.toFixed(4)} gwei
                 </p>
               )}
             </div>

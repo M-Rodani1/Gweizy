@@ -1,10 +1,12 @@
 import React, { useEffect, useState, lazy } from 'react';
+import { Bell, Calendar } from 'lucide-react';
 import StickyHeader from '../src/components/StickyHeader';
 import TransactionPilot from '../src/components/TransactionPilot';
 import MultiChainComparison from '../src/components/MultiChainComparison';
 import CompactForecast from '../src/components/CompactForecast';
 import { LazySection } from '../src/components/LazySection';
 import CollapsibleSection from '../src/components/ui/CollapsibleSection';
+import ApiStatusPanel from '../src/components/ApiStatusPanel';
 import { checkHealth } from '../src/api/gasApi';
 import { useChain } from '../src/contexts/ChainContext';
 import { useEthPrice } from '../src/hooks/useEthPrice';
@@ -34,7 +36,7 @@ const Dashboard: React.FC = () => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gray-950">
+    <div className="min-h-screen app-shell">
       {/* Header */}
       <StickyHeader apiStatus={apiStatus} currentGas={currentGas} />
 
@@ -48,6 +50,7 @@ const Dashboard: React.FC = () => {
         <div className="grid grid-cols-12 gap-8">
           {/* Left Column: Chain Comparison + Forecast */}
           <div className="col-span-12 lg:col-span-4 space-y-8">
+            <ApiStatusPanel />
             <MultiChainComparison txType="swap" ethPrice={ethPrice} />
             <CompactForecast />
           </div>
@@ -57,7 +60,7 @@ const Dashboard: React.FC = () => {
             {/* Scheduled Transactions - Collapsible */}
             <CollapsibleSection
               title="Scheduled Transactions"
-              icon="📅"
+              icon={<Calendar className="w-4 h-4 text-cyan-300" />}
               defaultExpanded={false}
             >
               <LazySection>
@@ -68,7 +71,7 @@ const Dashboard: React.FC = () => {
             {/* Gas Alerts - Collapsible */}
             <CollapsibleSection
               title="Gas Price Alerts"
-              icon="🔔"
+              icon={<Bell className="w-4 h-4 text-cyan-300" />}
               defaultExpanded={false}
             >
               <LazySection>

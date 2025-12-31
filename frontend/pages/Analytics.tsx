@@ -1,4 +1,5 @@
 import React, { lazy, Suspense } from 'react';
+import { Brain, Calendar, ClipboardList, Sparkles, Target, TrendingUp } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import StickyHeader from '../src/components/StickyHeader';
 import { useChain } from '../src/contexts/ChainContext';
@@ -26,7 +27,7 @@ const Analytics: React.FC = () => {
   const currentGas = multiChainGas[selectedChain.id]?.gasPrice || 0;
 
   return (
-    <div className="min-h-screen bg-gray-950">
+    <div className="min-h-screen app-shell">
       <StickyHeader apiStatus="online" currentGas={currentGas} />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
@@ -46,7 +47,8 @@ const Analytics: React.FC = () => {
         {/* Predictions Section */}
         <section className="mb-8">
           <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-            <span>🔮</span> ML Predictions
+            <Sparkles className="w-4 h-4 text-cyan-400" />
+            ML Predictions
           </h2>
           <Suspense fallback={<LoadingSpinner />}>
             <PredictionCards />
@@ -56,7 +58,8 @@ const Analytics: React.FC = () => {
         {/* Charts Section */}
         <section className="mb-8">
           <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-            <span>📊</span> Price Charts
+            <TrendingUp className="w-4 h-4 text-cyan-400" />
+            Price Charts
           </h2>
           <div className="grid grid-cols-1 gap-6">
             <Suspense fallback={<LoadingSpinner />}>
@@ -68,7 +71,8 @@ const Analytics: React.FC = () => {
         {/* Pattern Analysis */}
         <section className="mb-8">
           <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-            <span>🗓️</span> Pattern Analysis
+            <Calendar className="w-4 h-4 text-cyan-400" />
+            Pattern Analysis
           </h2>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <Suspense fallback={<LoadingSpinner />}>
@@ -83,7 +87,8 @@ const Analytics: React.FC = () => {
         {/* Model Performance */}
         <section className="mb-8">
           <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-            <span>🎯</span> Model Performance
+            <Target className="w-4 h-4 text-cyan-400" />
+            Model Performance
           </h2>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <Suspense fallback={<LoadingSpinner />}>
@@ -98,7 +103,8 @@ const Analytics: React.FC = () => {
         {/* Network Intelligence */}
         <section className="mb-8">
           <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-            <span>🧠</span> Network Intelligence
+            <Brain className="w-4 h-4 text-cyan-400" />
+            Network Intelligence
           </h2>
           <Suspense fallback={<LoadingSpinner />}>
             <NetworkIntelligencePanel />
@@ -108,7 +114,8 @@ const Analytics: React.FC = () => {
         {/* Historical Data */}
         <section className="mb-8">
           <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-            <span>📋</span> Historical Data
+            <ClipboardList className="w-4 h-4 text-cyan-400" />
+            Historical Data
           </h2>
           <Suspense fallback={<LoadingSpinner />}>
             <GasPriceTable />

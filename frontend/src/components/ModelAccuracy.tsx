@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { AlertTriangle, Activity } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 import { fetchAccuracy } from '../api/gasApi';
 import LoadingSpinner from './LoadingSpinner';
@@ -45,9 +46,9 @@ const ModelAccuracy: React.FC = () => {
 
   const getConfidenceLevel = (accuracy: number) => {
     // accuracy is a decimal (0.0-1.0)
-    if (accuracy >= 0.7) return { level: 'High', color: 'green', emoji: '🟢' };
-    if (accuracy >= 0.6) return { level: 'Medium', color: 'yellow', emoji: '🟡' };
-    return { level: 'Low', color: 'red', emoji: '🔴' };
+    if (accuracy >= 0.7) return { level: 'High', color: 'green' };
+    if (accuracy >= 0.6) return { level: 'Medium', color: 'yellow' };
+    return { level: 'Low', color: 'red' };
   };
 
   const getMetricColor = (value: number, type: 'mae' | 'rmse' | 'r2' | 'directional') => {
@@ -88,6 +89,11 @@ const ModelAccuracy: React.FC = () => {
 
   const chartData = prepareChartData();
   const confidence = data ? getConfidenceLevel(data.directional_accuracy) : null;
+  const confidenceStyles = {
+    green: { text: 'text-green-400', dot: 'bg-green-400' },
+    yellow: { text: 'text-yellow-400', dot: 'bg-yellow-400' },
+    red: { text: 'text-red-400', dot: 'bg-red-400' }
+  };
 
   if (loading && !data) {
     return (
@@ -100,7 +106,10 @@ const ModelAccuracy: React.FC = () => {
   if (error) {
     return (
       <div className="bg-gray-800 p-6 rounded-lg shadow-lg border border-gray-700">
-        <p className="text-red-400 mb-4">⚠️ {error}</p>
+        <p className="text-red-400 mb-4 flex items-center gap-2">
+          <AlertTriangle className="w-4 h-4" />
+          {error}
+        </p>
         <button
           onClick={loadData}
           className="px-4 py-2 bg-cyan-500 hover:bg-cyan-600 rounded-md transition-colors text-sm"
@@ -121,7 +130,7 @@ const ModelAccuracy: React.FC = () => {
         onClick={() => setIsExpanded(!isExpanded)}
       >
         <div className="flex items-center space-x-3">
-          <span className="text-2xl">📊</span>
+          <Activity className="w-5 h-5 text-cyan-400" />
           <h2 className="text-xl font-bold text-gray-200">Model Performance</h2>
         </div>
         <button className="text-gray-400 hover:text-gray-200 transition-colors">
@@ -171,17 +180,17 @@ const ModelAccuracy: React.FC = () => {
             <div className="mb-6 p-4 bg-gray-700/30 rounded-lg border border-gray-600">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
-                  <span className="text-2xl">{confidence.emoji}</span>
+                  <span className={`w-3 h-3 rounded-full ${confidenceStyles[confidence.color as keyof typeof confidenceStyles].dot}`} />
                   <div>
                     <div className="text-sm text-gray-400">Model Confidence</div>
-                    <div className={`text-xl font-bold text-${confidence.color}-400`}>
+                    <div className={`text-xl font-bold ${confidenceStyles[confidence.color as keyof typeof confidenceStyles].text}`}>
                       {confidence.level} Confidence
                     </div>
                   </div>
                 </div>
                 <div className="text-right">
                   <div className="text-sm text-gray-400">Overall Accuracy</div>
-                  <div className={`text-2xl font-bold text-${confidence.color}-400`}>
+                  <div className={`text-2xl font-bold ${confidenceStyles[confidence.color as keyof typeof confidenceStyles].text}`}>
                     {data.directional_accuracy !== undefined && data.directional_accuracy !== null ? (data.directional_accuracy * 100).toFixed(0) : 'N/A'}%
                   </div>
                 </div>
@@ -269,4 +278,3 @@ const ModelAccuracy: React.FC = () => {
 };
 
 export default ModelAccuracy;
-

@@ -24,7 +24,18 @@ export const API_CONFIG = {
     USER_HISTORY: '/user-history',
     LEADERBOARD: '/leaderboard',
     STATS: '/stats',
-    AGENT_RECOMMEND: '/agent/recommend'
+    AGENT_RECOMMEND: '/agent/recommend',
+    AGENT_STATUS: '/agent/status',
+    VALIDATION_METRICS: '/validation/metrics',
+    VALIDATION_HEALTH: '/validation/health',
+    VALIDATION_TRENDS: '/validation/trends',
+    RETRAINING_STATUS: '/retraining/status',
+    RETRAINING_HISTORY: '/retraining/history',
+    RETRAINING_TRIGGER: '/retraining/trigger',
+    RETRAINING_CHECK_DATA: '/retraining/check-data',
+    ONCHAIN_NETWORK_STATE: '/onchain/network-state',
+    ONCHAIN_CONGESTION_HISTORY: '/onchain/congestion-history',
+    ALERTS: '/alerts'
   },
   TIMEOUT: 10000, // 10 seconds
   RETRY_ATTEMPTS: 3,
@@ -46,6 +57,10 @@ export function getApiUrl(endpoint: string, params?: Record<string, string | num
   }
   
   return url;
+}
+
+export function getApiOrigin(): string {
+  return API_CONFIG.BASE_URL.replace(/\/api$/, '');
 }
 
 /**

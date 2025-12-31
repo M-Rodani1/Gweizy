@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { Bot, Brain, Clock, Coins, Lightbulb, RefreshCw, Zap } from 'lucide-react';
 import { useChain } from '../contexts/ChainContext';
 import { useScheduler } from '../contexts/SchedulerContext';
 import { TX_GAS_ESTIMATES, TransactionType } from '../config/chains';
 import { API_CONFIG, getApiUrl } from '../config/api';
+import { TX_TYPE_META, getTxShortLabel } from '../config/transactions';
 import ScheduleTransactionModal from './ScheduleTransactionModal';
 import ConfidenceRing from './ui/ConfidenceRing';
 import { formatGwei, formatUsd } from '../utils/formatNumber';
@@ -21,12 +23,12 @@ interface TransactionPilotProps {
   ethPrice?: number;
 }
 
-const TX_TYPES: { type: TransactionType; label: string; icon: string }[] = [
-  { type: 'swap', label: 'Swap', icon: '🔄' },
-  { type: 'bridge', label: 'Bridge', icon: '🌉' },
-  { type: 'nftMint', label: 'Mint', icon: '🎨' },
-  { type: 'transfer', label: 'Transfer', icon: '📤' },
-  { type: 'approve', label: 'Approve', icon: '✅' },
+const TX_TYPES: { type: TransactionType; label: string; Icon: React.ComponentType<{ className?: string }> }[] = [
+  { type: 'swap', label: getTxShortLabel('swap'), Icon: TX_TYPE_META.swap.icon },
+  { type: 'bridge', label: getTxShortLabel('bridge'), Icon: TX_TYPE_META.bridge.icon },
+  { type: 'nftMint', label: getTxShortLabel('nftMint'), Icon: TX_TYPE_META.nftMint.icon },
+  { type: 'transfer', label: getTxShortLabel('transfer'), Icon: TX_TYPE_META.transfer.icon },
+  { type: 'approve', label: getTxShortLabel('approve'), Icon: TX_TYPE_META.approve.icon },
 ];
 
 const TransactionPilot: React.FC<TransactionPilotProps> = ({ ethPrice = 3000 }) => {
@@ -65,6 +67,11 @@ const TransactionPilot: React.FC<TransactionPilotProps> = ({ ethPrice = 3000 }) 
           signal: AbortSignal.timeout(API_CONFIG.TIMEOUT)
         }
       );
+      if (!response.ok) {
+        setError('Agent offline — showing live gas only');
+        setRecommendation(null);
+        return;
+      }
       const data = await response.json();
 
       if (data.success) {
@@ -78,11 +85,11 @@ const TransactionPilot: React.FC<TransactionPilotProps> = ({ ethPrice = 3000 }) 
           setCountdown(null);
         }
       } else {
-        setError('Agent unavailable');
+        setError(data.error || 'Agent offline — showing live gas only');
       }
     } catch (err) {
       console.error('Failed to fetch recommendation:', err);
-      setError('Failed to connect to agent');
+      setError('Agent offline — showing live gas only');
     } finally {
       setLoading(false);
     }
@@ -106,6 +113,23 @@ const TransactionPilot: React.FC<TransactionPilotProps> = ({ ethPrice = 3000 }) 
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const txShortLabel = getTxShortLabel(selectedTxType);
+
+  const getPrimaryActionLabel = (action: string): string => {
+    switch (action) {
+      case 'WAIT':
+        return `Notify for ${txShortLabel}`;
+      case 'SUBMIT_NOW':
+        return `Execute ${txShortLabel}`;
+      case 'SUBMIT_LOW':
+        return `Execute ${txShortLabel} (Low)`;
+      case 'SUBMIT_HIGH':
+        return `Priority ${txShortLabel}`;
+      default:
+        return `Analyze ${txShortLabel}`;
+    }
   };
 
   const getActionConfig = (action: string) => {
@@ -164,6 +188,9 @@ const TransactionPilot: React.FC<TransactionPilotProps> = ({ ethPrice = 3000 }) 
   };
 
   const actionConfig = recommendation ? getActionConfig(recommendation.action) : getActionConfig('');
+  const primaryActionLabel = recommendation
+    ? getPrimaryActionLabel(recommendation.action)
+    : actionConfig.buttonText;
 
   const handleSwitchChain = () => {
     if (bestChainForTx) {
@@ -173,13 +200,13 @@ const TransactionPilot: React.FC<TransactionPilotProps> = ({ ethPrice = 3000 }) 
   };
 
   return (
-    <div className="bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 rounded-2xl border border-gray-700/50 overflow-hidden card-interactive">
+    <div className="bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 rounded-2xl border border-gray-700/50 card-interactive">
       {/* Chain Switch Toast - Improvement #18 */}
       {showChainToast && bestChainForTx && (
         <div className="absolute top-4 right-4 z-50 animate-slide-up">
           <div className="bg-green-500/20 border border-green-500/50 rounded-xl p-4 backdrop-blur-sm shadow-lg max-w-xs">
             <div className="flex items-start gap-3">
-              <span className="text-2xl">💡</span>
+              <Lightbulb className="w-6 h-6 text-green-300" />
               <div className="flex-1">
                 <div className="font-semibold text-green-400 mb-1">
                   Save {bestChainForTx.savings.toFixed(0)}% on fees!
@@ -210,8 +237,8 @@ const TransactionPilot: React.FC<TransactionPilotProps> = ({ ethPrice = 3000 }) 
       {/* Header */}
       <div className="px-6 py-4 border-b border-gray-700/50 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center shadow-lg shadow-purple-500/20">
-            <span className="text-xl">🤖</span>
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-emerald-500 flex items-center justify-center shadow-lg shadow-cyan-500/20">
+            <Bot className="w-5 h-5 text-white" />
           </div>
           <div>
             <h2 className="text-lg font-bold text-white">AI Transaction Pilot</h2>
@@ -230,21 +257,21 @@ const TransactionPilot: React.FC<TransactionPilotProps> = ({ ethPrice = 3000 }) 
       <div className="flex flex-col lg:flex-row">
         {/* Left: Transaction Type Selector */}
         <div className="lg:w-1/3 px-6 py-4 border-b lg:border-b-0 lg:border-r border-gray-700/30">
-          <div className="text-sm text-gray-400 mb-3">What do you want to do?</div>
+          <div className="text-sm text-gray-400 mb-3">Choose a transaction</div>
           <div className="flex flex-wrap lg:flex-col gap-2">
-            {TX_TYPES.map(({ type, label, icon }) => (
+            {TX_TYPES.map(({ type, label, Icon }) => (
               <button
                 key={type}
                 onClick={() => setSelectedTxType(type)}
                 className={`
-                  px-4 py-2.5 rounded-lg flex items-center gap-2 transition-all w-full
+                  px-4 py-3 min-h-[44px] rounded-lg flex items-center gap-2 transition-all w-full
                   ${selectedTxType === type
                     ? 'bg-cyan-500/20 border-2 border-cyan-500 text-cyan-400'
                     : 'bg-gray-800/50 border-2 border-transparent text-gray-300 hover:border-gray-600 hover:bg-gray-800'
                   }
                 `}
               >
-                <span className="text-lg">{icon}</span>
+                <Icon className={`w-4 h-4 ${selectedTxType === type ? 'text-cyan-300' : 'text-gray-300'}`} />
                 <span className="font-medium">{label}</span>
               </button>
             ))}
@@ -263,11 +290,17 @@ const TransactionPilot: React.FC<TransactionPilotProps> = ({ ethPrice = 3000 }) 
               step="0.1"
               value={urgency}
               onChange={(e) => setUrgency(parseFloat(e.target.value))}
-              className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-purple-500"
+              className="w-full h-3 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-cyan-400"
             />
             <div className="flex justify-between text-xs text-gray-500 mt-1">
-              <span>💰 Save</span>
-              <span>⚡ Fast</span>
+              <span className="flex items-center gap-1">
+                <Coins className="w-3 h-3" />
+                Save
+              </span>
+              <span className="flex items-center gap-1">
+                <Zap className="w-3 h-3" />
+                Fast
+              </span>
             </div>
           </div>
         </div>
@@ -285,7 +318,7 @@ const TransactionPilot: React.FC<TransactionPilotProps> = ({ ethPrice = 3000 }) 
             <div className="relative rounded-xl p-6 bg-gradient-to-r from-gray-700/50 to-gray-800/50 border border-gray-600/50">
               <div className="text-center">
                 <div className="text-2xl font-bold text-white mb-2">
-                  {currentGas > 0 ? 'Gas Looks Good' : 'Connecting...'}
+                  {error ? 'Agent Offline' : currentGas > 0 ? 'Gas Looks Good' : 'Connecting...'}
                 </div>
                 <div className="text-gray-400 mb-4">
                   {error || 'Agent is analyzing network conditions'}
@@ -306,9 +339,9 @@ const TransactionPilot: React.FC<TransactionPilotProps> = ({ ethPrice = 3000 }) 
                 </div>
                 <button
                   onClick={fetchRecommendation}
-                  className="px-6 py-2 bg-cyan-500 hover:bg-cyan-600 text-white rounded-lg transition-colors"
+                  className="px-6 py-2 min-h-[44px] bg-cyan-500 hover:bg-cyan-600 text-white rounded-lg transition-colors"
                 >
-                  Retry Connection
+                  Retry Agent
                 </button>
               </div>
             </div>
@@ -332,7 +365,10 @@ const TransactionPilot: React.FC<TransactionPilotProps> = ({ ethPrice = 3000 }) 
               {/* Reasoning */}
               {recommendation.reasoning && (
                 <div className="mb-4 p-3 bg-black/20 rounded-lg backdrop-blur-sm">
-                  <div className="text-xs text-white/50 mb-1">🧠 Agent Reasoning</div>
+                  <div className="text-xs text-white/50 mb-1 flex items-center gap-2">
+                    <Brain className="w-3 h-3" />
+                    Agent Reasoning
+                  </div>
                   <div className="text-sm text-white/80">{recommendation.reasoning}</div>
                 </div>
               )}
@@ -363,15 +399,16 @@ const TransactionPilot: React.FC<TransactionPilotProps> = ({ ethPrice = 3000 }) 
               </div>
 
               {/* Action buttons - Improvement #10 */}
-              <div className="flex gap-3">
-                <button className={`flex-1 py-3 px-6 rounded-xl font-bold text-white transition-all ${actionConfig.buttonClass}`}>
-                  {actionConfig.buttonText}
+              <div className="flex flex-col sm:flex-row gap-3 sm:static sticky bottom-3 bg-gray-900/80 p-3 rounded-xl border border-white/10 backdrop-blur">
+                <button className={`flex-1 py-3 px-6 min-h-[44px] rounded-xl font-bold text-white transition-all ${actionConfig.buttonClass}`}>
+                  {primaryActionLabel}
                 </button>
                 <button
                   onClick={() => setShowScheduleModal(true)}
-                  className="py-3 px-6 rounded-xl font-bold bg-white/10 text-white hover:bg-white/20 transition-all border border-white/10"
+                  className="py-3 px-6 min-h-[44px] rounded-xl font-bold bg-white/10 text-white hover:bg-white/20 transition-all border border-white/10 flex items-center justify-center gap-2"
                 >
-                  ⏰ Schedule
+                  <Clock className="w-4 h-4" />
+                  {`Schedule ${txShortLabel}`}
                 </button>
               </div>
             </div>
@@ -404,9 +441,7 @@ const TransactionPilot: React.FC<TransactionPilotProps> = ({ ethPrice = 3000 }) 
           onClick={fetchRecommendation}
           className="text-xs text-cyan-400 hover:text-cyan-300 transition-colors flex items-center gap-1"
         >
-          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-          </svg>
+          <RefreshCw className="w-3 h-3" />
           Refresh
         </button>
       </div>

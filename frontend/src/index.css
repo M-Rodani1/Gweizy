@@ -13,6 +13,55 @@ html, body {
   min-height: 100vh;
 }
 
+/* Page shells */
+.landing-shell {
+  background:
+    radial-gradient(1200px 600px at 10% -10%, rgba(6, 182, 212, 0.18), transparent 60%),
+    radial-gradient(900px 500px at 90% -20%, rgba(34, 197, 94, 0.14), transparent 55%),
+    linear-gradient(180deg, #0a0e1a 0%, #0b1223 100%);
+  color: var(--text);
+}
+
+.app-shell {
+  background:
+    radial-gradient(1000px 500px at 20% -10%, rgba(6, 182, 212, 0.12), transparent 60%),
+    radial-gradient(1000px 600px at 80% 0%, rgba(16, 185, 129, 0.12), transparent 55%),
+    #05070f;
+}
+
+/* Hero typography */
+.hero-title {
+  font-family: var(--font-display);
+  font-size: clamp(2.5rem, 5vw, 4rem);
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+}
+
+.hero-subtitle {
+  font-size: 1.125rem;
+  color: var(--text-secondary);
+  line-height: 1.7;
+}
+
+.hero-kicker {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.02em;
+}
+
+.icon-tile {
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(6, 182, 212, 0.12);
+  border: 1px solid rgba(6, 182, 212, 0.3);
+  color: #67e8f9;
+}
+
 /* Custom animations */
 @keyframes gradient-x {
   0%, 100% {

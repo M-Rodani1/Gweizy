@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { ArrowRight, Sparkles, TrendingDown, TrendingUp } from 'lucide-react';
 import { useChain } from '../contexts/ChainContext';
 import { fetchPredictions } from '../api/gasApi';
 
@@ -59,9 +60,12 @@ const CompactForecast: React.FC = () => {
 
   const getDirectionIcon = (direction: string) => {
     switch (direction) {
-      case 'up': return '📈';
-      case 'down': return '📉';
-      default: return '➡️';
+      case 'up':
+        return <TrendingUp className="w-4 h-4 text-red-400" />;
+      case 'down':
+        return <TrendingDown className="w-4 h-4 text-green-400" />;
+      default:
+        return <ArrowRight className="w-4 h-4 text-yellow-400" />;
     }
   };
 
@@ -78,7 +82,7 @@ const CompactForecast: React.FC = () => {
       {/* Header */}
       <div className="px-4 py-3 border-b border-gray-700/50 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <span className="text-lg">🔮</span>
+          <Sparkles className="w-4 h-4 text-cyan-400" />
           <h3 className="font-semibold text-white">Price Forecast</h3>
         </div>
         <div className="text-xs text-gray-500">{selectedChain.name}</div>
@@ -107,7 +111,7 @@ const CompactForecast: React.FC = () => {
                 <div className="w-12 text-sm font-medium text-gray-400">
                   {pred.horizon === '1h' ? '1 Hour' : pred.horizon === '4h' ? '4 Hours' : '24 Hours'}
                 </div>
-                <span className="text-lg">{getDirectionIcon(pred.direction)}</span>
+                {getDirectionIcon(pred.direction)}
               </div>
 
               <div className="flex items-center gap-4">

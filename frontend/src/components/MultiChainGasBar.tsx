@@ -1,5 +1,7 @@
 import React from 'react';
+import { Check } from 'lucide-react';
 import { useChain, useChainComparison } from '../contexts/ChainContext';
+import ChainBadge from './ChainBadge';
 
 interface MultiChainGasBarProps {
   onChainSelect?: (chainId: number) => void;
@@ -63,13 +65,15 @@ const MultiChainGasBar: React.FC<MultiChainGasBarProps> = ({ onChainSelect }) =>
               {/* Best indicator */}
               {isBest && (
                 <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
-                  <span className="text-xs">✓</span>
+                  <Check className="w-3 h-3 text-gray-900" />
                 </div>
               )}
 
               {/* Chain icon and name */}
               <div className="text-center mb-2">
-                <div className="text-xl mb-1">{chain.icon}</div>
+                <div className="flex justify-center mb-1">
+                  <ChainBadge chain={chain} size="sm" />
+                </div>
                 <div className="text-xs text-gray-400">{chain.shortName}</div>
               </div>
 

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Bell, Plus, Trash2, Power, Check, X, BellOff, BellRing } from 'lucide-react';
+import { API_CONFIG, getApiUrl } from '../config/api';
 import {
   isNotificationSupported,
   getNotificationPermission,
@@ -35,7 +36,6 @@ const GasAlertSettings: React.FC<GasAlertSettingsProps> = ({ currentGas, walletA
   const [thresholdGwei, setThresholdGwei] = useState('0.001');
   const [notificationMethod, setNotificationMethod] = useState('browser');
 
-  const API_BASE = import.meta.env.VITE_API_URL || 'https://basegasfeesml-production.up.railway.app/api';
   const userId = walletAddress || 'anonymous';
 
   // Check notification permission on mount
@@ -70,7 +70,7 @@ const GasAlertSettings: React.FC<GasAlertSettingsProps> = ({ currentGas, walletA
 
   const fetchAlerts = async () => {
     try {
-      const response = await fetch(`${API_BASE}/alerts/${userId}`);
+      const response = await fetch(getApiUrl(`${API_CONFIG.ENDPOINTS.ALERTS}/${userId}`));
       const data = await response.json();
 
       if (data.success) {
@@ -86,7 +86,7 @@ const GasAlertSettings: React.FC<GasAlertSettingsProps> = ({ currentGas, walletA
     e.preventDefault();
 
     try {
-      const response = await fetch(`${API_BASE}/alerts`, {
+      const response = await fetch(getApiUrl(API_CONFIG.ENDPOINTS.ALERTS), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -111,7 +111,7 @@ const GasAlertSettings: React.FC<GasAlertSettingsProps> = ({ currentGas, walletA
 
   const toggleAlert = async (alertId: number, currentStatus: boolean) => {
     try {
-      const response = await fetch(`${API_BASE}/alerts/${alertId}`, {
+      const response = await fetch(getApiUrl(`${API_CONFIG.ENDPOINTS.ALERTS}/${alertId}`), {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ is_active: !currentStatus })
@@ -133,7 +133,7 @@ const GasAlertSettings: React.FC<GasAlertSettingsProps> = ({ currentGas, walletA
     if (!confirm('Are you sure you want to delete this alert?')) return;
 
     try {
-      const response = await fetch(`${API_BASE}/alerts/${alertId}?user_id=${userId}`, {
+      const response = await fetch(getApiUrl(`${API_CONFIG.ENDPOINTS.ALERTS}/${alertId}`, { user_id: userId }), {
         method: 'DELETE'
       });
 

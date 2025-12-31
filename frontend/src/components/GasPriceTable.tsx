@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { AlertTriangle, RefreshCw } from 'lucide-react';
 import { TableRowData } from '../types';
 import { fetchTransactions } from '../api/gasApi';
 import LoadingSpinner from './LoadingSpinner';
@@ -41,7 +42,10 @@ const GasPriceTable: React.FC = () => {
     return (
       <div className="bg-gray-800 p-4 sm:p-6 rounded-lg shadow-lg h-full">
         <div className="text-center">
-          <p className="text-red-400 mb-4">⚠️ {error}</p>
+          <p className="text-red-400 mb-4 flex items-center justify-center gap-2">
+            <AlertTriangle className="w-4 h-4" />
+            {error}
+          </p>
           <button
             onClick={loadData}
             className="px-4 py-2 bg-cyan-500 hover:bg-cyan-600 rounded-md transition-colors text-sm"
@@ -62,7 +66,10 @@ const GasPriceTable: React.FC = () => {
           className="text-sm text-cyan-400 hover:text-cyan-300 transition-colors"
           title="Refresh"
         >
-          🔄 Refresh
+          <span className="inline-flex items-center gap-1">
+            <RefreshCw className="w-3 h-3" />
+            Refresh
+          </span>
         </button>
       </div>
       

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { ArrowDown, ArrowUp, Clock } from 'lucide-react';
 
 interface HourlyStats {
   hour: number;
@@ -18,7 +19,7 @@ const BestTimeWidget: React.FC<BestTimeWidgetProps> = ({ currentGas = 0 }) => {
   useEffect(() => {
     // Use fallback pattern-based data for instant loading and reliability
     // Based on historical Base network gas price analysis
-    console.log('📊 Using pattern-based Base gas data (optimized for demo)');
+    console.log('Using pattern-based Base gas data (optimized for demo)');
     setHourlyStats(getFallbackStats());
     setLoading(false);
   }, []);
@@ -72,7 +73,7 @@ const BestTimeWidget: React.FC<BestTimeWidgetProps> = ({ currentGas = 0 }) => {
   return (
     <div className="bg-gradient-to-br from-gray-800 to-gray-900 p-4 sm:p-6 rounded-2xl shadow-2xl border border-gray-700/50 card-hover">
       <div className="flex items-center gap-2 mb-4">
-        <span className="text-xl sm:text-2xl">⏰</span>
+        <Clock className="w-5 h-5 text-cyan-400" />
         <h3 className="text-lg sm:text-xl font-bold bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">Best Times to Transact</h3>
       </div>
 
@@ -80,7 +81,7 @@ const BestTimeWidget: React.FC<BestTimeWidgetProps> = ({ currentGas = 0 }) => {
         {/* Cheapest Hours */}
         <div className="bg-green-500/10 border-2 border-green-500/50 rounded-lg p-3 sm:p-4">
           <div className="flex items-center gap-2 mb-2">
-            <span className="text-xl sm:text-2xl">🟢</span>
+            <span className="w-2.5 h-2.5 rounded-full bg-green-400" />
             <div className="text-sm text-green-400 font-semibold">Cheapest Hours (UTC)</div>
           </div>
 
@@ -101,7 +102,7 @@ const BestTimeWidget: React.FC<BestTimeWidgetProps> = ({ currentGas = 0 }) => {
         {/* Most Expensive Hours */}
         <div className="bg-red-500/10 border-2 border-red-500/50 rounded-lg p-3 sm:p-4">
           <div className="flex items-center gap-2 mb-2">
-            <span className="text-xl sm:text-2xl">🔴</span>
+            <span className="w-2.5 h-2.5 rounded-full bg-red-400" />
             <div className="text-sm text-red-400 font-semibold">Most Expensive (UTC)</div>
           </div>
 
@@ -133,7 +134,8 @@ const BestTimeWidget: React.FC<BestTimeWidgetProps> = ({ currentGas = 0 }) => {
               currentGas < avgGas ? 'text-green-400' :
               currentGas > avgGas * 1.2 ? 'text-red-400' : 'text-yellow-400'
             }`}>
-              {currentGas < avgGas ? '↓' : '↑'} {avgGas > 0 ? Math.abs(Math.round(((currentGas - avgGas) / avgGas) * 100)) : 0}%
+              {currentGas < avgGas ? <ArrowDown className="w-3 h-3 inline" /> : <ArrowUp className="w-3 h-3 inline" />}{' '}
+              {avgGas > 0 ? Math.abs(Math.round(((currentGas - avgGas) / avgGas) * 100)) : 0}%
             </span>
           </div>
         </div>

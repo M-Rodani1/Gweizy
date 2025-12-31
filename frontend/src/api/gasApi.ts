@@ -1,4 +1,4 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://basegasfeesml.onrender.com/api';
+import { API_CONFIG, getApiUrl } from '../config/api';
 
 import {
   CurrentGasData,
@@ -20,7 +20,7 @@ class GasAPIError extends Error {
  */
 export async function checkHealth(): Promise<boolean> {
   try {
-    const response = await fetch(`${API_BASE_URL}/health`, {
+    const response = await fetch(getApiUrl(API_CONFIG.ENDPOINTS.HEALTH), {
       method: 'GET',
       headers: { 'Content-Type': 'application/json' },
       mode: 'cors',
@@ -33,7 +33,7 @@ export async function checkHealth(): Promise<boolean> {
     return true;
   } catch (error) {
     console.error('Health check failed:', error);
-    console.error('API_BASE_URL:', API_BASE_URL);
+    console.error('API_BASE_URL:', API_CONFIG.BASE_URL);
     return false;
   }
 }
@@ -43,7 +43,7 @@ export async function checkHealth(): Promise<boolean> {
  */
 export async function fetchCurrentGas(): Promise<CurrentGasData> {
   try {
-    const response = await fetch(`${API_BASE_URL}/current`, {
+    const response = await fetch(getApiUrl(API_CONFIG.ENDPOINTS.CURRENT), {
       method: 'GET',
       headers: { 'Content-Type': 'application/json' },
     });
@@ -65,7 +65,7 @@ export async function fetchCurrentGas(): Promise<CurrentGasData> {
  */
 export async function fetchPredictions(): Promise<PredictionsResponse> {
   try {
-    const response = await fetch(`${API_BASE_URL}/predictions`, {
+    const response = await fetch(getApiUrl(API_CONFIG.ENDPOINTS.PREDICTIONS), {
       method: 'GET',
       headers: { 'Content-Type': 'application/json' },
     });
@@ -87,7 +87,7 @@ export async function fetchPredictions(): Promise<PredictionsResponse> {
  */
 export async function fetchHistoricalData(hours: number = 168): Promise<HistoricalResponse> {
   try {
-    const response = await fetch(`${API_BASE_URL}/historical?hours=${hours}`, {
+    const response = await fetch(getApiUrl(API_CONFIG.ENDPOINTS.HISTORICAL, { hours }), {
       method: 'GET',
       headers: { 'Content-Type': 'application/json' },
     });
@@ -109,7 +109,7 @@ export async function fetchHistoricalData(hours: number = 168): Promise<Historic
  */
 export async function fetchTransactions(limit: number = 10): Promise<TableRowData[]> {
   try {
-    const response = await fetch(`${API_BASE_URL}/transactions?limit=${limit}`, {
+    const response = await fetch(getApiUrl(API_CONFIG.ENDPOINTS.TRANSACTIONS, { limit }), {
       method: 'GET',
       headers: { 'Content-Type': 'application/json' },
     });
@@ -131,7 +131,7 @@ export async function fetchTransactions(limit: number = 10): Promise<TableRowDat
  */
 export async function fetchConfig(): Promise<any> {
   try {
-    const response = await fetch(`${API_BASE_URL}/config`, {
+    const response = await fetch(getApiUrl(API_CONFIG.ENDPOINTS.CONFIG), {
       method: 'GET',
       headers: { 'Content-Type': 'application/json' },
     });
@@ -152,7 +152,7 @@ export async function fetchConfig(): Promise<any> {
  */
 export async function fetchAccuracy(): Promise<any> {
   try {
-    const response = await fetch(`${API_BASE_URL}/accuracy`, {
+    const response = await fetch(getApiUrl(API_CONFIG.ENDPOINTS.ACCURACY), {
       method: 'GET',
       headers: { 'Content-Type': 'application/json' },
     });
@@ -173,7 +173,7 @@ export async function fetchAccuracy(): Promise<any> {
  */
 export async function fetchUserHistory(address: string): Promise<any> {
   try {
-    const response = await fetch(`${API_BASE_URL}/user-history/${address}`, {
+    const response = await fetch(getApiUrl(`${API_CONFIG.ENDPOINTS.USER_HISTORY}/${address}`), {
       method: 'GET',
       headers: { 'Content-Type': 'application/json' },
     });
@@ -194,7 +194,7 @@ export async function fetchUserHistory(address: string): Promise<any> {
  */
 export async function fetchLeaderboard(): Promise<any> {
   try {
-    const response = await fetch(`${API_BASE_URL}/leaderboard`, {
+    const response = await fetch(getApiUrl(API_CONFIG.ENDPOINTS.LEADERBOARD), {
       method: 'GET',
       headers: { 'Content-Type': 'application/json' },
     });
@@ -215,7 +215,7 @@ export async function fetchLeaderboard(): Promise<any> {
  */
 export async function fetchGlobalStats(): Promise<any> {
   try {
-    const response = await fetch(`${API_BASE_URL}/stats`, {
+    const response = await fetch(getApiUrl(API_CONFIG.ENDPOINTS.STATS), {
       method: 'GET',
       headers: { 'Content-Type': 'application/json' },
     });
@@ -233,4 +233,3 @@ export async function fetchGlobalStats(): Promise<any> {
 
 // Export error class
 export { GasAPIError };
-

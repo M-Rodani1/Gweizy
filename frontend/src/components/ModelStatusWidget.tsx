@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Cpu, CheckCircle, AlertTriangle, Clock, TrendingUp, Database, RefreshCw, Activity } from 'lucide-react';
+import { API_CONFIG, getApiUrl } from '../config/api';
 
 interface ModelStatus {
   model_status?: 'healthy' | 'warning' | 'needs_retraining';
@@ -53,8 +54,6 @@ const ModelStatusWidget: React.FC = () => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [triggering, setTriggering] = useState(false);
 
-  const API_BASE = import.meta.env.VITE_API_URL || 'https://basegasfeesml.onrender.com/api';
-
   useEffect(() => {
     fetchModelData();
     const interval = setInterval(fetchModelData, 120000); // Refresh every 2 minutes
@@ -67,9 +66,9 @@ const ModelStatusWidget: React.FC = () => {
       setError(null);
 
       const [statusRes, historyRes, dataRes] = await Promise.all([
-        fetch(`${API_BASE}/retraining/status`),
-        fetch(`${API_BASE}/retraining/history?limit=5`),
-        fetch(`${API_BASE}/retraining/check-data`)
+        fetch(getApiUrl(API_CONFIG.ENDPOINTS.RETRAINING_STATUS)),
+        fetch(getApiUrl(API_CONFIG.ENDPOINTS.RETRAINING_HISTORY, { limit: 5 })),
+        fetch(getApiUrl(API_CONFIG.ENDPOINTS.RETRAINING_CHECK_DATA))
       ]);
 
       if (!statusRes.ok || !historyRes.ok || !dataRes.ok) {
@@ -98,7 +97,7 @@ const ModelStatusWidget: React.FC = () => {
 
     try {
       setTriggering(true);
-      const response = await fetch(`${API_BASE}/retraining/trigger`, {
+      const response = await fetch(getApiUrl(API_CONFIG.ENDPOINTS.RETRAINING_TRIGGER), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ force: false })

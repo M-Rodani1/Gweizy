@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useChain, useChainComparison } from '../contexts/ChainContext';
 import { ChainConfig } from '../config/chains';
+import ChainBadge from './ChainBadge';
 
 interface ChainSelectorProps {
   showGasPrices?: boolean;
@@ -62,7 +63,7 @@ const ChainSelector: React.FC<ChainSelectorProps> = ({
           ${compact ? 'text-sm' : ''}
         `}
       >
-        <span className="text-lg">{selectedChain.icon}</span>
+        <ChainBadge chain={selectedChain} size={compact ? 'sm' : 'md'} />
         <span className="font-medium text-white">{selectedChain.shortName}</span>
 
         {showGasPrices && currentGas && !currentGas.loading && (
@@ -155,7 +156,7 @@ const ChainOption: React.FC<ChainOptionProps> = ({
       `}
     >
       <div className="flex items-center gap-3">
-        <span className="text-xl">{chain.icon}</span>
+        <ChainBadge chain={chain} size="md" />
         <div className="text-left">
           <div className="flex items-center gap-2">
             <span className="font-medium text-white">{chain.name}</span>

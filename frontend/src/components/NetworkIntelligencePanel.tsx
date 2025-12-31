@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Network, Activity, Zap, TrendingUp, Box, Code, Gauge } from 'lucide-react';
+import { API_CONFIG, getApiUrl } from '../config/api';
 
 interface NetworkStateResponse {
   network_state: {
@@ -44,8 +45,6 @@ const NetworkIntelligencePanel: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [isExpanded, setIsExpanded] = useState(true);
 
-  const API_BASE = import.meta.env.VITE_API_URL || 'https://basegasfeesml.onrender.com';
-
   useEffect(() => {
     fetchNetworkData();
     const interval = setInterval(fetchNetworkData, 30000); // Refresh every 30 seconds
@@ -58,8 +57,8 @@ const NetworkIntelligencePanel: React.FC = () => {
       setError(null);
 
       const [stateRes, historyRes] = await Promise.all([
-        fetch(`${API_BASE}/onchain/network-state`),
-        fetch(`${API_BASE}/onchain/congestion-history?hours=24`)
+        fetch(getApiUrl(API_CONFIG.ENDPOINTS.ONCHAIN_NETWORK_STATE)),
+        fetch(getApiUrl(API_CONFIG.ENDPOINTS.ONCHAIN_CONGESTION_HISTORY, { hours: 24 }))
       ]);
 
       if (!stateRes.ok || !historyRes.ok) {
@@ -101,15 +100,15 @@ const NetworkIntelligencePanel: React.FC = () => {
     }
   };
 
-  const getCongestionIcon = (level: string | undefined) => {
-    if (!level) return '⚪';
+  const getCongestionDot = (level: string | undefined) => {
+    if (!level) return 'bg-gray-400';
     switch (level.toLowerCase()) {
-      case 'low': return '🟢';
-      case 'moderate': return '🟡';
-      case 'high': return '🟠';
-      case 'critical': return '🔴';
-      case 'extreme': return '🔴';
-      default: return '⚪';
+      case 'low': return 'bg-green-400';
+      case 'moderate': return 'bg-yellow-400';
+      case 'high': return 'bg-orange-400';
+      case 'critical': return 'bg-red-400';
+      case 'extreme': return 'bg-red-400';
+      default: return 'bg-gray-400';
     }
   };
 
@@ -162,7 +161,7 @@ const NetworkIntelligencePanel: React.FC = () => {
           <div className="flex items-center gap-4">
             {networkState && (
               <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg ${getCongestionColor(networkState.network_congestion)}`}>
-                <span className="text-lg">{getCongestionIcon(networkState.network_congestion)}</span>
+                <span className={`w-2.5 h-2.5 rounded-full ${getCongestionDot(networkState.network_congestion)}`} />
                 <span className="text-sm font-medium capitalize">{networkState.network_congestion}</span>
               </div>
             )}
@@ -187,7 +186,7 @@ const NetworkIntelligencePanel: React.FC = () => {
                 <Gauge className="w-5 h-5 text-purple-400" />
                 <h4 className="text-sm font-medium text-white">Network Congestion</h4>
               </div>
-              <span className="text-2xl">{getCongestionIcon(networkState.network_congestion)}</span>
+              <span className={`w-4 h-4 rounded-full ${getCongestionDot(networkState.network_congestion)}`} />
             </div>
 
             {/* Congestion Score Bar */}

@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
+import { API_CONFIG, getApiUrl } from '../config/api';
 
 interface PriceLevel {
   level: string;
   color: string;
-  emoji: string;
   description: string;
   action: string;
 }
@@ -26,7 +26,7 @@ const RelativePriceIndicator: React.FC<RelativePriceIndicatorProps> = ({
     const fetchAverages = async () => {
       try {
         // Fetch 24h data for hourly and daily averages
-        const dayResponse = await fetch(`${import.meta.env.VITE_API_URL || 'https://basegasfeesml.onrender.com/api'}/historical?hours=24`);
+        const dayResponse = await fetch(getApiUrl(API_CONFIG.ENDPOINTS.HISTORICAL, { hours: 24 }));
         const dayData = await dayResponse.json();
 
         if (dayData && dayData.historical && Array.isArray(dayData.historical) && dayData.historical.length > 0) {
@@ -52,7 +52,7 @@ const RelativePriceIndicator: React.FC<RelativePriceIndicatorProps> = ({
 
         // Fetch 7-day data for weekly average
         try {
-          const weekResponse = await fetch(`${import.meta.env.VITE_API_URL || 'https://basegasfeesml.onrender.com/api'}/historical?hours=168`);
+          const weekResponse = await fetch(getApiUrl(API_CONFIG.ENDPOINTS.HISTORICAL, { hours: 168 }));
           const weekData = await weekResponse.json();
 
           if (weekData && weekData.historical && Array.isArray(weekData.historical) && weekData.historical.length > 0) {
@@ -88,7 +88,6 @@ const RelativePriceIndicator: React.FC<RelativePriceIndicatorProps> = ({
       return {
         level: 'Excellent',
         color: 'green',
-        emoji: '🟢',
         description: 'Gas is extremely low',
         action: 'Perfect time to transact!'
       };
@@ -101,7 +100,6 @@ const RelativePriceIndicator: React.FC<RelativePriceIndicatorProps> = ({
       return {
         level: 'Excellent',
         color: 'green',
-        emoji: '🟢',
         description: 'Gas is significantly below average',
         action: 'Perfect time to transact!'
       };
@@ -109,7 +107,6 @@ const RelativePriceIndicator: React.FC<RelativePriceIndicatorProps> = ({
       return {
         level: 'Good',
         color: 'cyan',
-        emoji: '🔵',
         description: 'Gas is below average',
         action: 'Good time to transact'
       };
@@ -117,7 +114,6 @@ const RelativePriceIndicator: React.FC<RelativePriceIndicatorProps> = ({
       return {
         level: 'Average',
         color: 'yellow',
-        emoji: '🟡',
         description: 'Gas is near average',
         action: 'Typical price for this time'
       };
@@ -125,7 +121,6 @@ const RelativePriceIndicator: React.FC<RelativePriceIndicatorProps> = ({
       return {
         level: 'High',
         color: 'orange',
-        emoji: '🟠',
         description: 'Gas is above average',
         action: 'Consider waiting if not urgent'
       };
@@ -133,7 +128,6 @@ const RelativePriceIndicator: React.FC<RelativePriceIndicatorProps> = ({
       return {
         level: 'Very High',
         color: 'red',
-        emoji: '🔴',
         description: 'Gas is significantly above average',
         action: 'Wait unless transaction is urgent'
       };
@@ -164,31 +158,36 @@ const RelativePriceIndicator: React.FC<RelativePriceIndicatorProps> = ({
       border: 'border-green-500/30',
       text: 'text-green-400',
       bg: 'bg-green-500/10',
-      borderFull: 'border-green-500/30'
+      borderFull: 'border-green-500/30',
+      dot: 'bg-green-400'
     },
     cyan: {
       border: 'border-cyan-500/30',
       text: 'text-cyan-400',
       bg: 'bg-cyan-500/10',
-      borderFull: 'border-cyan-500/30'
+      borderFull: 'border-cyan-500/30',
+      dot: 'bg-cyan-400'
     },
     yellow: {
       border: 'border-yellow-500/30',
       text: 'text-yellow-400',
       bg: 'bg-yellow-500/10',
-      borderFull: 'border-yellow-500/30'
+      borderFull: 'border-yellow-500/30',
+      dot: 'bg-yellow-400'
     },
     orange: {
       border: 'border-orange-500/30',
       text: 'text-orange-400',
       bg: 'bg-orange-500/10',
-      borderFull: 'border-orange-500/30'
+      borderFull: 'border-orange-500/30',
+      dot: 'bg-orange-400'
     },
     red: {
       border: 'border-red-500/30',
       text: 'text-red-400',
       bg: 'bg-red-500/10',
-      borderFull: 'border-red-500/30'
+      borderFull: 'border-red-500/30',
+      dot: 'bg-red-400'
     }
   };
 
@@ -198,8 +197,8 @@ const RelativePriceIndicator: React.FC<RelativePriceIndicatorProps> = ({
     <div className={`bg-gradient-to-br from-gray-800 to-gray-900 p-4 sm:p-6 rounded-2xl shadow-2xl border-2 ${colors.border} card-hover ${className}`}>
       {/* Status Indicator */}
       <div className="text-center mb-4">
-        <div className="text-6xl sm:text-7xl mb-3 animate-pulse">
-          {status.emoji}
+        <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-full border border-gray-700 bg-gray-900/60">
+          <span className={`h-4 w-4 rounded-full ${colors.dot} animate-pulse`} />
         </div>
         <div className={`text-xl sm:text-2xl font-bold ${colors.text} mb-2`}>
           {status.level} Time to Transact
@@ -260,7 +259,7 @@ const RelativePriceIndicator: React.FC<RelativePriceIndicatorProps> = ({
       {/* Action Recommendation */}
       <div className={`p-3 rounded-lg ${colors.bg} border ${colors.borderFull}`}>
         <div className="flex items-start gap-2">
-          <span className="text-lg flex-shrink-0">{status.emoji}</span>
+          <span className={`mt-1 h-2.5 w-2.5 rounded-full ${colors.dot}`} />
           <div className="flex-1 min-w-0">
             <div className={`text-xs sm:text-sm font-semibold ${colors.text} mb-1`}>
               Recommendation

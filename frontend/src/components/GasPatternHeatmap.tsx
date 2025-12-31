@@ -32,6 +32,7 @@ const GasPatternHeatmap: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [view, setView] = useState<'hourly' | 'daily'>('hourly');
+  const [isFallback, setIsFallback] = useState(false);
 
   const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
   const HOURS = Array.from({ length: 24 }, (_, i) => i);
@@ -48,6 +49,7 @@ const GasPatternHeatmap: React.FC = () => {
       if (!response.ok) {
         // Generate mock data if API not available
         setData(generateMockData());
+        setIsFallback(true);
         setLoading(false);
         return;
       }
@@ -55,13 +57,16 @@ const GasPatternHeatmap: React.FC = () => {
       const result = await response.json();
       if (result.success) {
         setData(result.data);
+        setIsFallback(false);
       } else {
         setData(generateMockData());
+        setIsFallback(true);
       }
       setLoading(false);
     } catch (err) {
       // Use mock data for demo
       setData(generateMockData());
+      setIsFallback(true);
       setLoading(false);
     }
   };
@@ -183,6 +188,11 @@ const GasPatternHeatmap: React.FC = () => {
             <p className="text-xs text-gray-400">Historical averages to find the best time to transact</p>
           </div>
         </div>
+        {isFallback && (
+          <span className="text-xs px-2 py-1 rounded-full border border-amber-500/30 bg-amber-500/10 text-amber-300">
+            Using simulated data
+          </span>
+        )}
 
         {/* View Toggle */}
         <div className="flex bg-slate-700/50 rounded-lg p-1">

@@ -1,18 +1,19 @@
 import React, { useState } from 'react';
-import { Calculator, Zap } from 'lucide-react';
+import { ArrowLeftRight, Calculator, Coins, FileCode, Image, Lightbulb, Send, Sparkles, Zap } from 'lucide-react';
 
 interface TransactionType {
   name: string;
   gasEstimate: number;
-  icon: string;
+  Icon: React.ComponentType<{ className?: string }>;
 }
 
 const TRANSACTION_TYPES: TransactionType[] = [
-  { name: 'Token Transfer', gasEstimate: 21000, icon: '💸' },
-  { name: 'Token Swap', gasEstimate: 150000, icon: '🔄' },
-  { name: 'NFT Mint', gasEstimate: 100000, icon: '🎨' },
-  { name: 'NFT Transfer', gasEstimate: 80000, icon: '🖼️' },
-  { name: 'Contract Deploy', gasEstimate: 500000, icon: '📜' },
+  { name: 'Token Transfer', gasEstimate: 21000, Icon: Send },
+  { name: 'Token Swap', gasEstimate: 150000, Icon: ArrowLeftRight },
+  { name: 'NFT Mint', gasEstimate: 100000, Icon: Sparkles },
+  { name: 'NFT Transfer', gasEstimate: 80000, Icon: Image },
+  { name: 'Contract Deploy', gasEstimate: 500000, Icon: FileCode },
+  { name: 'Token Approve', gasEstimate: 46000, Icon: Coins }
 ];
 
 interface TransactionCostCalculatorProps {
@@ -74,7 +75,9 @@ const TransactionCostCalculator: React.FC<TransactionCostCalculatorProps> = ({
                 : 'bg-slate-700/30 border-slate-600 text-gray-400 hover:border-slate-500'
             }`}
           >
-            <div className="text-3xl mb-2">{tx.icon}</div>
+            <div className="flex justify-center mb-2">
+              <tx.Icon className="w-6 h-6" />
+            </div>
             <div className="text-sm font-medium">{tx.name}</div>
             <div className="text-xs text-gray-500 mt-1">
               {(tx.gasEstimate / 1000).toFixed(0)}k gas
@@ -128,7 +131,7 @@ const TransactionCostCalculator: React.FC<TransactionCostCalculatorProps> = ({
       {currentGas > 0 && getPotentialSavings() > 0.001 && (
         <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-4">
           <div className="flex items-start gap-3">
-            <div className="text-2xl">💡</div>
+            <Lightbulb className="w-5 h-5 text-green-400 mt-0.5" />
             <div>
               <div className="text-sm font-semibold text-green-400 mb-1">Potential Savings</div>
               <div className="text-xs text-gray-300">

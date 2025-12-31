@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
+import { Bot, CheckCircle, Clock, Coins, Zap } from 'lucide-react';
 import { API_CONFIG, getApiUrl } from '../config/api';
 
 interface AgentResponse {
@@ -60,7 +61,7 @@ const AgentRecommendation: React.FC<AgentRecommendationProps> = ({ currentGas = 
     switch (action) {
       case 'WAIT':
         return {
-          icon: '⏳',
+          icon: <Clock className="w-6 h-6" />,
           color: 'yellow',
           bgClass: 'bg-yellow-500/10 border-yellow-500/50',
           textClass: 'text-yellow-400',
@@ -69,7 +70,7 @@ const AgentRecommendation: React.FC<AgentRecommendationProps> = ({ currentGas = 
         };
       case 'SUBMIT_NOW':
         return {
-          icon: '✅',
+          icon: <CheckCircle className="w-6 h-6" />,
           color: 'green',
           bgClass: 'bg-green-500/10 border-green-500/50',
           textClass: 'text-green-400',
@@ -78,7 +79,7 @@ const AgentRecommendation: React.FC<AgentRecommendationProps> = ({ currentGas = 
         };
       case 'SUBMIT_LOW':
         return {
-          icon: '💰',
+          icon: <Coins className="w-6 h-6" />,
           color: 'cyan',
           bgClass: 'bg-cyan-500/10 border-cyan-500/50',
           textClass: 'text-cyan-400',
@@ -87,7 +88,7 @@ const AgentRecommendation: React.FC<AgentRecommendationProps> = ({ currentGas = 
         };
       case 'SUBMIT_HIGH':
         return {
-          icon: '⚡',
+          icon: <Zap className="w-6 h-6" />,
           color: 'purple',
           bgClass: 'bg-purple-500/10 border-purple-500/50',
           textClass: 'text-purple-400',
@@ -96,7 +97,7 @@ const AgentRecommendation: React.FC<AgentRecommendationProps> = ({ currentGas = 
         };
       default:
         return {
-          icon: '❓',
+          icon: <Bot className="w-6 h-6" />,
           color: 'gray',
           bgClass: 'bg-gray-500/10 border-gray-500/50',
           textClass: 'text-gray-400',
@@ -119,7 +120,7 @@ const AgentRecommendation: React.FC<AgentRecommendationProps> = ({ currentGas = 
     return (
       <div className="bg-gradient-to-br from-gray-800 to-gray-900 p-4 sm:p-6 rounded-2xl shadow-2xl border border-red-500/30">
         <div className="flex items-center gap-2 mb-4">
-          <span className="text-xl sm:text-2xl">🤖</span>
+          <Bot className="w-5 h-5 text-gray-400" />
           <h3 className="text-lg sm:text-xl font-bold text-gray-300">AI Agent</h3>
         </div>
         <div className="text-red-400 text-sm">{error}</div>
@@ -138,7 +139,7 @@ const AgentRecommendation: React.FC<AgentRecommendationProps> = ({ currentGas = 
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <span className="text-xl sm:text-2xl">🤖</span>
+          <Bot className="w-5 h-5 text-purple-400" />
           <h3 className="text-lg sm:text-xl font-bold bg-gradient-to-r from-purple-400 to-pink-500 bg-clip-text text-transparent">
             AI Transaction Agent
           </h3>
@@ -151,7 +152,7 @@ const AgentRecommendation: React.FC<AgentRecommendationProps> = ({ currentGas = 
       {/* Main Recommendation */}
       <div className={`${actionConfig.bgClass} border-2 rounded-xl p-4 mb-4`}>
         <div className="flex items-center gap-3 mb-2">
-          <span className="text-3xl">{actionConfig.icon}</span>
+          <span className={actionConfig.textClass}>{actionConfig.icon}</span>
           <div>
             <div className={`text-xl font-bold ${actionConfig.textClass}`}>
               {actionConfig.label}

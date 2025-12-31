@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Database, TrendingUp, Calendar, Target, Zap } from 'lucide-react';
 import { io, Socket } from 'socket.io-client';
+import { API_CONFIG, getApiOrigin, getApiUrl } from '../config/api';
 
 interface DataQuality {
   total_records: number;
@@ -19,8 +20,7 @@ const DataCollectionProgress: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const socketRef = useRef<Socket | null>(null);
 
-  const API_BASE = import.meta.env.VITE_API_URL || 'https://basegasfeesml.onrender.com/api';
-  const SOCKET_URL = API_BASE.replace('/api', '');
+  const SOCKET_URL = getApiOrigin();
 
   useEffect(() => {
     // Initial fetch
@@ -67,7 +67,7 @@ const DataCollectionProgress: React.FC = () => {
   const fetchDataQuality = async () => {
     try {
       setError(null);
-      const response = await fetch(`${API_BASE}/retraining/check-data?t=${Date.now()}`, {
+      const response = await fetch(getApiUrl(API_CONFIG.ENDPOINTS.RETRAINING_CHECK_DATA, { t: Date.now() }), {
         cache: 'no-cache',
         headers: {
           'Cache-Control': 'no-cache',
