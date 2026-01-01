@@ -8,6 +8,8 @@ import { LazySection } from '../src/components/LazySection';
 import CollapsibleSection from '../src/components/ui/CollapsibleSection';
 import ApiStatusPanel from '../src/components/ApiStatusPanel';
 import AccuracyMetricsCard from '../src/components/AccuracyMetricsCard';
+import FeatureImportanceChart from '../src/components/FeatureImportanceChart';
+import DriftAlertBanner from '../src/components/DriftAlertBanner';
 import PersonalizationPanel from '../src/components/PersonalizationPanel';
 import { checkHealth } from '../src/api/gasApi';
 import { useChain } from '../src/contexts/ChainContext';
@@ -43,6 +45,9 @@ const Dashboard: React.FC = () => {
       <StickyHeader apiStatus={apiStatus} currentGas={currentGas} />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Drift Alert Banner */}
+        <DriftAlertBanner />
+
         {/* Hero: AI Transaction Pilot - Sticky on scroll */}
         <div className="mb-8 lg:sticky lg:top-20 lg:z-40">
           <TransactionPilot ethPrice={ethPrice} />
@@ -65,6 +70,7 @@ const Dashboard: React.FC = () => {
               <div className="text-[11px] tracking-[0.2em] text-gray-500 uppercase">System</div>
               <ApiStatusPanel />
               <AccuracyMetricsCard />
+              <FeatureImportanceChart />
             </div>
           </div>
 
