@@ -19,6 +19,7 @@ from api.analytics_routes import analytics_bp
 from api.alert_routes import alert_bp
 from api.agent_routes import agent_bp
 from api.multichain_routes import multichain_bp
+from api.accuracy_routes import accuracy_bp
 from api.middleware import limiter, error_handlers, log_request
 from config import Config
 from utils.logger import logger
@@ -88,6 +89,7 @@ def create_app():
     app.register_blueprint(alert_bp, url_prefix='/api')
     app.register_blueprint(agent_bp, url_prefix='/api')
     app.register_blueprint(multichain_bp, url_prefix='/api')
+    app.register_blueprint(accuracy_bp, url_prefix='/api/accuracy')
     app.register_blueprint(base_config_bp)  # No prefix - serves at root for /config.json
     
     # Add HTTP caching and CORS headers
@@ -175,6 +177,14 @@ def create_app():
                     'status': '/api/agent/status',
                     'actions': '/api/agent/actions',
                     'simulate': '/api/agent/simulate (POST)'
+                },
+                'accuracy_tracking': {
+                    'metrics': '/api/accuracy/metrics',
+                    'drift': '/api/accuracy/drift',
+                    'summary': '/api/accuracy/summary',
+                    'report': '/api/accuracy/report',
+                    'features': '/api/accuracy/features',
+                    'features_importance': '/api/accuracy/features/importance'
                 }
             }
         })
