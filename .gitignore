@@ -7,6 +7,22 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 backend/logs/
+backend/*.log
+
+# SQLite temp files
+*.db-shm
+*.db-wal
+
+# Jupyter notebooks (keep only in dedicated locations)
+*.ipynb
+!backend/scripts/*.ipynb
+
+# Root level temp files
+/gas_data.db
+/train_models_colab.ipynb
+
+# Colab artifacts
+backend/gas_data_colab.db
 
 # Frontend
 frontend/node_modules
@@ -16,8 +32,8 @@ frontend/dist-ssr
 *.local
 
 # Backend Python
-backend/__pycache__/
-backend/*.pyc
+**/__pycache__/
+*.pyc
 backend/.pytest_cache/
 backend/.venv/
 backend/venv/
