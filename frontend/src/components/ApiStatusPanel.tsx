@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Activity, CloudOff, RefreshCw, ShieldCheck } from 'lucide-react';
+import { Activity, CloudOff, RefreshCw, ShieldCheck, Brain, AlertTriangle } from 'lucide-react';
 import { API_CONFIG, getApiUrl } from '../config/api';
 
 type StatusState = 'checking' | 'online' | 'offline' | 'degraded';
@@ -22,14 +22,16 @@ const ApiStatusPanel: React.FC = () => {
     const baseItems: StatusItem[] = [
       { key: 'health', label: 'Core API', status: 'checking', detail: 'Checking health...' },
       { key: 'agent', label: 'AI Agent', status: 'checking', detail: 'Checking agent...' },
+      { key: 'model', label: 'Model Health', status: 'checking', detail: 'Checking accuracy...' },
       { key: 'patterns', label: 'Patterns', status: 'checking', detail: 'Checking patterns...' }
     ];
     setItems(baseItems);
 
     try {
-      const [healthRes, agentRes, patternsRes] = await Promise.all([
+      const [healthRes, agentRes, driftRes, patternsRes] = await Promise.all([
         fetch(getApiUrl(API_CONFIG.ENDPOINTS.HEALTH)),
         fetch(getApiUrl(API_CONFIG.ENDPOINTS.AGENT_STATUS)),
+        fetch(getApiUrl(API_CONFIG.ENDPOINTS.ACCURACY_DRIFT)),
         fetch(getApiUrl(API_CONFIG.ENDPOINTS.GAS_PATTERNS))
       ]);
 
@@ -54,12 +56,29 @@ const ApiStatusPanel: React.FC = () => {
         nextItems[1] = { key: 'agent', label: 'AI Agent', status: 'offline', detail: 'Agent unreachable' };
       }
 
-      if (patternsRes.ok) {
-        nextItems[2] = { key: 'patterns', label: 'Patterns', status: 'online', detail: 'Heatmaps up to date' };
-      } else if (patternsRes.status === 404 || patternsRes.status === 503) {
-        nextItems[2] = { key: 'patterns', label: 'Patterns', status: 'degraded', detail: 'Using fallback data' };
+      // Model health / drift check
+      if (driftRes.ok) {
+        const driftData = await driftRes.json();
+        const shouldRetrain = driftData?.should_retrain ?? false;
+        const isDrifting = Object.values(driftData?.drift || {}).some((d: any) => d?.is_drifting);
+
+        if (shouldRetrain) {
+          nextItems[2] = { key: 'model', label: 'Model Health', status: 'degraded', detail: 'Retrain recommended' };
+        } else if (isDrifting) {
+          nextItems[2] = { key: 'model', label: 'Model Health', status: 'degraded', detail: 'Drift detected' };
+        } else {
+          nextItems[2] = { key: 'model', label: 'Model Health', status: 'online', detail: 'Accuracy stable' };
+        }
       } else {
-        nextItems[2] = { key: 'patterns', label: 'Patterns', status: 'offline', detail: 'Patterns unavailable' };
+        nextItems[2] = { key: 'model', label: 'Model Health', status: 'degraded', detail: 'No tracking data' };
+      }
+
+      if (patternsRes.ok) {
+        nextItems[3] = { key: 'patterns', label: 'Patterns', status: 'online', detail: 'Heatmaps up to date' };
+      } else if (patternsRes.status === 404 || patternsRes.status === 503) {
+        nextItems[3] = { key: 'patterns', label: 'Patterns', status: 'degraded', detail: 'Using fallback data' };
+      } else {
+        nextItems[3] = { key: 'patterns', label: 'Patterns', status: 'offline', detail: 'Patterns unavailable' };
       }
 
       setItems(nextItems);
@@ -67,6 +86,7 @@ const ApiStatusPanel: React.FC = () => {
       setItems([
         { key: 'health', label: 'Core API', status: 'offline', detail: 'Unable to reach API' },
         { key: 'agent', label: 'AI Agent', status: 'offline', detail: 'Agent unavailable' },
+        { key: 'model', label: 'Model Health', status: 'offline', detail: 'Tracking unavailable' },
         { key: 'patterns', label: 'Patterns', status: 'offline', detail: 'Patterns unavailable' }
       ]);
     }
@@ -116,6 +136,12 @@ const ApiStatusPanel: React.FC = () => {
             <div className="flex items-center gap-2">
               {item.status === 'offline' ? (
                 <CloudOff className="w-4 h-4" />
+              ) : item.key === 'model' ? (
+                item.status === 'degraded' ? (
+                  <AlertTriangle className="w-4 h-4" />
+                ) : (
+                  <Brain className="w-4 h-4" />
+                )
               ) : (
                 <Activity className="w-4 h-4" />
               )}

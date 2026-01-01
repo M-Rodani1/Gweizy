@@ -35,7 +35,12 @@ export const API_CONFIG = {
     RETRAINING_CHECK_DATA: '/retraining/check-data',
     ONCHAIN_NETWORK_STATE: '/onchain/network-state',
     ONCHAIN_CONGESTION_HISTORY: '/onchain/congestion-history',
-    ALERTS: '/alerts'
+    ALERTS: '/alerts',
+    // Accuracy tracking endpoints
+    ACCURACY_METRICS: '/accuracy/metrics',
+    ACCURACY_DRIFT: '/accuracy/drift',
+    ACCURACY_SUMMARY: '/accuracy/summary',
+    ACCURACY_FEATURES: '/accuracy/features'
   },
   TIMEOUT: 10000, // 10 seconds
   RETRY_ATTEMPTS: 3,

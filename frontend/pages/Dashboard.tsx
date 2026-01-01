@@ -7,6 +7,7 @@ import CompactForecast from '../src/components/CompactForecast';
 import { LazySection } from '../src/components/LazySection';
 import CollapsibleSection from '../src/components/ui/CollapsibleSection';
 import ApiStatusPanel from '../src/components/ApiStatusPanel';
+import AccuracyMetricsCard from '../src/components/AccuracyMetricsCard';
 import PersonalizationPanel from '../src/components/PersonalizationPanel';
 import { checkHealth } from '../src/api/gasApi';
 import { useChain } from '../src/contexts/ChainContext';
@@ -63,6 +64,7 @@ const Dashboard: React.FC = () => {
             <div className="space-y-4">
               <div className="text-[11px] tracking-[0.2em] text-gray-500 uppercase">System</div>
               <ApiStatusPanel />
+              <AccuracyMetricsCard />
             </div>
           </div>
 
