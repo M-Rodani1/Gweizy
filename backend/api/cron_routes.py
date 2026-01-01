@@ -6,16 +6,18 @@ Endpoints triggered by Cloudflare Worker scheduled events for automated maintena
 from flask import Blueprint, jsonify, request
 from utils.logger import logger
 from utils.prediction_validator import PredictionValidator
+from models.accuracy_tracker import get_tracker
 from data.database import DatabaseManager
 import subprocess
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 import traceback
 
 cron_bp = Blueprint('cron', __name__)
 
 db = DatabaseManager()
 validator = PredictionValidator()
+accuracy_tracker = get_tracker()
 
 
 @cron_bp.route('/cron/retrain', methods=['POST'])
@@ -289,6 +291,77 @@ def cron_status():
 
     except Exception as e:
         logger.error(f"Error getting cron status: {e}")
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+
+@cron_bp.route('/cron/update-accuracy', methods=['POST'])
+def cron_update_accuracy():
+    """
+    Triggered periodically (every hour) to fill in actual values for past predictions.
+    Compares predictions made 1h, 4h, 24h ago with actual gas prices.
+    """
+    try:
+        logger.info("[CRON ACCURACY] Updating prediction actuals")
+
+        from data.collector import BaseGasCollector
+        collector = BaseGasCollector()
+
+        # Get current gas price as the "actual" value
+        current_data = collector.get_current_gas()
+        if not current_data:
+            return jsonify({
+                "success": False,
+                "message": "Could not fetch current gas price"
+            }), 500
+
+        actual_gas = current_data.get('current_gas', 0)
+        now = datetime.now()
+
+        updates = {'1h': 0, '4h': 0, '24h': 0}
+
+        # Update actuals for predictions made at the appropriate times
+        for horizon, hours_ago in [('1h', 1), ('4h', 4), ('24h', 24)]:
+            prediction_time = now - timedelta(hours=hours_ago)
+
+            try:
+                accuracy_tracker.record_actual(
+                    horizon=horizon,
+                    actual=actual_gas,
+                    prediction_timestamp=prediction_time
+                )
+                updates[horizon] = 1
+                logger.info(f"Updated {horizon} actual: {actual_gas:.6f} gwei")
+            except Exception as e:
+                logger.warning(f"Could not update {horizon} actual: {e}")
+
+        # Check drift after updating
+        drift_status = {}
+        for horizon in ['1h', '4h', '24h']:
+            drift = accuracy_tracker.check_drift(horizon)
+            drift_status[horizon] = {
+                'is_drifting': drift.is_drifting,
+                'drift_ratio': drift.drift_ratio,
+                'mae_current': drift.mae_current
+            }
+
+        should_retrain, reasons = accuracy_tracker.should_retrain()
+
+        return jsonify({
+            "success": True,
+            "timestamp": now.isoformat(),
+            "actual_gas": actual_gas,
+            "updates": updates,
+            "drift_status": drift_status,
+            "should_retrain": should_retrain,
+            "retrain_reasons": reasons
+        })
+
+    except Exception as e:
+        logger.error(f"Error updating accuracy: {e}")
+        logger.error(traceback.format_exc())
         return jsonify({
             "success": False,
             "error": str(e)

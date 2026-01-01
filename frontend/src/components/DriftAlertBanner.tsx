@@ -22,6 +22,8 @@ const DriftAlertBanner: React.FC<DriftAlertBannerProps> = ({
   const [shouldRetrain, setShouldRetrain] = useState(false);
   const [dismissed, setDismissed] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [retraining, setRetraining] = useState(false);
+  const [retrainStatus, setRetrainStatus] = useState<'idle' | 'success' | 'error'>('idle');
 
   const checkDrift = async () => {
     try {
@@ -67,6 +69,35 @@ const DriftAlertBanner: React.FC<DriftAlertBannerProps> = ({
   const handleDismiss = () => {
     setDismissed(true);
     onDismiss?.();
+  };
+
+  const handleTriggerRetrain = async () => {
+    if (retraining) return;
+
+    setRetraining(true);
+    setRetrainStatus('idle');
+
+    try {
+      const response = await fetch(getApiUrl('/retraining/simple'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      if (response.ok) {
+        setRetrainStatus('success');
+        // Auto-dismiss after successful retrain
+        setTimeout(() => {
+          setDismissed(true);
+          onDismiss?.();
+        }, 3000);
+      } else {
+        setRetrainStatus('error');
+      }
+    } catch (err) {
+      setRetrainStatus('error');
+    } finally {
+      setRetraining(false);
+    }
   };
 
   // Don't show if dismissed, loading, or no drift detected
@@ -140,10 +171,27 @@ const DriftAlertBanner: React.FC<DriftAlertBannerProps> = ({
               </button>
               {shouldRetrain && (
                 <button
-                  className="text-xs px-3 py-1.5 bg-purple-500/80 hover:bg-purple-500 text-white rounded-lg transition-colors flex items-center gap-1"
+                  onClick={handleTriggerRetrain}
+                  disabled={retraining}
+                  className={`text-xs px-3 py-1.5 text-white rounded-lg transition-colors flex items-center gap-1 ${
+                    retraining
+                      ? 'bg-purple-500/50 cursor-wait'
+                      : retrainStatus === 'success'
+                        ? 'bg-emerald-500'
+                        : retrainStatus === 'error'
+                          ? 'bg-red-500'
+                          : 'bg-purple-500/80 hover:bg-purple-500'
+                  }`}
                 >
-                  <RefreshCw className="w-3 h-3" />
-                  Trigger Retrain
+                  <RefreshCw className={`w-3 h-3 ${retraining ? 'animate-spin' : ''}`} />
+                  {retraining
+                    ? 'Retraining...'
+                    : retrainStatus === 'success'
+                      ? 'Retrained!'
+                      : retrainStatus === 'error'
+                        ? 'Failed - Retry'
+                        : 'Trigger Retrain'
+                  }
                 </button>
               )}
             </div>

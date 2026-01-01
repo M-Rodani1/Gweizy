@@ -8,6 +8,7 @@ from data.collector import BaseGasCollector
 from data.database import DatabaseManager
 from models.feature_engineering import GasFeatureEngineer
 from models.model_trainer import GasModelTrainer
+from models.accuracy_tracker import get_tracker
 from utils.base_scanner import BaseScanner
 from utils.logger import logger
 from utils.prediction_validator import PredictionValidator
@@ -25,6 +26,7 @@ db = DatabaseManager()
 engineer = GasFeatureEngineer()
 scanner = BaseScanner()
 validator = PredictionValidator()
+accuracy_tracker = get_tracker()
 
 
 # Load trained models
@@ -392,6 +394,17 @@ def get_predictions():
 
                 logger.info(f"Hybrid predictions - 1h: {classification['class']} ({classification['confidence']:.1%})")
 
+                # Track hybrid predictions for accuracy monitoring
+                for horizon, pred in hybrid_preds.items():
+                    try:
+                        accuracy_tracker.record_prediction(
+                            horizon=horizon,
+                            predicted=pred['prediction']['price'],
+                            timestamp=datetime.now()
+                        )
+                    except Exception as track_err:
+                        logger.warning(f"Could not track hybrid prediction: {track_err}")
+
                 return jsonify({
                     'current': current,
                     'predictions': prediction_data,
@@ -569,6 +582,16 @@ def get_predictions():
                         target_time=target_time,
                         model_version=model_data['model_name']
                     )
+
+                    # Track prediction for accuracy monitoring
+                    try:
+                        accuracy_tracker.record_prediction(
+                            horizon=horizon,
+                            predicted=pred_value,
+                            timestamp=datetime.now()
+                        )
+                    except Exception as track_err:
+                        logger.warning(f"Could not track prediction: {track_err}")
 
             # Format historical data for graph
             historical = []

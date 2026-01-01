@@ -116,7 +116,7 @@ def prepare_features(data):
     )
 
 
-def train_model(X, y_tuple, horizon, min_samples=100, feature_meta=None):
+def train_model(X, y_tuple, horizon, min_samples=100, feature_meta=None, use_feature_selection=True):
     """
     Train a single model for given horizon
 
@@ -125,6 +125,7 @@ def train_model(X, y_tuple, horizon, min_samples=100, feature_meta=None):
         y_tuple: (y_log, y_original) - log-scale and original scale targets
         horizon: Prediction horizon
         min_samples: Minimum samples required
+        use_feature_selection: Whether to use SHAP feature selection
     """
     print(f"\n{'='*60}")
     print(f"🎯 Training model for {horizon} horizon")
@@ -143,6 +144,20 @@ def train_model(X, y_tuple, horizon, min_samples=100, feature_meta=None):
     if len(X_clean) < min_samples:
         print(f"⚠️  Not enough data ({len(X_clean)} < {min_samples}), skipping...")
         return None
+
+    # Apply SHAP feature selection to reduce features
+    feature_selector = None
+    if use_feature_selection and X_clean.shape[1] > 40:
+        try:
+            from models.feature_selector import SHAPFeatureSelector
+            n_features = 30 if not IS_RAILWAY else 25  # Fewer features on Railway
+            feature_selector = SHAPFeatureSelector(n_features=n_features)
+            feature_selector.fit(X_clean, y_log_clean, verbose=True)
+            X_clean = feature_selector.transform(X_clean)
+            print(f"   ✅ Reduced to {X_clean.shape[1]} features using SHAP selection")
+        except Exception as e:
+            print(f"   ⚠️ Feature selection failed: {e}, using all features")
+            feature_selector = None
 
     # Split: 80% train, 20% test (maintain temporal order)
     split_idx = int(len(X_clean) * 0.8)
@@ -260,6 +275,7 @@ def train_model(X, y_tuple, horizon, min_samples=100, feature_meta=None):
     return {
         'model': model,
         'scaler': scaler,
+        'feature_selector': feature_selector,  # SHAP-based feature selector
         'feature_names': list(X_clean.columns),
         'uses_log_scale': True,  # Flag for prediction inference
         'best_params': best_params,
@@ -290,10 +306,12 @@ def save_model(model_data, horizon, output_dir='backend/models/saved_models'):
     filepath = os.path.join(output_dir, f'model_{horizon}.pkl')
     save_data = {
         'model': model_data['model'],
-        'model_name': 'RandomForest_LogScale_Tuned' if USE_HYPERPARAMETER_TUNING else 'RandomForest_LogScale',
+        'model_name': 'RandomForest_LogScale_SHAP' if model_data.get('feature_selector') else 'RandomForest_LogScale',
         'metrics': model_data['metrics'],
         'trained_at': datetime.now().isoformat(),
         'feature_names': model_data['feature_names'],
+        'feature_selector': model_data.get('feature_selector'),  # SHAP selector for inference
+        'feature_scaler': model_data['scaler'],  # Include scaler in main file
         'feature_pipeline': model_data.get('feature_pipeline', {}),
         'sample_rate_minutes': model_data.get('sample_rate_minutes'),
         'steps_per_hour': model_data.get('steps_per_hour'),
@@ -302,7 +320,8 @@ def save_model(model_data, horizon, output_dir='backend/models/saved_models'):
         'predicts_percentage_change': False,
         'best_params': model_data.get('best_params'),
         'feature_importances': model_data.get('feature_importances'),
-        'hyperparameter_tuning_used': USE_HYPERPARAMETER_TUNING
+        'hyperparameter_tuning_used': USE_HYPERPARAMETER_TUNING,
+        'shap_feature_selection_used': model_data.get('feature_selector') is not None
     }
     joblib.dump(save_data, filepath)
     print(f"💾 Saved model to {filepath}")
