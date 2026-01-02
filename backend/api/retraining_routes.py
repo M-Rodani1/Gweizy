@@ -257,64 +257,90 @@ def trigger_simple_retraining():
     """
     Trigger simple model retraining using the retrain_models_simple.py script
 
-    This runs synchronously and may take 3-5 minutes. For async execution,
-    consider using a background task queue.
+    This runs in a background thread to avoid HTTP timeouts.
+    Training typically takes 3-10 minutes.
 
     Returns:
-        Training results or error
+        Immediate response with training status
     """
     try:
         import subprocess
         import sys
-
-        logger.info("Starting simple model retraining...")
-
-        # Run the retraining script
-        # Get absolute path to the script
+        import threading
         import os
+
+        # Check if training is already running
+        if hasattr(trigger_simple_retraining, '_training_in_progress'):
+            if trigger_simple_retraining._training_in_progress:
+                return jsonify({
+                    'status': 'in_progress',
+                    'message': 'Training already in progress. Please wait for it to complete.'
+                }), 200
+
+        logger.info("Starting simple model retraining in background thread...")
+
+        # Get absolute path to the script
         current_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         script_path = os.path.join(current_dir, "scripts", "retrain_models_simple.py")
 
         logger.info(f"Script path: {script_path}")
         logger.info(f"Script exists: {os.path.exists(script_path)}")
 
-        # Execute the script and capture output
-        result = subprocess.run(
-            [sys.executable, script_path],
-            capture_output=True,
-            text=True,
-            timeout=600,  # 10 minute timeout
-            cwd=current_dir  # Set working directory to backend/
-        )
+        # Mark training as in progress
+        trigger_simple_retraining._training_in_progress = True
 
-        if result.returncode == 0:
-            logger.info("Retraining completed successfully")
-            return jsonify({
-                'status': 'success',
-                'message': 'Models retrained successfully',
-                'output': result.stdout,
-                'timestamp': datetime.now().isoformat()
-            }), 200
-        else:
-            logger.error(f"Retraining failed: {result.stderr}")
-            return jsonify({
-                'status': 'error',
-                'message': 'Retraining failed',
-                'error': result.stderr,
-                'output': result.stdout
-            }), 500
+        def run_training():
+            """Run training in background thread"""
+            try:
+                logger.info("Background training thread started")
+                
+                # Execute the script
+                result = subprocess.run(
+                    [sys.executable, script_path],
+                    capture_output=True,
+                    text=True,
+                    timeout=600,  # 10 minute timeout
+                    cwd=current_dir
+                )
 
-    except subprocess.TimeoutExpired:
-        logger.error("Retraining timed out")
+                if result.returncode == 0:
+                    logger.info("Retraining completed successfully")
+                    logger.info(f"Output: {result.stdout[:500]}...")  # Log first 500 chars
+                else:
+                    logger.error(f"Retraining failed: {result.stderr}")
+                    logger.error(f"Output: {result.stdout[:500]}...")
+            except subprocess.TimeoutExpired:
+                logger.error("Retraining timed out after 10 minutes")
+            except Exception as e:
+                logger.error(f"Error during training: {e}")
+                import traceback
+                logger.error(traceback.format_exc())
+            finally:
+                # Mark training as complete
+                trigger_simple_retraining._training_in_progress = False
+                logger.info("Training thread completed")
+
+        # Start training in background thread
+        training_thread = threading.Thread(target=run_training, name="ModelTraining", daemon=True)
+        training_thread.start()
+
+        # Return immediately
         return jsonify({
-            'status': 'error',
-            'message': 'Retraining timed out after 10 minutes'
-        }), 500
+            'status': 'started',
+            'message': 'Model training started in background. This may take 3-10 minutes.',
+            'timestamp': datetime.now().isoformat(),
+            'note': 'Check logs or retraining status endpoint for progress'
+        }), 200
+
     except Exception as e:
-        logger.error(f"Error during simple retraining: {e}")
+        logger.error(f"Error starting training: {e}")
         import traceback
+        trigger_simple_retraining._training_in_progress = False
         return jsonify({
             'status': 'error',
             'message': str(e),
             'traceback': traceback.format_exc()
         }), 500
+
+# Initialize training status
+trigger_simple_retraining._training_in_progress = False
