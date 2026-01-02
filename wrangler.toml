@@ -1,0 +1,23 @@
+name = "gas-fees-api"
+main = "cloudflare-worker/worker.js"
+compatibility_date = "2024-01-01"
+
+# KV namespace for caching API responses
+[[kv_namespaces]]
+binding = "GAS_CACHE"
+id = "c0a5b66e1c9342b286e47d709d6f9158"
+
+# Cron triggers for automated maintenance
+[triggers]
+crons = [
+  "*/10 * * * *",    # Keep Render backend alive (every 10 minutes)
+  # "0 2 * * SUN",     # Retrain models weekly (DISABLED - manual retraining only)
+  "0 */6 * * *",     # Health check every 6 hours
+  "15 * * * *"       # Update prediction accuracy (hourly at :15)
+]
+
+# Environment variables
+[vars]
+BACKEND_API = "https://basegasfeesml.onrender.com/api"
+# Discord webhook for alerts (set via `wrangler secret put DISCORD_WEBHOOK_URL`)
+# DISCORD_WEBHOOK_URL = "https://discord.com/api/webhooks/..."

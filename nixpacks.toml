@@ -1,0 +1,25 @@
+[phases.setup]
+nixPkgs = ["python313"]
+
+[phases.install]
+cmds = [
+  "echo '=== DIAGNOSTIC: Checking current directory ==='",
+  "pwd",
+  "ls -la",
+  "echo '=== DIAGNOSTIC: Checking if .venv exists ==='",
+  "ls -la .venv 2>&1 || echo 'No .venv found'",
+  "echo '=== DIAGNOSTIC: Removing old .venv ==='",
+  "rm -rf .venv",
+  "echo '=== DIAGNOSTIC: Creating new .venv ==='",
+  "python -m venv .venv",
+  "echo '=== DIAGNOSTIC: Upgrading pip ==='",
+  ".venv/bin/pip install --no-cache-dir --upgrade pip",
+  "echo '=== DIAGNOSTIC: Installing requirements ==='",
+  "echo 'Requirements file contents:'",
+  "cat backend/requirements.txt",
+  "echo '=== DIAGNOSTIC: Starting pip install ==='",
+  ".venv/bin/pip install --no-cache-dir -r backend/requirements.txt",
+  "echo '=== DIAGNOSTIC: Verifying installations ==='",
+  ".venv/bin/pip list | grep -E '(sentry|flask-socketio|simple-websocket)'",
+  "echo '=== DIAGNOSTIC: Complete ==='",
+]

@@ -1,0 +1,7 @@
+{
+  "timestamp": "2025-12-28T00:02:24.952631",
+  "num_episodes": 500,
+  "best_eval_reward": 0.7469586133956909,
+  "final_avg_reward": -0.32610130310058594,
+  "total_training_episodes": 165
+}

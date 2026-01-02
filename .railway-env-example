@@ -1,0 +1,25 @@
+# Railway Environment Variables Configuration
+# Copy these to your Railway services
+
+# ============================================
+# WEB SERVICE VARIABLES
+# ============================================
+USE_WORKER_PROCESS=true
+BASE_RPC_URL=https://mainnet.base.org
+BASE_CHAIN_ID=8453
+PORT=5001
+DEBUG=false
+
+# ============================================
+# WORKER SERVICE VARIABLES
+# ============================================
+ENABLE_DATA_COLLECTION=true
+COLLECTION_INTERVAL=60
+BASE_RPC_URL=https://mainnet.base.org
+BASE_CHAIN_ID=8453
+
+# ============================================
+# OPTIONAL VARIABLES (both services)
+# ============================================
+# PYTHON_VERSION=3.11
+# LOG_LEVEL=INFO

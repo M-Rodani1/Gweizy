@@ -1,0 +1,2 @@
+# Spike detectors removed to resolve LFS budget issue
+# backend/models/saved_models/spike_detector*.pkl filter=lfs diff=lfs merge=lfs -text

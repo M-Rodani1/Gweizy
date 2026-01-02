@@ -1,0 +1,14 @@
+{
+  "name": "gas-fees-worker",
+  "version": "1.0.0",
+  "description": "Cloudflare Worker for caching gas fees API responses",
+  "main": "worker.js",
+  "scripts": {
+    "deploy": "wrangler deploy",
+    "dev": "wrangler dev",
+    "tail": "wrangler tail"
+  },
+  "devDependencies": {
+    "wrangler": "^3.22.0"
+  }
+}

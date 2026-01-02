@@ -1,0 +1,24 @@
+services:
+  # Main API server (Flask with Gunicorn + background threads)
+  - type: web
+    name: base-gas-optimizer-api
+    env: python
+    region: oregon
+    plan: free
+    buildCommand: pip install -r backend/requirements.txt
+    startCommand: cd backend && gunicorn app:app --bind 0.0.0.0:$PORT --workers 1 --threads 4 --timeout 120 --preload
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: PORT
+        value: 5001
+      - key: DEBUG
+        value: false
+      - key: ENABLE_DATA_COLLECTION
+        value: true
+      - key: COLLECTION_INTERVAL
+        value: 60
+      - key: BASE_RPC_URL
+        value: https://mainnet.base.org
+      - key: BASE_CHAIN_ID
+        value: 8453

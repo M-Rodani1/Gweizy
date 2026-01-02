@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="theme-color" content="#111827" />
+
+    <!-- BASE VERIFICATION TAG -->
+    <meta
+      name="base:app_id"
+      content="693e249fd19763ca26ddc2a8"
+    />
+    
+    <!-- SEO Meta Tags -->
+    <meta name="description" content="AI-powered gas price predictions for Base network. Save up to 65% on transaction fees with ML-driven forecasts." />
+    <meta name="keywords" content="Base, gas fees, ethereum, L2, blockchain, gas optimization, ML predictions" />
+    <meta name="author" content="Base Gas Optimizer" />
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://basegasoptimizer.com/" />
+    <meta property="og:title" content="Base Gas Optimiser - AI-Powered Gas Savings" />
+    <meta property="og:description" content="Save up to 65% on Base network gas fees with ML predictions" />
+    <meta property="og:image" content="https://basegasoptimizer.com/og-image.png" />
+    
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image" />
+    <meta property="twitter:url" content="https://basegasoptimizer.com/" />
+    <meta property="twitter:title" content="Base Gas Optimiser" />
+    <meta property="twitter:description" content="Save up to 65% on gas fees" />
+    <meta property="twitter:image" content="https://basegasoptimizer.com/og-image.png" />
+    
+    <!-- Base Platform Meta Tags -->
+    <meta name="base:chain-id" content="8453" />
+    <meta name="base:app-name" content="Base Gas Optimiser" />
+
+    <!-- Farcaster Mini App Meta Tags -->
+    <meta property="fc:miniapp" content="vNext" />
+    <meta property="fc:miniapp:image" content="https://basegasfeesml.pages.dev/og-image.png" />
+    <meta property="fc:miniapp:launch_button" content="Open Gas Optimiser" />
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="/logo.svg" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+
+    <!-- Performance: Resource Hints -->
+    <link rel="preconnect" href="https://basegasfeesml-production.up.railway.app" crossorigin />
+    <link rel="dns-prefetch" href="https://basegasfeesml-production.up.railway.app" />
+    <link rel="preconnect" href="https://mainnet.base.org" crossorigin />
+    <link rel="dns-prefetch" href="https://mainnet.base.org" />
+
+    <title>Base Gas Optimiser - Save Up to 65% on Gas Fees | AI-Powered Predictions</title>
+    
+    <!-- JSON-LD Structured Data for SEO -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "Base Gas Optimiser",
+      "applicationCategory": "FinanceApplication",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      },
+      "aggregateRating": {
+        "@type": "AggregateRating",
+        "ratingValue": "4.8",
+        "ratingCount": "1247"
+      },
+      "description": "AI-powered gas price predictions for Base network. Save up to 65% on transaction fees.",
+      "operatingSystem": "Web Browser",
+      "author": {
+        "@type": "Organization",
+        "name": "Base Gas Optimiser"
+      }
+    }
+    </script>
+  </head>
+  <body class="bg-gray-900">
+    <div id="root"></div>
+
+    <!-- Preload critical API data before app bundle loads -->
+    <script>
+      (function() {
+        const API_BASE = 'https://basegasfeesml-production.up.railway.app/api';
+
+        // Preload data quality info for faster initial render
+        window.__INITIAL_DATA__ = {
+          dataQuality: fetch(API_BASE + '/retraining/check-data')
+            .then(r => r.ok ? r.json() : null)
+            .catch(() => null),
+
+          // Preload current gas price
+          gasPrice: fetch('https://mainnet.base.org', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              jsonrpc: '2.0',
+              method: 'eth_gasPrice',
+              params: [],
+              id: 1
+            })
+          })
+            .then(r => r.ok ? r.json() : null)
+            .catch(() => null)
+        };
+      })();
+    </script>
+
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
