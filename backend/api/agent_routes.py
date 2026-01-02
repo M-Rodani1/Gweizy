@@ -29,8 +29,21 @@ def get_dqn_agent(chain_id: int = 8453):
         
         base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         
-        # Try chain-specific paths first, then fallback to Base chain
-        possible_paths = [
+        # Try persistent storage first, then fallback paths
+        # Priority: /data/models (Railway persistent) > local paths
+        possible_paths = []
+        
+        # Persistent storage paths (Railway)
+        if os.path.exists('/data'):
+            possible_paths.extend([
+                os.path.join('/data', 'models', 'rl_agents', f'chain_{chain_id}', 'dqn_final.pkl'),
+                os.path.join('/data', 'models', 'rl_agents', f'chain_{chain_id}', 'dqn_best.pkl'),
+                os.path.join('/data', 'models', 'rl_agents', 'chain_8453', 'dqn_final.pkl'),
+                os.path.join('/data', 'models', 'rl_agents', 'chain_8453', 'dqn_best.pkl'),
+            ])
+        
+        # Local paths (fallback)
+        possible_paths.extend([
             # Chain-specific paths
             os.path.join(base_dir, 'models', 'rl_agents', f'chain_{chain_id}', 'dqn_final.pkl'),
             os.path.join(base_dir, 'models', 'rl_agents', f'chain_{chain_id}', 'dqn_best.pkl'),
@@ -42,7 +55,7 @@ def get_dqn_agent(chain_id: int = 8453):
             os.path.join(base_dir, 'models', 'rl_agents', 'dqn_best.pkl'),
             os.path.join(base_dir, 'models', 'saved_models', 'dqn_agent.pkl'),
             os.path.join(base_dir, 'models', 'dqn_agent.pkl'),
-        ]
+        ])
         
         model_path = None
         for path in possible_paths:

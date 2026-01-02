@@ -308,7 +308,7 @@ def save_model(model_data, horizon, output_dir=None):
         # Use persistent storage on Railway, fallback to local
         from config import Config
         output_dir = Config.MODELS_DIR
-    """Save trained model"""
+    
     if model_data is None:
         return False
 
