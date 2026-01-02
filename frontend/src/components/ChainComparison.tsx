@@ -5,7 +5,7 @@
 import React, { useState, useEffect } from 'react';
 import { fetchPredictions } from '../api/gasApi';
 import { SUPPORTED_CHAINS, getChainById } from '../config/chains';
-import { useChainContext } from '../contexts/ChainContext';
+import { useChain } from '../contexts/ChainContext';
 import LoadingSpinner from './LoadingSpinner';
 
 interface ChainPrediction {
@@ -22,7 +22,7 @@ interface ChainPrediction {
 }
 
 const ChainComparison: React.FC = () => {
-  const { multiChainGas, selectedChainId, setSelectedChainId } = useChainContext();
+  const { multiChainGas, selectedChainId, setSelectedChainId } = useChain();
   const [chainPredictions, setChainPredictions] = useState<Record<number, ChainPrediction>>({});
   const [loading, setLoading] = useState(true);
 

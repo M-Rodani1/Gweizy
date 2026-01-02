@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { fetchPredictions, fetchCurrentGas } from '../api/gasApi';
-import { useChainContext } from '../contexts/ChainContext';
+import { useChain } from '../contexts/ChainContext';
 import LoadingSpinner from './LoadingSpinner';
 
 interface PredictionCard {
@@ -21,7 +21,7 @@ interface PredictionCard {
 }
 
 const PredictionCards: React.FC = () => {
-  const { selectedChainId } = useChainContext();
+  const { selectedChainId } = useChain();
   const [cards, setCards] = useState<PredictionCard[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
