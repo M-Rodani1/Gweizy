@@ -38,7 +38,8 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
     }
 
     const apiOrigin = getApiOrigin();
-    const socketUrl = apiOrigin.replace(/^https?:\/\//, 'ws://').replace(/^https:\/\//, 'wss://');
+    // Socket.IO handles protocol automatically, just use the origin
+    const socketUrl = apiOrigin;
     
     // Create Socket.IO connection
     const newSocket = io(socketUrl, {

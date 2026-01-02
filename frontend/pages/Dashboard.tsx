@@ -8,6 +8,7 @@ import { LazySection } from '../src/components/LazySection';
 import CollapsibleSection from '../src/components/ui/CollapsibleSection';
 import ApiStatusPanel from '../src/components/ApiStatusPanel';
 import AccuracyMetricsCard from '../src/components/AccuracyMetricsCard';
+import AccuracyMetricsDashboard from '../src/components/AccuracyMetricsDashboard';
 import FeatureImportanceChart from '../src/components/FeatureImportanceChart';
 import DriftAlertBanner from '../src/components/DriftAlertBanner';
 import PersonalizationPanel from '../src/components/PersonalizationPanel';
@@ -76,6 +77,7 @@ const Dashboard: React.FC = () => {
               <div className="text-[11px] tracking-[0.2em] text-gray-500 uppercase">System</div>
               <ApiStatusPanel />
               <AccuracyMetricsCard />
+              <AccuracyMetricsDashboard />
               <FeatureImportanceChart />
             </div>
           </div>
