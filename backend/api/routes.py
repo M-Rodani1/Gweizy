@@ -334,7 +334,7 @@ def gas_patterns():
         data = db.get_historical_data(hours=hours)
 
         if not data:
-            return jsonify({'success': False, 'error': 'No historical data available'}), 404
+            return jsonify({'error': 'No historical data available'}), 404 jsonify({'success': False, 'error': 'No historical data available'}), 404
 
         from dateutil import parser
 
