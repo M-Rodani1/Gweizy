@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import StickyHeader from '../src/components/StickyHeader';
 import AccuracyMetricsCard from '../src/components/AccuracyMetricsCard';
 import FeatureImportanceChart from '../src/components/FeatureImportanceChart';
+import AccuracyHistoryChart from '../src/components/AccuracyHistoryChart';
 import DriftAlertBanner from '../src/components/DriftAlertBanner';
 import ApiStatusPanel from '../src/components/ApiStatusPanel';
 import { useChain } from '../src/contexts/ChainContext';
@@ -65,6 +66,15 @@ const Analytics: React.FC = () => {
               <ApiStatusPanel />
             </div>
           </div>
+        </section>
+
+        {/* Accuracy Trends */}
+        <section className="mb-8">
+          <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+            <TrendingUp className="w-4 h-4 text-cyan-400" />
+            Accuracy Trends
+          </h2>
+          <AccuracyHistoryChart />
         </section>
 
         {/* Feature Analysis */}

@@ -323,6 +323,44 @@ def get_feature_importance():
         }), 500
 
 
+@accuracy_bp.route('/history', methods=['GET'])
+def get_accuracy_history():
+    """
+    Get historical accuracy metrics for charting.
+
+    Query params:
+        hours_back: Number of hours to look back (default: 168, max: 720)
+        resolution: 'hourly' or 'daily' (default: 'hourly')
+    """
+    tracker = get_tracker()
+
+    if tracker is None:
+        return jsonify({
+            'success': False,
+            'error': 'Accuracy tracker not available'
+        }), 503
+
+    try:
+        hours_back = min(int(request.args.get('hours_back', 168)), 720)
+        resolution = request.args.get('resolution', 'hourly')
+
+        # Get historical data from tracker
+        history = tracker.get_accuracy_history(hours_back=hours_back, resolution=resolution)
+
+        return jsonify({
+            'success': True,
+            'history': history,
+            'hours_back': hours_back,
+            'resolution': resolution
+        })
+    except Exception as e:
+        logger.error(f"Error getting accuracy history: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
 @accuracy_bp.route('/features/train', methods=['POST'])
 def train_feature_selector():
     """

@@ -543,6 +543,111 @@ class AccuracyTracker:
 
         return summary
 
+    def get_accuracy_history(
+        self,
+        hours_back: int = 168,
+        resolution: str = 'hourly'
+    ) -> Dict[str, List[Dict]]:
+        """
+        Get historical accuracy metrics for charting.
+
+        Args:
+            hours_back: Number of hours to look back
+            resolution: 'hourly' or 'daily'
+
+        Returns:
+            Dictionary with history for each horizon
+        """
+        history = {'1h': [], '4h': [], '24h': []}
+
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                conn.row_factory = sqlite3.Row
+
+                # Get predictions with actuals from database
+                cutoff = datetime.now() - timedelta(hours=hours_back)
+
+                cursor = conn.execute('''
+                    SELECT horizon, timestamp, predicted, actual, error
+                    FROM predictions
+                    WHERE actual IS NOT NULL AND timestamp >= ?
+                    ORDER BY timestamp ASC
+                ''', (cutoff.isoformat(),))
+
+                rows = cursor.fetchall()
+
+                if not rows:
+                    # Return empty history with current metrics as single point
+                    for horizon in ['1h', '4h', '24h']:
+                        metrics = self.get_current_metrics(horizon)
+                        if metrics.get('n', 0) > 0:
+                            history[horizon].append({
+                                'timestamp': datetime.now().isoformat(),
+                                'mae': metrics.get('mae', 0),
+                                'rmse': metrics.get('rmse', 0),
+                                'r2': metrics.get('r2', 0),
+                                'directional_accuracy': metrics.get('directional_accuracy', 0),
+                                'n': metrics.get('n', 0)
+                            })
+                    return history
+
+                # Group by horizon and time bucket
+                from collections import defaultdict
+                buckets = defaultdict(lambda: defaultdict(list))
+
+                for row in rows:
+                    horizon = row['horizon']
+                    ts = datetime.fromisoformat(row['timestamp'])
+
+                    if resolution == 'daily':
+                        bucket_key = ts.strftime('%Y-%m-%d')
+                    else:  # hourly
+                        bucket_key = ts.strftime('%Y-%m-%d %H:00')
+
+                    buckets[horizon][bucket_key].append({
+                        'predicted': row['predicted'],
+                        'actual': row['actual'],
+                        'error': row['error']
+                    })
+
+                # Calculate metrics for each bucket
+                for horizon in ['1h', '4h', '24h']:
+                    for bucket_key, predictions in sorted(buckets[horizon].items()):
+                        if len(predictions) < 2:
+                            continue
+
+                        errors = np.array([p['error'] for p in predictions if p['error'] is not None])
+                        actuals = np.array([p['actual'] for p in predictions])
+                        preds = np.array([p['predicted'] for p in predictions])
+
+                        if len(errors) < 2:
+                            continue
+
+                        mae = float(np.mean(np.abs(errors)))
+                        rmse = float(np.sqrt(np.mean(errors ** 2)))
+
+                        ss_res = np.sum(errors ** 2)
+                        ss_tot = np.sum((actuals - np.mean(actuals)) ** 2)
+                        r2 = float(1 - (ss_res / ss_tot)) if ss_tot > 0 else 0
+
+                        actual_diff = np.diff(actuals)
+                        pred_diff = np.diff(preds)
+                        dir_acc = float(np.mean((actual_diff > 0) == (pred_diff > 0))) if len(actuals) > 1 else 0
+
+                        history[horizon].append({
+                            'timestamp': bucket_key,
+                            'mae': mae,
+                            'rmse': rmse,
+                            'r2': r2,
+                            'directional_accuracy': dir_acc,
+                            'n': len(predictions)
+                        })
+
+        except Exception as e:
+            logger.error(f"Error getting accuracy history: {e}")
+
+        return history
+
 
 # Global tracker instance
 _tracker: Optional[AccuracyTracker] = None

@@ -40,7 +40,8 @@ export const API_CONFIG = {
     ACCURACY_METRICS: '/accuracy/metrics',
     ACCURACY_DRIFT: '/accuracy/drift',
     ACCURACY_SUMMARY: '/accuracy/summary',
-    ACCURACY_FEATURES: '/accuracy/features'
+    ACCURACY_FEATURES: '/accuracy/features',
+    ACCURACY_HISTORY: '/accuracy/history'
   },
   TIMEOUT: 10000, // 10 seconds
   RETRY_ATTEMPTS: 3,

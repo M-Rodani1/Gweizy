@@ -271,6 +271,49 @@ function getCacheAge(data) {
 }
 
 /**
+ * Send Discord webhook notification
+ */
+async function sendDiscordNotification(env, { title, description, color, fields = [] }) {
+  // Check if webhook URL is configured
+  const webhookUrl = env.DISCORD_WEBHOOK_URL;
+  if (!webhookUrl) {
+    console.log('[DISCORD] No webhook URL configured, skipping notification');
+    return;
+  }
+
+  try {
+    const embed = {
+      title,
+      description,
+      color, // Discord color as integer (e.g., 0xFF0000 for red)
+      timestamp: new Date().toISOString(),
+      footer: {
+        text: 'Gweizy Gas Predictor'
+      },
+      fields
+    };
+
+    const response = await fetch(webhookUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        username: 'Gweizy Bot',
+        avatar_url: 'https://gweizy.xyz/logo.png',
+        embeds: [embed]
+      })
+    });
+
+    if (response.ok) {
+      console.log('[DISCORD] ✅ Notification sent:', title);
+    } else {
+      console.error('[DISCORD] ❌ Failed to send:', response.status);
+    }
+  } catch (error) {
+    console.error('[DISCORD] Error sending notification:', error);
+  }
+}
+
+/**
  * Log performance metrics (could expand to analytics)
  */
 async function logMetrics(env, metrics) {
@@ -370,7 +413,7 @@ async function updatePredictionAccuracy(env) {
         expirationTtl: 7200 // Keep for 2 hours
       });
 
-      // If drift is detected and retrain is recommended, log it prominently
+      // If drift is detected and retrain is recommended, send notification
       if (result.should_retrain) {
         console.warn('[ACCURACY] ⚠️ Retrain recommended:', result.retrain_reasons);
         await env.GAS_CACHE.put('retrain_recommended', JSON.stringify({
@@ -379,6 +422,32 @@ async function updatePredictionAccuracy(env) {
           drift_status: result.drift_status
         }), {
           expirationTtl: 86400 // Keep for 24 hours
+        });
+
+        // Send Discord alert
+        await sendDiscordNotification(env, {
+          title: '⚠️ Model Retrain Recommended',
+          description: 'Prediction accuracy has degraded significantly. Consider triggering a model retrain.',
+          color: 0xFFA500, // Orange
+          fields: [
+            {
+              name: 'Reasons',
+              value: result.retrain_reasons?.join('\n') || 'Accuracy below threshold',
+              inline: false
+            },
+            {
+              name: 'Current Gas',
+              value: `${result.actual_gas?.toFixed(4) || 'N/A'} gwei`,
+              inline: true
+            },
+            {
+              name: 'Drift Status',
+              value: Object.entries(result.drift_status || {})
+                .map(([h, d]) => `${h}: ${d.is_drifting ? '🔴' : '🟢'}`)
+                .join(' | '),
+              inline: true
+            }
+          ]
         });
       }
     } else {
@@ -414,13 +483,24 @@ async function performHealthCheck(env) {
     if (!health.healthy) {
       console.warn('[HEALTH] Alerts:', health.alerts);
 
-      // TODO: Send notification (email/Discord/Slack)
-      // For now, just log to KV for monitoring
+      // Store alert in KV for monitoring
       await env.GAS_CACHE.put('health_alert', JSON.stringify({
         timestamp: new Date().toISOString(),
         alerts: health.alerts
       }), {
         expirationTtl: 86400 // Keep for 24 hours
+      });
+
+      // Send Discord notification
+      await sendDiscordNotification(env, {
+        title: '🔴 Model Health Degraded',
+        description: 'The prediction model is showing signs of degraded performance.',
+        color: 0xFF0000, // Red
+        fields: (health.alerts || []).map(alert => ({
+          name: alert.severity?.toUpperCase() || 'ALERT',
+          value: alert.message || 'Unknown issue',
+          inline: false
+        }))
       });
     }
 

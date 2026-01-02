@@ -19,3 +19,5 @@ crons = [
 # Environment variables
 [vars]
 BACKEND_API = "https://basegasfeesml.onrender.com/api"
+# Discord webhook for alerts (set via `wrangler secret put DISCORD_WEBHOOK_URL`)
+# DISCORD_WEBHOOK_URL = "https://discord.com/api/webhooks/..."
