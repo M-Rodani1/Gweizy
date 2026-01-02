@@ -23,10 +23,11 @@ def train_dqn(
     checkpoint_dir: str = None,
     checkpoint_freq: int = 100,
     verbose: bool = True,
-    use_diverse_episodes: bool = True
+    use_diverse_episodes: bool = True,
+    chain_id: int = 8453
 ):
     """
-    Train DQN agent on historical gas data with improved training loop.
+    Train DQN agent on historical gas data for a specific chain.
     
     Args:
         num_episodes: Number of training episodes
@@ -36,24 +37,29 @@ def train_dqn(
         checkpoint_freq: Save checkpoint every N episodes
         verbose: Print training progress
         use_diverse_episodes: Use diverse episode sampling for better coverage
+        chain_id: Chain ID (8453=Base, 1=Ethereum, etc.)
     """
+    # Create chain-specific save paths
     if save_path is None:
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         save_path = os.path.join(
-            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-            'models', 'rl_agents', 'dqn_final.pkl'
+            base_dir,
+            'models', 'rl_agents', f'chain_{chain_id}', 'dqn_final.pkl'
         )
     
     if checkpoint_dir is None:
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         checkpoint_dir = os.path.join(
-            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-            'models', 'rl_agents'
+            base_dir,
+            'models', 'rl_agents', f'chain_{chain_id}'
         )
     
     os.makedirs(os.path.dirname(save_path), exist_ok=True)
     os.makedirs(checkpoint_dir, exist_ok=True)
     
-    # Initialize with improved hyperparameters
+    # Initialize with chain-specific data
     data_loader = GasDataLoader()
+    data_loader.load_data(hours=720, chain_id=chain_id)  # Pre-load chain data
     env = GasOptimizationEnv(data_loader, episode_length=episode_length)
     
     agent = DQNAgent(
@@ -89,7 +95,12 @@ def train_dqn(
     else:
         training_episodes = None
     
-    print(f"Starting DQN training: {num_episodes} episodes")
+    # Get chain name for display
+    from data.multichain_collector import CHAINS
+    chain_name = CHAINS.get(chain_id, {}).get('name', f'Chain {chain_id}')
+    
+    print(f"Starting DQN training for {chain_name} (Chain ID: {chain_id})")
+    print(f"Episodes: {num_episodes}")
     print(f"State dim: {agent.state_dim}, Action dim: {agent.action_dim}")
     print(f"Network: {agent.q_network.hidden_dims}")
     print(f"Learning rate: {agent.learning_rate}, Gamma: {agent.gamma}")
@@ -173,7 +184,7 @@ def train_dqn(
                 best_path = os.path.join(checkpoint_dir, 'dqn_best.pkl')
                 agent.save(best_path)
                 if verbose:
-                    print(f"✓ New best model saved (avg reward: {best_avg_reward:.3f})")
+                    print(f"✓ New best model saved for {chain_name} (avg reward: {best_avg_reward:.3f})")
             
             if recent_avg_savings > best_avg_savings:
                 best_avg_savings = recent_avg_savings
@@ -213,6 +224,8 @@ def train_dqn(
     training_time = (datetime.now() - start_time).total_seconds() / 60
     
     summary = {
+        'chain_id': chain_id,
+        'chain_name': chain_name,
         'total_episodes': num_episodes,
         'training_time_minutes': training_time,
         'final_avg_reward_last_100': float(np.mean(episode_rewards[-100:])),

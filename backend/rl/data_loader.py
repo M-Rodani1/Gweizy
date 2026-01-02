@@ -35,21 +35,22 @@ class GasDataLoader:
                 print(f"Warning: Could not initialize database: {e}")
                 self.use_database = False
 
-    def load_data(self, hours: int = 720, min_records: int = 100) -> List[Dict]:
+    def load_data(self, hours: int = 720, min_records: int = 100, chain_id: int = 8453) -> List[Dict]:
         """
-        Load historical gas prices from database.
+        Load historical gas prices from database for a specific chain.
         
         Args:
             hours: Hours of historical data to load
             min_records: Minimum records needed, otherwise use synthetic data
+            chain_id: Chain ID (8453=Base, 1=Ethereum, etc.)
         """
         if self.use_database and self._db:
             try:
-                # Use DatabaseManager to get historical data
-                raw_data = self._db.get_historical_data(hours=hours)
+                # Use DatabaseManager to get historical data for specific chain
+                raw_data = self._db.get_historical_data(hours=hours, chain_id=chain_id)
                 
                 if len(raw_data) < min_records:
-                    print(f"Only {len(raw_data)} records found, using synthetic data")
+                    print(f"Only {len(raw_data)} records found for chain {chain_id}, using synthetic data")
                     return self._generate_synthetic_data(hours)
                 
                 # Convert to format expected by RL environment

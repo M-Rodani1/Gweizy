@@ -157,10 +157,12 @@ export async function fetchCurrentGas(): Promise<CurrentGasData> {
 }
 
 /**
- * Fetch ML predictions and historical data
+ * Fetch ML predictions and historical data for a specific chain
+ * @param chainId - Chain ID (defaults to Base/8453 if not provided)
  */
-export async function fetchPredictions(): Promise<PredictionsResponse> {
-  const url = getApiUrl(API_CONFIG.ENDPOINTS.PREDICTIONS);
+export async function fetchPredictions(chainId?: number): Promise<PredictionsResponse> {
+  const params = chainId ? { chain_id: chainId.toString() } : undefined;
+  const url = getApiUrl(API_CONFIG.ENDPOINTS.PREDICTIONS, params);
   return fetchJsonWithRetry<PredictionsResponse>(
     url,
     { method: 'GET', headers: { 'Content-Type': 'application/json' } },

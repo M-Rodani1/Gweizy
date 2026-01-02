@@ -22,7 +22,7 @@ const CompactForecast: React.FC = () => {
     const loadPredictions = async () => {
       try {
         setLoading(true);
-        const result = await fetchPredictions();
+        const result = await fetchPredictions(selectedChain.id);
 
         if (result?.predictions) {
           const preds: Prediction[] = [];
@@ -48,6 +48,13 @@ const CompactForecast: React.FC = () => {
         }
       } catch (err) {
         console.error('Failed to load predictions:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadPredictions();
+  }, [selectedChain.id, currentGas]);
       } finally {
         setLoading(false);
       }

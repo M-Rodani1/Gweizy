@@ -307,10 +307,18 @@ def gas_patterns():
 @api_bp.route('/predictions', methods=['GET'])
 @cached(ttl=60)  # Cache for 1 minute
 def get_predictions():
-    """Get ML-powered gas price predictions using hybrid spike detection"""
+    """Get ML-powered gas price predictions using hybrid spike detection for a specific chain"""
     try:
-        # Get current gas
-        current = collector.get_current_gas()
+        # Get chain_id from query params (default to Base)
+        chain_id = request.args.get('chain_id', 8453, type=int)
+        
+        # Get current gas for the specified chain
+        from data.multichain_collector import MultiChainGasCollector
+        multichain_collector = MultiChainGasCollector()
+        current = multichain_collector.get_current_gas(chain_id)
+        
+        if not current:
+            return jsonify({'error': f'Failed to fetch gas for chain {chain_id}'}), 500
 
         # Try hybrid predictor first (spike detection + classification)
         try:
@@ -318,8 +326,8 @@ def get_predictions():
             import pandas as pd
             from dateutil import parser
 
-            # Get recent data for hybrid predictor (needs at least 50 points)
-            recent_data = db.get_historical_data(hours=48)
+            # Get recent data for hybrid predictor (needs at least 50 points) for specific chain
+            recent_data = db.get_historical_data(hours=48, chain_id=chain_id)
 
             if len(recent_data) >= 50:
                 # Convert to DataFrame format for hybrid predictor
@@ -406,12 +414,14 @@ def get_predictions():
                         logger.warning(f"Could not track hybrid prediction: {track_err}")
 
                 return jsonify({
+                    'chain_id': chain_id,
                     'current': current,
                     'predictions': prediction_data,
                     'model_info': {
                         'type': 'hybrid',
                         'version': 'spike_detection_v1',
-                        'description': 'Classification-based prediction (Normal/Elevated/Spike)'
+                        'description': 'Classification-based prediction (Normal/Elevated/Spike)',
+                        'chain_id': chain_id
                     }
                 })
             else:
@@ -426,6 +436,7 @@ def get_predictions():
         if not models:
             logger.warning("Models not loaded, using fallback predictions")
             return jsonify({
+                'chain_id': chain_id,
                 'current': current,
                 'predictions': {
                     '1h': [{'time': '1h', 'predictedGwei': current['current_gas'] * 1.05}],
@@ -570,7 +581,8 @@ def get_predictions():
                     db.save_prediction(
                         horizon=horizon,
                         predicted_gas=pred_value,
-                        model_version=model_data['model_name']
+                        model_version=model_data['model_name'],
+                        chain_id=chain_id
                     )
 
                     # Log prediction for validation
@@ -617,6 +629,7 @@ def get_predictions():
             logger.info(f"Predictions with confidence: 1h={prediction_data.get('1h', [{}])[0].get('predictedGwei', 0)}")
 
             return jsonify({
+                'chain_id': chain_id,
                 'current': current,
                 'predictions': prediction_data,
                 'model_info': model_info
@@ -667,11 +680,13 @@ def get_predictions():
             fallback_predictions['historical'] = historical
 
             return jsonify({
+                'chain_id': chain_id,
                 'current': current,
                 'predictions': fallback_predictions,
                 'model_info': {
                     'warning': 'Using fallback predictions - ML models need retraining',
-                    'error': str(ml_error)
+                    'error': str(ml_error),
+                    'chain_id': chain_id
                 }
             })
         

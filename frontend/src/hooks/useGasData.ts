@@ -24,13 +24,14 @@ export function useCurrentGas() {
 }
 
 /**
- * Hook to fetch gas predictions
+ * Hook to fetch gas predictions for a specific chain
+ * @param chainId - Chain ID (defaults to Base/8453 if not provided)
  */
-export function usePredictions() {
+export function usePredictions(chainId?: number) {
   return useQuery({
-    queryKey: ['predictions'],
+    queryKey: ['predictions', chainId],
     queryFn: async () => {
-      const result = await fetchPredictions();
+      const result = await fetchPredictions(chainId);
       const preds: { '1h': number; '4h': number; '24h': number } = {
         '1h': 0,
         '4h': 0,
@@ -52,11 +53,12 @@ export function usePredictions() {
 }
 
 /**
- * Combined hook for gas data
+ * Combined hook for gas data for a specific chain
+ * @param chainId - Chain ID (defaults to Base/8453 if not provided)
  */
-export function useGasData() {
+export function useGasData(chainId?: number) {
   const currentGas = useCurrentGas();
-  const predictions = usePredictions();
+  const predictions = usePredictions(chainId);
 
   return {
     currentGas: currentGas.data ?? 0,

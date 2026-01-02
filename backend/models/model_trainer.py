@@ -12,17 +12,35 @@ from datetime import datetime
 
 
 class GasModelTrainer:
-    def __init__(self):
+    def __init__(self, chain_id: int = 8453):
+        """
+        Initialize model trainer for a specific chain.
+        
+        Args:
+            chain_id: Chain ID (8453=Base, 1=Ethereum, etc.)
+        """
+        self.chain_id = chain_id
         self.models = {}
         self.best_models = {}
         self.scalers = {}  # Store RobustScalers for each horizon (Week 1 Quick Win #3)
         self.feature_names = []
         
-    def train_all_models(self, X, y_1h, y_4h, y_24h):
+    def train_all_models(self, X, y_1h, y_4h, y_24h, chain_id: int = None):
         """
-        Train models for all prediction horizons
+        Train models for all prediction horizons for a specific chain.
+        
+        Args:
+            X: Feature matrix
+            y_1h: Target values for 1h horizon
+            y_4h: Target values for 4h horizon
+            y_24h: Target values for 24h horizon
+            chain_id: Chain ID (defaults to self.chain_id)
+        
         Returns: Dictionary of trained models and metrics
         """
+        if chain_id is not None:
+            self.chain_id = chain_id
+        
         horizons = {
             '1h': y_1h,
             '4h': y_4h,
@@ -285,17 +303,26 @@ class GasModelTrainer:
         
         return best
     
-    def save_models(self, output_dir='models/saved_models'):
+    def save_models(self, output_dir='models/saved_models', chain_id: int = None):
         """
-        Save all best models to disk with RobustScaler
+        Save all best models to disk with RobustScaler for a specific chain.
         
         Week 1 Quick Win #3: RobustScaler is saved with each model
         for consistent scaling during prediction.
+        
+        Args:
+            output_dir: Directory to save models
+            chain_id: Chain ID (defaults to self.chain_id)
         """
-        os.makedirs(output_dir, exist_ok=True)
+        if chain_id is not None:
+            self.chain_id = chain_id
+        
+        # Create chain-specific subdirectory
+        chain_dir = os.path.join(output_dir, f'chain_{self.chain_id}')
+        os.makedirs(chain_dir, exist_ok=True)
         
         for horizon, model_info in self.best_models.items():
-            filepath = os.path.join(output_dir, f'model_{horizon}.pkl')
+            filepath = os.path.join(chain_dir, f'model_{horizon}.pkl')
             
             # Get scaler for this horizon
             scaler = self.scalers.get(horizon)
@@ -317,9 +344,25 @@ class GasModelTrainer:
                 print(f"   ✅ Included RobustScaler for feature scaling")
     
     @staticmethod
-    def load_model(horizon, model_dir='models/saved_models'):
-        """Load a trained model"""
-        filepath = os.path.join(model_dir, f'model_{horizon}.pkl')
+    def load_model(horizon, model_dir='models/saved_models', chain_id: int = 8453):
+        """
+        Load a trained model for a specific chain.
+        
+        Args:
+            horizon: Prediction horizon ('1h', '4h', '24h')
+            model_dir: Base directory for models
+            chain_id: Chain ID (defaults to 8453 for Base)
+        
+        Returns:
+            Loaded model data with scaler
+        """
+        # Try chain-specific directory first
+        chain_dir = os.path.join(model_dir, f'chain_{chain_id}')
+        filepath = os.path.join(chain_dir, f'model_{horizon}.pkl')
+        
+        # Fallback to old location for backward compatibility
+        if not os.path.exists(filepath):
+            filepath = os.path.join(model_dir, f'model_{horizon}.pkl')
         
         if not os.path.exists(filepath):
             raise FileNotFoundError(f"Model not found: {filepath}")

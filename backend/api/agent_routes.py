@@ -10,17 +10,18 @@ from utils.logger import logger
 
 agent_bp = Blueprint('agent', __name__)
 
-# Global DQN agent instance
-_dqn_agent = None
-_agent_loaded = False
+# Cache for chain-specific agents
+_chain_agents = {}
+_chain_agents_loaded = {}
 
 
-def get_dqn_agent():
-    """Lazy load the DQN agent with improved path resolution."""
-    global _dqn_agent, _agent_loaded
+def get_dqn_agent(chain_id: int = 8453):
+    """Lazy load the DQN agent for a specific chain with improved path resolution."""
+    global _chain_agents, _chain_agents_loaded
     
-    if _agent_loaded:
-        return _dqn_agent
+    # Check if already loaded for this chain
+    if chain_id in _chain_agents_loaded and _chain_agents_loaded[chain_id]:
+        return _chain_agents.get(chain_id)
     
     try:
         from rl.agents.dqn import DQNAgent
@@ -28,12 +29,19 @@ def get_dqn_agent():
         
         base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         
-        # Try multiple possible model paths (in order of preference)
+        # Try chain-specific paths first, then fallback to Base chain
         possible_paths = [
-            os.path.join(base_dir, 'models', 'rl_agents', 'dqn_final.pkl'),  # New training pipeline
-            os.path.join(base_dir, 'models', 'rl_agents', 'dqn_best.pkl'),   # Best checkpoint
-            os.path.join(base_dir, 'models', 'saved_models', 'dqn_agent.pkl'),  # Old path
-            os.path.join(base_dir, 'models', 'dqn_agent.pkl'),  # Alternate old path
+            # Chain-specific paths
+            os.path.join(base_dir, 'models', 'rl_agents', f'chain_{chain_id}', 'dqn_final.pkl'),
+            os.path.join(base_dir, 'models', 'rl_agents', f'chain_{chain_id}', 'dqn_best.pkl'),
+            # Fallback to Base chain (8453) if chain-specific not found
+            os.path.join(base_dir, 'models', 'rl_agents', 'chain_8453', 'dqn_final.pkl'),
+            os.path.join(base_dir, 'models', 'rl_agents', 'chain_8453', 'dqn_best.pkl'),
+            # Legacy paths (for backward compatibility)
+            os.path.join(base_dir, 'models', 'rl_agents', 'dqn_final.pkl'),
+            os.path.join(base_dir, 'models', 'rl_agents', 'dqn_best.pkl'),
+            os.path.join(base_dir, 'models', 'saved_models', 'dqn_agent.pkl'),
+            os.path.join(base_dir, 'models', 'dqn_agent.pkl'),
         ]
         
         model_path = None
@@ -44,27 +52,36 @@ def get_dqn_agent():
         
         if model_path:
             state_builder = StateBuilder(history_length=24)
-            _dqn_agent = DQNAgent(
+            agent = DQNAgent(
                 state_dim=state_builder.get_state_dim(),
                 action_dim=2
             )
-            _dqn_agent.load(model_path)
-            logger.info(f"✓ DQN agent loaded from {model_path}")
-            logger.info(f"  Training steps: {_dqn_agent.training_steps}, Epsilon: {_dqn_agent.epsilon:.4f}")
+            agent.load(model_path)
+            
+            # Cache the agent for this chain
+            _chain_agents[chain_id] = agent
+            _chain_agents_loaded[chain_id] = True
+            
+            from data.multichain_collector import CHAINS
+            chain_name = CHAINS.get(chain_id, {}).get('name', f'Chain {chain_id}')
+            logger.info(f"✓ DQN agent loaded from {model_path} for {chain_name} (Chain ID: {chain_id})")
+            logger.info(f"  Training steps: {agent.training_steps}, Epsilon: {agent.epsilon:.4f}")
+            return agent
         else:
-            logger.warning(f"DQN model not found. Tried paths:")
+            logger.warning(f"DQN model not found for chain {chain_id}. Tried paths:")
             for path in possible_paths:
                 logger.warning(f"  - {path}")
             logger.warning("Using heuristic fallback. Run training pipeline to train a model.")
-            _dqn_agent = None
+            _chain_agents[chain_id] = None
+            _chain_agents_loaded[chain_id] = True
+            return None
     except Exception as e:
-        logger.error(f"Failed to load DQN agent: {e}")
+        logger.error(f"Failed to load DQN agent for chain {chain_id}: {e}")
         import traceback
         logger.error(traceback.format_exc())
-        _dqn_agent = None
-    
-    _agent_loaded = True
-    return _dqn_agent
+        _chain_agents[chain_id] = None
+        _chain_agents_loaded[chain_id] = True
+        return None
 
 
 @agent_bp.route('/recommend', methods=['GET', 'POST'])
@@ -107,24 +124,27 @@ def get_recommendation():
         gas_amount = data.get('gas_amount', 150000)
         urgency = min(1.0, max(0.0, float(data.get('urgency', 0.5))))
         
-        # Get current gas price
+        # Get chain_id from request (default to Base)
+        chain_id = data.get('chain_id', request.args.get('chain_id', 8453, type=int))
+        
+        # Get current gas price for the specified chain
         current_gas = data.get('current_gas')
         if current_gas is None:
-            from data.collector import BaseGasCollector
-            collector = BaseGasCollector()
-            gas_data = collector.get_current_gas()
+            from data.multichain_collector import MultiChainGasCollector
+            collector = MultiChainGasCollector()
+            gas_data = collector.get_current_gas(chain_id)
             current_gas = gas_data.get('current_gas', 0.001) if gas_data else 0.001
         
-        # Get price history
+        # Get price history for the specified chain
         price_history = data.get('price_history', [])
         if not price_history:
             from data.database import DatabaseManager
             db = DatabaseManager()
-            historical = db.get_historical_data(hours=24)
+            historical = db.get_historical_data(hours=24, chain_id=chain_id)
             price_history = [h.get('gwei', current_gas) for h in historical[-24:]]
         
-        # Try DQN agent first
-        agent = get_dqn_agent()
+        # Try chain-specific DQN agent first
+        agent = get_dqn_agent(chain_id=chain_id)
         
         if agent is not None:
             # Build state for DQN
@@ -198,6 +218,7 @@ def get_recommendation():
                     'execute': round(result['q_values']['execute'], 4)
                 },
                 'model': 'dqn',
+                'chain_id': chain_id,
                 'current_gas': current_gas,
                 'urgency': urgency
             })

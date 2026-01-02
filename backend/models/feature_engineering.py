@@ -8,13 +8,18 @@ class GasFeatureEngineer:
     def __init__(self):
         self.db = DatabaseManager()
     
-    def prepare_training_data(self, hours_back=720):
+    def prepare_training_data(self, hours_back=720, chain_id=8453):
         """
-        Fetch historical data and engineer features
+        Fetch historical data and engineer features for a specific chain.
+        
+        Args:
+            hours_back: Hours of historical data to fetch
+            chain_id: Chain ID (8453=Base, 1=Ethereum, etc.)
+        
         Returns: X (features), y (targets for 1h, 4h, 24h)
         """
-        # Get raw data from database
-        raw_data = self.db.get_historical_data(hours=hours_back)
+        # Get raw data from database for specific chain
+        raw_data = self.db.get_historical_data(hours=hours_back, chain_id=chain_id)
         
         if len(raw_data) < 100:
             raise ValueError(f"Not enough data: only {len(raw_data)} records. Need at least 100.")

@@ -13,6 +13,7 @@ class GasPrice(Base):
 
     id = Column(Integer, primary_key=True)
     timestamp = Column(DateTime, default=datetime.now, index=True)
+    chain_id = Column(Integer, default=8453, index=True)  # Chain ID (8453=Base, 1=Ethereum, etc.)
     current_gas = Column(Float)
     base_fee = Column(Float)
     priority_fee = Column(Float)
@@ -24,6 +25,7 @@ class Prediction(Base):
 
     id = Column(Integer, primary_key=True)
     timestamp = Column(DateTime, default=datetime.now, index=True)
+    chain_id = Column(Integer, default=8453, index=True)  # Chain ID for chain-specific predictions
     horizon = Column(String, index=True)  # '1h', '4h', '24h'
     predicted_gas = Column(Float)
     actual_gas = Column(Float, nullable=True)
@@ -115,18 +117,20 @@ class DatabaseManager:
         finally:
             session.close()
     
-    def get_historical_data(self, hours=720):  # 30 days default
-        """Get historical gas prices"""
+    def get_historical_data(self, hours=720, chain_id=8453):  # 30 days default, Base chain default
+        """Get historical gas prices for a specific chain"""
         session = self._get_session()
         try:
             from datetime import timedelta
             cutoff = datetime.now() - timedelta(hours=hours)
             results = session.query(GasPrice).filter(
-                GasPrice.timestamp >= cutoff
+                GasPrice.timestamp >= cutoff,
+                GasPrice.chain_id == chain_id
             ).all()
             # Convert to dict format for JSON serialization
             return [{
                 'timestamp': r.timestamp.isoformat() if hasattr(r.timestamp, 'isoformat') else str(r.timestamp),
+                'chain_id': r.chain_id,
                 'gwei': r.current_gas,
                 'baseFee': r.base_fee,
                 'priorityFee': r.priority_fee
@@ -134,11 +138,12 @@ class DatabaseManager:
         finally:
             session.close()
     
-    def save_prediction(self, horizon, predicted_gas, model_version):
-        """Save a prediction"""
+    def save_prediction(self, horizon, predicted_gas, model_version, chain_id=8453):
+        """Save a prediction for a specific chain"""
         session = self._get_session()
         try:
             prediction = Prediction(
+                chain_id=chain_id,
                 horizon=horizon,
                 predicted_gas=predicted_gas,
                 model_version=model_version

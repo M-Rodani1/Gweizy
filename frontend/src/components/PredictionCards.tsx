@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { fetchPredictions, fetchCurrentGas } from '../api/gasApi';
+import { useChainContext } from '../contexts/ChainContext';
 import LoadingSpinner from './LoadingSpinner';
 
 interface PredictionCard {
@@ -20,6 +21,7 @@ interface PredictionCard {
 }
 
 const PredictionCards: React.FC = () => {
+  const { selectedChainId } = useChainContext();
   const [cards, setCards] = useState<PredictionCard[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -58,7 +60,7 @@ const PredictionCards: React.FC = () => {
       setError(null);
 
       const [predictionsResult, currentGasData] = await Promise.all([
-        fetchPredictions(),
+        fetchPredictions(selectedChainId),
         fetchCurrentGas()
       ]);
 
@@ -161,7 +163,7 @@ const PredictionCards: React.FC = () => {
     loadData();
     const interval = setInterval(loadData, 30000); // Refresh every 30 seconds
     return () => clearInterval(interval);
-  }, [loadData]);
+  }, [loadData, selectedChainId]);
 
   if (loading && cards.length === 0) {
     return (
