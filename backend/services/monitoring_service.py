@@ -20,42 +20,88 @@ class MonitoringService:
     """Comprehensive monitoring for ML system"""
     
     def __init__(self):
-        self.db = DatabaseManager()
-        self.accuracy_tracker = get_tracker()
-        self.registry = get_registry()
+        # Lazy initialization to avoid startup failures
+        self._db = None
+        self._accuracy_tracker = None
+        self._registry = None
+    
+    @property
+    def db(self):
+        """Lazy load database manager"""
+        if self._db is None:
+            try:
+                self._db = DatabaseManager()
+            except Exception as e:
+                logger.warning(f"Could not initialize database manager: {e}")
+                self._db = None
+        return self._db
+    
+    @property
+    def accuracy_tracker(self):
+        """Lazy load accuracy tracker"""
+        if self._accuracy_tracker is None:
+            try:
+                self._accuracy_tracker = get_tracker()
+            except Exception as e:
+                logger.warning(f"Could not initialize accuracy tracker: {e}")
+                self._accuracy_tracker = None
+        return self._accuracy_tracker
+    
+    @property
+    def registry(self):
+        """Lazy load model registry"""
+        if self._registry is None:
+            try:
+                self._registry = get_registry()
+            except Exception as e:
+                logger.warning(f"Could not initialize model registry: {e}")
+                self._registry = None
+        return self._registry
     
     def get_model_performance_dashboard(self) -> Dict:
         """Get comprehensive model performance dashboard"""
         try:
             # Get active model versions
             active_models = {}
-            for horizon in ['1h', '4h', '24h']:
-                active = self.registry.get_active_version(horizon)
-                if active:
-                    active_models[horizon] = {
-                        'version': active['version'],
-                        'metrics': active['metrics'],
-                        'performance_score': active.get('performance_score', 0),
-                        'registered_at': active.get('registered_at')
-                    }
+            registry = self.registry
+            if registry:
+                for horizon in ['1h', '4h', '24h']:
+                    try:
+                        active = registry.get_active_version(horizon)
+                        if active:
+                            active_models[horizon] = {
+                                'version': active['version'],
+                                'metrics': active['metrics'],
+                                'performance_score': active.get('performance_score', 0),
+                                'registered_at': active.get('registered_at')
+                            }
+                    except Exception as e:
+                        logger.warning(f"Error getting active version for {horizon}: {e}")
             
             # Get accuracy tracking metrics
             accuracy_metrics = {}
-            for horizon in ['1h', '4h', '24h']:
-                try:
-                    metrics = self.accuracy_tracker.get_current_metrics(horizon)
-                    accuracy_metrics[horizon] = metrics
-                except:
-                    accuracy_metrics[horizon] = None
+            tracker = self.accuracy_tracker
+            if tracker:
+                for horizon in ['1h', '4h', '24h']:
+                    try:
+                        metrics = tracker.get_current_metrics(horizon)
+                        accuracy_metrics[horizon] = metrics
+                    except:
+                        accuracy_metrics[horizon] = None
+            else:
+                accuracy_metrics = {'1h': None, '4h': None, '24h': None}
             
             # Get drift status
             drift_status = {}
-            for horizon in ['1h', '4h', '24h']:
-                try:
-                    drift = self.accuracy_tracker.check_drift(horizon)
-                    drift_status[horizon] = drift
-                except:
-                    drift_status[horizon] = None
+            if tracker:
+                for horizon in ['1h', '4h', '24h']:
+                    try:
+                        drift = tracker.check_drift(horizon)
+                        drift_status[horizon] = drift
+                    except:
+                        drift_status[horizon] = None
+            else:
+                drift_status = {'1h': None, '4h': None, '24h': None}
             
             # Get recent validation results
             recent_validations = self._get_recent_validations()
@@ -75,14 +121,22 @@ class MonitoringService:
     def get_data_quality_report(self) -> Dict:
         """Get data quality metrics"""
         try:
+            db = self.db
+            if not db:
+                return {
+                    'timestamp': datetime.now().isoformat(),
+                    'error': 'Database not available',
+                    'overall_status': 'unknown'
+                }
+            
             # Get recent data counts
             try:
-                recent_gas = self.db.get_historical_data(hours=24, chain_id=8453)
+                recent_gas = db.get_historical_data(hours=24, chain_id=8453)
             except:
                 recent_gas = []
             
             try:
-                recent_onchain = self.db.get_onchain_features(hours=24, chain_id=8453)
+                recent_onchain = db.get_onchain_features(hours=24, chain_id=8453)
             except:
                 recent_onchain = []
             
@@ -183,11 +237,19 @@ class MonitoringService:
         try:
             # Check if models are loaded
             models_loaded = True
-            for horizon in ['1h', '4h', '24h']:
-                active = self.registry.get_active_version(horizon)
-                if not active:
-                    models_loaded = False
-                    break
+            registry = self.registry
+            if registry:
+                for horizon in ['1h', '4h', '24h']:
+                    try:
+                        active = registry.get_active_version(horizon)
+                        if not active:
+                            models_loaded = False
+                            break
+                    except:
+                        models_loaded = False
+                        break
+            else:
+                models_loaded = False
             
             # Check data quality
             data_quality = self.get_data_quality_report()
@@ -195,14 +257,16 @@ class MonitoringService:
             
             # Check for drift
             has_drift = False
-            for horizon in ['1h', '4h', '24h']:
-                try:
-                    drift = self.accuracy_tracker.check_drift(horizon)
-                    if drift and drift.get('drift_detected'):
-                        has_drift = True
-                        break
-                except:
-                    pass
+            tracker = self.accuracy_tracker
+            if tracker:
+                for horizon in ['1h', '4h', '24h']:
+                    try:
+                        drift = tracker.check_drift(horizon)
+                        if drift and drift.get('drift_detected'):
+                            has_drift = True
+                            break
+                    except:
+                        pass
             
             overall_status = 'healthy'
             if not models_loaded:

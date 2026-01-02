@@ -25,18 +25,36 @@ class ModelRegistry:
         Args:
             registry_dir: Directory for registry metadata (defaults to Config.MODELS_DIR)
         """
-        if registry_dir is None:
-            registry_dir = Config.MODELS_DIR
-        
-        self.registry_dir = registry_dir
-        self.versions_dir = os.path.join(registry_dir, 'versions')
-        self.registry_file = os.path.join(registry_dir, 'model_registry.json')
-        
-        # Create directories
-        os.makedirs(self.versions_dir, exist_ok=True)
-        
-        # Load or create registry
-        self.registry = self._load_registry()
+        try:
+            if registry_dir is None:
+                registry_dir = Config.MODELS_DIR
+            
+            self.registry_dir = registry_dir
+            self.versions_dir = os.path.join(registry_dir, 'versions')
+            self.registry_file = os.path.join(registry_dir, 'model_registry.json')
+            
+            # Create directories (with error handling)
+            try:
+                os.makedirs(self.versions_dir, exist_ok=True)
+            except Exception as e:
+                logger.warning(f"Could not create versions directory: {e}")
+                # Fallback to local directory
+                self.versions_dir = os.path.join('backend/models/saved_models', 'versions')
+                os.makedirs(self.versions_dir, exist_ok=True)
+            
+            # Load or create registry
+            self.registry = self._load_registry()
+        except Exception as e:
+            logger.error(f"Error initializing ModelRegistry: {e}")
+            # Initialize with empty registry to prevent crashes
+            self.registry = {
+                'models': {},
+                'active_versions': {},
+                'rollback_history': []
+            }
+            self.registry_dir = registry_dir or 'backend/models/saved_models'
+            self.versions_dir = os.path.join(self.registry_dir, 'versions')
+            self.registry_file = os.path.join(self.registry_dir, 'model_registry.json')
     
     def _load_registry(self) -> Dict:
         """Load registry from disk"""
