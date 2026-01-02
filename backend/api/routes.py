@@ -853,81 +853,104 @@ def get_transactions():
 @api_bp.route('/accuracy', methods=['GET'])
 @cached(ttl=3600)  # Cache for 1 hour
 def get_accuracy():
-    """Get model accuracy metrics from hardcoded stats (trained locally)"""
+    """Get real-time model accuracy metrics from AccuracyTracker"""
     try:
         from datetime import datetime, timedelta
-        import json
-        import os
-
-        # Load hardcoded stats from model_stats.json (trained locally)
-        stats_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'model_stats.json')
-
-        if os.path.exists(stats_path):
-            with open(stats_path, 'r') as f:
-                model_stats = json.load(f)
-                metrics = model_stats['model_performance']['1h']
-                mae = metrics.get('mae', 0.000275)
-                rmse = metrics.get('rmse', 0.000442)
-                r2 = metrics.get('r2', 0.0709)
-                directional_accuracy = metrics.get('directional_accuracy', 0.5983)
-                logger.info(f"Using hardcoded metrics: R²={r2:.4f}, DA={directional_accuracy:.4f}")
-        else:
-            # Fallback hardcoded values from latest local training
-            mae = 0.000275
-            rmse = 0.000442
-            r2 = 0.0709  # 7.09% - actual trained performance
-            directional_accuracy = 0.5983  # 59.83% - actual trained performance
-            logger.info("Using fallback hardcoded metrics")
         
-        # Convert to percentages for display
+        # Get real-time metrics from AccuracyTracker
+        if accuracy_tracker is None:
+            logger.warning("Accuracy tracker not available, using fallback")
+            # Fallback to hardcoded if tracker unavailable
+            return jsonify({
+                'mae': 0.000275,
+                'rmse': 0.000442,
+                'r2': 0.0709,
+                'directional_accuracy': 0.5983,
+                'recent_predictions': [],
+                'last_updated': datetime.now().isoformat(),
+                'warning': 'Using fallback metrics - accuracy tracker unavailable'
+            }), 200
+        
+        # Get metrics for 1h horizon (primary metric)
+        metrics_1h = accuracy_tracker.get_current_metrics('1h')
+        
+        # Check if we have enough data
+        if metrics_1h.get('n', 0) < 5:
+            logger.warning(f"Insufficient accuracy data: {metrics_1h.get('n', 0)} predictions")
+            # Return metrics with warning if insufficient data
+            return jsonify({
+                'mae': metrics_1h.get('mae'),
+                'rmse': metrics_1h.get('rmse'),
+                'r2': metrics_1h.get('r2', 0),
+                'directional_accuracy': metrics_1h.get('directional_accuracy', 0),
+                'recent_predictions': [],
+                'last_updated': datetime.now().isoformat(),
+                'warning': f'Limited data: only {metrics_1h.get("n", 0)} predictions available',
+                'n_predictions': metrics_1h.get('n', 0)
+            }), 200
+        
+        # Extract real metrics
+        mae = metrics_1h.get('mae', 0)
+        rmse = metrics_1h.get('rmse', 0)
+        r2 = metrics_1h.get('r2', 0)
+        directional_accuracy = metrics_1h.get('directional_accuracy', 0)
+        n_predictions = metrics_1h.get('n', 0)
+        
+        # Get recent predictions vs actuals for chart
+        recent_predictions = []
+        try:
+            # Get accuracy history for recent predictions
+            history = accuracy_tracker.get_accuracy_history(hours_back=24, resolution='hourly')
+            history_1h = history.get('1h', [])
+            
+            # Get actual prediction records for detailed chart
+            records = list(accuracy_tracker.predictions['1h'])
+            records = [r for r in records if r.actual is not None]
+            recent_records = records[-24:] if len(records) >= 24 else records
+            
+            for record in recent_records:
+                recent_predictions.append({
+                    'timestamp': record.timestamp.isoformat(),
+                    'predicted': round(record.predicted, 6),
+                    'actual': round(record.actual, 6),
+                    'error': round(abs(record.error), 6) if record.error is not None else 0
+                })
+        except Exception as e:
+            logger.warning(f"Could not get recent predictions: {e}")
+            recent_predictions = []
+        
+        # Convert to percentages for logging
         r2_percent = r2 * 100
         directional_accuracy_percent = directional_accuracy * 100
         
-        # Get recent predictions for chart (last 24 hours)
-        recent_predictions = []
-        cutoff = datetime.now() - timedelta(hours=24)
-        historical_data = db.get_historical_data(hours=24)
-        
-        if historical_data:
-            # Create sample predictions vs actuals
-            for i, data_point in enumerate(historical_data[:24]):  # Last 24 points
-                if i < len(historical_data) - 1:
-                    actual = data_point.get('gwei', 0)
-                    # Simulate prediction (in real app, this would come from stored predictions)
-                    predicted = actual * (1 + np.random.normal(0, 0.05))  # ±5% variation
-                    error = abs(predicted - actual)
-                    recent_predictions.append({
-                        'timestamp': data_point.get('timestamp', datetime.now().isoformat()),
-                        'predicted': round(predicted, 6),
-                        'actual': round(actual, 6),
-                        'error': round(error, 6)
-                    })
-        
         result = {
-            'mae': mae,
-            'rmse': rmse,
-            'r2': r2,  # Return as decimal (0.0-1.0), frontend will convert to %
-            'directional_accuracy': directional_accuracy,  # Return as decimal (0.0-1.0), frontend will convert to %
+            'mae': float(mae) if mae is not None else 0,
+            'rmse': float(rmse) if rmse is not None else 0,
+            'r2': float(r2) if r2 is not None else 0,  # Return as decimal (0.0-1.0), frontend will convert to %
+            'directional_accuracy': float(directional_accuracy) if directional_accuracy is not None else 0,  # Return as decimal (0.0-1.0), frontend will convert to %
             'recent_predictions': recent_predictions[:24],  # Last 24 hours
-            'last_updated': datetime.now().isoformat()
+            'last_updated': datetime.now().isoformat(),
+            'n_predictions': n_predictions,
+            'source': 'real-time'  # Indicate these are real metrics
         }
         
-        logger.info(f"Accuracy metrics - R²: {r2:.4f} ({r2_percent:.1f}%), Directional: {directional_accuracy:.4f} ({directional_accuracy_percent:.1f}%)")
+        logger.info(f"Real-time accuracy metrics - R²: {r2:.4f} ({r2_percent:.1f}%), Directional: {directional_accuracy:.4f} ({directional_accuracy_percent:.1f}%), N={n_predictions}")
         
-        logger.info("Returned accuracy metrics")
         return jsonify(result)
         
     except Exception as e:
         logger.error(f"Error in /accuracy: {traceback.format_exc()}")
-        # Return default metrics on error
+        # Return fallback metrics on error
+        from datetime import datetime
         return jsonify({
-            'mae': 0.000234,
-            'rmse': 0.000456,
-            'r2': 0.82,
-            'directional_accuracy': 0.78,
+            'mae': 0.000275,
+            'rmse': 0.000442,
+            'r2': 0.0709,
+            'directional_accuracy': 0.5983,
             'recent_predictions': [],
             'last_updated': datetime.now().isoformat(),
-            'error': str(e)
+            'error': str(e),
+            'warning': 'Error calculating metrics, using fallback values'
         }), 200  # Still return 200 so frontend can display
 
 
