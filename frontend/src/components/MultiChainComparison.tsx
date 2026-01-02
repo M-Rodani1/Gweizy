@@ -79,23 +79,23 @@ const MultiChainComparison: React.FC<MultiChainComparisonProps> = ({
                 </div>
 
                 {/* Chain info with gradient icon */}
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 min-w-0">
                   <ChainBadge chain={chain} size="sm" />
-                  <div className="text-left">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium text-white">{chain.name}</span>
+                  <div className="text-left min-w-0">
+                    <div className="flex items-center gap-1 sm:gap-2 flex-wrap">
+                      <span className="font-medium text-white text-sm sm:text-base truncate max-w-[80px] sm:max-w-none">{chain.name}</span>
                       {isCheapest && (
-                        <span className="px-1.5 py-0.5 text-xs bg-green-500/20 text-green-400 rounded font-semibold">
+                        <span className="hidden sm:inline px-1.5 py-0.5 text-xs bg-green-500/20 text-green-400 rounded font-semibold">
                           Best
                         </span>
                       )}
                       {chain.isL2 && (
-                        <span className="px-1.5 py-0.5 text-xs bg-purple-500/20 text-purple-400 rounded">
+                        <span className="px-1 sm:px-1.5 py-0.5 text-[10px] sm:text-xs bg-purple-500/20 text-purple-400 rounded">
                           L2
                         </span>
                       )}
                     </div>
-                    <div className="text-xs text-gray-400 font-mono">
+                    <div className="text-[10px] sm:text-xs text-gray-400 font-mono">
                       {formatGwei(gas?.gasPrice || 0)} gwei
                     </div>
                   </div>
@@ -103,28 +103,30 @@ const MultiChainComparison: React.FC<MultiChainComparisonProps> = ({
               </div>
 
               {/* Right side: Sparkline + Cost */}
-              <div className="flex items-center gap-3">
-                {/* Mini sparkline showing trend */}
-                <Sparkline
-                  data={sparklineData}
-                  width={48}
-                  height={20}
-                  color={isCheapest ? '#22c55e' : '#06b6d4'}
-                />
+              <div className="flex items-center gap-2 sm:gap-3">
+                {/* Mini sparkline showing trend - hidden on mobile */}
+                <div className="hidden sm:block">
+                  <Sparkline
+                    data={sparklineData}
+                    width={48}
+                    height={20}
+                    color={isCheapest ? '#22c55e' : '#06b6d4'}
+                  />
+                </div>
 
                 {/* Cost */}
-                <div className="text-right min-w-[70px]">
-                  <div className="font-mono font-bold text-white">
+                <div className="text-right min-w-[55px] sm:min-w-[70px]">
+                  <div className="font-mono font-bold text-white text-sm sm:text-base">
                     {formatUsd(costUsd)}
                   </div>
                   {savingsPercent > 0 && !isCheapest && (
-                    <div className="text-xs text-red-400 font-mono">
-                      +{savingsPercent.toFixed(0)}% more
+                    <div className="text-[10px] sm:text-xs text-red-400 font-mono">
+                      +{savingsPercent.toFixed(0)}%
                     </div>
                   )}
                   {isCheapest && (
-                    <div className="text-xs text-green-400 font-semibold">
-                      Cheapest
+                    <div className="text-[10px] sm:text-xs text-green-400 font-semibold">
+                      Best
                     </div>
                   )}
                 </div>

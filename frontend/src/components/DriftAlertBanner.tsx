@@ -162,10 +162,10 @@ const DriftAlertBanner: React.FC<DriftAlertBannerProps> = ({
             )}
 
             {/* Actions */}
-            <div className="flex items-center gap-3 mt-3">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3 mt-3">
               <button
                 onClick={() => window.location.href = '/analytics'}
-                className="text-xs px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors flex items-center gap-1"
+                className="text-xs px-3 py-2 min-h-[36px] bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors flex items-center gap-1"
               >
                 View Details
               </button>
@@ -173,7 +173,7 @@ const DriftAlertBanner: React.FC<DriftAlertBannerProps> = ({
                 <button
                   onClick={handleTriggerRetrain}
                   disabled={retraining}
-                  className={`text-xs px-3 py-1.5 text-white rounded-lg transition-colors flex items-center gap-1 ${
+                  className={`text-xs px-3 py-2 min-h-[36px] text-white rounded-lg transition-colors flex items-center gap-1 ${
                     retraining
                       ? 'bg-purple-500/50 cursor-wait'
                       : retrainStatus === 'success'
@@ -184,14 +184,19 @@ const DriftAlertBanner: React.FC<DriftAlertBannerProps> = ({
                   }`}
                 >
                   <RefreshCw className={`w-3 h-3 ${retraining ? 'animate-spin' : ''}`} />
-                  {retraining
-                    ? 'Retraining...'
-                    : retrainStatus === 'success'
-                      ? 'Retrained!'
-                      : retrainStatus === 'error'
-                        ? 'Failed - Retry'
-                        : 'Trigger Retrain'
-                  }
+                  <span className="hidden xs:inline">
+                    {retraining
+                      ? 'Retraining...'
+                      : retrainStatus === 'success'
+                        ? 'Retrained!'
+                        : retrainStatus === 'error'
+                          ? 'Failed - Retry'
+                          : 'Trigger Retrain'
+                    }
+                  </span>
+                  <span className="xs:hidden">
+                    {retraining ? '...' : retrainStatus === 'success' ? '✓' : retrainStatus === 'error' ? '!' : 'Retrain'}
+                  </span>
                 </button>
               )}
             </div>

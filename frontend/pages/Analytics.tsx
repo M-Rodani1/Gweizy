@@ -1,7 +1,11 @@
 import React, { lazy, Suspense } from 'react';
-import { Brain, Calendar, ClipboardList, Sparkles, Target, TrendingUp } from 'lucide-react';
+import { Brain, Calendar, ClipboardList, Sparkles, Target, TrendingUp, Activity } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import StickyHeader from '../src/components/StickyHeader';
+import AccuracyMetricsCard from '../src/components/AccuracyMetricsCard';
+import FeatureImportanceChart from '../src/components/FeatureImportanceChart';
+import DriftAlertBanner from '../src/components/DriftAlertBanner';
+import ApiStatusPanel from '../src/components/ApiStatusPanel';
 import { useChain } from '../src/contexts/ChainContext';
 import { useEthPrice } from '../src/hooks/useEthPrice';
 
@@ -43,6 +47,34 @@ const Analytics: React.FC = () => {
             Detailed gas price analysis, predictions, and network intelligence for {selectedChain.name}
           </p>
         </div>
+
+        {/* Drift Alert Banner */}
+        <DriftAlertBanner />
+
+        {/* Model Health Overview */}
+        <section className="mb-8">
+          <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+            <Activity className="w-4 h-4 text-cyan-400" />
+            Model Health
+          </h2>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2">
+              <AccuracyMetricsCard />
+            </div>
+            <div>
+              <ApiStatusPanel />
+            </div>
+          </div>
+        </section>
+
+        {/* Feature Analysis */}
+        <section className="mb-8">
+          <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+            <Brain className="w-4 h-4 text-cyan-400" />
+            Feature Analysis
+          </h2>
+          <FeatureImportanceChart />
+        </section>
 
         {/* Predictions Section */}
         <section className="mb-8">

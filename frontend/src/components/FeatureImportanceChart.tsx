@@ -109,15 +109,15 @@ const FeatureImportanceChart: React.FC = () => {
         <div className="space-y-2">
           {displayFeatures.map((feature, index) => (
             <div key={feature.feature} className="group">
-              <div className="flex items-center justify-between text-xs mb-1">
-                <span className="text-gray-400 truncate max-w-[120px]" title={feature.feature}>
+              <div className="flex items-center justify-between text-[10px] sm:text-xs mb-1 gap-2">
+                <span className="text-gray-400 truncate max-w-[100px] sm:max-w-[140px]" title={feature.feature}>
                   {formatFeatureName(feature.feature)}
                 </span>
-                <span className="text-gray-500 font-mono">
+                <span className="text-gray-500 font-mono shrink-0">
                   {(feature.importance * 100).toFixed(1)}%
                 </span>
               </div>
-              <div className="h-2 bg-gray-800 rounded-full overflow-hidden">
+              <div className="h-1.5 sm:h-2 bg-gray-800 rounded-full overflow-hidden">
                 <div
                   className={`h-full rounded-full transition-all duration-500 ${getBarColor(feature.rank)}`}
                   style={{

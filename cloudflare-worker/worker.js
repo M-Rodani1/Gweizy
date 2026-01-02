@@ -200,6 +200,12 @@ export default {
       console.log('[CRON] Running health check');
       ctx.waitUntil(performHealthCheck(env));
     }
+
+    // Hourly at :15: Update prediction accuracy
+    if (minute === 15) {
+      console.log('[CRON] Updating prediction accuracy');
+      ctx.waitUntil(updatePredictionAccuracy(env));
+    }
   }
 };
 
@@ -328,6 +334,60 @@ async function triggerModelRetraining(env) {
     return result;
   } catch (error) {
     console.error('[RETRAIN] Error triggering retraining:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Update prediction accuracy by comparing predictions to actuals
+ */
+async function updatePredictionAccuracy(env) {
+  try {
+    console.log('[ACCURACY] Updating prediction accuracy...');
+
+    const response = await fetch(`${BACKEND_API}/cron/update-accuracy`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'User-Agent': 'Cloudflare-Worker-Cron/1.0',
+        'X-Cron-Trigger': 'hourly-accuracy'
+      }
+    });
+
+    const result = await response.json();
+
+    if (response.ok && result.success) {
+      console.log('[ACCURACY] ✅ Updated:', result);
+
+      // Store last accuracy update in KV
+      await env.GAS_CACHE.put('last_accuracy_update', JSON.stringify({
+        timestamp: new Date().toISOString(),
+        success: true,
+        actual_gas: result.actual_gas,
+        drift_status: result.drift_status,
+        should_retrain: result.should_retrain
+      }), {
+        expirationTtl: 7200 // Keep for 2 hours
+      });
+
+      // If drift is detected and retrain is recommended, log it prominently
+      if (result.should_retrain) {
+        console.warn('[ACCURACY] ⚠️ Retrain recommended:', result.retrain_reasons);
+        await env.GAS_CACHE.put('retrain_recommended', JSON.stringify({
+          timestamp: new Date().toISOString(),
+          reasons: result.retrain_reasons,
+          drift_status: result.drift_status
+        }), {
+          expirationTtl: 86400 // Keep for 24 hours
+        });
+      }
+    } else {
+      console.error('[ACCURACY] ❌ Failed:', result);
+    }
+
+    return result;
+  } catch (error) {
+    console.error('[ACCURACY] Error updating accuracy:', error);
     return { success: false, error: error.message };
   }
 }
