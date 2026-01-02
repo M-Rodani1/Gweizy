@@ -3,6 +3,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from datetime import datetime
 from config import Config
+from utils.logger import logger
 
 
 Base = declarative_base()
@@ -65,6 +66,25 @@ class OnChainFeatures(Base):
     is_highly_congested = Column(Integer, nullable=True)  # Boolean as int (0/1)
 
 
+class UserTransaction(Base):
+    """User transaction history for personalization"""
+    __tablename__ = 'user_transactions'
+
+    id = Column(Integer, primary_key=True)
+    user_address = Column(String, index=True)  # Wallet address
+    chain_id = Column(Integer, default=8453, index=True)
+    tx_hash = Column(String, unique=True, index=True)
+    block_number = Column(Integer, index=True)
+    timestamp = Column(DateTime, default=datetime.now, index=True)
+    gas_price_gwei = Column(Float)
+    gas_used = Column(Integer)
+    gas_cost_eth = Column(Float)  # Total cost in ETH
+    tx_type = Column(String)  # 'swap', 'transfer', 'contract_call', etc.
+    status = Column(String)  # 'success', 'failed'
+    saved_by_waiting = Column(Float, nullable=True)  # Potential savings if waited
+    optimal_time = Column(DateTime, nullable=True)  # When would have been optimal
+
+
 class DatabaseManager:
     def __init__(self):
         # Add SQLite-specific configuration for concurrent access
@@ -93,6 +113,10 @@ class DatabaseManager:
                 cursor.close()
 
         Base.metadata.create_all(self.engine)
+        
+        # Run migration to add chain_id column if it doesn't exist
+        self._migrate_add_chain_id()
+        
         self.Session = sessionmaker(bind=self.engine)
     
     def _get_session(self):
@@ -174,6 +198,131 @@ class DatabaseManager:
         finally:
             session.close()
 
+    def save_user_transaction(self, transaction_data: Dict):
+        """Save user transaction for personalization"""
+        session = self._get_session()
+        try:
+            # Check if transaction already exists
+            existing = session.query(UserTransaction).filter(
+                UserTransaction.tx_hash == transaction_data.get('tx_hash')
+            ).first()
+            
+            if existing:
+                return  # Already exists
+            
+            transaction = UserTransaction(**transaction_data)
+            session.add(transaction)
+            session.commit()
+        except Exception as e:
+            session.rollback()
+            logger.warning(f"Failed to save user transaction: {e}")
+        finally:
+            session.close()
+    
+    def get_user_transactions(self, user_address: str, chain_id: int = 8453, limit: int = 100) -> List[Dict]:
+        """Get user transaction history"""
+        session = self._get_session()
+        try:
+            transactions = session.query(UserTransaction).filter(
+                UserTransaction.user_address == user_address.lower(),
+                UserTransaction.chain_id == chain_id
+            ).order_by(UserTransaction.timestamp.desc()).limit(limit).all()
+            
+            return [{
+                'tx_hash': t.tx_hash,
+                'block_number': t.block_number,
+                'timestamp': t.timestamp.isoformat() if hasattr(t.timestamp, 'isoformat') else str(t.timestamp),
+                'gas_price_gwei': t.gas_price_gwei,
+                'gas_used': t.gas_used,
+                'gas_cost_eth': t.gas_cost_eth,
+                'tx_type': t.tx_type,
+                'status': t.status,
+                'saved_by_waiting': t.saved_by_waiting,
+                'optimal_time': t.optimal_time.isoformat() if t.optimal_time and hasattr(t.optimal_time, 'isoformat') else None
+            } for t in transactions]
+        finally:
+            session.close()
+    
+    def get_user_savings_stats(self, user_address: str, chain_id: int = 8453) -> Dict:
+        """Get user savings statistics"""
+        session = self._get_session()
+        try:
+            transactions = session.query(UserTransaction).filter(
+                UserTransaction.user_address == user_address.lower(),
+                UserTransaction.chain_id == chain_id,
+                UserTransaction.status == 'success'
+            ).all()
+            
+            if not transactions:
+                return {
+                    'total_transactions': 0,
+                    'total_gas_paid': 0,
+                    'potential_savings': 0,
+                    'savings_percentage': 0,
+                    'avg_gas_price': 0
+                }
+            
+            total_gas_paid = sum(t.gas_cost_eth for t in transactions)
+            potential_savings = sum(t.saved_by_waiting or 0 for t in transactions)
+            avg_gas_price = sum(t.gas_price_gwei for t in transactions) / len(transactions)
+            
+            return {
+                'total_transactions': len(transactions),
+                'total_gas_paid': total_gas_paid,
+                'potential_savings': potential_savings,
+                'savings_percentage': (potential_savings / total_gas_paid * 100) if total_gas_paid > 0 else 0,
+                'avg_gas_price': avg_gas_price
+            }
+        finally:
+            session.close()
+    
+    def _migrate_add_chain_id(self):
+        """Migrate database to add chain_id column if it doesn't exist."""
+        from sqlalchemy import inspect, text
+        
+        inspector = inspect(self.engine)
+        
+        with self.engine.connect() as conn:
+            # Migrate gas_prices table
+            if 'gas_prices' in inspector.get_table_names():
+                columns = [col['name'] for col in inspector.get_columns('gas_prices')]
+                
+                if 'chain_id' not in columns:
+                    try:
+                        conn.execute(text("ALTER TABLE gas_prices ADD COLUMN chain_id INTEGER DEFAULT 8453"))
+                        conn.commit()
+                        logger.info("✓ Added chain_id column to gas_prices table")
+                        
+                        # Create index
+                        try:
+                            conn.execute(text("CREATE INDEX IF NOT EXISTS idx_gas_prices_chain_id ON gas_prices(chain_id)"))
+                            conn.commit()
+                        except:
+                            pass  # Index may already exist
+                    except Exception as e:
+                        logger.warning(f"Could not add chain_id to gas_prices (may already exist): {e}")
+                        conn.rollback()
+            
+            # Migrate predictions table
+            if 'predictions' in inspector.get_table_names():
+                columns = [col['name'] for col in inspector.get_columns('predictions')]
+                
+                if 'chain_id' not in columns:
+                    try:
+                        conn.execute(text("ALTER TABLE predictions ADD COLUMN chain_id INTEGER DEFAULT 8453"))
+                        conn.commit()
+                        logger.info("✓ Added chain_id column to predictions table")
+                        
+                        # Create index
+                        try:
+                            conn.execute(text("CREATE INDEX IF NOT EXISTS idx_predictions_chain_id ON predictions(chain_id)"))
+                            conn.commit()
+                        except:
+                            pass  # Index may already exist
+                    except Exception as e:
+                        logger.warning(f"Could not add chain_id to predictions (may already exist): {e}")
+                        conn.rollback()
+    
     def get_connection(self):
         """Get raw database connection for custom queries"""
         return self.engine.raw_connection()
