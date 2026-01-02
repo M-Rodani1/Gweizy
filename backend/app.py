@@ -225,19 +225,40 @@ if TRAIN_MODELS_ON_STARTUP:
             
             if os.path.exists(script_path):
                 logger.info(f"Running training script: {script_path}")
-                result = subprocess.run(
+                logger.info("Training will take 3-10 minutes. Progress will be logged...")
+                
+                # Run with real-time output streaming
+                process = subprocess.Popen(
                     [sys.executable, script_path],
-                    capture_output=True,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
                     text=True,
-                    timeout=600,  # 10 minute timeout
+                    bufsize=1,
+                    universal_newlines=True,
                     cwd=current_dir
                 )
                 
-                if result.returncode == 0:
+                # Stream output in real-time
+                output_lines = []
+                for line in process.stdout:
+                    line = line.strip()
+                    if line:
+                        logger.info(f"[TRAINING] {line}")
+                        output_lines.append(line)
+                
+                # Wait for completion
+                returncode = process.wait(timeout=600)  # 10 minute timeout
+                
+                if returncode == 0:
                     logger.info("✅ Model training completed successfully on startup")
-                    logger.info(f"Output: {result.stdout[:500]}...")
+                    # Log summary (last 20 lines usually contain the summary)
+                    summary = "\n".join(output_lines[-20:])
+                    logger.info(f"Training summary:\n{summary}")
                 else:
-                    logger.error(f"❌ Model training failed: {result.stderr[:500]}")
+                    logger.error(f"❌ Model training failed with return code {returncode}")
+                    # Log last 30 lines for debugging
+                    error_output = "\n".join(output_lines[-30:])
+                    logger.error(f"Last output:\n{error_output}")
             else:
                 logger.warning(f"Training script not found: {script_path}")
         except Exception as e:
