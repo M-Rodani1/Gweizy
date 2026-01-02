@@ -53,7 +53,7 @@ const Dashboard: React.FC = () => {
         <DriftAlertBanner />
 
         {/* Hero: AI Transaction Pilot - Sticky on scroll */}
-        <div className="mb-8 lg:sticky lg:top-[88px] lg:z-40 lg:bg-app-shell lg:pb-4 lg:-mx-4 lg:mx-0 lg:px-4">
+        <div className="mb-8 lg:sticky lg:top-[88px] lg:z-40 lg:bg-[#05070f] lg:pb-4 lg:pt-2 lg:-mx-4 lg:mx-0 lg:px-4 lg:shadow-lg lg:border-b lg:border-gray-800/50 lg:backdrop-blur-sm">
           <TransactionPilot ethPrice={ethPrice} />
         </div>
 
