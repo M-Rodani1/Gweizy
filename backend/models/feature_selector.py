@@ -195,7 +195,12 @@ class SHAPFeatureSelector:
 
         return df
 
-    def save(self, filepath: str = 'models/saved_models/feature_selector.pkl'):
+    def save(self, filepath: str = None):
+        """Save feature selector to persistent storage"""
+        if filepath is None:
+            from config import Config
+            os.makedirs(Config.MODELS_DIR, exist_ok=True)
+            filepath = os.path.join(Config.MODELS_DIR, 'feature_selector.pkl')
         """Save the feature selector to disk."""
         os.makedirs(os.path.dirname(filepath), exist_ok=True)
 
@@ -213,7 +218,16 @@ class SHAPFeatureSelector:
         print(f"💾 Saved feature selector to {filepath}")
 
     @classmethod
-    def load(cls, filepath: str = 'models/saved_models/feature_selector.pkl') -> 'SHAPFeatureSelector':
+    def load(cls, filepath: str = None) -> 'SHAPFeatureSelector':
+        """Load feature selector from persistent storage"""
+        if filepath is None:
+            from config import Config
+            # Try persistent storage first, then fallback
+            filepath = os.path.join(Config.MODELS_DIR, 'feature_selector.pkl')
+            if not os.path.exists(filepath):
+                filepath = 'models/saved_models/feature_selector.pkl'
+            if not os.path.exists(filepath):
+                filepath = 'backend/models/saved_models/feature_selector.pkl'
         """Load a saved feature selector."""
         if not os.path.exists(filepath):
             raise FileNotFoundError(f"Feature selector not found: {filepath}")

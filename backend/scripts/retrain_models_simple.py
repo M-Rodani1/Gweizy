@@ -155,6 +155,13 @@ def train_model(X, y_tuple, horizon, min_samples=100, feature_meta=None, use_fea
             feature_selector.fit(X_clean, y_log_clean, verbose=True)
             X_clean = feature_selector.transform(X_clean)
             print(f"   ✅ Reduced to {X_clean.shape[1]} features using SHAP selection")
+            
+            # Save feature selector to persistent storage
+            try:
+                feature_selector.save()  # Uses Config.MODELS_DIR
+                print(f"   ✅ Saved feature selector to persistent storage")
+            except Exception as save_err:
+                print(f"   ⚠️ Could not save feature selector: {save_err}")
         except Exception as e:
             print(f"   ⚠️ Feature selection failed: {e}, using all features")
             feature_selector = None
@@ -295,7 +302,12 @@ def train_model(X, y_tuple, horizon, min_samples=100, feature_meta=None, use_fea
     }
 
 
-def save_model(model_data, horizon, output_dir='backend/models/saved_models'):
+def save_model(model_data, horizon, output_dir=None):
+    """Save trained model to persistent storage"""
+    if output_dir is None:
+        # Use persistent storage on Railway, fallback to local
+        from config import Config
+        output_dir = Config.MODELS_DIR
     """Save trained model"""
     if model_data is None:
         return False

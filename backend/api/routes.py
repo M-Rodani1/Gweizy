@@ -37,13 +37,21 @@ try:
     import joblib
     import os
     
+    # Get models directory from config (persistent on Railway)
+    from config import Config
+    models_dir = Config.MODELS_DIR
+    
     for horizon in ['1h', '4h', '24h']:
-        # Try both paths to support different working directories
-        model_path = f'models/saved_models/model_{horizon}.pkl'
+        # Try persistent storage first, then fallback paths
+        model_path = os.path.join(models_dir, f'model_{horizon}.pkl')
+        if not os.path.exists(model_path):
+            model_path = f'models/saved_models/model_{horizon}.pkl'
         if not os.path.exists(model_path):
             model_path = f'backend/models/saved_models/model_{horizon}.pkl'
 
-        scaler_path = f'models/saved_models/scaler_{horizon}.pkl'
+        scaler_path = os.path.join(models_dir, f'scaler_{horizon}.pkl')
+        if not os.path.exists(scaler_path):
+            scaler_path = f'models/saved_models/scaler_{horizon}.pkl'
         if not os.path.exists(scaler_path):
             scaler_path = f'backend/models/saved_models/scaler_{horizon}.pkl'
         
@@ -90,7 +98,9 @@ try:
                 pass
     
     # Load global feature names if available
-    feature_names_path = 'models/saved_models/feature_names.pkl'
+    feature_names_path = os.path.join(models_dir, 'feature_names.pkl')
+    if not os.path.exists(feature_names_path):
+        feature_names_path = 'models/saved_models/feature_names.pkl'
     if not os.path.exists(feature_names_path):
         feature_names_path = 'backend/models/saved_models/feature_names.pkl'
 

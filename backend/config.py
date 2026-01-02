@@ -23,6 +23,12 @@ class Config:
                             'sqlite:////data/gas_data.db' if os.path.exists('/data')
                             else 'sqlite:///gas_data.db')
     
+    # Model Storage
+    # Use /data/models for persistent storage on Railway, fallback to local for development
+    MODELS_DIR = os.getenv('MODELS_DIR',
+                          '/data/models' if os.path.exists('/data')
+                          else 'backend/models/saved_models')
+    
     # Data Collection
     COLLECTION_INTERVAL = 5  # 5 seconds (3x faster data collection)
     # Rationale: Base gas prices can spike rapidly. 5-second sampling provides:
