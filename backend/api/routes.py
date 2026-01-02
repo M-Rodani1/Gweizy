@@ -122,14 +122,41 @@ def health():
     except Exception as e:
         logger.warning(f"Could not load hybrid predictor: {e}")
 
+    # Get cache statistics
+    cache_stats = {}
+    try:
+        from api.cache import get_cache_stats
+        cache_stats = get_cache_stats()
+    except Exception as e:
+        logger.warning(f"Could not get cache stats: {e}")
+
     return jsonify({
         'status': 'ok',
         'timestamp': datetime.now().isoformat(),
         'models_loaded': len(models) > 0 or hybrid_models_loaded,
         'hybrid_predictor_loaded': hybrid_models_loaded,
         'legacy_models_loaded': len(models) > 0,
-        'database_connected': True
+        'database_connected': True,
+        'cache_stats': cache_stats
     })
+
+
+@api_bp.route('/cache/stats', methods=['GET'])
+def get_cache_statistics():
+    """Get cache statistics endpoint"""
+    try:
+        from api.cache import get_cache_stats
+        stats = get_cache_stats()
+        return jsonify({
+            'success': True,
+            'stats': stats
+        })
+    except Exception as e:
+        logger.error(f"Error getting cache stats: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
 
 
 @api_bp.route('/current', methods=['GET'])

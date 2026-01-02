@@ -1,26 +1,52 @@
 /**
  * Custom hook for gas data fetching
- * Uses React Query for caching and automatic refetching
+ * Uses WebSocket for real-time updates with React Query fallback
  */
 
 import { useQuery } from '@tanstack/react-query';
+import { useState, useEffect } from 'react';
 import { fetchLiveBaseGas } from '../utils/baseRpc';
 import { fetchPredictions } from '../api/gasApi';
 import { REFRESH_INTERVALS } from '../constants';
+import { useWebSocket } from './useWebSocket';
 
 /**
- * Hook to fetch current gas price
+ * Hook to fetch current gas price with WebSocket support
  */
 export function useCurrentGas() {
-  return useQuery({
+  const { isConnected, gasPrice } = useWebSocket({ enabled: true });
+  const [currentGas, setCurrentGas] = useState<number | null>(null);
+
+  // Update from WebSocket
+  useEffect(() => {
+    if (gasPrice) {
+      setCurrentGas(gasPrice.current_gas);
+    }
+  }, [gasPrice]);
+
+  // Fallback to polling if WebSocket not available
+  const fallbackQuery = useQuery({
     queryKey: ['currentGas'],
     queryFn: async () => {
       const data = await fetchLiveBaseGas();
       return data.gwei;
     },
-    refetchInterval: REFRESH_INTERVALS.GAS_DATA,
+    refetchInterval: isConnected ? false : REFRESH_INTERVALS.GAS_DATA, // Disable polling if WebSocket connected
     staleTime: REFRESH_INTERVALS.GAS_DATA / 2,
+    enabled: !isConnected, // Only use polling if WebSocket not connected
   });
+
+  // Use WebSocket data if available, otherwise use fallback
+  const finalGas = currentGas ?? fallbackQuery.data ?? 0;
+
+  return {
+    data: finalGas,
+    isLoading: !isConnected && fallbackQuery.isLoading,
+    isError: fallbackQuery.isError,
+    error: fallbackQuery.error,
+    refetch: fallbackQuery.refetch,
+    isWebSocketConnected: isConnected,
+  };
 }
 
 /**

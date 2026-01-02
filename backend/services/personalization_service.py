@@ -19,6 +19,7 @@ class PersonalizationService:
     def analyze_user_patterns(self, user_address: str, chain_id: int = 8453) -> Dict:
         """
         Analyze user transaction patterns to identify optimal times.
+        Enhanced with transaction type analysis.
         
         Returns:
             Dict with patterns, recommendations, and statistics
@@ -32,6 +33,8 @@ class PersonalizationService:
         hour_distribution = defaultdict(int)
         day_distribution = defaultdict(int)
         gas_prices_by_hour = defaultdict(list)
+        gas_prices_by_tx_type = defaultdict(list)
+        tx_type_distribution = defaultdict(int)
         total_gas_paid = 0
         total_potential_savings = 0
         
@@ -43,10 +46,13 @@ class PersonalizationService:
                 ts = datetime.fromisoformat(tx['timestamp'].replace('Z', '+00:00'))
                 hour = ts.hour
                 day = ts.weekday()
+                tx_type = tx.get('tx_type', 'unknown')
                 
                 hour_distribution[hour] += 1
                 day_distribution[day] += 1
+                tx_type_distribution[tx_type] += 1
                 gas_prices_by_hour[hour].append(tx['gas_price_gwei'])
+                gas_prices_by_tx_type[tx_type].append(tx['gas_price_gwei'])
                 
                 total_gas_paid += tx.get('gas_cost_eth', 0)
                 if tx.get('saved_by_waiting'):
@@ -67,20 +73,30 @@ class PersonalizationService:
         # Calculate savings opportunity
         savings_percentage = (total_potential_savings / total_gas_paid * 100) if total_gas_paid > 0 else 0
         
+        # Analyze by transaction type
+        avg_gas_by_tx_type = {
+            tx_type: float(np.mean(prices)) for tx_type, prices in gas_prices_by_tx_type.items() if prices
+        }
+        most_common_tx_type = max(tx_type_distribution.items(), key=lambda x: x[1])[0] if tx_type_distribution else None
+        
         return {
             'total_transactions': len(transactions),
             'analysis_period_days': 30,
             'patterns': {
                 'most_common_hour': most_common_hour,
                 'most_common_day': self._day_name(most_common_day) if most_common_day is not None else None,
+                'most_common_tx_type': most_common_tx_type,
                 'best_hour_for_gas': best_hour,
-                'avg_gas_by_hour': {str(k): float(v) for k, v in avg_gas_by_hour.items()}
+                'avg_gas_by_hour': {str(k): float(v) for k, v in avg_gas_by_hour.items()},
+                'avg_gas_by_tx_type': avg_gas_by_tx_type,
+                'tx_type_distribution': dict(tx_type_distribution)
             },
             'recommendations': {
                 'usual_time': f"{most_common_hour}:00 UTC" if most_common_hour is not None else "Varies",
                 'best_time': f"{best_hour}:00 UTC" if best_hour is not None else "2:00 UTC",
                 'savings_opportunity': round(savings_percentage, 1),
-                'suggestion': self._generate_suggestion(most_common_hour, best_hour, savings_percentage)
+                'suggestion': self._generate_suggestion(most_common_hour, best_hour, savings_percentage),
+                'tx_type_specific': self._get_tx_type_recommendations(most_common_tx_type, avg_gas_by_tx_type)
             },
             'statistics': {
                 'total_gas_paid_eth': round(total_gas_paid, 6),
@@ -248,6 +264,30 @@ class PersonalizationService:
             return f"Consider transacting at {best_hour}:00 UTC instead of {usual_hour}:00 UTC. You could save around {savings_pct:.0f}%."
         else:
             return f"Your current transaction time ({usual_hour}:00 UTC) is reasonable. For maximum savings, try {best_hour}:00 UTC."
+    
+    def _get_tx_type_recommendations(self, most_common_tx_type: Optional[str], 
+                                     avg_gas_by_tx_type: Dict[str, float]) -> Dict[str, Any]:
+        """Get transaction type specific recommendations"""
+        if not most_common_tx_type or not avg_gas_by_tx_type:
+            return {}
+        
+        # Find best gas price by transaction type
+        if len(avg_gas_by_tx_type) > 1:
+            best_tx_type = min(avg_gas_by_tx_type.items(), key=lambda x: x[1])[0]
+            worst_tx_type = max(avg_gas_by_tx_type.items(), key=lambda x: x[1])[0]
+            
+            return {
+                'most_common_type': most_common_tx_type,
+                'best_type_for_gas': best_tx_type,
+                'worst_type_for_gas': worst_tx_type,
+                'suggestion': f"Your {most_common_tx_type} transactions could benefit from timing optimization. "
+                             f"Consider scheduling them during off-peak hours."
+            }
+        return {
+            'most_common_type': most_common_tx_type,
+            'suggestion': f"Most of your transactions are {most_common_tx_type}. "
+                         f"Consider timing them during off-peak hours for better gas prices."
+        }
     
     def _day_name(self, day_num: int) -> str:
         """Convert day number to name"""
