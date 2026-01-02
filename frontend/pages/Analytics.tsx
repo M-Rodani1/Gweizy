@@ -1,5 +1,5 @@
 import React, { lazy, Suspense } from 'react';
-import { Brain, Calendar, ClipboardList, Sparkles, Target, TrendingUp, Activity } from 'lucide-react';
+import { Brain, Calendar, ClipboardList, Sparkles, Target, TrendingUp, Activity, Grid3X3 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import StickyHeader from '../src/components/StickyHeader';
 import AccuracyMetricsCard from '../src/components/AccuracyMetricsCard';
@@ -7,6 +7,8 @@ import FeatureImportanceChart from '../src/components/FeatureImportanceChart';
 import AccuracyHistoryChart from '../src/components/AccuracyHistoryChart';
 import DriftAlertBanner from '../src/components/DriftAlertBanner';
 import ApiStatusPanel from '../src/components/ApiStatusPanel';
+import HourlyHeatmap from '../src/components/HourlyHeatmap';
+import { CardSkeleton, ChartSkeleton, HeatmapSkeleton } from '../src/components/SkeletonLoader';
 import { useChain } from '../src/contexts/ChainContext';
 import { useEthPrice } from '../src/hooks/useEthPrice';
 
@@ -20,15 +22,9 @@ const NetworkIntelligencePanel = lazy(() => import('../src/components/NetworkInt
 const BestTimeWidget = lazy(() => import('../src/components/BestTimeWidget'));
 const GasPriceTable = lazy(() => import('../src/components/GasPriceTable'));
 
-const LoadingSpinner = () => (
-  <div className="flex items-center justify-center p-8">
-    <div className="w-8 h-8 border-2 border-gray-600 border-t-cyan-400 rounded-full animate-spin" />
-  </div>
-);
-
 const Analytics: React.FC = () => {
   const { selectedChain, multiChainGas } = useChain();
-  const { ethPrice } = useEthPrice(60000);
+  useEthPrice(60000); // Keep price updated in context
   const currentGas = multiChainGas[selectedChain.id]?.gasPrice || 0;
 
   return (
@@ -92,7 +88,7 @@ const Analytics: React.FC = () => {
             <Sparkles className="w-4 h-4 text-cyan-400" />
             ML Predictions
           </h2>
-          <Suspense fallback={<LoadingSpinner />}>
+          <Suspense fallback={<CardSkeleton rows={4} />}>
             <PredictionCards />
           </Suspense>
         </section>
@@ -104,8 +100,22 @@ const Analytics: React.FC = () => {
             Price Charts
           </h2>
           <div className="grid grid-cols-1 gap-6">
-            <Suspense fallback={<LoadingSpinner />}>
+            <Suspense fallback={<ChartSkeleton height={250} />}>
               <GasPriceGraph />
+            </Suspense>
+          </div>
+        </section>
+
+        {/* Weekly Heatmap */}
+        <section className="mb-8">
+          <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+            <Grid3X3 className="w-4 h-4 text-cyan-400" />
+            Weekly Patterns
+          </h2>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <HourlyHeatmap />
+            <Suspense fallback={<CardSkeleton rows={3} />}>
+              <BestTimeWidget currentGas={currentGas} />
             </Suspense>
           </div>
         </section>
@@ -116,14 +126,9 @@ const Analytics: React.FC = () => {
             <Calendar className="w-4 h-4 text-cyan-400" />
             Pattern Analysis
           </h2>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Suspense fallback={<LoadingSpinner />}>
-              <GasPatternHeatmap />
-            </Suspense>
-            <Suspense fallback={<LoadingSpinner />}>
-              <BestTimeWidget currentGas={currentGas} />
-            </Suspense>
-          </div>
+          <Suspense fallback={<HeatmapSkeleton />}>
+            <GasPatternHeatmap />
+          </Suspense>
         </section>
 
         {/* Model Performance */}
@@ -133,10 +138,10 @@ const Analytics: React.FC = () => {
             Model Performance
           </h2>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Suspense fallback={<LoadingSpinner />}>
+            <Suspense fallback={<CardSkeleton rows={4} />}>
               <ModelAccuracy />
             </Suspense>
-            <Suspense fallback={<LoadingSpinner />}>
+            <Suspense fallback={<CardSkeleton rows={4} />}>
               <ValidationMetricsDashboard />
             </Suspense>
           </div>
@@ -148,7 +153,7 @@ const Analytics: React.FC = () => {
             <Brain className="w-4 h-4 text-cyan-400" />
             Network Intelligence
           </h2>
-          <Suspense fallback={<LoadingSpinner />}>
+          <Suspense fallback={<CardSkeleton rows={5} />}>
             <NetworkIntelligencePanel />
           </Suspense>
         </section>
@@ -159,7 +164,7 @@ const Analytics: React.FC = () => {
             <ClipboardList className="w-4 h-4 text-cyan-400" />
             Historical Data
           </h2>
-          <Suspense fallback={<LoadingSpinner />}>
+          <Suspense fallback={<ChartSkeleton height={300} />}>
             <GasPriceTable />
           </Suspense>
         </section>
