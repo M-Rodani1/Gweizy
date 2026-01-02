@@ -53,12 +53,12 @@ const Dashboard: React.FC = () => {
         <DriftAlertBanner />
 
         {/* Hero: AI Transaction Pilot - Sticky on scroll */}
-        <div className="mb-8 lg:sticky lg:top-20 lg:z-40">
+        <div className="mb-8 lg:sticky lg:top-[88px] lg:z-40 lg:bg-app-shell lg:pb-4 lg:-mx-4 lg:mx-0 lg:px-4">
           <TransactionPilot ethPrice={ethPrice} />
         </div>
 
         {/* Main Grid */}
-        <div className="grid grid-cols-12 gap-8">
+        <div className="grid grid-cols-12 gap-8 relative">
           {/* Left Column: Chain Comparison + Forecast */}
           <div className="col-span-12 lg:col-span-4 space-y-8">
             <div className="space-y-4">
