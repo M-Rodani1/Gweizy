@@ -466,17 +466,35 @@ def get_predictions():
                     else:
                         dt = timestamp if hasattr(timestamp, 'hour') else datetime.now()
 
+                    gas_price = d.get('gwei', 0) or d.get('current_gas', 0)
+                    if gas_price is None or gas_price <= 0:
+                        continue  # Skip invalid data points
+
                     recent_df.append({
                         'timestamp': dt,
-                        'gas_price': d.get('gwei', 0) or d.get('current_gas', 0),
+                        'gas_price': gas_price,
                         'base_fee': d.get('baseFee', 0) or d.get('base_fee', 0),
                         'priority_fee': d.get('priorityFee', 0) or d.get('priority_fee', 0)
                     })
 
+                if len(recent_df) < 50:
+                    raise ValueError(f"Not enough valid data points: {len(recent_df)} < 50")
+
                 df = pd.DataFrame(recent_df)
+                
+                # Ensure DataFrame is sorted by timestamp
+                df = df.sort_values('timestamp').reset_index(drop=True)
+                
+                # Validate DataFrame has required columns
+                if 'gas_price' not in df.columns or len(df) == 0:
+                    raise ValueError("Invalid DataFrame format for hybrid predictor")
 
                 # Get hybrid predictions
                 hybrid_preds = hybrid_predictor.predict(df)
+                
+                # Validate predictions were generated
+                if not hybrid_preds or len(hybrid_preds) == 0:
+                    raise ValueError("Hybrid predictor returned empty predictions")
 
                 # Format for API response
                 prediction_data = {}
@@ -555,8 +573,13 @@ def get_predictions():
             logger.warning(f"Hybrid predictor failed: {e}, falling back to legacy models")
             import traceback
             logger.warning(traceback.format_exc())
+            # Continue to fallback - don't return here
 
         # Fallback to legacy models if hybrid fails
+        # Get recent historical data for the specified chain (if not already fetched)
+        if 'recent_data' not in locals():
+            recent_data = db.get_historical_data(hours=48, chain_id=chain_id)
+        
         if not models:
             logger.warning("Models not loaded, using fallback predictions")
             return jsonify({
@@ -570,12 +593,60 @@ def get_predictions():
                 'note': 'Using fallback predictions. Train models for ML predictions.'
             })
         
-        # Get recent historical data for the specified chain
-        recent_data = db.get_historical_data(hours=48, chain_id=chain_id)
+        # Get recent historical data for the specified chain (if not already fetched)
+        if 'recent_data' not in locals():
+            recent_data = db.get_historical_data(hours=48, chain_id=chain_id)
 
         if len(recent_data) < 100:
-            logger.warning(f"Not enough data: {len(recent_data)} records")
-            return jsonify({'error': 'Not enough historical data'}), 500
+            logger.warning(f"Not enough data: {len(recent_data)} records, using fallback predictions")
+            # Use fallback instead of returning 500 error
+            fallback_predictions = {}
+            for horizon in ['1h', '4h', '24h']:
+                multiplier = 1.05 if horizon == '1h' else 1.1 if horizon == '4h' else 1.15
+                pred_value = round(current['current_gas'] * multiplier, 6)
+
+                fallback_predictions[horizon] = [{
+                    'time': horizon,
+                    'predictedGwei': pred_value,
+                    'lowerBound': round(pred_value * 0.9, 6),
+                    'upperBound': round(pred_value * 1.1, 6),
+                    'confidence': 0.5,
+                    'confidenceLevel': 'low',
+                    'confidenceEmoji': '🔴',
+                    'confidenceColor': 'red'
+                }]
+            
+            # Format historical data for graph
+            historical = []
+            for d in recent_data[-100:] if len(recent_data) > 0 else []:
+                timestamp = d.get('timestamp', '')
+                if isinstance(timestamp, str):
+                    try:
+                        from dateutil import parser
+                        dt = parser.parse(timestamp)
+                        time_str = dt.strftime('%H:%M')
+                    except:
+                        time_str = timestamp[:5] if len(timestamp) > 5 else timestamp
+                else:
+                    time_str = str(timestamp)[:5]
+
+                historical.append({
+                    'time': time_str,
+                    'gwei': round(d.get('gwei', 0) or d.get('current_gas', 0), 4)
+                })
+
+            fallback_predictions['historical'] = historical
+
+            return jsonify({
+                'chain_id': chain_id,
+                'current': current,
+                'predictions': fallback_predictions,
+                'model_info': {
+                    'warning': 'Insufficient data for ML predictions - using fallback',
+                    'data_points': len(recent_data),
+                    'chain_id': chain_id
+                }
+            })
 
         # Wrap entire ML prediction pipeline in try-catch for graceful fallback
         try:
