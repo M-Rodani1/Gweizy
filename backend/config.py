@@ -34,4 +34,13 @@ class Config:
     # Model
     MODEL_PATH = 'models/gas_predictor.pkl'
     RETRAIN_INTERVAL = 86400  # 24 hours
+    
+    # Notifications
+    SMTP_SERVER = os.getenv('SMTP_SERVER', '')
+    SMTP_PORT = int(os.getenv('SMTP_PORT', '587'))
+    SMTP_USER = os.getenv('SMTP_USER', '')
+    SMTP_PASSWORD = os.getenv('SMTP_PASSWORD', '')
+    FROM_EMAIL = os.getenv('FROM_EMAIL', 'noreply@gweizy.com')
+    DISCORD_WEBHOOK_URL = os.getenv('DISCORD_WEBHOOK_URL', '')
+    TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN', '')
 

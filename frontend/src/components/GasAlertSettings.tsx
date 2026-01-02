@@ -35,6 +35,7 @@ const GasAlertSettings: React.FC<GasAlertSettingsProps> = ({ currentGas, walletA
   const [alertType, setAlertType] = useState<'below' | 'above'>('below');
   const [thresholdGwei, setThresholdGwei] = useState('0.001');
   const [notificationMethod, setNotificationMethod] = useState('browser');
+  const [notificationTarget, setNotificationTarget] = useState('');  // Email, Discord webhook, or Telegram chat ID
 
   const userId = walletAddress || 'anonymous';
 
@@ -93,7 +94,8 @@ const GasAlertSettings: React.FC<GasAlertSettingsProps> = ({ currentGas, walletA
           user_id: userId,
           alert_type: alertType,
           threshold_gwei: parseFloat(thresholdGwei),
-          notification_method: notificationMethod
+          notification_method: notificationMethod,
+          notification_target: notificationTarget || undefined
         })
       });
 
@@ -286,6 +288,53 @@ const GasAlertSettings: React.FC<GasAlertSettingsProps> = ({ currentGas, walletA
               />
             </div>
           </div>
+          
+          {/* Notification Method Selection */}
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-300 mb-2">Notification Method</label>
+            <select
+              value={notificationMethod}
+              onChange={(e) => {
+                setNotificationMethod(e.target.value);
+                setNotificationTarget('');  // Clear target when method changes
+              }}
+              className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white focus:border-blue-500 focus:outline-none"
+            >
+              <option value="browser">Browser Notification</option>
+              <option value="email">Email</option>
+              <option value="discord">Discord Webhook</option>
+              <option value="telegram">Telegram</option>
+            </select>
+          </div>
+          
+          {/* Notification Target Input (for email/discord/telegram) */}
+          {notificationMethod !== 'browser' && (
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-300 mb-2">
+                {notificationMethod === 'email' && 'Email Address'}
+                {notificationMethod === 'discord' && 'Discord Webhook URL'}
+                {notificationMethod === 'telegram' && 'Telegram Chat ID'}
+              </label>
+              <input
+                type="text"
+                value={notificationTarget}
+                onChange={(e) => setNotificationTarget(e.target.value)}
+                className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white focus:border-blue-500 focus:outline-none"
+                placeholder={
+                  notificationMethod === 'email' ? 'your@email.com' :
+                  notificationMethod === 'discord' ? 'https://discord.com/api/webhooks/...' :
+                  '123456789'  // Telegram chat ID
+                }
+                required={notificationMethod !== 'browser'}
+              />
+              {notificationMethod === 'telegram' && (
+                <p className="text-xs text-gray-400 mt-1">
+                  Get your chat ID by messaging @userinfobot on Telegram
+                </p>
+              )}
+            </div>
+          )}
+          
           <button
             type="submit"
             className="w-full px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-colors"

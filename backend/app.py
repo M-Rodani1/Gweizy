@@ -20,6 +20,8 @@ from api.alert_routes import alert_bp
 from api.agent_routes import agent_bp
 from api.multichain_routes import multichain_bp
 from api.accuracy_routes import accuracy_bp
+from api.personalization_routes import personalization_bp
+from api.retraining_automated_routes import automated_retraining_bp
 from api.middleware import limiter, error_handlers, log_request
 from config import Config
 from utils.logger import logger
@@ -90,6 +92,8 @@ def create_app():
     app.register_blueprint(agent_bp, url_prefix='/api')
     app.register_blueprint(multichain_bp, url_prefix='/api')
     app.register_blueprint(accuracy_bp, url_prefix='/api/accuracy')
+    app.register_blueprint(personalization_bp, url_prefix='/api')
+    app.register_blueprint(automated_retraining_bp, url_prefix='/api')
     app.register_blueprint(base_config_bp)  # No prefix - serves at root for /config.json
     
     # Add HTTP caching and CORS headers
@@ -241,6 +245,15 @@ if not use_worker_process:
 
         collection_thread = threading.Thread(target=start_collection_with_socketio, daemon=True)
         collection_thread.start()
+        
+        # Start automated retraining scheduler
+        try:
+            from services.automated_retraining import get_retraining_service
+            retraining_service = get_retraining_service()
+            retraining_service.start_scheduler()
+            logger.info("✓ Automated retraining scheduler started")
+        except Exception as e:
+            logger.warning(f"Failed to start automated retraining scheduler: {e}")
 else:
     logger.info("Skipping background threads - using separate worker process")
 

@@ -11,9 +11,11 @@ import AccuracyMetricsCard from '../src/components/AccuracyMetricsCard';
 import FeatureImportanceChart from '../src/components/FeatureImportanceChart';
 import DriftAlertBanner from '../src/components/DriftAlertBanner';
 import PersonalizationPanel from '../src/components/PersonalizationPanel';
+import PersonalizedRecommendations from '../src/components/PersonalizedRecommendations';
 import { checkHealth } from '../src/api/gasApi';
 import { useChain } from '../src/contexts/ChainContext';
 import { useEthPrice } from '../src/hooks/useEthPrice';
+import { useWalletAddress } from '../src/hooks/useWalletAddress';
 
 // Lazy load secondary components
 const ScheduledTransactionsList = lazy(() => import('../src/components/ScheduledTransactionsList'));
@@ -25,6 +27,7 @@ const Dashboard: React.FC = () => {
   const [apiStatus, setApiStatus] = useState<'checking' | 'online' | 'offline'>('checking');
   const { selectedChain, multiChainGas } = useChain();
   const { ethPrice } = useEthPrice(60000);
+  const walletAddress = useWalletAddress();
 
   const currentGas = multiChainGas[selectedChain.id]?.gasPrice || 0;
 
@@ -60,6 +63,9 @@ const Dashboard: React.FC = () => {
             <div className="space-y-4">
               <div className="text-[11px] tracking-[0.2em] text-gray-500 uppercase">Profile</div>
               <PersonalizationPanel />
+              {walletAddress && (
+                <PersonalizedRecommendations walletAddress={walletAddress} />
+              )}
             </div>
             <div className="space-y-4">
               <div className="text-[11px] tracking-[0.2em] text-gray-500 uppercase">Network Insights</div>

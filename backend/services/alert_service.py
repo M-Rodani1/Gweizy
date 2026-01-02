@@ -51,8 +51,8 @@ class AlertService:
             if threshold_gwei <= 0:
                 raise ValueError("threshold_gwei must be positive")
 
-            if notification_method not in ['email', 'webhook', 'browser']:
-                raise ValueError("notification_method must be 'email', 'webhook', or 'browser'")
+            if notification_method not in ['email', 'webhook', 'browser', 'discord', 'telegram']:
+                raise ValueError("notification_method must be 'email', 'webhook', 'browser', 'discord', or 'telegram'")
 
             # Create alert
             alert = GasAlert(
@@ -154,10 +154,24 @@ class AlertService:
         finally:
             session.close()
 
-    def check_alerts(self, current_gas_gwei: float) -> List[Dict]:
-        """Check if any alerts should be triggered"""
+    def check_alerts(self, current_gas_gwei: float, chain_id: int = 8453) -> List[Dict]:
+        """
+        Check if any alerts should be triggered and send notifications.
+        
+        Args:
+            current_gas_gwei: Current gas price in gwei
+            chain_id: Chain ID for chain-specific alerts
+        
+        Returns:
+            List of triggered alerts
+        """
+        from services.notification_service import get_notification_service
+        from data.multichain_collector import CHAINS
+        
         session = self.db._get_session()
         triggered_alerts = []
+        notification_service = get_notification_service()
+        chain_name = CHAINS.get(chain_id, {}).get('name', f'Chain {chain_id}')
 
         try:
             # Get all active alerts
@@ -186,7 +200,7 @@ class AlertService:
                     alert.last_triggered = datetime.now()
                     session.commit()
 
-                    triggered_alerts.append({
+                    alert_dict = {
                         'alert_id': alert.id,
                         'user_id': alert.user_id,
                         'alert_type': alert.alert_type,
@@ -194,7 +208,17 @@ class AlertService:
                         'current_gwei': current_gas_gwei,
                         'notification_method': alert.notification_method,
                         'notification_target': alert.notification_target
-                    })
+                    }
+                    
+                    triggered_alerts.append(alert_dict)
+                    
+                    # Send notification if not browser-only
+                    if alert.notification_method != 'browser':
+                        notification_service.send_gas_alert(
+                            alert=alert_dict,
+                            current_gas=current_gas_gwei,
+                            chain_name=chain_name
+                        )
 
             return triggered_alerts
 

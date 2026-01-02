@@ -119,7 +119,8 @@ def check_alerts():
         if current_gas_gwei <= 0:
             return jsonify({'error': 'Invalid current_gas_gwei'}), 400
 
-        triggered = alert_service.check_alerts(current_gas_gwei)
+        chain_id = data.get('chain_id', 8453)
+        triggered = alert_service.check_alerts(current_gas_gwei, chain_id=chain_id)
 
         return jsonify({
             'success': True,
