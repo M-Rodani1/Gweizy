@@ -390,6 +390,13 @@ def main():
 
         # Step 3: Train models for each horizon
         results = {}
+        registry = None
+        try:
+            from models.model_registry import get_registry
+            registry = get_registry()
+        except Exception as e:
+            print(f"⚠️ Model registry not available: {e}", flush=True)
+        
         for horizon, y in [('1h', y_1h), ('4h', y_4h), ('24h', y_24h)]:
             print(f"\n{'='*70}", flush=True)
             print(f"🚀 Starting training for {horizon} horizon", flush=True)
@@ -397,7 +404,26 @@ def main():
             model_data = train_model(X, y, horizon, feature_meta=feature_meta)
             if model_data:
                 results[horizon] = model_data
-                save_model(model_data, horizon)
+                model_path = save_model(model_data, horizon)
+                
+                # Register model version
+                if registry and model_path:
+                    try:
+                        version = registry.register_model(
+                            horizon=horizon,
+                            model_path=model_path,
+                            metrics=model_data['metrics'],
+                            metadata={
+                                'feature_count': len(model_data['feature_names']),
+                                'uses_feature_selection': model_data.get('feature_selector') is not None,
+                                'hyperparameter_tuning': USE_HYPERPARAMETER_TUNING,
+                                'best_params': model_data.get('best_params'),
+                                'training_samples': len(X)
+                            }
+                        )
+                        print(f"✅ Registered model version: {version}", flush=True)
+                    except Exception as e:
+                        print(f"⚠️ Failed to register model version: {e}", flush=True)
 
         if not results:
             print("\n❌ No models were trained successfully")

@@ -22,6 +22,8 @@ from api.multichain_routes import multichain_bp
 from api.accuracy_routes import accuracy_bp
 from api.personalization_routes import personalization_bp
 from api.retraining_automated_routes import automated_retraining_bp
+from api.model_versioning_routes import versioning_bp
+from api.monitoring_routes import monitoring_bp
 from api.middleware import limiter, error_handlers, log_request
 from config import Config
 from utils.logger import logger
@@ -93,6 +95,8 @@ def create_app():
     app.register_blueprint(multichain_bp, url_prefix='/api')
     app.register_blueprint(accuracy_bp, url_prefix='/api/accuracy')
     app.register_blueprint(personalization_bp, url_prefix='/api')
+    app.register_blueprint(versioning_bp, url_prefix='/api/versioning')
+    app.register_blueprint(monitoring_bp, url_prefix='/api/monitoring')
     app.register_blueprint(automated_retraining_bp, url_prefix='/api')
     app.register_blueprint(base_config_bp)  # No prefix - serves at root for /config.json
     
@@ -189,6 +193,19 @@ def create_app():
                     'report': '/api/accuracy/report',
                     'features': '/api/accuracy/features',
                     'features_importance': '/api/accuracy/features/importance'
+                },
+                'versioning': {
+                    'versions': '/api/versioning/versions',
+                    'active': '/api/versioning/versions/active',
+                    'activate': '/api/versioning/versions/activate (POST)',
+                    'rollback': '/api/versioning/versions/rollback (POST)',
+                    'summary': '/api/versioning/versions/summary'
+                },
+                'monitoring': {
+                    'dashboard': '/api/monitoring/dashboard',
+                    'data-quality': '/api/monitoring/data-quality',
+                    'health': '/api/monitoring/health',
+                    'summary': '/api/monitoring/summary'
                 }
             }
         })
