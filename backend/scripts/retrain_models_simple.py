@@ -475,10 +475,20 @@ def main():
 
     try:
         # Step 1: Fetch data
+        print(f"\n{'='*70}", flush=True)
+        print(f"🎯 SIMPLE MODEL RETRAINING - DATA PIPELINE", flush=True)
+        print(f"{'='*70}", flush=True)
         data = fetch_training_data(hours=720)  # 30 days
 
         # Step 2: Prepare features
+        print(f"\n{'='*70}", flush=True)
+        print(f"🔧 FEATURE ENGINEERING", flush=True)
+        print(f"{'='*70}", flush=True)
         X, y_1h, y_4h, y_24h, feature_meta = prepare_features(data)
+        
+        print(f"\n✅ Feature engineering complete:", flush=True)
+        print(f"   Total samples: {len(X):,}", flush=True)
+        print(f"   Total features: {X.shape[1]}", flush=True)
 
         # Step 3: Train models for each horizon
         results = {}
