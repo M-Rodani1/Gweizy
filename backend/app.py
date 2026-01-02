@@ -271,6 +271,19 @@ if TRAIN_MODELS_ON_STARTUP:
                     # Log summary (last 20 lines usually contain the summary)
                     summary = "\n".join(output_lines[-20:])
                     logger.info(f"Training summary:\n{summary}")
+                    
+                    # Auto-reload models after successful training
+                    try:
+                        logger.info("🔄 Auto-reloading models to use newly trained models...")
+                        from api.routes import reload_models
+                        reload_result = reload_models()
+                        if reload_result['success']:
+                            logger.info(f"✅ Models auto-reloaded: {reload_result['models_loaded']} models loaded")
+                        else:
+                            logger.warning(f"⚠️  Auto-reload had issues: {reload_result.get('error')}")
+                    except Exception as e:
+                        logger.warning(f"⚠️  Could not auto-reload models: {e}")
+                        logger.info("💡 You can manually reload models via POST /api/models/reload or restart the service")
                 else:
                     logger.error(f"❌ Model training failed with return code {returncode}")
                     # Log last 30 lines for debugging

@@ -16,6 +16,7 @@ from api.cache import cached, clear_cache
 from datetime import datetime, timedelta
 import traceback
 import numpy as np
+import threading
 
 
 api_bp = Blueprint('api', __name__)
@@ -29,94 +30,180 @@ validator = PredictionValidator()
 accuracy_tracker = get_tracker()
 
 
-# Load trained models
+# Load trained models (global state)
 models = {}
 scalers = {}
 feature_names = {}
-try:
-    import joblib
-    import os
-    
-    # Get models directory from config (persistent on Railway)
-    from config import Config
-    models_dir = Config.MODELS_DIR
-    
-    for horizon in ['1h', '4h', '24h']:
-        # Try persistent storage first, then fallback paths
-        model_path = os.path.join(models_dir, f'model_{horizon}.pkl')
-        if not os.path.exists(model_path):
-            model_path = f'models/saved_models/model_{horizon}.pkl'
-        if not os.path.exists(model_path):
-            model_path = f'backend/models/saved_models/model_{horizon}.pkl'
+_models_lock = threading.Lock()  # Thread lock for safe model reloading
 
-        scaler_path = os.path.join(models_dir, f'scaler_{horizon}.pkl')
-        if not os.path.exists(scaler_path):
-            scaler_path = f'models/saved_models/scaler_{horizon}.pkl'
-        if not os.path.exists(scaler_path):
-            scaler_path = f'backend/models/saved_models/scaler_{horizon}.pkl'
+
+def load_models():
+    """
+    Load models from disk into global state.
+    Thread-safe and can be called to reload models after training.
+    
+    Returns:
+        dict: Summary of loaded models
+    """
+    global models, scalers, feature_names
+    
+    with _models_lock:
+        # Clear existing models
+        models.clear()
+        scalers.clear()
+        feature_names.clear()
         
-        if os.path.exists(model_path):
-            model_data = joblib.load(model_path)
+        try:
+            import joblib
+            import os
             
-            # Handle both old and new model formats
-            if isinstance(model_data, dict):
-                models[horizon] = {
-                    'model': model_data.get('model'),
-                    'model_name': model_data.get('model_name', 'Unknown'),
-                    'metrics': model_data.get('metrics', {}),
-                    'feature_names': model_data.get('feature_names', []),  # Store directly in model_data
-                    'feature_scaler': model_data.get('feature_scaler'),
-                    'target_scaler': model_data.get('target_scaler'),
-                    'feature_selector': model_data.get('feature_selector'),
-                    'predicts_percentage_change': model_data.get('predicts_percentage_change', False),
-                    'uses_log_scale': model_data.get('uses_log_scale', False)
-                }
-                
-                # Load scaler if available (prefer feature_scaler)
-                if 'feature_scaler' in model_data:
-                    scalers[horizon] = model_data['feature_scaler']
-                elif 'scaler' in model_data:
-                    scalers[horizon] = model_data['scaler']
-                elif os.path.exists(scaler_path):
-                    scalers[horizon] = joblib.load(scaler_path)
-                
-                # Load feature names if available
-                if 'feature_names' in model_data:
-                    feature_names[horizon] = model_data['feature_names']
-            else:
-                # Old format - model is the object itself
-                models[horizon] = {
-                    'model': model_data,
-                    'model_name': 'Legacy',
-                    'metrics': {}
-                }
-        else:
-            # Try old loading method
-            try:
-                models[horizon] = GasModelTrainer.load_model(horizon)
-            except:
-                pass
-    
-    # Load global feature names if available
-    feature_names_path = os.path.join(models_dir, 'feature_names.pkl')
-    if not os.path.exists(feature_names_path):
-        feature_names_path = 'models/saved_models/feature_names.pkl'
-    if not os.path.exists(feature_names_path):
-        feature_names_path = 'backend/models/saved_models/feature_names.pkl'
+            # Get models directory from config (persistent on Railway)
+            from config import Config
+            models_dir = Config.MODELS_DIR
+            
+            for horizon in ['1h', '4h', '24h']:
+                # Try persistent storage first, then fallback paths
+                model_path = os.path.join(models_dir, f'model_{horizon}.pkl')
+                if not os.path.exists(model_path):
+                    model_path = f'models/saved_models/model_{horizon}.pkl'
+                if not os.path.exists(model_path):
+                    model_path = f'backend/models/saved_models/model_{horizon}.pkl'
 
-    if os.path.exists(feature_names_path):
-        global_feature_names = joblib.load(feature_names_path)
-        for horizon in ['1h', '4h', '24h']:
-            if horizon not in feature_names:
-                feature_names[horizon] = global_feature_names
+                scaler_path = os.path.join(models_dir, f'scaler_{horizon}.pkl')
+                if not os.path.exists(scaler_path):
+                    scaler_path = f'models/saved_models/scaler_{horizon}.pkl'
+                if not os.path.exists(scaler_path):
+                    scaler_path = f'backend/models/saved_models/scaler_{horizon}.pkl'
+                
+                if os.path.exists(model_path):
+                    model_data = joblib.load(model_path)
+                    
+                    # Handle both old and new model formats
+                    if isinstance(model_data, dict):
+                        models[horizon] = {
+                            'model': model_data.get('model'),
+                            'model_name': model_data.get('model_name', 'Unknown'),
+                            'metrics': model_data.get('metrics', {}),
+                            'feature_names': model_data.get('feature_names', []),  # Store directly in model_data
+                            'feature_scaler': model_data.get('feature_scaler'),
+                            'target_scaler': model_data.get('target_scaler'),
+                            'feature_selector': model_data.get('feature_selector'),
+                            'predicts_percentage_change': model_data.get('predicts_percentage_change', False),
+                            'uses_log_scale': model_data.get('uses_log_scale', False)
+                        }
+                        
+                        # Load scaler if available (prefer feature_scaler)
+                        if 'feature_scaler' in model_data:
+                            scalers[horizon] = model_data['feature_scaler']
+                        elif 'scaler' in model_data:
+                            scalers[horizon] = model_data['scaler']
+                        elif os.path.exists(scaler_path):
+                            scalers[horizon] = joblib.load(scaler_path)
+                        
+                        # Load feature names if available
+                        if 'feature_names' in model_data:
+                            feature_names[horizon] = model_data['feature_names']
+                    else:
+                        # Old format - model is the object itself
+                        models[horizon] = {
+                            'model': model_data,
+                            'model_name': 'Legacy',
+                            'metrics': {}
+                        }
+                else:
+                    # Try old loading method
+                    try:
+                        models[horizon] = GasModelTrainer.load_model(horizon)
+                    except:
+                        pass
+            
+            # Load global feature names if available
+            feature_names_path = os.path.join(models_dir, 'feature_names.pkl')
+            if not os.path.exists(feature_names_path):
+                feature_names_path = 'models/saved_models/feature_names.pkl'
+            if not os.path.exists(feature_names_path):
+                feature_names_path = 'backend/models/saved_models/feature_names.pkl'
+
+            if os.path.exists(feature_names_path):
+                global_feature_names = joblib.load(feature_names_path)
+                for horizon in ['1h', '4h', '24h']:
+                    if horizon not in feature_names:
+                        feature_names[horizon] = global_feature_names
+            
+            logger.info(f"✅ Loaded {len(models)} ML models successfully")
+            if scalers:
+                logger.info(f"✅ Loaded {len(scalers)} scalers")
+            
+            return {
+                'success': True,
+                'models_loaded': len(models),
+                'scalers_loaded': len(scalers),
+                'horizons': list(models.keys())
+            }
+        except Exception as e:
+            logger.warning(f"⚠️  Could not load models: {e}")
+            import traceback
+            logger.warning(traceback.format_exc())
+            return {
+                'success': False,
+                'error': str(e),
+                'models_loaded': len(models),
+                'scalers_loaded': len(scalers)
+            }
+
+
+def reload_models():
+    """
+    Reload models from disk. Thread-safe wrapper around load_models().
+    Use this after training completes to load new models without restarting.
     
-    logger.info(f"✅ Loaded {len(models)} ML models successfully")
-    if scalers:
-        logger.info(f"✅ Loaded {len(scalers)} scalers")
-except Exception as e:
-    logger.warning(f"⚠️  Could not load models: {e}")
-    import traceback
-    logger.warning(traceback.format_exc())
+    Returns:
+        dict: Summary of reload operation
+    """
+    logger.info("🔄 Reloading models from disk...")
+    result = load_models()
+    if result['success']:
+        logger.info(f"✅ Models reloaded successfully: {result['models_loaded']} models, {result['scalers_loaded']} scalers")
+        # Clear prediction cache since models changed
+        try:
+            clear_cache()
+            logger.info("✅ Cleared prediction cache")
+        except:
+            pass
+    else:
+        logger.error(f"❌ Failed to reload models: {result.get('error')}")
+    return result
+
+
+# Initial model loading
+load_models()
+
+
+@api_bp.route('/models/reload', methods=['POST'])
+def reload_models_endpoint():
+    """
+    Manually reload models from disk.
+    Useful after training completes to use new models without restarting.
+    
+    Returns:
+        Summary of reload operation
+    """
+    try:
+        result = reload_models()
+        return jsonify({
+            'success': result['success'],
+            'message': 'Models reloaded successfully' if result['success'] else 'Failed to reload models',
+            'models_loaded': result['models_loaded'],
+            'scalers_loaded': result['scalers_loaded'],
+            'horizons': result.get('horizons', []),
+            'error': result.get('error')
+        }), 200 if result['success'] else 500
+    except Exception as e:
+        logger.error(f"Error reloading models: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
 
 
 @api_bp.route('/health', methods=['GET'])
