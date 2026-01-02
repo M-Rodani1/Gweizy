@@ -300,10 +300,14 @@ def get_feature_importance():
     selector = get_feature_selector()
 
     if selector is None:
+        # Return empty report instead of 404 to prevent console errors
         return jsonify({
-            'success': False,
-            'error': 'Feature selector not trained yet'
-        }), 404
+            'success': True,
+            'total_features': 0,
+            'selected_count': 0,
+            'importance_report': [],
+            'message': 'Feature selector not trained yet'
+        }), 200
 
     try:
         report = selector.get_feature_report()

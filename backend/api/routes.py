@@ -473,8 +473,8 @@ def get_predictions():
                 'note': 'Using fallback predictions. Train models for ML predictions.'
             })
         
-        # Get recent historical data
-        recent_data = db.get_historical_data(hours=48)
+        # Get recent historical data for the specified chain
+        recent_data = db.get_historical_data(hours=48, chain_id=chain_id)
 
         if len(recent_data) < 100:
             logger.warning(f"Not enough data: {len(recent_data)} records")
