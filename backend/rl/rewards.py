@@ -16,16 +16,49 @@ class RewardConfig:
 
 
 class RewardCalculator:
-    """Calculates rewards for RL agent actions."""
+    """Calculates rewards for RL agent actions with reward scaling."""
 
-    def __init__(self, config: Optional[RewardConfig] = None):
+    def __init__(self, config: Optional[RewardConfig] = None, scale_rewards: bool = True):
         self.config = config or RewardConfig()
         self.best_price_seen = None
         self.initial_price = None
+        self.scale_rewards = scale_rewards
+        
+        # Track reward statistics for normalization
+        self.reward_min = -10.0  # Estimated min reward
+        self.reward_max = 10.0   # Estimated max reward
+        self.reward_mean = 0.0
+        self.reward_std = 1.0
+        self.reward_history = []
 
     def reset(self, initial_price: float):
         self.initial_price = initial_price
         self.best_price_seen = initial_price
+
+    def _scale_reward(self, reward: float) -> float:
+        """Scale reward to [-1, 1] range for stable learning."""
+        if not self.scale_rewards:
+            return reward
+        
+        # Update running statistics
+        self.reward_history.append(reward)
+        if len(self.reward_history) > 1000:
+            self.reward_history = self.reward_history[-1000:]
+        
+        if len(self.reward_history) > 10:
+            self.reward_mean = np.mean(self.reward_history)
+            self.reward_std = np.std(self.reward_history) + 1e-8
+            self.reward_min = min(self.reward_history)
+            self.reward_max = max(self.reward_history)
+        
+        # Method 1: Tanh scaling (bounded)
+        if abs(self.reward_max - self.reward_min) > 1e-8:
+            normalized = 2 * (reward - self.reward_min) / (self.reward_max - self.reward_min) - 1
+            return np.tanh(normalized)  # Ensures [-1, 1]
+        else:
+            # Method 2: Z-score normalization with clipping
+            normalized = (reward - self.reward_mean) / self.reward_std
+            return np.clip(np.tanh(normalized), -1.0, 1.0)
 
     def calculate_reward(self, action: int, current_price: float, 
                         urgency: float, time_waiting: int, done: bool = False) -> float:
@@ -49,13 +82,14 @@ class RewardCalculator:
             
             if urgency > 0.5:
                 reward -= time_waiting * self.config.time_penalty * urgency * self.config.urgency_multiplier
-            return reward
         else:  # Wait
             reward = -self.config.time_penalty * (1 + urgency * self.config.urgency_multiplier)
             if done:
                 missed = (current_price - self.best_price_seen) / self.initial_price
                 reward -= missed * self.config.missed_opportunity_penalty * 10
-            return reward
+        
+        # Scale reward to [-1, 1] range
+        return self._scale_reward(reward)
 
     def get_recommendation(self, current_price: float, predicted_prices: list, urgency: float) -> dict:
         if not predicted_prices:

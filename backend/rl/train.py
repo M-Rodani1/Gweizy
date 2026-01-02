@@ -73,7 +73,10 @@ def train_dqn(
         epsilon_decay=0.998,  # Slower decay
         buffer_size=50000,  # Larger replay buffer
         batch_size=128,  # Larger batch size
-        target_update_freq=100  # Update target network less frequently
+        target_update_freq=100,  # Update target network less frequently
+        lr_decay=0.9995,  # Learning rate decay (per training step)
+        lr_min=0.00001,  # Minimum learning rate
+        gradient_clip=10.0  # Gradient clipping threshold
     )
     
     # Training metrics

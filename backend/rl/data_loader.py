@@ -136,20 +136,41 @@ class GasDataLoader:
         return data
 
     def get_statistics(self) -> Dict:
-        """Get price statistics for normalization."""
+        """Get price statistics for normalization with enhanced metrics."""
         if self._stats:
             return self._stats
         
         if not self._cache:
             self.load_data()
         
-        prices = [d['gas_price'] for d in self._cache]
+        prices = np.array([d['gas_price'] for d in self._cache])
+        
+        # Calculate IQR (Interquartile Range) for robust scaling
+        q25 = np.percentile(prices, 25)
+        q75 = np.percentile(prices, 75)
+        iqr = q75 - q25
+        
+        # Calculate typical volatility (median of rolling volatilities)
+        if len(prices) > 24:
+            volatilities = []
+            for i in range(len(prices) - 24):
+                window = prices[i:i+24]
+                vol = np.std(window) / (np.mean(window) + 1e-8)
+                volatilities.append(vol)
+            typical_volatility = np.median(volatilities) if volatilities else np.std(prices) / (np.mean(prices) + 1e-8)
+        else:
+            typical_volatility = np.std(prices) / (np.mean(prices) + 1e-8)
+        
         self._stats = {
-            'mean': np.mean(prices),
-            'std': np.std(prices),
-            'min': np.min(prices),
-            'max': np.max(prices),
-            'median': np.median(prices)
+            'mean': float(np.mean(prices)),
+            'std': float(np.std(prices)),
+            'min': float(np.min(prices)),
+            'max': float(np.max(prices)),
+            'median': float(np.median(prices)),
+            'iqr': float(iqr),
+            'q25': float(q25),
+            'q75': float(q75),
+            'typical_volatility': float(typical_volatility)
         }
         return self._stats
 

@@ -84,17 +84,24 @@ class DQNAgent:
         epsilon_decay: float = 0.995,
         buffer_size: int = 10000,
         batch_size: int = 32,
-        target_update_freq: int = 100
+        target_update_freq: int = 100,
+        lr_decay: float = 0.9995,  # Learning rate decay factor
+        lr_min: float = 0.00001,   # Minimum learning rate
+        gradient_clip: float = 10.0  # Gradient clipping threshold
     ):
         self.state_dim = state_dim
         self.action_dim = action_dim
         self.learning_rate = learning_rate
+        self.initial_learning_rate = learning_rate  # Store initial LR for scheduling
+        self.lr_decay = lr_decay
+        self.lr_min = lr_min
         self.gamma = gamma
         self.epsilon = epsilon_start
         self.epsilon_end = epsilon_end
         self.epsilon_decay = epsilon_decay
         self.batch_size = batch_size
         self.target_update_freq = target_update_freq
+        self.gradient_clip = gradient_clip
         
         # Networks
         self.q_network = QNetwork(state_dim, action_dim, hidden_dims)
@@ -155,6 +162,9 @@ class DQNAgent:
         # Decay epsilon
         self.epsilon = max(self.epsilon_end, self.epsilon * self.epsilon_decay)
         
+        # Learning rate scheduling: decay learning rate over time
+        self.learning_rate = max(self.lr_min, self.learning_rate * self.lr_decay)
+        
         return loss
 
     def _update_network(self, states: np.ndarray, targets: np.ndarray) -> float:
@@ -181,6 +191,15 @@ class DQNAgent:
             dW = np.dot(activations[i].T, delta)
             db = np.sum(delta, axis=0)
             
+            # Gradient clipping: prevent exploding gradients
+            dW_norm = np.linalg.norm(dW)
+            if dW_norm > self.gradient_clip:
+                dW = dW * (self.gradient_clip / dW_norm)
+            
+            db_norm = np.linalg.norm(db)
+            if db_norm > self.gradient_clip:
+                db = db * (self.gradient_clip / db_norm)
+            
             # Update weights
             self.q_network.weights[i] -= self.learning_rate * dW
             self.q_network.biases[i] -= self.learning_rate * db
@@ -189,6 +208,11 @@ class DQNAgent:
                 # Backprop through ReLU
                 delta = np.dot(delta, self.q_network.weights[i].T)
                 delta = delta * (activations[i] > 0)
+                
+                # Clip delta to prevent gradient explosion
+                delta_norm = np.linalg.norm(delta)
+                if delta_norm > self.gradient_clip:
+                    delta = delta * (self.gradient_clip / delta_norm)
         
         return loss
 
@@ -206,7 +230,9 @@ class DQNAgent:
             'training_steps': self.training_steps,
             'state_dim': self.state_dim,
             'action_dim': self.action_dim,
-            'episode_rewards': self.episode_rewards
+            'episode_rewards': self.episode_rewards,
+            'learning_rate': self.learning_rate,
+            'initial_learning_rate': self.initial_learning_rate
         }
         with open(path, 'wb') as f:
             pickle.dump(data, f)
