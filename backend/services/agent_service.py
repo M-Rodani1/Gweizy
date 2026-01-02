@@ -13,14 +13,6 @@ from dataclasses import dataclass
 
 from utils.logger import logger
 
-# Check for PyTorch availability
-try:
-    import torch
-    TORCH_AVAILABLE = True
-except ImportError:
-    TORCH_AVAILABLE = False
-    logger.warning("PyTorch not available - RL agent features disabled")
-
 
 @dataclass
 class AgentRecommendation:
@@ -47,9 +39,7 @@ class AgentService:
 
     ACTION_NAMES = {
         0: 'WAIT',
-        1: 'SUBMIT_NOW',
-        2: 'SUBMIT_LOW',
-        3: 'SUBMIT_HIGH'
+        1: 'SUBMIT_NOW'
     }
 
     def __init__(self, models_dir: str = 'models/rl_agents'):
@@ -73,19 +63,21 @@ class AgentService:
 
     def _try_load_agent(self):
         """Attempt to load the trained agent"""
-        if not TORCH_AVAILABLE:
-            self.load_error = "PyTorch not available"
-            return False
-
         try:
-            from rl.agents.dqn import DQNAgent, DQNConfig
+            from rl.agents.dqn import DQNAgent
+            from rl.state import StateBuilder
 
-            # Try different model paths
+            # Try different model paths (using .pkl format, not .pt)
+            base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
             model_paths = [
-                os.path.join(self.models_dir, 'dqn_best.pt'),
-                os.path.join(self.models_dir, 'dqn_final.pt'),
-                os.path.join('backend', self.models_dir, 'dqn_best.pt'),
-                os.path.join('backend', self.models_dir, 'dqn_final.pt'),
+                os.path.join(base_dir, self.models_dir, 'dqn_best.pkl'),
+                os.path.join(base_dir, self.models_dir, 'dqn_final.pkl'),
+                os.path.join(base_dir, 'models', 'rl_agents', 'chain_8453', 'dqn_final.pkl'),
+                os.path.join(base_dir, 'models', 'rl_agents', 'chain_8453', 'dqn_best.pkl'),
+                os.path.join(base_dir, 'models', 'rl_agents', 'dqn_final.pkl'),
+                os.path.join(base_dir, 'models', 'rl_agents', 'dqn_best.pkl'),
+                os.path.join(self.models_dir, 'dqn_best.pkl'),
+                os.path.join(self.models_dir, 'dqn_final.pkl'),
             ]
 
             model_path = None
@@ -95,17 +87,18 @@ class AgentService:
                     break
 
             if model_path is None:
-                self.load_error = "No trained agent found. Train with: python -m rl.training.trainer"
+                self.load_error = "No trained agent found. Train with: python scripts/train_dqn_pipeline.py"
                 logger.warning(f"RL Agent not loaded: {self.load_error}")
                 return False
 
+            # Create state builder to get state dimension
+            state_builder = StateBuilder(history_length=24)
+            state_dim = state_builder.get_state_dim()
+
             # Create agent and load weights
-            config = DQNConfig(hidden_sizes=[128, 128, 64])
             self.agent = DQNAgent(
-                state_dim=15,
-                action_dim=4,
-                config=config,
-                device='cpu'  # Use CPU for inference
+                state_dim=state_dim,
+                action_dim=2  # WAIT or EXECUTE
             )
             self.agent.load(model_path)
             self.agent.epsilon = 0  # Disable exploration for inference
@@ -117,6 +110,8 @@ class AgentService:
         except Exception as e:
             self.load_error = str(e)
             logger.error(f"Failed to load RL agent: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
             return False
 
     def update_statistics(self, gas_prices: list):
@@ -267,22 +262,17 @@ class AgentService:
 
         # Select best action
         action_idx = int(np.argmax(q_values))
-        action_name = self.ACTION_NAMES[action_idx]
+        action_name = self.ACTION_NAMES.get(action_idx, 'WAIT')
 
         # Calculate confidence from Q-value spread
         q_range = float(np.max(q_values) - np.min(q_values))
         confidence = float(min(1.0, q_range / 2.0))  # Normalize to 0-1
 
         # Build Q-values dict
-        q_dict = {self.ACTION_NAMES[i]: float(q_values[i]) for i in range(4)}
+        q_dict = {self.ACTION_NAMES[i]: float(q_values[i]) for i in range(len(q_values))}
 
         # Calculate recommended gas price
-        if action_name == 'SUBMIT_LOW':
-            recommended_gas = float(current_gas * 0.9)
-        elif action_name == 'SUBMIT_HIGH':
-            recommended_gas = float(current_gas * 1.1)
-        else:
-            recommended_gas = float(current_gas)
+        recommended_gas = float(current_gas)
 
         # Estimate savings
         expected_savings = float(self._estimate_savings(action_name, current_gas, predictions))
@@ -329,7 +319,7 @@ class AgentService:
         return AgentRecommendation(
             action=action,
             confidence=0.5,  # Low confidence for heuristic
-            q_values={'WAIT': 0, 'SUBMIT_NOW': 0, 'SUBMIT_LOW': 0, 'SUBMIT_HIGH': 0},
+            q_values={'WAIT': 0, 'SUBMIT_NOW': 0},
             reasoning=f"[Heuristic] {reasoning}",
             recommended_gas=current_gas,
             expected_savings=0.0,
@@ -349,8 +339,6 @@ class AgentService:
             # Potential savings if predictions are lower
             savings = max(0, current_gas - pred_1h)
             return savings
-        elif action == 'SUBMIT_LOW':
-            return current_gas * 0.1  # 10% savings from low submission
         else:
             return 0.0
 
@@ -380,11 +368,6 @@ class AgentService:
             else:
                 return "Optimal submission window detected."
 
-        elif action == 'SUBMIT_LOW':
-            return f"Low-gas submission recommended at {current_gas * 0.9:.6f} gwei. ~15% failure risk."
-
-        elif action == 'SUBMIT_HIGH':
-            return f"Priority submission at {current_gas * 1.1:.6f} gwei for faster confirmation."
 
         return "Agent recommendation based on current market conditions."
 
@@ -393,7 +376,6 @@ class AgentService:
         status = {
             'loaded': self.is_loaded,
             'error': self.load_error,
-            'torch_available': TORCH_AVAILABLE,
             'statistics': {
                 'gas_mean': self.gas_mean,
                 'gas_std': self.gas_std,
@@ -402,8 +384,11 @@ class AgentService:
         }
 
         if self.is_loaded and self.agent:
-            metrics = self.agent.get_metrics()
-            status['agent_metrics'] = metrics
+            status['agent_metrics'] = {
+                'training_steps': getattr(self.agent, 'training_steps', 0),
+                'epsilon': getattr(self.agent, 'epsilon', 0),
+                'episode_rewards_count': len(getattr(self.agent, 'episode_rewards', []))
+            }
 
         return status
 
