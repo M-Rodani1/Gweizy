@@ -91,6 +91,13 @@ class AccuracyTracker:
             drift_threshold: % increase in MAE to trigger drift alert
             baseline_window: Number of predictions for baseline accuracy
         """
+        # Use persistent storage on Railway, fallback to local
+        if db_path is None:
+            if os.path.exists('/data'):
+                db_path = '/data/models/accuracy_tracking.db'
+            else:
+                db_path = 'models/saved_models/accuracy_tracking.db'
+        
         self.db_path = db_path
         self.window_size = window_size
         self.drift_threshold = drift_threshold
@@ -660,10 +667,15 @@ _tracker: Optional[AccuracyTracker] = None
 
 
 def get_tracker() -> AccuracyTracker:
-    """Get or create the global accuracy tracker."""
+    """Get or create the global accuracy tracker with persistent storage."""
     global _tracker
     if _tracker is None:
-        _tracker = AccuracyTracker()
+        # Use persistent storage on Railway
+        if os.path.exists('/data'):
+            db_path = '/data/models/accuracy_tracking.db'
+        else:
+            db_path = 'models/saved_models/accuracy_tracking.db'
+        _tracker = AccuracyTracker(db_path=db_path)
     return _tracker
 
 
