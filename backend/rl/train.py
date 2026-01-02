@@ -40,19 +40,26 @@ def train_dqn(
         chain_id: Chain ID (8453=Base, 1=Ethereum, etc.)
     """
     # Create chain-specific save paths
+    # Use persistent storage on Railway, fallback to local
     if save_path is None:
-        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        save_path = os.path.join(
-            base_dir,
-            'models', 'rl_agents', f'chain_{chain_id}', 'dqn_final.pkl'
-        )
+        if os.path.exists('/data'):
+            save_path = os.path.join('/data', 'models', 'rl_agents', f'chain_{chain_id}', 'dqn_final.pkl')
+        else:
+            base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            save_path = os.path.join(
+                base_dir,
+                'models', 'rl_agents', f'chain_{chain_id}', 'dqn_final.pkl'
+            )
     
     if checkpoint_dir is None:
-        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        checkpoint_dir = os.path.join(
-            base_dir,
-            'models', 'rl_agents', f'chain_{chain_id}'
-        )
+        if os.path.exists('/data'):
+            checkpoint_dir = os.path.join('/data', 'models', 'rl_agents', f'chain_{chain_id}')
+        else:
+            base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            checkpoint_dir = os.path.join(
+                base_dir,
+                'models', 'rl_agents', f'chain_{chain_id}'
+            )
     
     os.makedirs(os.path.dirname(save_path), exist_ok=True)
     os.makedirs(checkpoint_dir, exist_ok=True)
