@@ -78,12 +78,6 @@ class AccuracyTracker:
         drift_threshold: float = 0.25,  # 25% increase in error = drift
         baseline_window: int = 500
     ):
-        # Use persistent storage on Railway, fallback to local
-        if db_path is None:
-            if os.path.exists('/data'):
-                db_path = '/data/models/accuracy_tracking.db'
-            else:
-                db_path = 'models/saved_models/accuracy_tracking.db'
         """
         Args:
             db_path: Path to SQLite database for persistence
@@ -91,6 +85,12 @@ class AccuracyTracker:
             drift_threshold: % increase in MAE to trigger drift alert
             baseline_window: Number of predictions for baseline accuracy
         """
+        # Use persistent storage on Railway, fallback to local
+        if db_path is None:
+            if os.path.exists('/data'):
+                db_path = '/data/models/accuracy_tracking.db'
+            else:
+                db_path = 'models/saved_models/accuracy_tracking.db'
         # Use persistent storage on Railway, fallback to local
         if db_path is None:
             if os.path.exists('/data'):
