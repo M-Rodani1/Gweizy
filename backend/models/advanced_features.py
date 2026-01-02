@@ -68,12 +68,17 @@ def create_advanced_features(df):
     # 3. ROLLING STATISTICS (Trends and volatility)
     # ===================================================================
     
-    # Moving averages (different windows)
+    # Moving averages (different windows) - using pd.concat to avoid fragmentation
+    rolling_features = []
     for window in [12, 24, 48, 72, 144, 288]:  # 1hr to 1 day
-        df[f'ma_{window}'] = df['gas_price'].rolling(window=window, min_periods=1).mean()
-        df[f'std_{window}'] = df['gas_price'].rolling(window=window, min_periods=1).std()
-        df[f'min_{window}'] = df['gas_price'].rolling(window=window, min_periods=1).min()
-        df[f'max_{window}'] = df['gas_price'].rolling(window=window, min_periods=1).max()
+        rolling_features.append(pd.DataFrame({
+            f'ma_{window}': df['gas_price'].rolling(window=window, min_periods=1).mean(),
+            f'std_{window}': df['gas_price'].rolling(window=window, min_periods=1).std(),
+            f'min_{window}': df['gas_price'].rolling(window=window, min_periods=1).min(),
+            f'max_{window}': df['gas_price'].rolling(window=window, min_periods=1).max()
+        }))
+    if rolling_features:
+        df = pd.concat([df] + rolling_features, axis=1)
     
     # Exponential moving averages (more weight on recent data)
     for span in [12, 24, 72, 288]:
@@ -104,18 +109,28 @@ def create_advanced_features(df):
     # 5. VOLATILITY FEATURES (Price stability/instability)
     # ===================================================================
     
-    # Coefficient of variation (volatility relative to mean)
+    # Coefficient of variation (volatility relative to mean) - using pd.concat
+    cv_features = []
     for window in [12, 24, 72]:
         mean = df['gas_price'].rolling(window, min_periods=1).mean()
         std = df['gas_price'].rolling(window, min_periods=1).std()
-        df[f'cv_{window}'] = std / mean.replace(0, np.nan)
+        cv_features.append(pd.DataFrame({
+            f'cv_{window}': std / mean.replace(0, np.nan)
+        }))
+    if cv_features:
+        df = pd.concat([df] + cv_features, axis=1)
     
-    # Range (max - min)
+    # Range (max - min) - using pd.concat
+    range_features = []
     for window in [12, 24, 72]:
-        df[f'range_{window}'] = (
-            df['gas_price'].rolling(window, min_periods=1).max() - 
-            df['gas_price'].rolling(window, min_periods=1).min()
-        )
+        range_features.append(pd.DataFrame({
+            f'range_{window}': (
+                df['gas_price'].rolling(window, min_periods=1).max() - 
+                df['gas_price'].rolling(window, min_periods=1).min()
+            )
+        }))
+    if range_features:
+        df = pd.concat([df] + range_features, axis=1)
     
     # ===================================================================
     # 6. MOMENTUM INDICATORS (Trading-inspired features)
@@ -139,16 +154,23 @@ def create_advanced_features(df):
     df['macd_signal'] = df['macd'].ewm(span=9, adjust=False).mean()
     df['macd_diff'] = df['macd'] - df['macd_signal']
     
-    # Bollinger Bands
+    # Bollinger Bands - using pd.concat to avoid fragmentation
+    bb_features = []
     for window in [24, 72]:
         ma = df['gas_price'].rolling(window, min_periods=1).mean()
         std = df['gas_price'].rolling(window, min_periods=1).std()
-        df[f'bb_upper_{window}'] = ma + (2 * std)
-        df[f'bb_lower_{window}'] = ma - (2 * std)
-        df[f'bb_width_{window}'] = (df[f'bb_upper_{window}'] - df[f'bb_lower_{window}']) / ma.replace(0, np.nan)
-        df[f'bb_position_{window}'] = (df['gas_price'] - df[f'bb_lower_{window}']) / (
-            (df[f'bb_upper_{window}'] - df[f'bb_lower_{window}']).replace(0, np.nan)
-        )
+        bb_upper = ma + (2 * std)
+        bb_lower = ma - (2 * std)
+        bb_width = (bb_upper - bb_lower) / ma.replace(0, np.nan)
+        bb_position = (df['gas_price'] - bb_lower) / ((bb_upper - bb_lower).replace(0, np.nan))
+        bb_features.append(pd.DataFrame({
+            f'bb_upper_{window}': bb_upper,
+            f'bb_lower_{window}': bb_lower,
+            f'bb_width_{window}': bb_width,
+            f'bb_position_{window}': bb_position
+        }))
+    if bb_features:
+        df = pd.concat([df] + bb_features, axis=1)
     
     # ===================================================================
     # 7. INTERACTION FEATURES (Combinations that capture complex patterns)
@@ -173,17 +195,27 @@ def create_advanced_features(df):
         df[f'skew_{window}'] = df['gas_price'].rolling(window, min_periods=1).skew()
         df[f'kurt_{window}'] = df['gas_price'].rolling(window, min_periods=1).kurt()
     
-    # Percentiles
+    # Percentiles (using pd.concat to avoid fragmentation)
+    percentile_features = []
     for window in [24, 72]:
-        df[f'q25_{window}'] = df['gas_price'].rolling(window, min_periods=1).quantile(0.25)
-        df[f'q50_{window}'] = df['gas_price'].rolling(window, min_periods=1).quantile(0.50)
-        df[f'q75_{window}'] = df['gas_price'].rolling(window, min_periods=1).quantile(0.75)
+        percentile_features.append(pd.DataFrame({
+            f'q25_{window}': df['gas_price'].rolling(window, min_periods=1).quantile(0.25),
+            f'q50_{window}': df['gas_price'].rolling(window, min_periods=1).quantile(0.50),
+            f'q75_{window}': df['gas_price'].rolling(window, min_periods=1).quantile(0.75)
+        }))
+    if percentile_features:
+        df = pd.concat([df] + percentile_features, axis=1)
     
-    # Distance from moving average (how far from "normal")
+    # Distance from moving average (how far from "normal") - using pd.concat
+    ma_features = []
     for window in [24, 72]:
         ma = df['gas_price'].rolling(window, min_periods=1).mean()
-        df[f'dist_from_ma_{window}'] = df['gas_price'] - ma
-        df[f'dist_from_ma_pct_{window}'] = (df['gas_price'] - ma) / ma.replace(0, np.nan)
+        ma_features.append(pd.DataFrame({
+            f'dist_from_ma_{window}': df['gas_price'] - ma,
+            f'dist_from_ma_pct_{window}': (df['gas_price'] - ma) / ma.replace(0, np.nan)
+        }))
+    if ma_features:
+        df = pd.concat([df] + ma_features, axis=1)
     
     # ===================================================================
     # 9. AUTOCORRELATION FEATURES (How much current price predicts future)

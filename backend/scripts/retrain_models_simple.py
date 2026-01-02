@@ -88,14 +88,18 @@ def fetch_training_data(hours=720):
 
 def prepare_features(data):
     """Prepare features using the same pipeline as production"""
-    print("\n📊 Creating features (same as production)...", flush=True)
-    print(f"   Input records: {len(data):,}", flush=True)
+    def print_flush(*args, **kwargs):
+        kwargs.setdefault('flush', True)
+        print(*args, **kwargs)
+    
+    print_flush("\n📊 Creating features (same as production)...")
+    print_flush(f"   Input records: {len(data):,}")
 
     df = normalize_gas_dataframe(data)
     
-    print(f"   After normalization: {len(df):,} records", flush=True)
-    print(f"   Data range: {df['timestamp'].min()} to {df['timestamp'].max()}", flush=True)
-    print(f"   Gas price range: {df['gas_price'].min():.6f} to {df['gas_price'].max():.6f} gwei", flush=True)
+    print_flush(f"   After normalization: {len(df):,} records")
+    print_flush(f"   Data range: {df['timestamp'].min()} to {df['timestamp'].max()}")
+    print_flush(f"   Gas price range: {df['gas_price'].min():.6f} to {df['gas_price'].max():.6f} gwei")
 
     # IMPROVEMENT 1: Outlier Detection and Filtering
     # Use IQR method to identify extreme outliers
@@ -111,39 +115,46 @@ def prepare_features(data):
     outlier_count = outliers.sum()
 
     if outlier_count > 0:
-        print(f"   Found {outlier_count} extreme outliers (>{upper_bound:.4f} or <{lower_bound:.4f} gwei)")
-        print(f"   Median: {df['gas_price'].median():.6f}, Q1: {Q1:.6f}, Q3: {Q3:.6f}")
+        print_flush(f"   ⚠️  Outlier Analysis:")
+        print_flush(f"      Total outliers: {outlier_count:,} ({outlier_count/len(df)*100:.1f}%)")
+        below_count = (df['gas_price'] < lower_bound).sum()
+        above_count = (df['gas_price'] > upper_bound).sum()
+        print_flush(f"      Below {lower_bound:.6f}: {below_count:,}")
+        print_flush(f"      Above {upper_bound:.6f}: {above_count:,}")
+        print_flush(f"      Max outlier: {df['gas_price'].max():.6f} gwei")
+        print_flush(f"      Min outlier: {df['gas_price'].min():.6f} gwei")
+        print_flush(f"      Median: {df['gas_price'].median():.6f}, Q1: {Q1:.6f}, Q3: {Q3:.6f}")
 
         # Cap outliers instead of removing them (preserve time series continuity)
         df.loc[df['gas_price'] > upper_bound, 'gas_price'] = upper_bound
         df.loc[df['gas_price'] < lower_bound, 'gas_price'] = lower_bound
 
-        print(f"   Capped extreme outliers to bounds: [{lower_bound:.4f}, {upper_bound:.4f}]")
+        print_flush(f"      Capped extreme outliers to bounds: [{lower_bound:.6f}, {upper_bound:.6f}]")
 
     # Build features using shared pipeline
     X, feature_meta, df = build_feature_matrix(df, include_external_features=True)
     
-    print(f"   After feature engineering: {len(X):,} samples, {X.shape[1]} features", flush=True)
+    print_flush(f"   After feature engineering: {len(X):,} samples, {X.shape[1]} features")
     
     # Check for NaN values before processing
     nan_counts = X.isna().sum()
     nan_rows = X.isna().any(axis=1).sum()
     if nan_rows > 0:
-        print(f"   ⚠️  Found {nan_rows:,} rows with NaN values ({nan_rows/len(X)*100:.1f}%)", flush=True)
+        print_flush(f"   ⚠️  Found {nan_rows:,} rows with NaN values ({nan_rows/len(X)*100:.1f}%)")
         nan_features = nan_counts[nan_counts > 0]
         if len(nan_features) > 0:
-            print(f"   ⚠️  Features with NaN: {len(nan_features)} features", flush=True)
+            print_flush(f"   ⚠️  Features with NaN: {len(nan_features)} features")
             top_nan = nan_features.nlargest(5)
             for feat, count in top_nan.items():
-                print(f"      - {feat}: {count:,} NaN ({count/len(X)*100:.1f}%)", flush=True)
+                print_flush(f"      - {feat}: {count:,} NaN ({count/len(X)*100:.1f}%)")
 
     # Log-scale transformation for better handling of wide ranges
     epsilon = 1e-8
     y = np.log(df['gas_price'] + epsilon)
 
-    print(f"✅ Created {X.shape[1]} features from {len(df):,} records", flush=True)
+    print_flush(f"✅ Created {X.shape[1]} features from {len(df):,} records")
     if feature_meta.get('sample_rate_minutes'):
-        print(f"   Detected sample rate: {feature_meta['sample_rate_minutes']:.2f} minutes", flush=True)
+        print_flush(f"   Detected sample rate: {feature_meta['sample_rate_minutes']:.2f} minutes")
 
     steps_per_hour = feature_meta.get('steps_per_hour', 12)
 
@@ -155,7 +166,7 @@ def prepare_features(data):
         target_log = targets_log[horizon]
         target_orig = targets_original[horizon]
         valid_targets = (~target_log.isna() & ~target_orig.isna()).sum()
-        print(f"   {horizon} horizon: {valid_targets:,} valid targets ({valid_targets/len(target_log)*100:.1f}%)", flush=True)
+        print_flush(f"   {horizon} horizon: {valid_targets:,} valid targets ({valid_targets/len(target_log)*100:.1f}%)")
 
     return (
         X,
@@ -256,9 +267,28 @@ def train_model(X, y_tuple, horizon, min_samples=100, feature_meta=None, use_fea
     print_flush(f"      Total used: {len(X_clean):,} samples")
     
     # Log target statistics
+    y_original_train = y_original_clean.iloc[:split_idx]
     print_flush(f"\n   📈 Target Statistics (original scale):")
-    print_flush(f"      Train - Min: {y_original_clean.iloc[:split_idx].min():.6f}, Max: {y_original_clean.iloc[:split_idx].max():.6f}, Median: {y_original_clean.iloc[:split_idx].median():.6f} gwei")
+    print_flush(f"      Train - Min: {y_original_train.min():.6f}, Max: {y_original_train.max():.6f}, Median: {y_original_train.median():.6f} gwei")
     print_flush(f"      Test  - Min: {y_original_test.min():.6f}, Max: {y_original_test.max():.6f}, Median: {y_original_test.median():.6f} gwei")
+    
+    # Distribution shift detection
+    train_median = y_original_train.median()
+    test_median = y_original_test.median()
+    train_std = y_original_train.std()
+    test_std = y_original_test.std()
+    median_shift_pct = ((test_median - train_median) / train_median * 100) if train_median > 0 else 0
+    std_shift_pct = ((test_std - train_std) / train_std * 100) if train_std > 0 else 0
+    
+    print_flush(f"\n   📊 Distribution Shift Check:")
+    print_flush(f"      Train median: {train_median:.6f}, std: {train_std:.6f}")
+    print_flush(f"      Test median: {test_median:.6f}, std: {test_std:.6f}")
+    print_flush(f"      Median shift: {median_shift_pct:+.1f}%")
+    print_flush(f"      Std shift: {std_shift_pct:+.1f}%")
+    if abs(median_shift_pct) > 10:
+        print_flush(f"      ⚠️  WARNING: Significant distribution shift detected (>10%)")
+    elif abs(median_shift_pct) > 5:
+        print_flush(f"      ⚠️  Note: Moderate distribution shift detected (5-10%)")
 
     # Train Random Forest model on log-scale targets
     search = None
@@ -349,15 +379,33 @@ def train_model(X, y_tuple, horizon, min_samples=100, feature_meta=None, use_fea
     print_flush(f"   Median Actual: {median_actual:.6f} gwei")
     print_flush(f"   Median Predicted: {median_pred:.6f} gwei")
 
-    # Feature importance analysis
+    # Feature importance analysis (enhanced logging)
     feature_names = list(X_clean.columns)
     importances = model.feature_importances_
     indices = np.argsort(importances)[::-1]
 
-    print_flush(f"\n📈 Top 10 Most Important Features:")
+    print_flush(f"\n📈 Model Feature Importance Analysis:")
+    print_flush(f"   Total features used: {len(feature_names)}")
+    print_flush(f"   Top 10 Most Important Features:")
     for i in range(min(10, len(feature_names))):
         idx = indices[i]
-        print_flush(f"   {i+1}. {feature_names[idx]}: {importances[idx]:.4f}")
+        importance_pct = (importances[idx] / importances.sum() * 100) if importances.sum() > 0 else 0
+        print_flush(f"      {i+1}. {feature_names[idx]}: {importances[idx]:.6f} ({importance_pct:.1f}% of total)")
+    
+    # Log cumulative importance
+    top_10_importance = importances[indices[:10]].sum()
+    top_10_pct = (top_10_importance / importances.sum() * 100) if importances.sum() > 0 else 0
+    print_flush(f"   Top 10 features account for {top_10_pct:.1f}% of total importance")
+    
+    # Log least important features (potential candidates for removal)
+    if len(feature_names) > 10:
+        bottom_5_importance = importances[indices[-5:]].sum()
+        bottom_5_pct = (bottom_5_importance / importances.sum() * 100) if importances.sum() > 0 else 0
+        print_flush(f"   Bottom 5 features account for {bottom_5_pct:.1f}% of total importance")
+        print_flush(f"   Least important features:")
+        for i in range(max(0, len(feature_names) - 5), len(feature_names)):
+            idx = indices[i]
+            print_flush(f"      - {feature_names[idx]}: {importances[idx]:.6f}")
 
     # Store best hyperparameters if tuning was used
     best_params = search.best_params_ if USE_HYPERPARAMETER_TUNING and len(X_train) >= 1000 else None
