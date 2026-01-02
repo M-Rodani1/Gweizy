@@ -202,6 +202,56 @@ def create_app():
 
 app = create_app()
 
+# Check if we should train models on startup
+TRAIN_MODELS_ON_STARTUP = os.getenv('TRAIN_MODELS', 'false').lower() == 'true'
+if TRAIN_MODELS_ON_STARTUP:
+    logger.info("="*60)
+    logger.info("🚀 TRAIN_MODELS=true detected - Starting model training on startup")
+    logger.info("="*60)
+    
+    def train_models_on_startup():
+        """Train models in background thread on startup"""
+        try:
+            import subprocess
+            import sys
+            import time
+            
+            # Wait a bit for database to be ready
+            time.sleep(10)
+            
+            logger.info("Starting model training...")
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            script_path = os.path.join(current_dir, "scripts", "retrain_models_simple.py")
+            
+            if os.path.exists(script_path):
+                logger.info(f"Running training script: {script_path}")
+                result = subprocess.run(
+                    [sys.executable, script_path],
+                    capture_output=True,
+                    text=True,
+                    timeout=600,  # 10 minute timeout
+                    cwd=current_dir
+                )
+                
+                if result.returncode == 0:
+                    logger.info("✅ Model training completed successfully on startup")
+                    logger.info(f"Output: {result.stdout[:500]}...")
+                else:
+                    logger.error(f"❌ Model training failed: {result.stderr[:500]}")
+            else:
+                logger.warning(f"Training script not found: {script_path}")
+        except Exception as e:
+            logger.error(f"Error during startup training: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
+    
+    # Start training in background thread
+    training_thread = threading.Thread(target=train_models_on_startup, name="StartupModelTraining", daemon=True)
+    training_thread.start()
+    logger.info("✓ Model training thread started (running in background)")
+else:
+    logger.info("TRAIN_MODELS not set or false - skipping startup training")
+
 # Initialize SocketIO for WebSocket support (if available)
 if SOCKETIO_AVAILABLE:
     socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
