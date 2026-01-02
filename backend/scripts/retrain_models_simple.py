@@ -117,6 +117,20 @@ def prepare_features(data):
 
 
 def train_model(X, y_tuple, horizon, min_samples=100, feature_meta=None, use_feature_selection=True):
+    import sys
+    # Force immediate output flushing for Railway logs
+    sys.stdout.flush()
+    sys.stderr.flush()
+    
+    # Monkey-patch print to always flush
+    original_print = print
+    def print_flush(*args, **kwargs):
+        kwargs.setdefault('flush', True)
+        original_print(*args, **kwargs)
+    
+    # Use flushed print for this function
+    global print
+    print = print_flush
     """
     Train a single model for given horizon
 
@@ -128,7 +142,7 @@ def train_model(X, y_tuple, horizon, min_samples=100, feature_meta=None, use_fea
         use_feature_selection: Whether to use SHAP feature selection
     """
     print(f"\n{'='*60}")
-    print(f"🎯 Training model for {horizon} horizon")
+    print(f"🎯 Training model for {horizon} horizon", flush=True)
     print(f"{'='*60}")
 
     y_log, y_original = y_tuple
@@ -354,9 +368,14 @@ def save_model(model_data, horizon, output_dir=None):
 
 
 def main():
-    print("="*70)
-    print("🎯 Simple Model Retraining")
-    print("="*70)
+    import sys
+    # Force unbuffered output for Railway logs
+    sys.stdout.reconfigure(line_buffering=True)
+    sys.stderr.reconfigure(line_buffering=True)
+    
+    print("="*70, flush=True)
+    print("🎯 Simple Model Retraining", flush=True)
+    print("="*70, flush=True)
 
     if IS_RAILWAY:
         print("🚂 Railway environment detected - using memory-efficient settings")
@@ -372,6 +391,9 @@ def main():
         # Step 3: Train models for each horizon
         results = {}
         for horizon, y in [('1h', y_1h), ('4h', y_4h), ('24h', y_24h)]:
+            print(f"\n{'='*70}", flush=True)
+            print(f"🚀 Starting training for {horizon} horizon", flush=True)
+            print(f"{'='*70}\n", flush=True)
             model_data = train_model(X, y, horizon, feature_meta=feature_meta)
             if model_data:
                 results[horizon] = model_data
