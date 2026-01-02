@@ -17,6 +17,7 @@ from datetime import datetime, timedelta
 import traceback
 import numpy as np
 import threading
+import os
 
 
 api_bp = Blueprint('api', __name__)
@@ -441,8 +442,31 @@ def get_predictions():
         multichain_collector = MultiChainGasCollector()
         current = multichain_collector.get_current_gas(chain_id)
         
-        if not current:
-            return jsonify({'error': f'Failed to fetch gas for chain {chain_id}'}), 500
+        # If we can't get current gas, try to get a fallback value from recent data
+        if not current or not current.get('current_gas'):
+            logger.warning(f"Could not fetch current gas for chain {chain_id}, using fallback from recent data")
+            # Try to get a recent gas price from the database as fallback
+            recent_data = db.get_historical_data(hours=1, chain_id=chain_id)
+            if recent_data and len(recent_data) > 0:
+                # Get the most recent entry
+                fallback_gas = recent_data[-1].get('gwei') or recent_data[-1].get('current_gas', 0.01)
+                current = {
+                    'chain_id': chain_id,
+                    'current_gas': fallback_gas,
+                    'base_fee': fallback_gas * 0.9,
+                    'priority_fee': fallback_gas * 0.1,
+                    'timestamp': datetime.now().isoformat()
+                }
+            else:
+                # Last resort: use a default value
+                current = {
+                    'chain_id': chain_id,
+                    'current_gas': 0.01,  # Default 0.01 gwei
+                    'base_fee': 0.009,
+                    'priority_fee': 0.001,
+                    'timestamp': datetime.now().isoformat()
+                }
+                logger.warning(f"Using default gas value for chain {chain_id}")
 
         # Try hybrid predictor first (spike detection + classification)
         try:
