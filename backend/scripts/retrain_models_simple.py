@@ -311,7 +311,7 @@ def train_model(X, y_tuple, horizon, min_samples=100, feature_meta=None, use_fea
     }
 
 
-def save_model(model_data, horizon, output_dir=None):
+def save_model(model_data, horizon, output_dir=None, training_samples=None):
     """Save trained model to persistent storage"""
     if output_dir is None:
         # Use persistent storage on Railway, fallback to local
@@ -359,7 +359,30 @@ def save_model(model_data, horizon, output_dir=None):
             f.write(f"{feat}\n")
     print(f"💾 Saved feature names to {feature_names_path}", flush=True)
 
-    return True
+    # Register model with ModelRegistry
+    try:
+        from models.model_registry import get_registry
+        registry = get_registry()
+        registry.register_model(
+            horizon=horizon,
+            model_path=filepath,
+            metrics=model_data['metrics'],
+            metadata={
+                'model_name': save_data['model_name'],
+                'feature_count': len(model_data['feature_names']),
+                'uses_feature_selection': model_data.get('feature_selector') is not None,
+                'hyperparameter_tuning': USE_HYPERPARAMETER_TUNING,
+                'best_params': model_data.get('best_params'),
+                'training_samples': training_samples,
+                'scaler_path': scaler_path,
+                'feature_selector_path': os.path.join(output_dir, 'feature_selector.pkl') if model_data.get('feature_selector') else None
+            }
+        )
+        print(f"✅ Registered model version for {horizon}", flush=True)
+    except Exception as e:
+        print(f"⚠️ Failed to register model version: {e}", flush=True)
+
+    return filepath  # Return the model path instead of True
 
 
 def main():
@@ -399,26 +422,8 @@ def main():
             model_data = train_model(X, y, horizon, feature_meta=feature_meta)
             if model_data:
                 results[horizon] = model_data
-                model_path = save_model(model_data, horizon)
-                
-                # Register model version
-                if registry and model_path:
-                    try:
-                        version = registry.register_model(
-                            horizon=horizon,
-                            model_path=model_path,
-                            metrics=model_data['metrics'],
-                            metadata={
-                                'feature_count': len(model_data['feature_names']),
-                                'uses_feature_selection': model_data.get('feature_selector') is not None,
-                                'hyperparameter_tuning': USE_HYPERPARAMETER_TUNING,
-                                'best_params': model_data.get('best_params'),
-                                'training_samples': len(X)
-                            }
-                        )
-                        print(f"✅ Registered model version: {version}", flush=True)
-                    except Exception as e:
-                        print(f"⚠️ Failed to register model version: {e}", flush=True)
+                model_path = save_model(model_data, horizon, training_samples=len(X))
+                # Model registration is now handled inside save_model()
 
         if not results:
             print("\n❌ No models were trained successfully")
