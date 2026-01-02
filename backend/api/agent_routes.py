@@ -57,12 +57,12 @@ def get_dqn_agent():
     return _dqn_agent
 
 
-@agent_bp.route('/recommend', methods=['POST'])
+@agent_bp.route('/recommend', methods=['GET', 'POST'])
 def get_recommendation():
     """
     Get AI recommendation for transaction timing.
-    
-    Request body:
+
+    GET params or POST body:
         {
             "tx_type": "swap",  # Transaction type
             "gas_amount": 150000,  # Gas units
@@ -70,7 +70,7 @@ def get_recommendation():
             "current_gas": 0.001,  # Current gas price (optional)
             "price_history": [...]  # Recent prices (optional)
         }
-    
+
     Returns:
         {
             "recommendation": "wait" | "execute",
@@ -82,7 +82,16 @@ def get_recommendation():
         }
     """
     try:
-        data = request.get_json() or {}
+        # Support both GET params and POST body
+        if request.method == 'GET':
+            data = {
+                'tx_type': request.args.get('tx_type', 'swap'),
+                'gas_amount': request.args.get('gas_amount', 150000, type=int),
+                'urgency': request.args.get('urgency', 0.5, type=float),
+                'current_gas': request.args.get('current_gas', type=float)
+            }
+        else:
+            data = request.get_json() or {}
         
         tx_type = data.get('tx_type', 'swap')
         gas_amount = data.get('gas_amount', 150000)
