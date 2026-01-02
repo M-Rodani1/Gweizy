@@ -3,7 +3,7 @@
  * Provides instant global access with optimized cache strategy and keep-alive
  */
 
-const BACKEND_API = 'https://basegasfeesml.onrender.com/api';
+const BACKEND_API = 'https://basegasfeesml-production.up.railway.app/api';
 
 // Optimized cache durations - longer times to reduce Render hits
 const CACHE_DURATIONS = {
@@ -183,7 +183,7 @@ export default {
 
     console.log(`[CRON] Triggered at ${cronTime.toISOString()}`);
 
-    // Every 10 minutes: Keep Render backend alive
+    // Every 10 minutes: Keep Railway backend alive
     if (minute % 10 === 0) {
       console.log('[CRON] Running keep-alive ping');
       ctx.waitUntil(keepRenderAlive(env, true));
@@ -210,7 +210,7 @@ export default {
 };
 
 /**
- * Keep Render backend alive by pinging health endpoint
+ * Keep Railway backend alive by pinging health endpoint
  */
 async function keepRenderAlive(env, force = false) {
   const now = Date.now();
