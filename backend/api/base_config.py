@@ -63,7 +63,7 @@ def get_base_config():
                     "action": "post"
                 }
             ],
-            "post_url": "https://base-gas-optimizer-api.onrender.com/api/frame"
+            "post_url": "https://basegasfeesml-production.up.railway.app/api/frame"
         },
         
         # Developer info

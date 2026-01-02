@@ -3,7 +3,7 @@
  * All API endpoints and configuration in one place
  */
 
-const DEFAULT_API_BASE_URL = 'https://basegasfeesml.onrender.com/api';
+const DEFAULT_API_BASE_URL = 'https://basegasfeesml-production.up.railway.app/api';
 
 function normalizeApiBaseUrl(url: string): string {
   const trimmed = url.replace(/\/+$/, '');

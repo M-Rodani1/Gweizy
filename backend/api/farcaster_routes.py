@@ -62,15 +62,15 @@ def farcaster_frame():
 <html>
 <head>
     <meta property="fc:frame" content="vNext" />
-    <meta property="fc:frame:image" content="https://basegasfeesml.onrender.com/api/frame/image" />
+    <meta property="fc:frame:image" content="https://basegasfeesml-production.up.railway.app/api/frame/image" />
     <meta property="fc:frame:button:1" content="Check Gas Price" />
     <meta property="fc:frame:button:2" content="Get Predictions" />
     <meta property="fc:frame:button:1:action" content="post" />
     <meta property="fc:frame:button:2:action" content="post" />
-    <meta property="fc:frame:post_url" content="https://basegasfeesml.onrender.com/api/frame" />
+    <meta property="fc:frame:post_url" content="https://basegasfeesml-production.up.railway.app/api/frame" />
     <meta property="og:title" content="Base Gas Optimizer" />
     <meta property="og:description" content="Current gas: {gas_price:.6f} Gwei {emoji} {level}" />
-    <meta property="og:image" content="https://basegasfeesml.onrender.com/api/frame/image" />
+    <meta property="og:image" content="https://basegasfeesml-production.up.railway.app/api/frame/image" />
     <title>Base Gas Optimizer</title>
 </head>
 <body>
@@ -111,7 +111,7 @@ def generate_predictions_frame():
 <html>
 <head>
     <meta property="fc:frame" content="vNext" />
-    <meta property="fc:frame:image" content="https://basegasfeesml.onrender.com/api/frame/predictions-image" />
+    <meta property="fc:frame:image" content="https://basegasfeesml-production.up.railway.app/api/frame/predictions-image" />
     <meta property="fc:frame:button:1" content="View Details" />
     <meta property="fc:frame:button:1:action" content="link" />
     <meta property="fc:frame:button:1:target" content="https://basegasfeesml.netlify.app/app" />
