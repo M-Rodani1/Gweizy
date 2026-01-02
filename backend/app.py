@@ -89,7 +89,7 @@ def create_app():
     app.register_blueprint(cron_bp, url_prefix='/api')
     app.register_blueprint(analytics_bp, url_prefix='/api/analytics')
     app.register_blueprint(alert_bp, url_prefix='/api')
-    app.register_blueprint(agent_bp, url_prefix='/api')
+    app.register_blueprint(agent_bp, url_prefix='/api/agent')
     app.register_blueprint(multichain_bp, url_prefix='/api')
     app.register_blueprint(accuracy_bp, url_prefix='/api/accuracy')
     app.register_blueprint(personalization_bp, url_prefix='/api')
