@@ -1093,35 +1093,94 @@ def get_user_history(address):
 @api_bp.route('/leaderboard', methods=['GET'])
 @cached(ttl=300)  # Cache for 5 minutes
 def get_leaderboard():
-    """Get savings leaderboard"""
+    """Get savings leaderboard from real user transaction data"""
     try:
-        # This would normally fetch from a database of user savings
-        # For now, return mock data
-        leaderboard = [
-            {'address': '0x1234567890123456789012345678901234567890', 'savings': 12.45, 'rank': 1, 'streak': 7},
-            {'address': '0x8765432109876543210987654321098765432109', 'savings': 8.90, 'rank': 2, 'streak': 5},
-            {'address': '0xabcdefabcdefabcdefabcdefabcdefabcdefabcd', 'savings': 6.78, 'rank': 3, 'streak': 3},
-            {'address': '0x9876543210987654321098765432109876543210', 'savings': 5.23, 'rank': 4, 'streak': 2},
-            {'address': '0xfedcba0987654321fedcba0987654321fedcba09', 'savings': 4.56, 'rank': 5, 'streak': 1},
-        ]
+        from data.database import UserTransaction
+        from sqlalchemy import func
         
-        # Get user rank if address provided
-        user_address = request.args.get('address')
-        user_rank = None
-        if user_address:
-            # Find user in leaderboard
-            user_entry = next((e for e in leaderboard if e['address'].lower() == user_address.lower()), None)
-            if user_entry:
-                user_rank = user_entry['rank']
+        chain_id = request.args.get('chain_id', type=int, default=8453)
+        period = request.args.get('period', 'week')  # week, month, all
+        
+        session = db._get_session()
+        try:
+            # Calculate date filter based on period
+            from datetime import datetime, timedelta
+            if period == 'week':
+                cutoff_date = datetime.now() - timedelta(days=7)
+            elif period == 'month':
+                cutoff_date = datetime.now() - timedelta(days=30)
             else:
-                # User not in top 5, assign rank 47 as example
-                user_rank = 47
-        
-        return jsonify({
-            'leaderboard': leaderboard,
-            'user_rank': user_rank,
-            'period': 'week'
-        })
+                cutoff_date = datetime.min  # All time
+            
+            # Get user savings aggregated from transactions
+            user_savings = session.query(
+                UserTransaction.user_address,
+                func.sum(UserTransaction.saved_by_waiting).label('total_savings'),
+                func.count(UserTransaction.id).label('transaction_count')
+            ).filter(
+                UserTransaction.chain_id == chain_id,
+                UserTransaction.status == 'success',
+                UserTransaction.saved_by_waiting.isnot(None),
+                UserTransaction.saved_by_waiting > 0,
+                UserTransaction.timestamp >= cutoff_date
+            ).group_by(
+                UserTransaction.user_address
+            ).order_by(
+                func.sum(UserTransaction.saved_by_waiting).desc()
+            ).limit(100).all()
+            
+            # Build leaderboard
+            leaderboard = []
+            for rank, (address, total_savings, tx_count) in enumerate(user_savings, 1):
+                leaderboard.append({
+                    'address': address,
+                    'savings': round(float(total_savings or 0), 2),
+                    'rank': rank,
+                    'transaction_count': tx_count
+                })
+            
+            # Get user rank if address provided
+            user_address = request.args.get('address')
+            user_rank = None
+            if user_address:
+                user_address_lower = user_address.lower()
+                # Find user in leaderboard
+                user_entry = next((e for e in leaderboard if e['address'].lower() == user_address_lower), None)
+                if user_entry:
+                    user_rank = user_entry['rank']
+                else:
+                    # Calculate user's rank even if not in top 100
+                    user_total = session.query(
+                        func.sum(UserTransaction.saved_by_waiting)
+                    ).filter(
+                        UserTransaction.user_address == user_address_lower,
+                        UserTransaction.chain_id == chain_id,
+                        UserTransaction.status == 'success',
+                        UserTransaction.saved_by_waiting.isnot(None),
+                        UserTransaction.saved_by_waiting > 0,
+                        UserTransaction.timestamp >= cutoff_date
+                    ).scalar() or 0
+                    
+                    if user_total > 0:
+                        # Count users with more savings
+                        users_ahead = session.query(func.count(func.distinct(UserTransaction.user_address))).filter(
+                            UserTransaction.chain_id == chain_id,
+                            UserTransaction.status == 'success',
+                            UserTransaction.saved_by_waiting.isnot(None),
+                            UserTransaction.saved_by_waiting > user_total,
+                            UserTransaction.timestamp >= cutoff_date
+                        ).scalar() or 0
+                        user_rank = users_ahead + 1
+            
+            return jsonify({
+                'leaderboard': leaderboard,
+                'user_rank': user_rank,
+                'period': period,
+                'chain_id': chain_id,
+                'total_users': len(leaderboard)
+            })
+        finally:
+            session.close()
         
     except Exception as e:
         logger.error(f"Error in /leaderboard: {traceback.format_exc()}")
