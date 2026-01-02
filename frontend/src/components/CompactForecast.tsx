@@ -54,16 +54,9 @@ const CompactForecast: React.FC = () => {
     };
 
     loadPredictions();
-  }, [selectedChain.id, currentGas]);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadPredictions();
     const interval = setInterval(loadPredictions, 60000);
     return () => clearInterval(interval);
-  }, [currentGas]);
+  }, [selectedChain.id, currentGas]);
 
   const getDirectionIcon = (direction: string) => {
     switch (direction) {
