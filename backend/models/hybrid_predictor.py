@@ -45,18 +45,39 @@ class HybridPredictor:
         try:
             # Load spike detectors for all horizons
             for horizon in ['1h', '4h', '24h']:
-                # Try both relative and absolute paths
-                detector_path = os.path.join(self.models_dir, f'spike_detector_{horizon}.pkl')
-                if not os.path.exists(detector_path):
-                    # Try with backend/ prefix (for Render deployment)
-                    detector_path = os.path.join('backend', self.models_dir, f'spike_detector_{horizon}.pkl')
+                # Try multiple paths in priority order: persistent storage first, then fallbacks
+                possible_paths = []
+                
+                # Priority 1: Persistent storage (Railway)
+                if os.path.exists('/data/models'):
+                    possible_paths.append(os.path.join('/data/models', f'spike_detector_{horizon}.pkl'))
+                
+                # Priority 2: Config.MODELS_DIR if available
+                try:
+                    from config import Config
+                    if hasattr(Config, 'MODELS_DIR') and os.path.exists(Config.MODELS_DIR):
+                        possible_paths.append(os.path.join(Config.MODELS_DIR, f'spike_detector_{horizon}.pkl'))
+                except:
+                    pass
+                
+                # Priority 3: Original paths (fallback)
+                possible_paths.extend([
+                    os.path.join(self.models_dir, f'spike_detector_{horizon}.pkl'),
+                    os.path.join('backend', self.models_dir, f'spike_detector_{horizon}.pkl')
+                ])
+                
+                detector_path = None
+                for path in possible_paths:
+                    if os.path.exists(path):
+                        detector_path = path
+                        break
 
-                if os.path.exists(detector_path):
+                if detector_path and os.path.exists(detector_path):
                     with open(detector_path, 'rb') as f:
                         self.spike_detectors[horizon] = pickle.load(f)
                     logger.info(f"✓ Loaded spike detector for {horizon} from {detector_path}")
                 else:
-                    logger.warning(f"⚠️  Spike detector not found: {detector_path}")
+                    logger.warning(f"⚠️  Spike detector not found: tried {possible_paths[0] if possible_paths else 'N/A'}")
 
             self.loaded = len(self.spike_detectors) > 0
 
