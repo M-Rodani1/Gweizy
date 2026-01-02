@@ -98,6 +98,13 @@ def create_app():
     app.register_blueprint(versioning_bp, url_prefix='/api/versioning')
     app.register_blueprint(monitoring_bp, url_prefix='/api/monitoring')
     app.register_blueprint(automated_retraining_bp, url_prefix='/api')
+    
+    # Register autonomous pipeline routes
+    try:
+        from api.autonomous_pipeline_routes import autonomous_pipeline_bp
+        app.register_blueprint(autonomous_pipeline_bp, url_prefix='/api')
+    except Exception as e:
+        logger.warning(f"Failed to register autonomous pipeline routes: {e}")
     app.register_blueprint(base_config_bp)  # No prefix - serves at root for /config.json
     
     # Add HTTP caching and CORS headers
@@ -355,6 +362,17 @@ if not use_worker_process:
             logger.info("✓ Automated retraining scheduler started")
         except Exception as e:
             logger.warning(f"Failed to start automated retraining scheduler: {e}")
+        
+        # Start autonomous ML pipeline (unified data collection + training)
+        try:
+            from services.autonomous_pipeline import get_autonomous_pipeline
+            autonomous_pipeline = get_autonomous_pipeline()
+            autonomous_pipeline.start()
+            logger.info("✓ Autonomous ML pipeline started")
+        except Exception as e:
+            logger.warning(f"Failed to start autonomous pipeline: {e}")
+            import traceback
+            logger.warning(traceback.format_exc())
 else:
     logger.info("Skipping background threads - using separate worker process")
 
