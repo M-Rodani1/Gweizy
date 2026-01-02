@@ -3,7 +3,7 @@ Personalized recommendations service.
 Analyzes user transaction history to provide personalized gas optimization suggestions.
 """
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any
 from collections import defaultdict
 import numpy as np
 from data.database import DatabaseManager
