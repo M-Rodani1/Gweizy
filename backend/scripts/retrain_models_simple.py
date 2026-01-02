@@ -44,7 +44,7 @@ N_JOBS_TUNING = 1 if IS_RAILWAY else -1  # Sequential on Railway to save memory
 
 def fetch_training_data(hours=720):
     """Fetch data from database"""
-    print(f"📊 Fetching {hours} hours of data from database...")
+    print(f"📊 Fetching {hours} hours of data from database...", flush=True)
 
     from data.database import DatabaseManager
     db = DatabaseManager()
@@ -55,18 +55,47 @@ def fetch_training_data(hours=720):
     if not data:
         raise ValueError(f"No data available in database")
 
-    print(f"✅ Fetched {len(data)} records")
+    print(f"✅ Fetched {len(data):,} total records from database", flush=True)
+    
+    # Log data range if available
+    if data:
+        try:
+            from dateutil import parser
+            timestamps = []
+            for d in data:
+                ts = d.get('timestamp', '')
+                if isinstance(ts, str):
+                    try:
+                        timestamps.append(parser.parse(ts))
+                    except:
+                        try:
+                            from datetime import datetime
+                            timestamps.append(datetime.fromisoformat(ts.replace('Z', '+00:00')))
+                        except:
+                            pass
+                elif hasattr(ts, 'year'):
+                    timestamps.append(ts)
+            
+            if timestamps:
+                timestamps.sort()
+                days_span = (timestamps[-1] - timestamps[0]).total_seconds() / 86400
+                print(f"   📅 Date range: {timestamps[0].strftime('%Y-%m-%d')} to {timestamps[-1].strftime('%Y-%m-%d')} ({days_span:.1f} days)", flush=True)
+        except Exception as e:
+            print(f"   ⚠️  Could not determine date range: {e}", flush=True)
+    
     return data
 
 
 def prepare_features(data):
     """Prepare features using the same pipeline as production"""
-    print("\n📊 Creating features (same as production)...")
+    print("\n📊 Creating features (same as production)...", flush=True)
+    print(f"   Input records: {len(data):,}", flush=True)
 
     df = normalize_gas_dataframe(data)
-
-    print(f"   Data range: {df['timestamp'].min()} to {df['timestamp'].max()}")
-    print(f"   Gas price range: {df['gas_price'].min():.6f} to {df['gas_price'].max():.6f} gwei")
+    
+    print(f"   After normalization: {len(df):,} records", flush=True)
+    print(f"   Data range: {df['timestamp'].min()} to {df['timestamp'].max()}", flush=True)
+    print(f"   Gas price range: {df['gas_price'].min():.6f} to {df['gas_price'].max():.6f} gwei", flush=True)
 
     # IMPROVEMENT 1: Outlier Detection and Filtering
     # Use IQR method to identify extreme outliers
@@ -93,19 +122,40 @@ def prepare_features(data):
 
     # Build features using shared pipeline
     X, feature_meta, df = build_feature_matrix(df, include_external_features=True)
+    
+    print(f"   After feature engineering: {len(X):,} samples, {X.shape[1]} features", flush=True)
+    
+    # Check for NaN values before processing
+    nan_counts = X.isna().sum()
+    nan_rows = X.isna().any(axis=1).sum()
+    if nan_rows > 0:
+        print(f"   ⚠️  Found {nan_rows:,} rows with NaN values ({nan_rows/len(X)*100:.1f}%)", flush=True)
+        nan_features = nan_counts[nan_counts > 0]
+        if len(nan_features) > 0:
+            print(f"   ⚠️  Features with NaN: {len(nan_features)} features", flush=True)
+            top_nan = nan_features.nlargest(5)
+            for feat, count in top_nan.items():
+                print(f"      - {feat}: {count:,} NaN ({count/len(X)*100:.1f}%)", flush=True)
 
     # Log-scale transformation for better handling of wide ranges
     epsilon = 1e-8
     y = np.log(df['gas_price'] + epsilon)
 
-    print(f"✅ Created {X.shape[1]} features from {len(df)} records")
+    print(f"✅ Created {X.shape[1]} features from {len(df):,} records", flush=True)
     if feature_meta.get('sample_rate_minutes'):
-        print(f"   Detected sample rate: {feature_meta['sample_rate_minutes']:.2f} minutes")
+        print(f"   Detected sample rate: {feature_meta['sample_rate_minutes']:.2f} minutes", flush=True)
 
     steps_per_hour = feature_meta.get('steps_per_hour', 12)
 
     targets_log = build_horizon_targets(y, steps_per_hour)
     targets_original = build_horizon_targets(df['gas_price'], steps_per_hour)
+    
+    # Log target quality
+    for horizon in ['1h', '4h', '24h']:
+        target_log = targets_log[horizon]
+        target_orig = targets_original[horizon]
+        valid_targets = (~target_log.isna() & ~target_orig.isna()).sum()
+        print(f"   {horizon} horizon: {valid_targets:,} valid targets ({valid_targets/len(target_log)*100:.1f}%)", flush=True)
 
     return (
         X,
@@ -142,17 +192,34 @@ def train_model(X, y_tuple, horizon, min_samples=100, feature_meta=None, use_fea
 
     y_log, y_original = y_tuple
 
+    # Log initial counts
+    print_flush(f"\n   📊 Data Quality Check:")
+    print_flush(f"      Input samples: {len(X):,}")
+    print_flush(f"      Features: {X.shape[1]}")
+    
+    # Check NaN distribution
+    feature_nan_count = X.isna().any(axis=1).sum()
+    target_nan_count = (y_log.isna() | y_original.isna()).sum()
+    print_flush(f"      Rows with NaN in features: {feature_nan_count:,} ({feature_nan_count/len(X)*100:.1f}%)")
+    print_flush(f"      Rows with NaN in targets: {target_nan_count:,} ({target_nan_count/len(y_log)*100:.1f}%)")
+
     # Remove NaN values
     valid_idx = ~(X.isna().any(axis=1) | y_log.isna() | y_original.isna())
     X_clean = X[valid_idx]
     y_log_clean = y_log[valid_idx]
     y_original_clean = y_original[valid_idx]
-
-    print_flush(f"   Valid samples: {len(X_clean)}")
+    
+    removed_count = len(X) - len(X_clean)
+    print_flush(f"      ✅ Valid samples after cleaning: {len(X_clean):,}")
+    if removed_count > 0:
+        print_flush(f"      ⚠️  Removed {removed_count:,} invalid samples ({removed_count/len(X)*100:.1f}%)")
 
     if len(X_clean) < min_samples:
-        print_flush(f"⚠️  Not enough data ({len(X_clean)} < {min_samples}), skipping...")
+        print_flush(f"\n❌ INSUFFICIENT DATA: {len(X_clean):,} valid samples < {min_samples:,} minimum required")
+        print_flush(f"   Need {min_samples - len(X_clean):,} more valid samples to train")
         return None
+    
+    print_flush(f"   ✅ Sufficient data: {len(X_clean):,} valid samples (minimum: {min_samples:,})")
 
     # Apply SHAP feature selection to reduce features
     feature_selector = None
@@ -183,8 +250,15 @@ def train_model(X, y_tuple, horizon, min_samples=100, feature_meta=None, use_fea
     y_log_test = y_log_clean.iloc[split_idx:]
     y_original_test = y_original_clean.iloc[split_idx:]
 
-    print_flush(f"   Train samples: {len(X_train)}")
-    print_flush(f"   Test samples: {len(X_test)}")
+    print_flush(f"\n   📊 Train/Test Split:")
+    print_flush(f"      Training set: {len(X_train):,} samples ({len(X_train)/len(X_clean)*100:.1f}%)")
+    print_flush(f"      Test set: {len(X_test):,} samples ({len(X_test)/len(X_clean)*100:.1f}%)")
+    print_flush(f"      Total used: {len(X_clean):,} samples")
+    
+    # Log target statistics
+    print_flush(f"\n   📈 Target Statistics (original scale):")
+    print_flush(f"      Train - Min: {y_original_clean.iloc[:split_idx].min():.6f}, Max: {y_original_clean.iloc[:split_idx].max():.6f}, Median: {y_original_clean.iloc[:split_idx].median():.6f} gwei")
+    print_flush(f"      Test  - Min: {y_original_test.min():.6f}, Max: {y_original_test.max():.6f}, Median: {y_original_test.median():.6f} gwei")
 
     # Train Random Forest model on log-scale targets
     search = None
