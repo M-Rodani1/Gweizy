@@ -39,6 +39,7 @@ class DataQualityMetrics:
     data_continuity_score: float  # 0-1, based on gaps
     feature_completeness: float  # 0-1, based on NaN rates
     sufficient_for_training: bool
+    sufficient_for_agent_training: bool  # 500+ records for DQN agents
     days_of_data: float
     issues: List[str]
 
@@ -149,6 +150,9 @@ class AutonomousPipeline:
                 continuity_score >= self.min_continuity_score
             )
             
+            # Determine if sufficient for agent training (lower threshold: 500 records)
+            sufficient_for_agents = total_records >= 500 and days_of_data >= 3
+            
             # Collect issues
             issues = []
             if total_records < self.min_data_points:
@@ -167,6 +171,7 @@ class AutonomousPipeline:
                 data_continuity_score=continuity_score,
                 feature_completeness=feature_completeness,
                 sufficient_for_training=sufficient,
+                sufficient_for_agent_training=sufficient_for_agents,
                 days_of_data=days_of_data,
                 issues=issues
             )
@@ -180,12 +185,13 @@ class AutonomousPipeline:
                 data_continuity_score=0.0,
                 feature_completeness=0.0,
                 sufficient_for_training=False,
+                sufficient_for_agent_training=False,
                 days_of_data=0.0,
                 issues=[f"Error checking data: {str(e)}"]
             )
     
     def should_train(self, data_quality: DataQualityMetrics) -> TrainingDecision:
-        """Determine if training should be triggered"""
+        """Determine if training should be triggered (ML models and/or DQN agents)"""
         
         # Don't train if already training
         if self.training_in_progress:
@@ -225,11 +231,16 @@ class AutonomousPipeline:
                 reason = f"Optimal data available ({data_quality.total_records} records, {data_quality.days_of_data:.1f} days)"
         
         # Estimate training duration (based on data size)
-        estimated_duration = 5  # Base 5 minutes
+        # ML training: 5-15 minutes, Agent training: +10-20 minutes
+        estimated_duration = 5  # Base 5 minutes for ML
         if data_quality.total_records > 2000:
-            estimated_duration = 15
+            estimated_duration = 15  # ML training
         elif data_quality.total_records > 1000:
-            estimated_duration = 10
+            estimated_duration = 10  # ML training
+        
+        # Add agent training time if we have enough data (500+ records for agents)
+        if data_quality.total_records >= 500:
+            estimated_duration += 10  # Add 10 minutes for agent training
         
         return TrainingDecision(
             should_train=should_train_by_time,
@@ -239,7 +250,7 @@ class AutonomousPipeline:
         )
     
     def trigger_training(self) -> Dict:
-        """Trigger model training"""
+        """Trigger ML model training and optionally DQN agent training"""
         if self.training_in_progress:
             return {
                 'success': False,
@@ -255,17 +266,27 @@ class AutonomousPipeline:
             logger.info("🤖 AUTONOMOUS PIPELINE: Triggering Model Training")
             logger.info("="*60)
             
-            # Run training script
+            # Check data quality to determine what to train
+            data_quality = self.check_data_quality()
+            should_train_agents = data_quality.total_records >= 500  # Minimum for agent training
+            
+            results = {
+                'ml_training': None,
+                'agent_training': None,
+                'timestamp': datetime.now().isoformat()
+            }
+            
+            # Step 1: Train ML models
             current_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
             script_path = os.path.join(current_dir, "scripts", "retrain_models_simple.py")
             
             if not os.path.exists(script_path):
                 raise FileNotFoundError(f"Training script not found: {script_path}")
             
-            logger.info(f"Running training script: {script_path}")
+            logger.info(f"Running ML training script: {script_path}")
             
-            # Run training in subprocess
-            result = subprocess.run(
+            # Run ML training in subprocess
+            ml_result = subprocess.run(
                 [sys.executable, script_path],
                 cwd=current_dir,
                 capture_output=True,
@@ -273,10 +294,14 @@ class AutonomousPipeline:
                 timeout=self.max_training_duration_minutes * 60
             )
             
-            duration = (datetime.now() - start_time).total_seconds() / 60
+            ml_duration = (datetime.now() - start_time).total_seconds() / 60
             
-            if result.returncode == 0:
-                logger.info(f"✅ Training completed successfully in {duration:.1f} minutes")
+            if ml_result.returncode == 0:
+                logger.info(f"✅ ML training completed successfully in {ml_duration:.1f} minutes")
+                results['ml_training'] = {
+                    'success': True,
+                    'duration_minutes': ml_duration
+                }
                 
                 # Auto-reload models
                 if reload_models:
@@ -291,33 +316,72 @@ class AutonomousPipeline:
                 
                 # Evaluate new model
                 evaluation = self.evaluate_new_model()
-                
-                self.last_training_time = datetime.now()
-                
-                result_dict = {
-                    'success': True,
-                    'duration_minutes': duration,
-                    'timestamp': datetime.now().isoformat(),
-                    'evaluation': evaluation
+                results['evaluation'] = evaluation
+            else:
+                error_msg = ml_result.stderr[:500] if ml_result.stderr else "Unknown error"
+                logger.error(f"❌ ML training failed: {error_msg}")
+                results['ml_training'] = {
+                    'success': False,
+                    'error': error_msg,
+                    'duration_minutes': ml_duration
                 }
+            
+            # Step 2: Train DQN agents if we have enough data
+            if should_train_agents:
+                logger.info("="*60)
+                logger.info("🤖 AUTONOMOUS PIPELINE: Triggering Agent Training")
+                logger.info("="*60)
+                logger.info(f"Data available: {data_quality.total_records} records (minimum: 500)")
+                
+                agent_start_time = datetime.now()
+                agent_result = self._train_dqn_agents(data_quality)
+                agent_duration = (datetime.now() - agent_start_time).total_seconds() / 60
+                
+                results['agent_training'] = {
+                    'success': agent_result.get('success', False),
+                    'duration_minutes': agent_duration,
+                    'details': agent_result
+                }
+                
+                if agent_result.get('success'):
+                    logger.info(f"✅ Agent training completed successfully in {agent_duration:.1f} minutes")
+                else:
+                    logger.warning(f"⚠️ Agent training failed: {agent_result.get('error', 'Unknown error')}")
+            else:
+                logger.info(f"⏸️  Skipping agent training: insufficient data ({data_quality.total_records} < 500 records)")
+                results['agent_training'] = {
+                    'skipped': True,
+                    'reason': f"Insufficient data: {data_quality.total_records} < 500 records"
+                }
+            
+            total_duration = (datetime.now() - start_time).total_seconds() / 60
+            
+            # Determine overall success
+            ml_success = results['ml_training'] and results['ml_training'].get('success', False)
+            agent_success = results['agent_training'] and (
+                results['agent_training'].get('success', False) or 
+                results['agent_training'].get('skipped', False)
+            )
+            
+            overall_success = ml_success and (agent_success or not should_train_agents)
+            
+            if overall_success:
+                self.last_training_time = datetime.now()
+                results['success'] = True
+                results['duration_minutes'] = total_duration
                 
                 self.pipeline_history.append({
                     'action': 'training',
-                    'result': result_dict,
+                    'result': results,
                     'timestamp': datetime.now().isoformat()
                 })
                 
-                return result_dict
+                logger.info(f"✅ Autonomous training cycle completed in {total_duration:.1f} minutes")
             else:
-                error_msg = result.stderr[:500] if result.stderr else "Unknown error"
-                logger.error(f"❌ Training failed: {error_msg}")
-                
-                return {
-                    'success': False,
-                    'error': error_msg,
-                    'duration_minutes': duration,
-                    'timestamp': datetime.now().isoformat()
-                }
+                results['success'] = False
+                results['error'] = "One or more training steps failed"
+            
+            return results
                 
         except subprocess.TimeoutExpired:
             logger.error(f"❌ Training timed out after {self.max_training_duration_minutes} minutes")
@@ -337,6 +401,125 @@ class AutonomousPipeline:
             }
         finally:
             self.training_in_progress = False
+    
+    def _train_dqn_agents(self, data_quality: DataQualityMetrics) -> Dict:
+        """Train DQN agents for transaction timing recommendations"""
+        try:
+            current_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            
+            # Check if training script exists
+            agent_script = os.path.join(current_dir, "scripts", "train_dqn_pipeline.py")
+            if not os.path.exists(agent_script):
+                # Try direct training module
+                logger.info("Agent pipeline script not found, using direct training module")
+                return self._train_dqn_direct(data_quality)
+            
+            logger.info(f"Running agent training script: {agent_script}")
+            
+            # Determine episodes based on data size
+            episodes = 500  # Default
+            if data_quality.total_records >= 5000:
+                episodes = 1000  # More data = more episodes
+            elif data_quality.total_records >= 2000:
+                episodes = 750
+            
+            # Run agent training (non-blocking, but with timeout)
+            result = subprocess.run(
+                [sys.executable, agent_script, '--episodes', str(episodes), '--quiet'],
+                cwd=current_dir,
+                capture_output=True,
+                text=True,
+                timeout=20 * 60  # 20 minute timeout for agent training
+            )
+            
+            if result.returncode == 0:
+                return {
+                    'success': True,
+                    'episodes': episodes,
+                    'output': result.stdout[-500:] if result.stdout else None
+                }
+            else:
+                error_msg = result.stderr[:500] if result.stderr else result.stdout[-500] if result.stdout else "Unknown error"
+                logger.warning(f"Agent training script failed: {error_msg}")
+                return {
+                    'success': False,
+                    'error': error_msg,
+                    'episodes': episodes
+                }
+                
+        except subprocess.TimeoutExpired:
+            logger.warning("Agent training timed out (this is acceptable, training continues in background)")
+            return {
+                'success': False,
+                'error': 'Training timed out (may still be running)',
+                'note': 'Agent training can take 20+ minutes, consider running separately'
+            }
+        except Exception as e:
+            logger.warning(f"Error running agent training script: {e}")
+            # Try direct training as fallback
+            return self._train_dqn_direct(data_quality)
+    
+    def _train_dqn_direct(self, data_quality: DataQualityMetrics) -> Dict:
+        """Train DQN agents directly using the training module"""
+        try:
+            from rl.train import train_dqn
+            from config import Config
+            import os
+            
+            # Determine episodes based on data size
+            episodes = 500  # Default
+            if data_quality.total_records >= 5000:
+                episodes = 1000
+            elif data_quality.total_records >= 2000:
+                episodes = 750
+            
+            logger.info(f"Training DQN agent directly: {episodes} episodes")
+            
+            # Use persistent storage for saving agents
+            if os.path.exists('/data'):
+                save_path = os.path.join('/data', 'models', 'rl_agents', 'chain_8453', 'dqn_final.pkl')
+                checkpoint_dir = os.path.join('/data', 'models', 'rl_agents', 'chain_8453')
+            else:
+                current_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+                save_path = os.path.join(current_dir, 'models', 'rl_agents', 'chain_8453', 'dqn_final.pkl')
+                checkpoint_dir = os.path.join(current_dir, 'models', 'rl_agents', 'chain_8453')
+            
+            os.makedirs(os.path.dirname(save_path), exist_ok=True)
+            
+            # Train agent (this may take a while, but we'll let it run)
+            agent = train_dqn(
+                num_episodes=episodes,
+                episode_length=48,
+                save_path=save_path,
+                checkpoint_dir=checkpoint_dir,
+                checkpoint_freq=100,
+                verbose=False,  # Less verbose for autonomous pipeline
+                use_diverse_episodes=True,
+                chain_id=8453  # Base chain
+            )
+            
+            # Convert training_steps to native Python int
+            training_steps = getattr(agent, 'training_steps', 0)
+            if hasattr(training_steps, 'item'):
+                training_steps = int(training_steps.item())
+            elif not isinstance(training_steps, (int, float)):
+                training_steps = int(training_steps)
+            
+            return {
+                'success': True,
+                'episodes': int(episodes),
+                'training_steps': int(training_steps),
+                'model_path': save_path
+            }
+            
+        except Exception as e:
+            logger.error(f"Error in direct agent training: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
+            return {
+                'success': False,
+                'error': str(e)
+            }
     
     def evaluate_new_model(self) -> Dict:
         """Evaluate newly trained model and decide if it should be activated"""

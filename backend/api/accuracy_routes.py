@@ -5,6 +5,7 @@ API routes for model accuracy tracking and feature selection.
 from flask import Blueprint, request, jsonify
 from datetime import datetime
 import logging
+import numpy as np
 
 logger = logging.getLogger(__name__)
 
@@ -275,17 +276,27 @@ def get_selected_features():
         }), 404
 
     try:
+        # Convert feature importances to native Python types
+        top_10_importance = {}
+        for f in selector.selected_features[:10]:
+            importance_val = selector.feature_importances[f]
+            # Convert numpy types to native Python types
+            if hasattr(importance_val, 'item'):
+                importance_val = importance_val.item()
+            elif not isinstance(importance_val, (int, float, str, bool, type(None))):
+                importance_val = float(importance_val)
+            top_10_importance[f] = importance_val
+        
         return jsonify({
             'success': True,
-            'n_features': len(selector.selected_features),
+            'n_features': int(len(selector.selected_features)),
             'selected_features': selector.selected_features,
-            'top_10_importance': {
-                f: selector.feature_importances[f]
-                for f in selector.selected_features[:10]
-            }
+            'top_10_importance': top_10_importance
         })
     except Exception as e:
         logger.error(f"Error getting features: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
         return jsonify({
             'success': False,
             'error': str(e)
@@ -313,14 +324,42 @@ def get_feature_importance():
         report = selector.get_feature_report()
         top_n = int(request.args.get('top_n', 30))
 
+        # Convert DataFrame to dict and ensure all values are JSON-serializable
+        importance_records = report.head(top_n).to_dict('records')
+        
+        # Convert numpy/pandas types to native Python types
+        def convert_to_native(obj):
+            """Recursively convert numpy/pandas types to native Python types"""
+            if isinstance(obj, dict):
+                return {k: convert_to_native(v) for k, v in obj.items()}
+            elif isinstance(obj, list):
+                return [convert_to_native(item) for item in obj]
+            elif hasattr(obj, 'item'):  # numpy scalar
+                return obj.item()
+            elif hasattr(obj, 'tolist'):  # numpy array
+                return obj.tolist()
+            elif isinstance(obj, (int, float, str, bool, type(None))):
+                return obj
+            else:
+                # Fallback: convert to string or native type
+                try:
+                    return int(obj) if isinstance(obj, (np.integer, np.int64, np.int32)) else float(obj) if isinstance(obj, (np.floating, np.float64, np.float32)) else str(obj)
+                except:
+                    return str(obj)
+        
+        importance_records = convert_to_native(importance_records)
+        selected_count = int(report['selected'].sum()) if hasattr(report['selected'].sum(), 'item') else int(report['selected'].sum())
+
         return jsonify({
             'success': True,
-            'total_features': len(report),
-            'selected_count': report['selected'].sum(),
-            'importance_report': report.head(top_n).to_dict('records')
+            'total_features': int(len(report)),
+            'selected_count': selected_count,
+            'importance_report': importance_records
         })
     except Exception as e:
         logger.error(f"Error getting importance: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
         return jsonify({
             'success': False,
             'error': str(e)

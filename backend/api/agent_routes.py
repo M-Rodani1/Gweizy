@@ -325,11 +325,25 @@ def agent_status():
     """Get DQN agent status with detailed information."""
     agent = get_dqn_agent()
     
+    # Convert dimensions to native Python int
+    state_dim = agent.state_dim if agent else 34
+    action_dim = agent.action_dim if agent else 2
+    
+    if hasattr(state_dim, 'item'):
+        state_dim = int(state_dim.item())
+    elif not isinstance(state_dim, (int, float)):
+        state_dim = int(state_dim)
+    
+    if hasattr(action_dim, 'item'):
+        action_dim = int(action_dim.item())
+    elif not isinstance(action_dim, (int, float)):
+        action_dim = int(action_dim)
+    
     status = {
         'dqn_loaded': agent is not None,
         'model_type': 'DQN' if agent else 'Heuristic',
-        'state_dim': agent.state_dim if agent else 34,
-        'action_dim': agent.action_dim if agent else 2
+        'state_dim': int(state_dim),
+        'action_dim': int(action_dim)
     }
     
     if agent:
@@ -337,19 +351,44 @@ def agent_status():
         if hasattr(agent.replay_buffer, 'buffer') and hasattr(agent.replay_buffer.buffer, 'maxlen'):
             buffer_capacity = agent.replay_buffer.buffer.maxlen or 0
         
+        # Convert all values to native Python types to avoid JSON serialization issues
+        training_steps = agent.training_steps
+        if hasattr(training_steps, 'item'):
+            training_steps = int(training_steps.item())
+        elif not isinstance(training_steps, (int, float)):
+            training_steps = int(training_steps)
+        
+        replay_buffer_size = len(agent.replay_buffer)
+        if hasattr(replay_buffer_size, 'item'):
+            replay_buffer_size = int(replay_buffer_size.item())
+        elif not isinstance(replay_buffer_size, (int, float)):
+            replay_buffer_size = int(replay_buffer_size)
+        
+        episode_rewards_count = len(agent.episode_rewards) if hasattr(agent, 'episode_rewards') else 0
+        if hasattr(episode_rewards_count, 'item'):
+            episode_rewards_count = int(episode_rewards_count.item())
+        elif not isinstance(episode_rewards_count, (int, float)):
+            episode_rewards_count = int(episode_rewards_count)
+        
         status.update({
-            'training_steps': agent.training_steps,
-            'epsilon': round(agent.epsilon, 4),
-            'replay_buffer_size': len(agent.replay_buffer),
-            'replay_buffer_capacity': buffer_capacity,
-            'episode_rewards_count': len(agent.episode_rewards) if hasattr(agent, 'episode_rewards') else 0
+            'training_steps': int(training_steps),
+            'epsilon': float(round(agent.epsilon, 4)),
+            'replay_buffer_size': int(replay_buffer_size),
+            'replay_buffer_capacity': int(buffer_capacity),
+            'episode_rewards_count': int(episode_rewards_count)
         })
         
         # Add average reward if available
         if hasattr(agent, 'episode_rewards') and len(agent.episode_rewards) > 0:
             import numpy as np
             recent_rewards = agent.episode_rewards[-100:] if len(agent.episode_rewards) >= 100 else agent.episode_rewards
-            status['avg_reward_last_100'] = round(float(np.mean(recent_rewards)), 3)
+            avg_reward = np.mean(recent_rewards)
+            # Convert numpy scalar to native Python float
+            if hasattr(avg_reward, 'item'):
+                avg_reward = float(avg_reward.item())
+            else:
+                avg_reward = float(avg_reward)
+            status['avg_reward_last_100'] = round(avg_reward, 3)
     else:
         status.update({
             'training_steps': 0,
@@ -394,11 +433,18 @@ def trigger_training():
         _agent_loaded = False
         get_dqn_agent()
         
+        # Convert all values to native Python types
+        training_steps = agent.training_steps
+        if hasattr(training_steps, 'item'):
+            training_steps = int(training_steps.item())
+        elif not isinstance(training_steps, (int, float)):
+            training_steps = int(training_steps)
+        
         return jsonify({
             'success': True,
-            'episodes_trained': episodes,
-            'final_epsilon': round(agent.epsilon, 4),
-            'training_steps': agent.training_steps,
+            'episodes_trained': int(episodes),
+            'final_epsilon': float(round(agent.epsilon, 4)),
+            'training_steps': int(training_steps),
             'model_path': os.path.join(model_dir, 'dqn_final.pkl')
         })
     
