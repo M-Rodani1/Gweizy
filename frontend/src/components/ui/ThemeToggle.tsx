@@ -1,23 +1,35 @@
 import React, { useState, useEffect } from 'react';
 
 const ThemeToggle: React.FC = () => {
-  const [isDark, setIsDark] = useState(true);
-
-  useEffect(() => {
-    // Check localStorage for theme preference
+  // Initialize state from localStorage or default to dark
+  const [isDark, setIsDark] = useState(() => {
     const savedTheme = localStorage.getItem('theme');
     if (savedTheme === 'light') {
-      setIsDark(false);
       document.documentElement.classList.add('light-mode');
+      return false;
+    }
+    return true;
+  });
+
+  useEffect(() => {
+    // Ensure theme is applied on mount
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme === 'light') {
+      document.documentElement.classList.add('light-mode');
+    } else {
+      document.documentElement.classList.remove('light-mode');
     }
   }, []);
 
   const toggleTheme = () => {
-    setIsDark(!isDark);
-    if (isDark) {
+    const newIsDark = !isDark;
+    setIsDark(newIsDark);
+    if (!newIsDark) {
+      // Switching to light mode
       document.documentElement.classList.add('light-mode');
       localStorage.setItem('theme', 'light');
     } else {
+      // Switching to dark mode
       document.documentElement.classList.remove('light-mode');
       localStorage.setItem('theme', 'dark');
     }
