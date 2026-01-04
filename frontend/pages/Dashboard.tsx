@@ -60,7 +60,7 @@ const Dashboard: React.FC = () => {
         {/* Main Grid */}
         <div className="grid grid-cols-12 gap-8 relative">
           {/* Left Column: Chain Comparison + Forecast */}
-          <div className="col-span-12 lg:col-span-4 space-y-8">
+          <div className="col-span-12 lg:col-start-2 lg:col-span-5 space-y-8 w-full">
             <div className="space-y-4">
               <div className="text-[11px] tracking-[0.2em] text-gray-500 uppercase">Profile</div>
               <PersonalizationPanel />
@@ -83,7 +83,7 @@ const Dashboard: React.FC = () => {
           </div>
 
           {/* Right Column: Transaction Management - Collapsible */}
-          <div className="col-span-12 lg:col-span-8 space-y-6">
+          <div className="col-span-12 lg:col-start-7 lg:col-span-5 space-y-6 w-full">
             {/* Scheduled Transactions - Collapsible */}
             <CollapsibleSection
               title="Scheduled Transactions"
