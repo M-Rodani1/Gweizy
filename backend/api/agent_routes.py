@@ -221,14 +221,17 @@ def get_recommendation():
                     reason = "No significant savings expected from waiting."
             
             return jsonify({
-                'recommendation': result['action'],
-                'confidence': round(result['confidence'], 3),
-                'reason': reason,
-                'predicted_savings': round(predicted_savings, 3),
-                'optimal_time': optimal_time,
-                'q_values': {
-                    'wait': round(result['q_values']['wait'], 4),
-                    'execute': round(result['q_values']['execute'], 4)
+                'success': True,
+                'recommendation': {
+                    'action': result['action'].upper(),
+                    'confidence': round(result['confidence'], 3),
+                    'reason': reason,
+                    'predicted_savings': round(predicted_savings, 3),
+                    'optimal_time': optimal_time,
+                    'q_values': {
+                        'wait': round(result['q_values']['wait'], 4),
+                        'execute': round(result['q_values']['execute'], 4)
+                    }
                 },
                 'model': 'dqn',
                 'chain_id': chain_id,
@@ -245,10 +248,19 @@ def get_recommendation():
         import traceback
         logger.error(traceback.format_exc())
         return jsonify({
+            'success': False,
             'error': str(e),
-            'recommendation': 'execute',
-            'confidence': 0.5,
-            'reason': 'Error occurred, defaulting to execute'
+            'recommendation': {
+                'action': 'EXECUTE',
+                'confidence': 0.5,
+                'reason': 'Error occurred, defaulting to execute',
+                'predicted_savings': 0,
+                'optimal_time': 'now',
+                'q_values': {
+                    'wait': 0.3,
+                    'execute': 0.5
+                }
+            }
         }), 200
 
 
@@ -257,11 +269,18 @@ def _heuristic_recommendation(current_gas, price_history, urgency, gas_amount):
     
     if not price_history:
         return jsonify({
-            'recommendation': 'execute',
-            'confidence': 0.5,
-            'reason': 'Insufficient data for prediction',
-            'predicted_savings': 0,
-            'optimal_time': 'now',
+            'success': True,
+            'recommendation': {
+                'action': 'EXECUTE',
+                'confidence': 0.5,
+                'reason': 'Insufficient data for prediction',
+                'predicted_savings': 0,
+                'optimal_time': 'now',
+                'q_values': {
+                    'wait': 0.3,
+                    'execute': 0.5
+                }
+            },
             'model': 'heuristic'
         })
     
@@ -309,11 +328,18 @@ def _heuristic_recommendation(current_gas, price_history, urgency, gas_amount):
         optimal_time = 'now'
     
     return jsonify({
-        'recommendation': recommendation,
-        'confidence': round(confidence, 3),
-        'reason': reason,
-        'predicted_savings': round(predicted_savings, 3),
-        'optimal_time': optimal_time,
+        'success': True,
+        'recommendation': {
+            'action': recommendation.upper(),
+            'confidence': round(confidence, 3),
+            'reason': reason,
+            'predicted_savings': round(predicted_savings, 3),
+            'optimal_time': optimal_time,
+            'q_values': {
+                'wait': 0.3 if recommendation == 'wait' else 0.5,
+                'execute': 0.5 if recommendation == 'execute' else 0.3
+            }
+        },
         'model': 'heuristic',
         'current_gas': current_gas,
         'urgency': urgency
