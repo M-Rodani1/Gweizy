@@ -53,14 +53,16 @@ const Dashboard: React.FC = () => {
         <DriftAlertBanner />
 
         {/* Hero: AI Transaction Pilot - Sticky on scroll */}
-        <div className="mb-8 lg:sticky lg:top-[88px] lg:z-[90] lg:bg-[#05070f] lg:pb-4 lg:pt-2 lg:-mx-4 lg:mx-0 lg:px-4 lg:shadow-lg lg:border-b lg:border-gray-800/50 lg:backdrop-blur-sm">
-          <TransactionPilot ethPrice={ethPrice} />
+        <div className="mb-8 relative">
+          <div className="lg:sticky lg:top-[88px] lg:z-[90] lg:bg-[#05070f] lg:backdrop-blur-xl lg:py-4 lg:shadow-xl lg:border-b lg:border-gray-800/50 lg:-mx-4 lg:mx-0 lg:px-4">
+            <TransactionPilot ethPrice={ethPrice} />
+          </div>
         </div>
 
-        {/* Main Grid */}
+        {/* Main Grid - with proper spacing to prevent overlap */}
         <div className="grid grid-cols-12 gap-8 relative">
           {/* Left Column: Chain Comparison + Forecast */}
-          <div className="col-span-12 lg:col-start-2 lg:col-span-5 space-y-8 w-full">
+          <div className="col-span-12 lg:col-start-2 lg:col-span-5 space-y-8 w-full relative">
             <div className="space-y-4">
               <div className="text-[11px] tracking-[0.2em] text-gray-500 uppercase">Profile</div>
               <PersonalizationPanel />
@@ -83,7 +85,7 @@ const Dashboard: React.FC = () => {
           </div>
 
           {/* Right Column: Transaction Management - Collapsible */}
-          <div className="col-span-12 lg:col-start-7 lg:col-span-5 space-y-6 w-full">
+          <div className="col-span-12 lg:col-start-7 lg:col-span-5 space-y-6 w-full relative">
             {/* Scheduled Transactions - Collapsible */}
             <CollapsibleSection
               title="Scheduled Transactions"
