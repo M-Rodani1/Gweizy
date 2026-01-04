@@ -87,7 +87,7 @@ const Landing: React.FC = () => {
             <div>
               <div className="badge badge-accent" style={{ marginBottom: 'var(--space-lg)', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
                 <Trophy size={14} />
-                AI Hack Nation 2024 Winner
+                Coinbase 2025 Hackathon Winner
               </div>
 
               <h1 className="hero-title" style={{ marginBottom: 'var(--space-lg)' }}>
@@ -292,7 +292,7 @@ const Landing: React.FC = () => {
         <div className="container">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--space-lg)' }}>
             <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-              © 2024 Base Gas Optimiser. Built at AI Hack Nation 2024.
+              © 2024 Base Gas Optimiser. Built at Coinbase 2025 Hackathon.
             </div>
             <div style={{ display: 'flex', gap: 'var(--space-lg)', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
               <span>Queen Mary University of London</span>

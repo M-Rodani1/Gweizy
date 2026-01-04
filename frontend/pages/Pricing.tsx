@@ -112,7 +112,7 @@ const Pricing: React.FC = () => {
               <Link to="/" style={{ fontSize: '1.25rem', fontWeight: 700, textDecoration: 'none', color: 'var(--text)' }}>
                 Base Gas Optimiser
               </Link>
-              <span className="badge badge-accent">Hackathon Winner</span>
+              <span className="badge badge-accent">Coinbase 2025 Hackathon Winner</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-lg)' }}>
               <Link to="/" className="btn btn-ghost">Home</Link>
@@ -397,7 +397,7 @@ const Pricing: React.FC = () => {
         <div className="container">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--space-lg)' }}>
             <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-              © 2024 Base Gas Optimiser. Built at AI Hack Nation 2024.
+              © 2024 Base Gas Optimiser. Built at Coinbase 2025 Hackathon.
             </div>
             <div style={{ display: 'flex', gap: 'var(--space-lg)', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
               <Link to="/pricing" style={{ color: 'var(--text-muted)', textDecoration: 'none' }}>Pricing</Link>

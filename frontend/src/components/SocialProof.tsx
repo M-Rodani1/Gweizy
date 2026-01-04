@@ -54,14 +54,11 @@ const SocialProof: React.FC = () => {
           <div>
             <div className="flex items-center gap-2 mb-1">
               <span className="text-lg md:text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-emerald-400">
-                Hackathon Winner
-              </span>
-              <span className="px-2 py-0.5 bg-cyan-500/20 text-cyan-300 text-xs font-semibold rounded">
-                2025
+                Coinbase 2025 Hackathon Winner
               </span>
             </div>
             <p className="text-sm text-gray-400">
-              Backed by Coinbase
+              Built at Coinbase Hackathon
             </p>
           </div>
         </div>
