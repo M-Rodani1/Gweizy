@@ -6,6 +6,7 @@
 import React, { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { fetchAccuracyMetrics, fetchAccuracyHistory } from '../api/gasApi';
+import { API_CONFIG, getApiUrl } from '../config/api';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from 'recharts';
 
 interface AccuracyMetrics {
@@ -48,10 +49,18 @@ const AccuracyMetricsDashboard: React.FC = () => {
   const { data: metrics, isLoading: metricsLoading } = useQuery<AccuracyMetrics>({
     queryKey: ['accuracyMetrics'],
     queryFn: async () => {
-      const response = await fetch('https://basegasfeesml-production.up.railway.app/api/accuracy/metrics');
+      const response = await fetch(getApiUrl(API_CONFIG.ENDPOINTS.ACCURACY_METRICS));
       if (!response.ok) throw new Error('Failed to fetch metrics');
       const data = await response.json();
-      return data.metrics || {};
+      if (data.success && data.metrics) {
+        // Check if metrics have actual data
+        const hasData = Object.values(data.metrics).some((m: any) => m && (m.n > 0 || m.mae !== null || m.r2 !== null));
+        if (hasData) {
+          return data.metrics;
+        }
+      }
+      // Return empty object - component will show "No data" message
+      return {};
     },
     refetchInterval: 60000, // Refresh every minute
   });
@@ -61,11 +70,14 @@ const AccuracyMetricsDashboard: React.FC = () => {
     queryKey: ['accuracyHistory', selectedHorizon],
     queryFn: async () => {
       const response = await fetch(
-        `https://basegasfeesml-production.up.railway.app/api/accuracy/history?hours_back=168&resolution=hourly`
+        `${getApiUrl(API_CONFIG.ENDPOINTS.ACCURACY_HISTORY)}?hours_back=168&resolution=hourly`
       );
       if (!response.ok) throw new Error('Failed to fetch history');
       const data = await response.json();
-      return data.history || {};
+      if (data.success && data.history) {
+        return data.history;
+      }
+      return {};
     },
     refetchInterval: 300000, // Refresh every 5 minutes
   });
@@ -73,13 +85,13 @@ const AccuracyMetricsDashboard: React.FC = () => {
   const currentMetrics = metrics?.[selectedHorizon];
   const historyData = history?.[selectedHorizon] || [];
 
-  const formatMetric = (value: number | undefined, decimals: number = 4): string => {
-    if (value === undefined || value === null) return 'N/A';
+  const formatMetric = (value: number | undefined | null, decimals: number = 4): string => {
+    if (value === undefined || value === null || isNaN(value)) return 'N/A';
     return value.toFixed(decimals);
   };
 
-  const formatPercent = (value: number | undefined): string => {
-    if (value === undefined || value === null) return 'N/A';
+  const formatPercent = (value: number | undefined | null): string => {
+    if (value === undefined || value === null || isNaN(value)) return 'N/A';
     return `${(value * 100).toFixed(2)}%`;
   };
 
