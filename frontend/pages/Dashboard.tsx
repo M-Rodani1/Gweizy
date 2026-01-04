@@ -48,12 +48,12 @@ const Dashboard: React.FC = () => {
       {/* Header */}
       <StickyHeader apiStatus={apiStatus} currentGas={currentGas} />
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-8">
         {/* Drift Alert Banner */}
         <DriftAlertBanner />
 
         {/* Hero: AI Transaction Pilot - Sticky on scroll */}
-        <div className="mb-8 lg:sticky lg:top-[88px] lg:z-40 lg:bg-[#05070f] lg:pb-4 lg:pt-2 lg:-mx-4 lg:mx-0 lg:px-4 lg:shadow-lg lg:border-b lg:border-gray-800/50 lg:backdrop-blur-sm">
+        <div className="mb-8 lg:sticky lg:top-[88px] lg:z-[90] lg:bg-[#05070f] lg:pb-4 lg:pt-2 lg:-mx-4 lg:mx-0 lg:px-4 lg:shadow-lg lg:border-b lg:border-gray-800/50 lg:backdrop-blur-sm">
           <TransactionPilot ethPrice={ethPrice} />
         </div>
 

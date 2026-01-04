@@ -29,10 +29,10 @@ const StickyHeader: React.FC<StickyHeaderProps> = ({ apiStatus, currentGas }) =>
 
   return (
     <header
-      className={`sticky top-0 z-50 transition-all duration-300 ${
+      className={`sticky top-0 z-[100] transition-all duration-300 ${
         isScrolled
-          ? 'bg-gray-900/80 backdrop-blur-xl shadow-lg shadow-cyan-500/5 border-b border-cyan-500/10'
-          : 'bg-transparent'
+          ? 'bg-gray-900/95 backdrop-blur-xl shadow-lg shadow-cyan-500/5 border-b border-cyan-500/10'
+          : 'bg-gray-900/95 backdrop-blur-xl'
       }`}
     >
       <div className="w-full mx-auto px-4 sm:px-6 lg:px-8 py-4">
