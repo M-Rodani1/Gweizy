@@ -42,8 +42,8 @@ CV_FOLDS = 2 if IS_RAILWAY else 3  # Fewer folds on Railway
 N_JOBS_TUNING = 1 if IS_RAILWAY else -1  # Sequential on Railway to save memory
 
 
-def fetch_training_data(hours=720):
-    """Fetch data from database"""
+def fetch_training_data(hours=2160):
+    """Fetch data from database (default: 90 days = 2160 hours)"""
     print(f"📊 Fetching {hours} hours of data from database...", flush=True)
 
     from data.database import DatabaseManager
@@ -148,31 +148,47 @@ def prepare_features(data):
             for feat, count in top_nan.items():
                 print_flush(f"      - {feat}: {count:,} NaN ({count/len(X)*100:.1f}%)")
 
-    # Log-scale transformation for better handling of wide ranges
-    epsilon = 1e-8
-    y = np.log(df['gas_price'] + epsilon)
-
+    # IMPROVEMENT: Remove log transformation - use original gas_price directly
+    # This avoids amplifying errors on very small values (0.001-0.01 gwei)
     print_flush(f"✅ Created {X.shape[1]} features from {len(df):,} records")
     if feature_meta.get('sample_rate_minutes'):
         print_flush(f"   Detected sample rate: {feature_meta['sample_rate_minutes']:.2f} minutes")
 
     steps_per_hour = feature_meta.get('steps_per_hour', 12)
 
-    targets_log = build_horizon_targets(y, steps_per_hour)
-    targets_original = build_horizon_targets(df['gas_price'], steps_per_hour)
+    # IMPROVEMENT: Predict percentage change instead of absolute price
+    # Calculate percentage change: (future_price - current_price) / current_price * 100
+    gas_price = df['gas_price']
+    targets_original = build_horizon_targets(gas_price, steps_per_hour)
+    
+    # Calculate percentage change targets
+    targets_pct_change = {}
+    for horizon in ['1h', '4h', '24h']:
+        future_price = targets_original[horizon]
+        current_price = gas_price
+        # Percentage change: (future - current) / current * 100
+        pct_change = ((future_price - current_price) / (current_price + 1e-8)) * 100
+        targets_pct_change[horizon] = pct_change
     
     # Log target quality
     for horizon in ['1h', '4h', '24h']:
-        target_log = targets_log[horizon]
         target_orig = targets_original[horizon]
-        valid_targets = (~target_log.isna() & ~target_orig.isna()).sum()
-        print_flush(f"   {horizon} horizon: {valid_targets:,} valid targets ({valid_targets/len(target_log)*100:.1f}%)")
+        target_pct = targets_pct_change[horizon]
+        valid_targets = (~target_orig.isna() & ~target_pct.isna()).sum()
+        if valid_targets > 0:
+            pct_stats = target_pct.dropna()
+            print_flush(f"   {horizon} horizon: {valid_targets:,} valid targets ({valid_targets/len(target_orig)*100:.1f}%)")
+            print_flush(f"      Pct change range: {pct_stats.min():.2f}% to {pct_stats.max():.2f}% (median: {pct_stats.median():.2f}%)")
 
+    # Store current prices for later use in evaluation
+    # This ensures we can convert percentage change predictions back to absolute prices
+    current_prices = gas_price.copy()
+    
     return (
         X,
-        (targets_log['1h'], targets_original['1h']),
-        (targets_log['4h'], targets_original['4h']),
-        (targets_log['24h'], targets_original['24h']),
+        (targets_pct_change['1h'], targets_original['1h'], current_prices),
+        (targets_pct_change['4h'], targets_original['4h'], current_prices),
+        (targets_pct_change['24h'], targets_original['24h'], current_prices),
         feature_meta
     )
 
@@ -192,7 +208,7 @@ def train_model(X, y_tuple, horizon, min_samples=100, feature_meta=None, use_fea
 
     Args:
         X: Features
-        y_tuple: (y_log, y_original) - log-scale and original scale targets
+        y_tuple: (y_pct_change, y_original, current_prices) - percentage change, original scale targets, and current prices
         horizon: Prediction horizon
         min_samples: Minimum samples required
         use_feature_selection: Whether to use SHAP feature selection
@@ -201,7 +217,7 @@ def train_model(X, y_tuple, horizon, min_samples=100, feature_meta=None, use_fea
     print_flush(f"🎯 Training model for {horizon} horizon")
     print_flush(f"{'='*60}")
 
-    y_log, y_original = y_tuple
+    y_pct_change, y_original, current_prices = y_tuple
 
     # Log initial counts
     print_flush(f"\n   📊 Data Quality Check:")
@@ -210,15 +226,16 @@ def train_model(X, y_tuple, horizon, min_samples=100, feature_meta=None, use_fea
     
     # Check NaN distribution
     feature_nan_count = X.isna().any(axis=1).sum()
-    target_nan_count = (y_log.isna() | y_original.isna()).sum()
+    target_nan_count = (y_pct_change.isna() | y_original.isna()).sum()
     print_flush(f"      Rows with NaN in features: {feature_nan_count:,} ({feature_nan_count/len(X)*100:.1f}%)")
-    print_flush(f"      Rows with NaN in targets: {target_nan_count:,} ({target_nan_count/len(y_log)*100:.1f}%)")
+    print_flush(f"      Rows with NaN in targets: {target_nan_count:,} ({target_nan_count/len(y_pct_change)*100:.1f}%)")
 
     # Remove NaN values
-    valid_idx = ~(X.isna().any(axis=1) | y_log.isna() | y_original.isna())
+    valid_idx = ~(X.isna().any(axis=1) | y_pct_change.isna() | y_original.isna())
     X_clean = X[valid_idx]
-    y_log_clean = y_log[valid_idx]
+    y_pct_change_clean = y_pct_change[valid_idx]
     y_original_clean = y_original[valid_idx]
+    current_prices_clean = current_prices[valid_idx]
     
     removed_count = len(X) - len(X_clean)
     print_flush(f"      ✅ Valid samples after cleaning: {len(X_clean):,}")
@@ -239,7 +256,7 @@ def train_model(X, y_tuple, horizon, min_samples=100, feature_meta=None, use_fea
             from models.feature_selector import SHAPFeatureSelector
             n_features = 30 if not IS_RAILWAY else 25  # Fewer features on Railway
             feature_selector = SHAPFeatureSelector(n_features=n_features)
-            feature_selector.fit(X_clean, y_log_clean, verbose=True)
+            feature_selector.fit(X_clean, y_pct_change_clean, verbose=True)
             X_clean = feature_selector.transform(X_clean)
             print_flush(f"   ✅ Reduced to {X_clean.shape[1]} features using SHAP selection")
             
@@ -257,9 +274,10 @@ def train_model(X, y_tuple, horizon, min_samples=100, feature_meta=None, use_fea
     split_idx = int(len(X_clean) * 0.8)
     X_train = X_clean.iloc[:split_idx]
     X_test = X_clean.iloc[split_idx:]
-    y_log_train = y_log_clean.iloc[:split_idx]
-    y_log_test = y_log_clean.iloc[split_idx:]
+    y_pct_change_train = y_pct_change_clean.iloc[:split_idx]
+    y_pct_change_test = y_pct_change_clean.iloc[split_idx:]
     y_original_test = y_original_clean.iloc[split_idx:]
+    current_prices_test = current_prices_clean.iloc[split_idx:]
 
     print_flush(f"\n   📊 Train/Test Split:")
     print_flush(f"      Training set: {len(X_train):,} samples ({len(X_train)/len(X_clean)*100:.1f}%)")
@@ -268,7 +286,12 @@ def train_model(X, y_tuple, horizon, min_samples=100, feature_meta=None, use_fea
     
     # Log target statistics
     y_original_train = y_original_clean.iloc[:split_idx]
-    print_flush(f"\n   📈 Target Statistics (original scale):")
+    y_pct_change_train_stats = y_pct_change_train.dropna()
+    y_pct_change_test_stats = y_pct_change_test.dropna()
+    print_flush(f"\n   📈 Target Statistics (percentage change):")
+    print_flush(f"      Train - Min: {y_pct_change_train_stats.min():.2f}%, Max: {y_pct_change_train_stats.max():.2f}%, Median: {y_pct_change_train_stats.median():.2f}%")
+    print_flush(f"      Test  - Min: {y_pct_change_test_stats.min():.2f}%, Max: {y_pct_change_test_stats.max():.2f}%, Median: {y_pct_change_test_stats.median():.2f}%")
+    print_flush(f"\n   📈 Target Statistics (original scale for reference):")
     print_flush(f"      Train - Min: {y_original_train.min():.6f}, Max: {y_original_train.max():.6f}, Median: {y_original_train.median():.6f} gwei")
     print_flush(f"      Test  - Min: {y_original_test.min():.6f}, Max: {y_original_test.max():.6f}, Median: {y_original_test.median():.6f} gwei")
     
@@ -290,11 +313,12 @@ def train_model(X, y_tuple, horizon, min_samples=100, feature_meta=None, use_fea
     elif abs(median_shift_pct) > 5:
         print_flush(f"      ⚠️  Note: Moderate distribution shift detected (5-10%)")
 
-    # Train Random Forest model on log-scale targets
+    # Train Random Forest model on percentage change targets
     search = None
     if USE_HYPERPARAMETER_TUNING and len(X_train) >= 1000:
         print_flush(f"📊 Training Random Forest with hyperparameter tuning...")
         print_flush(f"   Testing {TUNING_ITERATIONS} parameter combinations with {CV_FOLDS}-fold CV")
+        print_flush(f"   Target: Percentage change (not log-scale)")
 
         # Use TimeSeriesSplit for proper time series cross-validation
         tscv = TimeSeriesSplit(n_splits=CV_FOLDS)
@@ -316,7 +340,7 @@ def train_model(X, y_tuple, horizon, min_samples=100, feature_meta=None, use_fea
             verbose=0
         )
 
-        search.fit(X_train, y_log_train)
+        search.fit(X_train, y_pct_change_train)
         best_pipeline = search.best_estimator_
         scaler = best_pipeline.named_steps['scaler']
         model = best_pipeline.named_steps['model']
@@ -324,9 +348,9 @@ def train_model(X, y_tuple, horizon, min_samples=100, feature_meta=None, use_fea
         print_flush(f"   Best parameters found:")
         for param, value in search.best_params_.items():
             print_flush(f"     {param}: {value}")
-        print_flush(f"   Best CV MAE: {-search.best_score_:.6f}")
+        print_flush(f"   Best CV MAE: {-search.best_score_:.4f}%")
     else:
-        print_flush(f"📊 Training Random Forest (log-scale)...")
+        print_flush(f"📊 Training Random Forest (percentage change target)...")
         pipeline = Pipeline([
             ('scaler', RobustScaler()),
             ('model', RandomForestRegressor(
@@ -338,19 +362,26 @@ def train_model(X, y_tuple, horizon, min_samples=100, feature_meta=None, use_fea
                 n_jobs=-1
             ))
         ])
-        pipeline.fit(X_train, y_log_train)
+        pipeline.fit(X_train, y_pct_change_train)
         scaler = pipeline.named_steps['scaler']
         model = pipeline.named_steps['model']
 
-    # Evaluate on log scale
+    # Evaluate on percentage change
     X_test_scaled = scaler.transform(X_test)
-    y_log_pred = model.predict(X_test_scaled)
+    y_pct_change_pred = model.predict(X_test_scaled)
 
-    # Convert predictions back to original scale
-    epsilon = 1e-8
-    y_pred_original = np.exp(y_log_pred) - epsilon
+    # Convert percentage change predictions back to absolute price for evaluation
+    # current_prices_test contains the current prices at the time of prediction
+    # (before the shift to future prices)
+    y_pred_original = current_prices_test.values * (1 + y_pct_change_pred / 100)
 
-    # IMPROVEMENT 3: Better Metrics - Calculate on original scale
+    # Calculate metrics on both percentage change and original scale
+    # Percentage change metrics
+    mae_pct = mean_absolute_error(y_pct_change_test, y_pct_change_pred)
+    rmse_pct = np.sqrt(mean_squared_error(y_pct_change_test, y_pct_change_pred))
+    r2_pct = r2_score(y_pct_change_test, y_pct_change_pred)
+
+    # Original scale metrics (converted from percentage change)
     mae = mean_absolute_error(y_original_test, y_pred_original)
     rmse = np.sqrt(mean_squared_error(y_original_test, y_pred_original))
     r2 = r2_score(y_original_test, y_pred_original)
@@ -366,7 +397,11 @@ def train_model(X, y_tuple, horizon, min_samples=100, feature_meta=None, use_fea
     else:
         directional_accuracy = 0.0
 
-    print_flush(f"\n✅ Model Performance (on original scale):")
+    print_flush(f"\n✅ Model Performance (percentage change target):")
+    print_flush(f"   MAE: {mae_pct:.4f}%")
+    print_flush(f"   RMSE: {rmse_pct:.4f}%")
+    print_flush(f"   R²: {r2_pct:.4f}")
+    print_flush(f"\n✅ Model Performance (converted to original scale):")
     print_flush(f"   MAE: {mae:.6f} gwei")
     print_flush(f"   RMSE: {rmse:.6f} gwei")
     print_flush(f"   R²: {r2:.4f}")
@@ -415,7 +450,8 @@ def train_model(X, y_tuple, horizon, min_samples=100, feature_meta=None, use_fea
         'scaler': scaler,
         'feature_selector': feature_selector,  # SHAP-based feature selector
         'feature_names': list(X_clean.columns),
-        'uses_log_scale': True,  # Flag for prediction inference
+        'uses_log_scale': False,  # No longer using log scale
+        'predicts_percentage_change': True,  # IMPORTANT: Model predicts percentage change
         'best_params': best_params,
         'feature_importances': dict(zip(feature_names, importances.tolist())),
         'feature_pipeline': feature_meta or {},
@@ -428,7 +464,10 @@ def train_model(X, y_tuple, horizon, min_samples=100, feature_meta=None, use_fea
             'mape': mape,
             'directional_accuracy': directional_accuracy,
             'median_actual': median_actual,
-            'median_pred': median_pred
+            'median_pred': median_pred,
+            'mae_pct': mae_pct,
+            'rmse_pct': rmse_pct,
+            'r2_pct': r2_pct
         }
     }
 
@@ -449,7 +488,7 @@ def save_model(model_data, horizon, output_dir=None, training_samples=None):
     filepath = os.path.join(output_dir, f'model_{horizon}.pkl')
     save_data = {
         'model': model_data['model'],
-        'model_name': 'RandomForest_LogScale_SHAP' if model_data.get('feature_selector') else 'RandomForest_LogScale',
+        'model_name': 'RandomForest_PctChange_SHAP' if model_data.get('feature_selector') else 'RandomForest_PctChange',
         'metrics': model_data['metrics'],
         'trained_at': datetime.now().isoformat(),
         'feature_names': model_data['feature_names'],
@@ -459,8 +498,8 @@ def save_model(model_data, horizon, output_dir=None, training_samples=None):
         'sample_rate_minutes': model_data.get('sample_rate_minutes'),
         'steps_per_hour': model_data.get('steps_per_hour'),
         'scaler_type': 'RobustScaler',
-        'uses_log_scale': True,  # IMPORTANT: Predictions need exp() transformation
-        'predicts_percentage_change': False,
+        'uses_log_scale': False,  # No longer using log scale
+        'predicts_percentage_change': True,  # IMPORTANT: Model predicts percentage change, not absolute price
         'best_params': model_data.get('best_params'),
         'feature_importances': model_data.get('feature_importances'),
         'hyperparameter_tuning_used': USE_HYPERPARAMETER_TUNING,
@@ -526,7 +565,7 @@ def main():
         print(f"\n{'='*70}", flush=True)
         print(f"🎯 SIMPLE MODEL RETRAINING - DATA PIPELINE", flush=True)
         print(f"{'='*70}", flush=True)
-        data = fetch_training_data(hours=720)  # 30 days
+        data = fetch_training_data(hours=2160)  # 90 days (increased from 30 days)
 
         # Step 2: Prepare features
         print(f"\n{'='*70}", flush=True)
