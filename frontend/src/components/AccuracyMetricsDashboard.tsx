@@ -46,23 +46,27 @@ const AccuracyMetricsDashboard: React.FC = () => {
   const [selectedHorizon, setSelectedHorizon] = useState<'1h' | '4h' | '24h'>('1h');
 
   // Fetch current metrics
-  const { data: metrics, isLoading: metricsLoading } = useQuery<AccuracyMetrics>({
+  const { data: metrics, isLoading: metricsLoading, error: metricsError } = useQuery<AccuracyMetrics>({
     queryKey: ['accuracyMetrics'],
     queryFn: async () => {
       const response = await fetch(getApiUrl(API_CONFIG.ENDPOINTS.ACCURACY_METRICS));
-      if (!response.ok) throw new Error('Failed to fetch metrics');
+      if (!response.ok) {
+        throw new Error(`Failed to fetch metrics: ${response.status} ${response.statusText}`);
+      }
       const data = await response.json();
       if (data.success && data.metrics) {
-        // Check if metrics have actual data
-        const hasData = Object.values(data.metrics).some((m: any) => m && (m.n > 0 || m.mae !== null || m.r2 !== null));
+        // Only return metrics if they have actual data (n > 0)
+        const hasData = Object.values(data.metrics).some((m: any) => m && m.n > 0);
         if (hasData) {
           return data.metrics;
         }
+        // Return empty object if no real data
+        return {};
       }
-      // Return empty object - component will show "No data" message
-      return {};
+      throw new Error(data.error || 'Invalid response format');
     },
     refetchInterval: 60000, // Refresh every minute
+    retry: 2,
   });
 
   // Fetch historical accuracy
@@ -247,9 +251,21 @@ const AccuracyMetricsDashboard: React.FC = () => {
         </div>
       )}
 
-      {!currentMetrics && (
+      {metricsError && (
+        <div className="text-center py-8">
+          <div className="inline-flex items-center gap-2 px-4 py-2 bg-red-500/20 border border-red-500/50 rounded-lg text-red-400 text-sm">
+            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+            </svg>
+            <span>Error loading metrics: {metricsError.message}</span>
+          </div>
+        </div>
+      )}
+
+      {!metricsLoading && !metricsError && !currentMetrics && (
         <div className="text-center py-8 text-gray-400">
           <p>No accuracy data available yet. Metrics will appear as predictions are validated.</p>
+          <p className="text-sm text-gray-500 mt-2">The accuracy tracker needs prediction data to calculate metrics.</p>
         </div>
       )}
     </div>

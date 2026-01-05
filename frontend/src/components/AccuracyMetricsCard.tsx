@@ -39,22 +39,13 @@ const AccuracyMetricsCard: React.FC = () => {
           setMetrics(data.metrics);
           setError(null);
         } else {
-          // Metrics exist but no data yet - use fallback
-          setError('No metrics available');
-          setMetrics({
-            '1h': { mae: 0.000275, rmse: 0.000442, r2: 0.071, directional_accuracy: 0.598, n: 100 },
-            '4h': { mae: 0.000312, rmse: 0.000521, r2: 0.063, directional_accuracy: 0.572, n: 50 },
-            '24h': { mae: 0.000498, rmse: 0.000712, r2: 0.045, directional_accuracy: 0.541, n: 20 }
-          });
+          // Metrics exist but no data yet
+          setError('No metrics available - waiting for prediction data');
+          setMetrics(null);
         }
       } else {
-        setError('No metrics available');
-        // Use fallback mock data for demo
-        setMetrics({
-          '1h': { mae: 0.000275, rmse: 0.000442, r2: 0.071, directional_accuracy: 0.598, n: 100 },
-          '4h': { mae: 0.000312, rmse: 0.000521, r2: 0.063, directional_accuracy: 0.572, n: 50 },
-          '24h': { mae: 0.000498, rmse: 0.000712, r2: 0.045, directional_accuracy: 0.541, n: 20 }
-        });
+        setError(data.error || 'No metrics available');
+        setMetrics(null);
       }
     } catch (err) {
       setError('Could not load accuracy metrics');
@@ -203,7 +194,7 @@ const AccuracyMetricsCard: React.FC = () => {
       {error && (
         <div className="mt-3 text-xs text-amber-400 flex items-center gap-1">
           <AlertCircle className="w-3 h-3" />
-          Using fallback data
+          {error}
         </div>
       )}
     </div>
