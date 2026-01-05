@@ -80,7 +80,7 @@ const PersonalizedRecommendations: React.FC<PersonalizedRecommendationsProps> = 
   const { recommended_time, hours_until_best, confidence, reason, potential_savings, patterns } = recommendations;
 
   return (
-    <div className="bg-gradient-to-br from-blue-900/20 to-purple-900/20 border border-blue-500/30 rounded-lg p-6">
+    <div className="bg-gradient-to-br from-blue-900/20 to-purple-900/20 border border-blue-500/30 rounded-2xl p-6 h-full flex flex-col shadow-xl">
       <div className="flex items-center gap-3 mb-4">
         <Target className="w-6 h-6 text-blue-400" />
         <h2 className="text-xl font-bold text-white">Personalized Recommendations</h2>

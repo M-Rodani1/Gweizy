@@ -60,53 +60,83 @@ const Dashboard: React.FC = () => {
         </div>
 
         {/* Main Grid - with proper spacing to prevent overlap */}
-        <div className="grid grid-cols-12 gap-8 relative">
-          {/* Left Column: Chain Comparison + Forecast */}
-          <div className="col-span-12 lg:col-start-2 lg:col-span-5 space-y-8 w-full relative">
-            <div className="space-y-4">
-              <div className="text-[11px] tracking-[0.2em] text-gray-500 uppercase">Profile</div>
-              <PersonalizationPanel />
-              {walletAddress && (
-                <PersonalizedRecommendations walletAddress={walletAddress} />
-              )}
+        <div className="grid grid-cols-12 gap-6 relative">
+          {/* Left Column: Chain Comparison + Forecast - Centered */}
+          <div className="col-span-12 lg:col-start-3 lg:col-span-8 space-y-6 w-full relative">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Profile & Defaults */}
+              <div className="space-y-4">
+                <div className="text-[11px] tracking-[0.2em] text-gray-500 uppercase">Profile</div>
+                <div className="h-full min-h-[500px]">
+                  <PersonalizationPanel />
+                </div>
+              </div>
+              
+              {/* Personalized Recommendations */}
+              <div className="space-y-4">
+                <div className="text-[11px] tracking-[0.2em] text-gray-500 uppercase">Recommendations</div>
+                <div className="h-full min-h-[500px]">
+                  {walletAddress ? (
+                    <PersonalizedRecommendations walletAddress={walletAddress} />
+                  ) : (
+                    <div className="bg-gradient-to-br from-blue-900/20 to-purple-900/20 border border-blue-500/30 rounded-2xl p-6 h-full flex flex-col items-center justify-center shadow-xl">
+                      <p className="text-gray-400 text-center">Connect your wallet to see personalized recommendations</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+              
+              {/* Multi-Chain Gas */}
+              <div className="space-y-4">
+                <div className="text-[11px] tracking-[0.2em] text-gray-500 uppercase">Network Insights</div>
+                <div className="h-full min-h-[500px]">
+                  <MultiChainComparison txType="swap" ethPrice={ethPrice} />
+                </div>
+              </div>
             </div>
+            
+            {/* Additional sections below */}
             <div className="space-y-4">
-              <div className="text-[11px] tracking-[0.2em] text-gray-500 uppercase">Network Insights</div>
-              <MultiChainComparison txType="swap" ethPrice={ethPrice} />
+              <div className="text-[11px] tracking-[0.2em] text-gray-500 uppercase">Forecast</div>
               <CompactForecast />
             </div>
             <div className="space-y-4">
               <div className="text-[11px] tracking-[0.2em] text-gray-500 uppercase">System</div>
-              <ApiStatusPanel />
-              <AccuracyMetricsCard />
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <ApiStatusPanel />
+                <AccuracyMetricsCard />
+              </div>
               <AccuracyMetricsDashboard />
               <FeatureImportanceChart />
             </div>
-          </div>
+            
+            {/* Transaction Management */}
+            <div className="space-y-4">
+              <div className="text-[11px] tracking-[0.2em] text-gray-500 uppercase">Transactions</div>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Scheduled Transactions - Collapsible */}
+                <CollapsibleSection
+                  title="Scheduled Transactions"
+                  icon={<Calendar className="w-4 h-4 text-cyan-300" />}
+                  defaultExpanded={false}
+                >
+                  <LazySection>
+                    <ScheduledTransactionsList />
+                  </LazySection>
+                </CollapsibleSection>
 
-          {/* Right Column: Transaction Management - Collapsible */}
-          <div className="col-span-12 lg:col-start-7 lg:col-span-5 space-y-6 w-full relative">
-            {/* Scheduled Transactions - Collapsible */}
-            <CollapsibleSection
-              title="Scheduled Transactions"
-              icon={<Calendar className="w-4 h-4 text-cyan-300" />}
-              defaultExpanded={false}
-            >
-              <LazySection>
-                <ScheduledTransactionsList />
-              </LazySection>
-            </CollapsibleSection>
-
-            {/* Gas Alerts - Collapsible */}
-            <CollapsibleSection
-              title="Gas Price Alerts"
-              icon={<Bell className="w-4 h-4 text-cyan-300" />}
-              defaultExpanded={false}
-            >
-              <LazySection>
-                <GasAlertSettings currentGas={currentGas} />
-              </LazySection>
-            </CollapsibleSection>
+                {/* Gas Alerts - Collapsible */}
+                <CollapsibleSection
+                  title="Gas Price Alerts"
+                  icon={<Bell className="w-4 h-4 text-cyan-300" />}
+                  defaultExpanded={false}
+                >
+                  <LazySection>
+                    <GasAlertSettings currentGas={currentGas} />
+                  </LazySection>
+                </CollapsibleSection>
+              </div>
+            </div>
           </div>
 
           {/* Full Width: Charts */}

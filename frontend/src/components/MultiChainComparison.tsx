@@ -31,7 +31,7 @@ const MultiChainComparison: React.FC<MultiChainComparisonProps> = ({
   const mostExpensiveCost = chainsWithCost[chainsWithCost.length - 1]?.costUsd || 0;
 
   return (
-    <div className="bg-gray-800/50 border border-gray-700 rounded-xl overflow-hidden">
+    <div className="bg-gray-800/50 border border-gray-700 rounded-2xl overflow-hidden h-full flex flex-col shadow-xl">
       {/* Header */}
       <div className="px-4 py-3 border-b border-gray-700/50 flex items-center justify-between">
         <div className="flex items-center gap-2">
@@ -44,7 +44,7 @@ const MultiChainComparison: React.FC<MultiChainComparisonProps> = ({
       </div>
 
       {/* Chain List */}
-      <div className="divide-y divide-gray-700/30">
+      <div className="divide-y divide-gray-700/30 flex-1 overflow-y-auto">
         {chainsWithCost.map(({ chain, gas, costUsd }, index) => {
           const isSelected = chain.id === selectedChainId;
           const isCheapest = index === 0;
