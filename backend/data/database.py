@@ -88,6 +88,32 @@ class UserTransaction(Base):
 
 class DatabaseManager:
     def __init__(self):
+        # Ensure database directory exists for SQLite
+        if Config.DATABASE_URL.startswith('sqlite'):
+            db_path = Config.DATABASE_URL.replace('sqlite:///', '')
+            if db_path.startswith('/'):
+                # Absolute path - ensure directory exists
+                import os
+                db_dir = os.path.dirname(db_path)
+                if db_dir and not os.path.exists(db_dir):
+                    try:
+                        os.makedirs(db_dir, exist_ok=True)
+                        logger.info(f"Created database directory: {db_dir}")
+                    except Exception as e:
+                        logger.error(f"Could not create database directory {db_dir}: {e}")
+                        # Fallback to local database
+                        db_path = 'gas_data.db'
+                        Config.DATABASE_URL = f'sqlite:///{db_path}'
+                        logger.warning(f"Falling back to local database: {db_path}")
+                elif db_dir and os.path.exists(db_dir):
+                    # Check if directory is writable
+                    if not os.access(db_dir, os.W_OK):
+                        logger.error(f"Database directory not writable: {db_dir}")
+                        # Fallback to local database
+                        db_path = 'gas_data.db'
+                        Config.DATABASE_URL = f'sqlite:///{db_path}'
+                        logger.warning(f"Falling back to local database: {db_path}")
+        
         # Add SQLite-specific configuration for concurrent access
         connect_args = {}
         if Config.DATABASE_URL.startswith('sqlite'):
@@ -108,15 +134,46 @@ class DatabaseManager:
             @event.listens_for(self.engine, "connect")
             def set_sqlite_pragma(dbapi_conn, connection_record):
                 cursor = dbapi_conn.cursor()
-                cursor.execute("PRAGMA journal_mode=WAL")
-                cursor.execute("PRAGMA synchronous=NORMAL")
-                cursor.execute("PRAGMA busy_timeout=30000")  # 30 second busy timeout
-                cursor.close()
+                try:
+                    # Try to enable WAL mode (may fail on some filesystems/volumes)
+                    cursor.execute("PRAGMA journal_mode=WAL")
+                    result = cursor.fetchone()
+                    if result and result[0] != 'wal':
+                        # WAL mode not supported, fallback to DELETE mode
+                        logger.warning(f"WAL mode not supported, using {result[0]} mode")
+                except Exception as e:
+                    # If WAL fails, continue with default journal mode
+                    logger.warning(f"Could not set WAL mode: {e}, using default journal mode")
+                
+                try:
+                    cursor.execute("PRAGMA synchronous=NORMAL")
+                    cursor.execute("PRAGMA busy_timeout=30000")  # 30 second busy timeout
+                except Exception as e:
+                    logger.warning(f"Could not set SQLite pragmas: {e}")
+                finally:
+                    cursor.close()
 
-        Base.metadata.create_all(self.engine)
+        # Try to create tables with retry logic
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                Base.metadata.create_all(self.engine)
+                break
+            except Exception as e:
+                if attempt < max_retries - 1:
+                    import time
+                    wait_time = (attempt + 1) * 2  # 2s, 4s, 6s
+                    logger.warning(f"Database initialization failed (attempt {attempt + 1}/{max_retries}): {e}. Retrying in {wait_time}s...")
+                    time.sleep(wait_time)
+                else:
+                    logger.error(f"Failed to initialize database after {max_retries} attempts: {e}")
+                    raise
         
         # Run migration to add chain_id column if it doesn't exist
-        self._migrate_add_chain_id()
+        try:
+            self._migrate_add_chain_id()
+        except Exception as e:
+            logger.warning(f"Migration failed (non-critical): {e}")
         
         self.Session = sessionmaker(bind=self.engine)
     
@@ -323,7 +380,7 @@ class DatabaseManager:
                     except Exception as e:
                         logger.warning(f"Could not add chain_id to predictions (may already exist): {e}")
                         conn.rollback()
-    
+
     def get_connection(self):
         """Get raw database connection for custom queries"""
         return self.engine.raw_connection()
