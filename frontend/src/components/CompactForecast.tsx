@@ -78,9 +78,9 @@ const CompactForecast: React.FC = () => {
   };
 
   return (
-    <div className="bg-gray-800/50 border border-gray-700 rounded-xl overflow-hidden">
+    <div className="bg-gray-800/50 border border-gray-700 rounded-2xl overflow-hidden h-full flex flex-col shadow-xl">
       {/* Header */}
-      <div className="px-4 py-3 border-b border-gray-700/50 flex items-center justify-between">
+      <div className="px-6 py-4 border-b border-gray-700/50 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Sparkles className="w-4 h-4 text-cyan-400" />
           <h3 className="font-semibold text-white">Price Forecast</h3>
@@ -89,7 +89,7 @@ const CompactForecast: React.FC = () => {
       </div>
 
       {/* Current Price */}
-      <div className="px-4 py-3 border-b border-gray-700/30 bg-gray-800/30">
+      <div className="px-6 py-4 border-b border-gray-700/30 bg-gray-800/30">
         <div className="flex items-center justify-between">
           <span className="text-sm text-gray-400">Current</span>
           <span className="font-mono font-bold text-cyan-400 text-lg">
@@ -100,13 +100,13 @@ const CompactForecast: React.FC = () => {
 
       {/* Predictions */}
       {loading ? (
-        <div className="p-4 flex items-center justify-center">
+        <div className="p-6 flex items-center justify-center flex-1">
           <div className="w-5 h-5 border-2 border-gray-600 border-t-cyan-400 rounded-full animate-spin" />
         </div>
       ) : (
-        <div className="divide-y divide-gray-700/30">
+        <div className="divide-y divide-gray-700/30 flex-1">
           {predictions.map((pred) => (
-            <div key={pred.horizon} className="px-4 py-3 flex items-center justify-between">
+            <div key={pred.horizon} className="px-6 py-4 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-12 text-sm font-medium text-gray-400">
                   {pred.horizon === '1h' ? '1 Hour' : pred.horizon === '4h' ? '4 Hours' : '24 Hours'}
@@ -147,7 +147,7 @@ const CompactForecast: React.FC = () => {
 
       {/* Best time indicator */}
       {predictions.length > 0 && (
-        <div className="px-4 py-3 bg-gray-800/50 border-t border-gray-700/30">
+        <div className="px-6 py-4 bg-gray-800/50 border-t border-gray-700/30">
           {(() => {
             const bestPred = predictions.reduce((best, current) =>
               current.predicted < best.predicted ? current : best

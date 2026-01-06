@@ -78,7 +78,7 @@ const FeatureImportanceChart: React.FC = () => {
   const displayFeatures = expanded ? features : features.slice(0, 5);
 
   return (
-    <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-4 shadow-xl">
+    <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-6 shadow-xl h-full flex flex-col">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">

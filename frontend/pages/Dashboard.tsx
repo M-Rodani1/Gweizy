@@ -98,16 +98,26 @@ const Dashboard: React.FC = () => {
             {/* Additional sections below */}
             <div className="space-y-4">
               <div className="text-[11px] tracking-[0.2em] text-gray-500 uppercase">Forecast</div>
-              <CompactForecast />
+              <div className="min-h-[500px]">
+                <CompactForecast />
+              </div>
             </div>
             <div className="space-y-4">
               <div className="text-[11px] tracking-[0.2em] text-gray-500 uppercase">System</div>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <ApiStatusPanel />
-                <AccuracyMetricsCard />
+                <div className="min-h-[500px]">
+                  <ApiStatusPanel />
+                </div>
+                <div className="min-h-[500px]">
+                  <AccuracyMetricsCard />
+                </div>
               </div>
-              <AccuracyMetricsDashboard />
-              <FeatureImportanceChart />
+              <div className="min-h-[500px]">
+                <AccuracyMetricsDashboard />
+              </div>
+              <div className="min-h-[500px]">
+                <FeatureImportanceChart />
+              </div>
             </div>
             
             {/* Transaction Management */}

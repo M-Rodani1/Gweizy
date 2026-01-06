@@ -125,7 +125,7 @@ const AccuracyMetricsDashboard: React.FC = () => {
   }
 
   return (
-    <div className="bg-slate-800 rounded-lg p-6 border border-slate-700 space-y-6">
+    <div className="bg-slate-800 rounded-2xl p-6 border border-slate-700 space-y-6 h-full flex flex-col shadow-xl">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-semibold text-white">Model Accuracy Metrics</h2>
         <div className="flex gap-2">
