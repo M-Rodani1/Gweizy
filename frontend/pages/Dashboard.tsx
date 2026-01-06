@@ -60,7 +60,7 @@ const Dashboard: React.FC = () => {
         </div>
 
         {/* Main Grid - with proper spacing to prevent overlap */}
-        <div className="grid grid-cols-12 gap-6 relative">
+        <div className="grid grid-cols-12 gap-6 relative scroll-smooth-section">
           {/* Left Column: Chain Comparison + Forecast - Centered */}
           <div className="col-span-12 lg:col-start-3 lg:col-span-8 space-y-6 w-full relative">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

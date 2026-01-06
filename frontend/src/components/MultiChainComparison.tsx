@@ -31,16 +31,19 @@ const MultiChainComparison: React.FC<MultiChainComparisonProps> = ({
   const mostExpensiveCost = chainsWithCost[chainsWithCost.length - 1]?.costUsd || 0;
 
   return (
-    <div className="bg-gray-800/50 border border-gray-700 rounded-2xl overflow-hidden h-full flex flex-col shadow-xl w-full max-w-full">
+    <div className="bg-gray-800/50 border border-gray-700 rounded-2xl overflow-hidden h-full flex flex-col shadow-xl widget-glow w-full max-w-full">
       {/* Header */}
       <div className="px-6 py-4 border-b border-gray-700/50 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Network className="w-4 h-4 text-cyan-400" />
           <h3 className="font-semibold text-white">Multi-Chain Gas</h3>
         </div>
-        {isLoading && (
-          <div className="w-4 h-4 border-2 border-gray-500 border-t-cyan-400 rounded-full animate-spin" />
-        )}
+        {isLoading ? (
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 border-2 border-gray-500 border-t-cyan-400 rounded-full animate-spin" />
+            <span className="text-xs text-gray-400">Loading...</span>
+          </div>
+        ) : null}
       </div>
 
       {/* Chain List */}
@@ -85,12 +88,12 @@ const MultiChainComparison: React.FC<MultiChainComparisonProps> = ({
                     <div className="flex items-center gap-1 sm:gap-2 flex-wrap">
                       <span className="font-medium text-white text-sm sm:text-base truncate">{chain.name}</span>
                       {isCheapest && (
-                        <span className="hidden sm:inline px-1.5 py-0.5 text-xs bg-green-500/20 text-green-400 rounded font-semibold whitespace-nowrap">
+                        <span className="badge badge-success badge-pulse hidden sm:inline whitespace-nowrap">
                           Best
                         </span>
                       )}
                       {chain.isL2 && (
-                        <span className="px-1 sm:px-1.5 py-0.5 text-[10px] sm:text-xs bg-purple-500/20 text-purple-400 rounded whitespace-nowrap">
+                        <span className="badge badge-info whitespace-nowrap">
                           L2
                         </span>
                       )}
@@ -125,7 +128,7 @@ const MultiChainComparison: React.FC<MultiChainComparisonProps> = ({
                     </div>
                   )}
                   {isCheapest && (
-                    <div className="text-[10px] sm:text-xs text-green-400 font-semibold">
+                    <div className="badge badge-success badge-pulse text-[10px] sm:text-xs">
                       Best
                     </div>
                   )}

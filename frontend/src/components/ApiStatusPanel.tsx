@@ -112,7 +112,7 @@ const ApiStatusPanel: React.FC = () => {
   };
 
   return (
-    <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-6 shadow-xl h-full flex flex-col">
+    <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-6 shadow-xl widget-glow h-full flex flex-col bg-pattern-grid">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <ShieldCheck className="w-4 h-4 text-cyan-400" />
@@ -120,7 +120,7 @@ const ApiStatusPanel: React.FC = () => {
         </div>
         <button
           onClick={fetchStatus}
-          className="text-xs text-cyan-300 hover:text-cyan-200 transition-colors flex items-center gap-1"
+          className="btn-gradient-secondary text-xs text-white px-3 py-1.5 rounded-lg flex items-center gap-1.5 font-medium"
         >
           <RefreshCw className="w-3 h-3" />
           Refresh
@@ -152,8 +152,10 @@ const ApiStatusPanel: React.FC = () => {
         ))}
       </div>
 
-      <div className="mt-3 text-xs text-gray-500">
-        Last check: {lastUpdated || '...'}
+      <div className="mt-auto pt-4 border-t border-gray-800/50">
+        <div className="last-updated text-xs">
+          Last check: {lastUpdated || '...'}
+        </div>
       </div>
     </div>
   );

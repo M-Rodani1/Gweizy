@@ -17,6 +17,7 @@ const PersonalizedRecommendations: React.FC<PersonalizedRecommendationsProps> = 
   const [recommendations, setRecommendations] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [lastUpdated, setLastUpdated] = useState<string>('');
 
   useEffect(() => {
     if (!walletAddress) {
@@ -36,6 +37,8 @@ const PersonalizedRecommendations: React.FC<PersonalizedRecommendationsProps> = 
 
         if (data.success) {
           setRecommendations(data);
+          const now = new Date();
+          setLastUpdated(now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
         } else {
           setError(data.error || 'Failed to load recommendations');
         }
@@ -80,10 +83,17 @@ const PersonalizedRecommendations: React.FC<PersonalizedRecommendationsProps> = 
   const { recommended_time, hours_until_best, confidence, reason, potential_savings, patterns } = recommendations;
 
   return (
-    <div className="bg-gradient-to-br from-blue-900/20 to-purple-900/20 border border-blue-500/30 rounded-2xl p-6 h-full flex flex-col shadow-xl w-full max-w-full overflow-y-auto">
-      <div className="flex items-center gap-3 mb-5 min-w-0">
-        <Target className="w-6 h-6 text-blue-400 flex-shrink-0" />
-        <h2 className="text-xl font-bold text-white break-words min-w-0">Personalized Recommendations</h2>
+    <div className="bg-gradient-to-br from-blue-900/20 to-purple-900/20 border border-blue-500/30 rounded-2xl p-6 h-full flex flex-col shadow-xl widget-glow-purple w-full max-w-full overflow-y-auto">
+      <div className="flex items-center justify-between mb-5 min-w-0">
+        <div className="flex items-center gap-3 min-w-0 flex-1">
+          <Target className="w-6 h-6 text-blue-400 flex-shrink-0" />
+          <h2 className="text-xl font-bold text-white break-words min-w-0">Personalized Recommendations</h2>
+        </div>
+        {lastUpdated && (
+          <div className="last-updated flex-shrink-0 ml-2">
+            {lastUpdated}
+          </div>
+        )}
       </div>
 
       <div className="space-y-5">
@@ -101,10 +111,10 @@ const PersonalizedRecommendations: React.FC<PersonalizedRecommendationsProps> = 
             </p>
           )}
           <div className="mt-3">
-            <span className={`text-xs px-2 py-1 rounded ${
-              confidence === 'high' ? 'bg-green-500/20 text-green-400' :
-              confidence === 'medium' ? 'bg-yellow-500/20 text-yellow-400' :
-              'bg-gray-500/20 text-gray-400'
+            <span className={`badge ${
+              confidence === 'high' ? 'badge-success' :
+              confidence === 'medium' ? 'badge-warning' :
+              'badge-info'
             }`}>
               {confidence} confidence
             </span>

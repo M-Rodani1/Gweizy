@@ -15,6 +15,7 @@ const CompactForecast: React.FC = () => {
   const { selectedChain, multiChainGas } = useChain();
   const [predictions, setPredictions] = useState<Prediction[]>([]);
   const [loading, setLoading] = useState(true);
+  const [lastUpdated, setLastUpdated] = useState<string>('');
 
   const currentGas = multiChainGas[selectedChain.id]?.gasPrice || 0;
 
@@ -45,6 +46,8 @@ const CompactForecast: React.FC = () => {
           });
 
           setPredictions(preds);
+          const now = new Date();
+          setLastUpdated(now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
         }
       } catch (err) {
         console.error('Failed to load predictions:', err);
@@ -78,14 +81,21 @@ const CompactForecast: React.FC = () => {
   };
 
   return (
-    <div className="bg-gray-800/50 border border-gray-700 rounded-2xl overflow-hidden h-full flex flex-col shadow-xl">
+    <div className="bg-gray-800/50 border border-gray-700 rounded-2xl overflow-hidden h-full flex flex-col shadow-xl widget-glow bg-pattern-dots">
       {/* Header */}
       <div className="px-6 py-4 border-b border-gray-700/50 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Sparkles className="w-4 h-4 text-cyan-400" />
           <h3 className="font-semibold text-white">Price Forecast</h3>
         </div>
-        <div className="text-xs text-gray-500">{selectedChain.name}</div>
+        <div className="flex items-center gap-2">
+          {lastUpdated && (
+            <div className="last-updated text-xs">
+              {lastUpdated}
+            </div>
+          )}
+          <div className="text-xs text-gray-500">{selectedChain.name}</div>
+        </div>
       </div>
 
       {/* Current Price */}
@@ -101,7 +111,11 @@ const CompactForecast: React.FC = () => {
       {/* Predictions */}
       {loading ? (
         <div className="p-6 flex items-center justify-center flex-1">
-          <div className="w-5 h-5 border-2 border-gray-600 border-t-cyan-400 rounded-full animate-spin" />
+          <div className="space-y-4 w-full max-w-md">
+            <div className="h-4 bg-gray-700/50 rounded animate-pulse" />
+            <div className="h-4 bg-gray-700/50 rounded animate-pulse w-3/4" />
+            <div className="h-4 bg-gray-700/50 rounded animate-pulse w-1/2" />
+          </div>
         </div>
       ) : (
         <div className="divide-y divide-gray-700/30 flex-1">

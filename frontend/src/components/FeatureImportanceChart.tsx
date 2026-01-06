@@ -78,7 +78,7 @@ const FeatureImportanceChart: React.FC = () => {
   const displayFeatures = expanded ? features : features.slice(0, 5);
 
   return (
-    <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-6 shadow-xl h-full flex flex-col">
+    <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-6 shadow-xl widget-glow h-full flex flex-col">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
@@ -93,7 +93,7 @@ const FeatureImportanceChart: React.FC = () => {
         </div>
         <button
           onClick={fetchFeatures}
-          className="text-xs text-purple-300 hover:text-purple-200 transition-colors flex items-center gap-1"
+          className="btn-gradient-secondary text-xs text-white px-3 py-1.5 rounded-lg flex items-center gap-1.5 font-medium disabled:opacity-50"
           disabled={loading}
         >
           <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
