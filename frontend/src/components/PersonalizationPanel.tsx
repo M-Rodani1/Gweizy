@@ -43,13 +43,13 @@ const PersonalizationPanel: React.FC = () => {
   };
 
   return (
-    <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-5 shadow-xl h-full flex flex-col">
-      <div className="flex items-center gap-2 mb-4">
+    <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-6 shadow-xl h-full flex flex-col">
+      <div className="flex items-center gap-2 mb-5">
         <Sliders className="w-4 h-4 text-cyan-400" />
         <h3 className="font-semibold text-white">Profile & Defaults</h3>
       </div>
 
-      <div className="mb-5">
+      <div className="mb-6">
         <div className="text-xs text-gray-400 mb-2">Strategy preset</div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
           {STRATEGY_OPTIONS.map((option) => (
@@ -79,7 +79,7 @@ const PersonalizationPanel: React.FC = () => {
         )}
       </div>
 
-      <div className="mb-5">
+      <div className="mb-6">
         <div className="text-xs text-gray-400 mb-2">Default transaction type</div>
         <div className="grid grid-cols-2 gap-2">
           {Object.entries(TX_TYPE_META).slice(0, 6).map(([type, meta]) => {
@@ -102,7 +102,7 @@ const PersonalizationPanel: React.FC = () => {
         </div>
       </div>
 
-      <div className="mb-5">
+      <div className="mb-6">
         <div className="flex items-center justify-between text-xs text-gray-400 mb-2">
           <span>Default urgency</span>
           <span className="text-gray-300">{Math.round(preferences.urgency * 100)}%</span>
@@ -118,9 +118,9 @@ const PersonalizationPanel: React.FC = () => {
         />
       </div>
 
-      <div className="border-t border-gray-800 pt-4">
-        <div className="text-xs text-gray-400 mb-2">Scheduling defaults</div>
-        <div className="grid grid-cols-3 gap-2 text-xs text-gray-400 mb-3">
+      <div className="border-t border-gray-800 pt-5">
+        <div className="text-xs text-gray-400 mb-3">Scheduling defaults</div>
+        <div className="grid grid-cols-3 gap-2 text-xs text-gray-400 mb-4">
           <div className="bg-gray-900/60 border border-gray-800 rounded-lg p-2">
             Target discount
             <div className="text-sm text-white mt-1">
@@ -139,7 +139,7 @@ const PersonalizationPanel: React.FC = () => {
           </div>
         </div>
 
-        <div className="space-y-3">
+        <div className="space-y-4">
           <div>
             <div className="flex items-center justify-between text-xs text-gray-400 mb-2">
               <span>Target multiplier</span>

@@ -33,7 +33,7 @@ const MultiChainComparison: React.FC<MultiChainComparisonProps> = ({
   return (
     <div className="bg-gray-800/50 border border-gray-700 rounded-2xl overflow-hidden h-full flex flex-col shadow-xl">
       {/* Header */}
-      <div className="px-4 py-3 border-b border-gray-700/50 flex items-center justify-between">
+      <div className="px-6 py-4 border-b border-gray-700/50 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Network className="w-4 h-4 text-cyan-400" />
           <h3 className="font-semibold text-white">Multi-Chain Gas</h3>
@@ -64,7 +64,7 @@ const MultiChainComparison: React.FC<MultiChainComparisonProps> = ({
               key={chain.id}
               onClick={() => setSelectedChainId(chain.id)}
               className={`
-                w-full px-4 py-3 flex items-center justify-between
+                w-full px-6 py-4 flex items-center justify-between
                 hover:bg-gray-700/30 transition-all card-interactive
                 ${isSelected ? 'bg-gray-700/50 ring-1 ring-cyan-500/30' : ''}
               `}
@@ -138,7 +138,7 @@ const MultiChainComparison: React.FC<MultiChainComparisonProps> = ({
 
       {/* Summary */}
       {chainsWithCost.length >= 2 && (
-        <div className="px-4 py-3 bg-gray-800/50 border-t border-gray-700/30">
+        <div className="px-6 py-4 bg-gray-800/50 border-t border-gray-700/30">
           <div className="flex items-center justify-between text-sm">
             <span className="text-gray-400">Max savings vs expensive:</span>
             <span className="font-mono font-bold text-green-400">
