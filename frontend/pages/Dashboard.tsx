@@ -75,7 +75,7 @@ const Dashboard: React.FC = () => {
               {/* Personalized Recommendations */}
               <div className="space-y-3 min-w-0">
                 <div className="text-[11px] tracking-[0.2em] text-gray-500 uppercase px-1">Recommendations</div>
-                <div className="h-full min-h-[500px] w-full overflow-hidden">
+                <div className="h-full min-h-[500px] w-full">
                   {walletAddress ? (
                     <PersonalizedRecommendations walletAddress={walletAddress} />
                   ) : (
