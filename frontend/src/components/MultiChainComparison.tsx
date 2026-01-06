@@ -31,7 +31,7 @@ const MultiChainComparison: React.FC<MultiChainComparisonProps> = ({
   const mostExpensiveCost = chainsWithCost[chainsWithCost.length - 1]?.costUsd || 0;
 
   return (
-    <div className="bg-gray-800/50 border border-gray-700 rounded-2xl overflow-hidden h-full flex flex-col shadow-xl">
+    <div className="bg-gray-800/50 border border-gray-700 rounded-2xl overflow-hidden h-full flex flex-col shadow-xl w-full max-w-full">
       {/* Header */}
       <div className="px-6 py-4 border-b border-gray-700/50 flex items-center justify-between">
         <div className="flex items-center gap-2">
@@ -64,7 +64,7 @@ const MultiChainComparison: React.FC<MultiChainComparisonProps> = ({
               key={chain.id}
               onClick={() => setSelectedChainId(chain.id)}
               className={`
-                w-full px-6 py-4 flex items-center justify-between
+                w-full px-6 py-4 flex items-center justify-between min-w-0
                 hover:bg-gray-700/30 transition-all card-interactive
                 ${isSelected ? 'bg-gray-700/50 ring-1 ring-cyan-500/30' : ''}
               `}
@@ -79,23 +79,23 @@ const MultiChainComparison: React.FC<MultiChainComparisonProps> = ({
                 </div>
 
                 {/* Chain info with gradient icon */}
-                <div className="flex items-center gap-2 min-w-0">
+                <div className="flex items-center gap-2 min-w-0 flex-1">
                   <ChainBadge chain={chain} size="sm" />
-                  <div className="text-left min-w-0">
+                  <div className="text-left min-w-0 flex-1">
                     <div className="flex items-center gap-1 sm:gap-2 flex-wrap">
-                      <span className="font-medium text-white text-sm sm:text-base truncate max-w-[80px] sm:max-w-none">{chain.name}</span>
+                      <span className="font-medium text-white text-sm sm:text-base truncate">{chain.name}</span>
                       {isCheapest && (
-                        <span className="hidden sm:inline px-1.5 py-0.5 text-xs bg-green-500/20 text-green-400 rounded font-semibold">
+                        <span className="hidden sm:inline px-1.5 py-0.5 text-xs bg-green-500/20 text-green-400 rounded font-semibold whitespace-nowrap">
                           Best
                         </span>
                       )}
                       {chain.isL2 && (
-                        <span className="px-1 sm:px-1.5 py-0.5 text-[10px] sm:text-xs bg-purple-500/20 text-purple-400 rounded">
+                        <span className="px-1 sm:px-1.5 py-0.5 text-[10px] sm:text-xs bg-purple-500/20 text-purple-400 rounded whitespace-nowrap">
                           L2
                         </span>
                       )}
                     </div>
-                    <div className="text-[10px] sm:text-xs text-gray-400 font-mono">
+                    <div className="text-[10px] sm:text-xs text-gray-400 font-mono truncate">
                       {formatGwei(gas?.gasPrice || 0)} gwei
                     </div>
                   </div>
@@ -103,9 +103,9 @@ const MultiChainComparison: React.FC<MultiChainComparisonProps> = ({
               </div>
 
               {/* Right side: Sparkline + Cost */}
-              <div className="flex items-center gap-2 sm:gap-3">
+              <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
                 {/* Mini sparkline showing trend - hidden on mobile */}
-                <div className="hidden sm:block">
+                <div className="hidden sm:block flex-shrink-0">
                   <Sparkline
                     data={sparklineData}
                     width={48}
@@ -115,8 +115,8 @@ const MultiChainComparison: React.FC<MultiChainComparisonProps> = ({
                 </div>
 
                 {/* Cost */}
-                <div className="text-right min-w-[55px] sm:min-w-[70px]">
-                  <div className="font-mono font-bold text-white text-sm sm:text-base">
+                <div className="text-right min-w-[55px] sm:min-w-[70px] flex-shrink-0">
+                  <div className="font-mono font-bold text-white text-sm sm:text-base truncate">
                     {formatUsd(costUsd)}
                   </div>
                   {savingsPercent > 0 && !isCheapest && (

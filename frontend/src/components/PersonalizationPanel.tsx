@@ -43,7 +43,7 @@ const PersonalizationPanel: React.FC = () => {
   };
 
   return (
-    <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-6 shadow-xl h-full flex flex-col">
+    <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-6 shadow-xl h-full flex flex-col w-full max-w-full overflow-hidden">
       <div className="flex items-center gap-2 mb-5">
         <Sliders className="w-4 h-4 text-cyan-400" />
         <h3 className="font-semibold text-white">Profile & Defaults</h3>

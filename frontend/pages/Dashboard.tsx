@@ -65,17 +65,17 @@ const Dashboard: React.FC = () => {
           <div className="col-span-12 lg:col-start-3 lg:col-span-8 space-y-6 w-full relative">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* Profile & Defaults */}
-              <div className="space-y-3">
+              <div className="space-y-3 min-w-0">
                 <div className="text-[11px] tracking-[0.2em] text-gray-500 uppercase px-1">Profile</div>
-                <div className="h-full min-h-[500px]">
+                <div className="h-full min-h-[500px] w-full overflow-hidden">
                   <PersonalizationPanel />
                 </div>
               </div>
               
               {/* Personalized Recommendations */}
-              <div className="space-y-3">
+              <div className="space-y-3 min-w-0">
                 <div className="text-[11px] tracking-[0.2em] text-gray-500 uppercase px-1">Recommendations</div>
-                <div className="h-full min-h-[500px]">
+                <div className="h-full min-h-[500px] w-full overflow-hidden">
                   {walletAddress ? (
                     <PersonalizedRecommendations walletAddress={walletAddress} />
                   ) : (
@@ -87,9 +87,9 @@ const Dashboard: React.FC = () => {
               </div>
               
               {/* Multi-Chain Gas */}
-              <div className="space-y-3">
+              <div className="space-y-3 min-w-0">
                 <div className="text-[11px] tracking-[0.2em] text-gray-500 uppercase px-1">Network Insights</div>
-                <div className="h-full min-h-[500px]">
+                <div className="h-full min-h-[500px] w-full overflow-hidden">
                   <MultiChainComparison txType="swap" ethPrice={ethPrice} />
                 </div>
               </div>
