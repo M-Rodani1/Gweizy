@@ -53,6 +53,57 @@ def get_accuracy_metrics():
         }), 503
 
     try:
+        # Try to validate any pending predictions before returning metrics
+        # This is more aggressive - validate ALL ready predictions, not just one
+        try:
+            from data.collector import BaseGasCollector
+            from datetime import timedelta
+            import sqlite3
+            
+            collector = BaseGasCollector()
+            current_data = collector.get_current_gas()
+            
+            if current_data:
+                actual_gas = current_data.get('current_gas', 0)
+                now = datetime.now()
+                db_path = tracker.db_path
+                validated_count = 0
+                
+                with sqlite3.connect(db_path) as conn:
+                    for horizon, hours_back in [('1h', 1), ('4h', 4), ('24h', 24)]:
+                        # Find ALL pending predictions that are old enough
+                        min_age = timedelta(hours=hours_back * 0.8)
+                        cutoff_time = (now - min_age).isoformat()
+                        
+                        rows = conn.execute('''
+                            SELECT timestamp FROM predictions
+                            WHERE horizon = ? 
+                            AND actual IS NULL
+                            AND timestamp <= ?
+                            ORDER BY timestamp ASC
+                            LIMIT 10
+                        ''', (horizon, cutoff_time)).fetchall()
+                        
+                        for row in rows:
+                            from dateutil import parser
+                            pred_time = parser.parse(row[0])
+                            try:
+                                success = tracker.record_actual(
+                                    horizon=horizon,
+                                    actual=actual_gas,
+                                    prediction_timestamp=pred_time,
+                                    tolerance_minutes=60
+                                )
+                                if success:
+                                    validated_count += 1
+                            except Exception as e:
+                                logger.debug(f"Could not validate {horizon} prediction: {e}")
+                
+                if validated_count > 0:
+                    logger.info(f"Auto-validated {validated_count} predictions")
+        except Exception as e:
+            logger.debug(f"Auto-validation failed (non-critical): {e}")
+        
         metrics = {}
         for horizon in ['1h', '4h', '24h']:
             metrics[horizon] = tracker.get_current_metrics(horizon)
@@ -63,6 +114,8 @@ def get_accuracy_metrics():
         })
     except Exception as e:
         logger.error(f"Error getting metrics: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
         return jsonify({
             'success': False,
             'error': str(e)
@@ -113,6 +166,172 @@ def check_drift():
         })
     except Exception as e:
         logger.error(f"Error checking drift: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@accuracy_bp.route('/status', methods=['GET'])
+def get_prediction_status():
+    """
+    Get status of predictions - how many pending, validated, etc.
+    """
+    tracker = get_tracker()
+    
+    if tracker is None:
+        return jsonify({
+            'success': False,
+            'error': 'Accuracy tracker not available'
+        }), 503
+    
+    try:
+        import sqlite3
+        from datetime import datetime, timedelta
+        db_path = tracker.db_path
+        
+        status = {}
+        now = datetime.now()
+        
+        with sqlite3.connect(db_path) as conn:
+            for horizon in ['1h', '4h', '24h']:
+                # Count total predictions
+                total = conn.execute('''
+                    SELECT COUNT(*) FROM predictions WHERE horizon = ?
+                ''', (horizon,)).fetchone()[0]
+                
+                # Count validated predictions
+                validated = conn.execute('''
+                    SELECT COUNT(*) FROM predictions 
+                    WHERE horizon = ? AND actual IS NOT NULL
+                ''', (horizon,)).fetchone()[0]
+                
+                # Count pending predictions
+                pending = total - validated
+                
+                # Count pending predictions that are old enough to validate
+                hours_back = {'1h': 1, '4h': 4, '24h': 24}[horizon]
+                min_age = timedelta(hours=hours_back * 0.8)
+                cutoff_time = (now - min_age).isoformat()
+                
+                ready_to_validate = conn.execute('''
+                    SELECT COUNT(*) FROM predictions
+                    WHERE horizon = ? 
+                    AND actual IS NULL
+                    AND timestamp <= ?
+                ''', (horizon, cutoff_time)).fetchone()[0]
+                
+                # Get oldest pending prediction timestamp
+                oldest_pending = conn.execute('''
+                    SELECT timestamp FROM predictions
+                    WHERE horizon = ? AND actual IS NULL
+                    ORDER BY timestamp ASC
+                    LIMIT 1
+                ''', (horizon,)).fetchone()
+                
+                oldest_timestamp = oldest_pending[0] if oldest_pending else None
+                
+                status[horizon] = {
+                    'total': total,
+                    'validated': validated,
+                    'pending': pending,
+                    'ready_to_validate': ready_to_validate,
+                    'oldest_pending': oldest_timestamp
+                }
+        
+        return jsonify({
+            'success': True,
+            'status': status,
+            'message': 'Use /accuracy/validate-pending to manually validate ready predictions'
+        })
+    except Exception as e:
+        logger.error(f"Error getting prediction status: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@accuracy_bp.route('/validate-pending', methods=['POST'])
+def validate_pending_predictions():
+    """
+    Manually validate all pending predictions by comparing with actual gas prices.
+    This can be called to immediately update metrics.
+    """
+    tracker = get_tracker()
+    
+    if tracker is None:
+        return jsonify({
+            'success': False,
+            'error': 'Accuracy tracker not available'
+        }), 503
+    
+    try:
+        from data.collector import BaseGasCollector
+        from datetime import timedelta
+        import sqlite3
+        
+        collector = BaseGasCollector()
+        current_data = collector.get_current_gas()
+        
+        if not current_data:
+            return jsonify({
+                'success': False,
+                'error': 'Could not fetch current gas price'
+            }), 500
+        
+        actual_gas = current_data.get('current_gas', 0)
+        now = datetime.now()
+        validated_count = 0
+        
+        # Validate all pending predictions for each horizon
+        db_path = tracker.db_path
+        with sqlite3.connect(db_path) as conn:
+            for horizon, hours_back in [('1h', 1), ('4h', 4), ('24h', 24)]:
+                # Find all pending predictions that are old enough
+                min_age = timedelta(hours=hours_back * 0.8)  # At least 80% of horizon
+                cutoff_time = (now - min_age).isoformat()
+                
+                rows = conn.execute('''
+                    SELECT timestamp FROM predictions
+                    WHERE horizon = ? 
+                    AND actual IS NULL
+                    AND timestamp <= ?
+                    ORDER BY timestamp ASC
+                ''', (horizon, cutoff_time)).fetchall()
+                
+                for row in rows:
+                    from dateutil import parser
+                    pred_time = parser.parse(row[0])
+                    try:
+                        success = tracker.record_actual(
+                            horizon=horizon,
+                            actual=actual_gas,
+                            prediction_timestamp=pred_time,
+                            tolerance_minutes=60
+                        )
+                        if success:
+                            validated_count += 1
+                    except Exception as e:
+                        logger.debug(f"Could not validate {horizon} prediction at {pred_time}: {e}")
+        
+        # Get updated metrics
+        metrics = {}
+        for horizon in ['1h', '4h', '24h']:
+            metrics[horizon] = tracker.get_current_metrics(horizon)
+        
+        return jsonify({
+            'success': True,
+            'validated': validated_count,
+            'metrics': metrics,
+            'message': f'Validated {validated_count} predictions'
+        })
+    except Exception as e:
+        logger.error(f"Error validating predictions: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
         return jsonify({
             'success': False,
             'error': str(e)
