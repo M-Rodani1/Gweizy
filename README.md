@@ -125,9 +125,6 @@ The application is heavily optimized for fast loading and smooth user experience
 - Optimized for Base L2 gas fee structure
 - Real-time blockchain data via `eth_getBlockByNumber`
 
-## Documentation
-
-See [HACKATHON_SUBMISSION.md](HACKATHON_SUBMISSION.md) for complete hackathon submission details.
 
 ## Mobile Optimisation
 
