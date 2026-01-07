@@ -1,3 +1,26 @@
+"""
+Feature Engineering for Gas Price Prediction.
+
+This module provides feature engineering capabilities for the gas price prediction
+ML pipeline. It transforms raw gas price data into a rich feature set that captures:
+
+- Time-based patterns (hour of day, day of week, cyclical encodings)
+- Historical price patterns (lag features at 1h, 3h, 6h, 12h, 24h)
+- Rolling statistics (mean, std, min, max over various windows)
+- On-chain network features (pending transactions, gas utilization, congestion)
+- Rate of change indicators
+
+The engineered features are used to train models that predict gas prices
+at 1-hour, 4-hour, and 24-hour horizons.
+
+Example:
+    >>> engineer = GasFeatureEngineer()
+    >>> df = engineer.prepare_training_data(hours_back=720, chain_id=8453)
+    >>> feature_cols = engineer.get_feature_columns(df)
+    >>> X = df[feature_cols]
+    >>> y = df[['target_1h', 'target_4h', 'target_24h']]
+"""
+
 import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
@@ -5,6 +28,44 @@ from data.database import DatabaseManager
 
 
 class GasFeatureEngineer:
+    """
+    Transforms raw gas price data into ML-ready features.
+
+    This class handles the complete feature engineering pipeline:
+    1. Fetches historical gas price data from the database
+    2. Joins on-chain features (network congestion, transaction counts)
+    3. Engineers time-based, lag, and rolling statistical features
+    4. Creates target variables for different prediction horizons
+
+    The feature set is designed to capture both short-term volatility
+    and longer-term patterns in gas prices, supporting accurate predictions
+    across multiple time horizons.
+
+    Attributes:
+        db (DatabaseManager): Database connection for fetching historical data.
+
+    Features Generated:
+        Time Features:
+            - hour, day_of_week, day_of_month, is_weekend
+            - hour_sin, hour_cos (cyclical encoding)
+            - dow_sin, dow_cos (cyclical encoding)
+
+        Lag Features:
+            - gas_lag_1h, gas_lag_3h, gas_lag_6h, gas_lag_12h, gas_lag_24h
+
+        Rolling Features:
+            - gas_rolling_mean_{1,3,6,12}h
+            - gas_rolling_std_{1,3,6,12}h
+            - gas_rolling_min_{1,3,6,12}h
+            - gas_rolling_max_{1,3,6,12}h
+            - gas_change_1h, gas_change_3h
+
+        On-Chain Features (if available):
+            - pending_tx_count, unique_addresses, tx_per_second
+            - gas_utilization_ratio, contract_call_ratio
+            - avg_tx_gas, large_tx_ratio
+            - congestion_level, is_highly_congested
+    """
     def __init__(self):
         self.db = DatabaseManager()
     
@@ -177,7 +238,29 @@ class GasFeatureEngineer:
         return df
     
     def _add_time_features(self, df):
-        """Extract time-based features"""
+        """
+        Extract time-based features from timestamp.
+
+        Creates features that capture temporal patterns in gas prices:
+        - Direct time components (hour, day of week, etc.)
+        - Cyclical encodings using sin/cos transformations
+
+        Cyclical encoding is used because time features are inherently cyclic
+        (e.g., hour 23 is close to hour 0). Sin/cos encoding preserves this
+        relationship, improving model performance.
+
+        Args:
+            df (pd.DataFrame): DataFrame with 'timestamp' column.
+
+        Returns:
+            pd.DataFrame: DataFrame with added time features:
+                - hour: Hour of day (0-23)
+                - day_of_week: Day of week (0=Monday, 6=Sunday)
+                - day_of_month: Day of month (1-31)
+                - is_weekend: Binary flag for Saturday/Sunday
+                - hour_sin, hour_cos: Cyclical hour encoding
+                - dow_sin, dow_cos: Cyclical day-of-week encoding
+        """
         df['hour'] = df['timestamp'].dt.hour
         df['day_of_week'] = df['timestamp'].dt.dayofweek
         df['day_of_month'] = df['timestamp'].dt.day
@@ -194,7 +277,32 @@ class GasFeatureEngineer:
         return df
     
     def _add_lag_features(self, df):
-        """Add lagged gas prices (past values)"""
+        """
+        Add lagged gas price features (historical values).
+
+        Lag features capture the autoregressive nature of gas prices -
+        past prices are strong predictors of future prices. This method
+        creates features representing gas prices at various points in the past.
+
+        The lag windows are automatically adjusted based on the detected
+        sampling rate of the data (1-minute vs 5-minute intervals).
+
+        Args:
+            df (pd.DataFrame): DataFrame with 'gas' and 'timestamp' columns.
+
+        Returns:
+            pd.DataFrame: DataFrame with added lag features:
+                - gas_lag_1h: Gas price 1 hour ago
+                - gas_lag_3h: Gas price 3 hours ago
+                - gas_lag_6h: Gas price 6 hours ago
+                - gas_lag_12h: Gas price 12 hours ago
+                - gas_lag_24h: Gas price 24 hours ago
+
+        Note:
+            Lag features will have NaN values for the first N rows where
+            historical data isn't available. These are handled in the
+            prepare_training_data method.
+        """
         # Lag features: gas prices from 1h, 3h, 6h, 12h, 24h ago
         # Updated for 1-minute sampling (60 records per hour) - Week 1 Quick Win #1
         # Fallback to 12 records/hour if data is sparse (backward compatibility)
@@ -236,7 +344,37 @@ class GasFeatureEngineer:
         return records_per_hour
     
     def _add_rolling_features(self, df):
-        """Add rolling statistics"""
+        """
+        Add rolling window statistical features.
+
+        Rolling features capture the recent behavior and volatility of gas prices.
+        These statistics help the model understand:
+        - Recent average price levels (rolling mean)
+        - Price volatility (rolling std)
+        - Recent price range (rolling min/max)
+        - Price momentum (rate of change)
+
+        The window sizes are automatically adjusted based on the detected
+        sampling rate of the data.
+
+        Args:
+            df (pd.DataFrame): DataFrame with 'gas' column.
+
+        Returns:
+            pd.DataFrame: DataFrame with added rolling features:
+                - gas_rolling_mean_{1,3,6,12}h: Average price over window
+                - gas_rolling_std_{1,3,6,12}h: Price standard deviation
+                - gas_rolling_min_{1,3,6,12}h: Minimum price in window
+                - gas_rolling_max_{1,3,6,12}h: Maximum price in window
+                - gas_change_1h: Percent change over 1 hour
+                - gas_change_3h: Percent change over 3 hours
+
+        Note:
+            Rolling features will have NaN values for the first N rows
+            where the full window isn't available. These are filled with
+            forward-fill then zero in prepare_training_data to prevent
+            future data leakage.
+        """
         # Detect sample rate and adjust windows accordingly
         sample_rate = self._detect_sample_rate(df)
         

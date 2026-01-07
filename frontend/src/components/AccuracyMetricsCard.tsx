@@ -1,7 +1,20 @@
+/**
+ * AccuracyMetricsCard Component
+ *
+ * Displays ML model accuracy metrics for gas price predictions.
+ * Shows key performance indicators including R² score, directional accuracy,
+ * MAE, and sample count for different prediction horizons (1h, 4h, 24h).
+ *
+ * @module components/AccuracyMetricsCard
+ */
+
 import React, { useEffect, useState } from 'react';
 import { TrendingUp, Target, Compass, BarChart3, RefreshCw, AlertCircle } from 'lucide-react';
 import { API_CONFIG, getApiUrl } from '../config/api';
 
+/**
+ * Metrics for a specific prediction horizon.
+ */
 interface HorizonMetrics {
   mae: number | null;
   rmse: number | null;
@@ -16,6 +29,38 @@ interface MetricsData {
   '24h': HorizonMetrics;
 }
 
+/**
+ * Card component displaying model accuracy metrics.
+ *
+ * Features:
+ * - Tabbed interface for 1h, 4h, and 24h horizons
+ * - Color-coded metrics (green for good, yellow for moderate, red for poor)
+ * - Auto-refresh every 5 minutes
+ * - Manual refresh button
+ * - Graceful fallback to mock data on API errors
+ *
+ * Metrics Displayed:
+ * - **R² Score**: Coefficient of determination (variance explained)
+ *   - Green (≥70%): Good model fit
+ *   - Yellow (≥40%): Acceptable
+ *   - Red (<40%): Poor fit
+ *
+ * - **Directional Accuracy**: Percentage of correct trend predictions
+ *   - Green (≥60%): Better than random
+ *   - Yellow (≥50%): Near random
+ *   - Red (<50%): Worse than random
+ *
+ * - **MAE**: Mean Absolute Error in gwei
+ * - **Samples**: Number of validated predictions
+ *
+ * @returns {JSX.Element} The accuracy metrics card component
+ *
+ * @example
+ * ```tsx
+ * // Basic usage in a dashboard
+ * <AccuracyMetricsCard />
+ * ```
+ */
 const AccuracyMetricsCard: React.FC = () => {
   const [metrics, setMetrics] = useState<MetricsData | null>(null);
   const [loading, setLoading] = useState(true);

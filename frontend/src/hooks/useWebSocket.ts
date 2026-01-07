@@ -1,12 +1,20 @@
 /**
- * WebSocket hook for real-time gas price updates
- * Replaces polling with WebSocket connections for instant updates
+ * WebSocket hook for real-time gas price updates.
+ *
+ * Provides a Socket.IO connection to the backend for receiving
+ * live gas price updates. Includes automatic reconnection with
+ * exponential backoff and connection state management.
+ *
+ * @module hooks/useWebSocket
  */
 
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { getApiOrigin } from '../config/api';
 
+/**
+ * Gas price update payload received from WebSocket.
+ */
 interface GasPriceUpdate {
   current_gas: number;
   base_fee: number;
@@ -15,13 +23,54 @@ interface GasPriceUpdate {
   collection_count: number;
 }
 
+/**
+ * Configuration options for the WebSocket hook.
+ */
 interface UseWebSocketOptions {
+  /** Whether the WebSocket connection should be active (default: true) */
   enabled?: boolean;
+  /** Callback fired when connection is established */
   onConnect?: () => void;
+  /** Callback fired when connection is lost */
   onDisconnect?: () => void;
+  /** Callback fired when a connection error occurs */
   onError?: (error: Error) => void;
 }
 
+/**
+ * Hook for real-time WebSocket communication with the gas price backend.
+ *
+ * Establishes a Socket.IO connection that receives live gas price updates.
+ * Handles automatic reconnection with exponential backoff (up to 5 attempts).
+ *
+ * @param {UseWebSocketOptions} options - Configuration options
+ * @param {boolean} [options.enabled=true] - Whether to enable the connection
+ * @param {Function} [options.onConnect] - Callback when connected
+ * @param {Function} [options.onDisconnect] - Callback when disconnected
+ * @param {Function} [options.onError] - Callback when error occurs
+ *
+ * @returns {Object} WebSocket state and controls
+ * @returns {Socket|null} returns.socket - The Socket.IO socket instance
+ * @returns {boolean} returns.isConnected - Current connection status
+ * @returns {GasPriceUpdate|null} returns.gasPrice - Latest gas price data
+ * @returns {Error|null} returns.error - Any connection error
+ * @returns {Function} returns.disconnect - Manually disconnect
+ * @returns {Function} returns.reconnect - Manually trigger reconnection
+ *
+ * @example
+ * ```tsx
+ * function GasDisplay() {
+ *   const { isConnected, gasPrice, error } = useWebSocket({
+ *     onConnect: () => console.log('Connected!'),
+ *     onError: (err) => console.error('WS Error:', err),
+ *   });
+ *
+ *   if (error) return <div>Connection error</div>;
+ *   if (!isConnected) return <div>Connecting...</div>;
+ *   return <div>Gas: {gasPrice?.current_gas} gwei</div>;
+ * }
+ * ```
+ */
 export function useWebSocket(options: UseWebSocketOptions = {}) {
   const { enabled = true, onConnect, onDisconnect, onError } = options;
   const [socket, setSocket] = useState<Socket | null>(null);

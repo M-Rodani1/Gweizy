@@ -20,7 +20,40 @@ logger = logging.getLogger(__name__)
 
 class HybridPredictor:
     """
-    Hybrid predictor combining classification and regression
+    Hybrid gas price predictor combining spike classification with price regression.
+
+    This predictor uses a two-stage approach:
+    1. **Classification Stage**: Classifies the upcoming period as Normal, Elevated, or Spike
+       using gradient boosting models trained on historical patterns.
+    2. **Prediction Stage**: Generates price predictions and confidence intervals based
+       on the classification and current market conditions.
+
+    The hybrid approach provides several advantages:
+    - Better handling of extreme events (spikes) that regression alone misses
+    - Actionable classifications for users (wait vs. transact recommendations)
+    - Confidence intervals that adapt to market conditions
+
+    Classification Thresholds:
+        - Normal: < 0.01 Gwei (low activity, optimal for transactions)
+        - Elevated: 0.01 - 0.05 Gwei (moderate activity)
+        - Spike: > 0.05 Gwei (high activity, recommend waiting)
+
+    Attributes:
+        models_dir (str): Directory containing trained model files.
+        spike_detectors (dict): Loaded spike detection models keyed by horizon.
+        loaded (bool): Whether models have been successfully loaded.
+
+    Example:
+        >>> predictor = HybridPredictor()
+        >>> predictor.load_models()
+        >>> predictions = predictor.predict(recent_data_df)
+        >>> print(predictions['1h']['classification']['class'])
+        'normal'
+
+    Model Files Required:
+        - spike_detector_1h.pkl: 1-hour horizon classifier
+        - spike_detector_4h.pkl: 4-hour horizon classifier
+        - spike_detector_24h.pkl: 24-hour horizon classifier
     """
 
     # Thresholds (in Gwei) - must match training script
@@ -41,7 +74,25 @@ class HybridPredictor:
         self.loaded = False
 
     def load_models(self):
-        """Load all models (spike detectors, LSTM, Prophet)"""
+        """
+        Load trained spike detection models from disk.
+
+        Searches for model files in multiple locations (priority order):
+        1. Persistent storage (/data/models) - used in Railway deployment
+        2. Config.MODELS_DIR - if defined in configuration
+        3. self.models_dir - local development fallback
+        4. backend/models/saved_models - alternative local path
+
+        Returns:
+            bool: True if at least one model was loaded successfully.
+
+        Raises:
+            No exceptions raised - failures are logged as warnings.
+
+        Side Effects:
+            Sets self.loaded to True if successful.
+            Populates self.spike_detectors dict with loaded models.
+        """
         try:
             # Load spike detectors for all horizons
             for horizon in ['1h', '4h', '24h']:
@@ -136,13 +187,35 @@ class HybridPredictor:
 
     def predict(self, recent_data):
         """
-        Make hybrid prediction using spike detection + regression
+        Generate gas price predictions for multiple time horizons.
+
+        Uses spike detection models to classify expected market conditions
+        and generate price predictions with confidence intervals.
 
         Args:
-            recent_data: DataFrame with recent gas prices
+            recent_data (pd.DataFrame): Recent gas price data with columns:
+                - timestamp: datetime of each observation
+                - gas_price: gas price in Gwei
+                - base_fee: base fee component (optional)
+                - priority_fee: priority fee component (optional)
+                Should contain at least 4 hours of data (~48 records at 5-min intervals).
 
         Returns:
-            dict with predictions for each horizon (1h, 4h, 24h)
+            dict: Predictions keyed by horizon ('1h', '4h', '24h'), each containing:
+                - classification: {class, class_id, emoji, color, confidence, probabilities}
+                - prediction: {price, lower_bound, upper_bound, unit}
+                - alert: {show_alert, message, severity}
+                - recommendation: {action, message, suggested_gas}
+
+        Raises:
+            ValueError: If models are not loaded and cannot be loaded.
+
+        Example:
+            >>> predictions = predictor.predict(recent_data)
+            >>> print(predictions['1h']['classification'])
+            {'class': 'normal', 'confidence': 0.85, ...}
+            >>> print(predictions['1h']['recommendation'])
+            {'action': 'transact', 'message': 'Optimal time to submit transactions'}
         """
         if not self.loaded:
             if not self.load_models():

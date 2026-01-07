@@ -1,6 +1,10 @@
 /**
- * Custom hook for gas data fetching
- * Uses WebSocket for real-time updates with React Query fallback
+ * Custom hooks for gas data fetching.
+ *
+ * Provides hooks for fetching current gas prices and predictions,
+ * with real-time WebSocket support and React Query polling fallback.
+ *
+ * @module hooks/useGasData
  */
 
 import { useQuery } from '@tanstack/react-query';
@@ -11,7 +15,32 @@ import { REFRESH_INTERVALS } from '../constants';
 import { useWebSocket } from './useWebSocket';
 
 /**
- * Hook to fetch current gas price with WebSocket support
+ * Hook to fetch current gas price with WebSocket support.
+ *
+ * Uses WebSocket for real-time updates when available, with automatic
+ * fallback to polling via React Query when WebSocket is not connected.
+ *
+ * @returns {Object} Gas price state and controls
+ * @returns {number} returns.data - Current gas price in gwei
+ * @returns {boolean} returns.isLoading - True while fetching initial data
+ * @returns {boolean} returns.isError - True if fetch failed
+ * @returns {Error|null} returns.error - Error object if fetch failed
+ * @returns {Function} returns.refetch - Function to manually refresh
+ * @returns {boolean} returns.isWebSocketConnected - WebSocket connection status
+ *
+ * @example
+ * ```tsx
+ * function GasPrice() {
+ *   const { data: gasPrice, isLoading, isWebSocketConnected } = useCurrentGas();
+ *
+ *   return (
+ *     <div>
+ *       <span>{gasPrice.toFixed(4)} gwei</span>
+ *       {isWebSocketConnected && <span>🔴 Live</span>}
+ *     </div>
+ *   );
+ * }
+ * ```
  */
 export function useCurrentGas() {
   const { isConnected, gasPrice } = useWebSocket({ enabled: true });
@@ -50,8 +79,35 @@ export function useCurrentGas() {
 }
 
 /**
- * Hook to fetch gas predictions for a specific chain
- * @param chainId - Chain ID (defaults to Base/8453 if not provided)
+ * Hook to fetch gas price predictions for a specific chain.
+ *
+ * Fetches ML model predictions for gas prices at 1h, 4h, and 24h horizons.
+ * Automatically polls at regular intervals and caches results.
+ *
+ * @param {number} [chainId] - Chain ID (defaults to Base/8453 if not provided)
+ *
+ * @returns {Object} Query result with prediction data
+ * @returns {Object} returns.data - Predictions object with 1h, 4h, 24h keys
+ * @returns {boolean} returns.isLoading - True while fetching
+ * @returns {boolean} returns.isError - True if fetch failed
+ * @returns {Function} returns.refetch - Function to manually refresh
+ *
+ * @example
+ * ```tsx
+ * function PredictionDisplay() {
+ *   const { data: predictions, isLoading } = usePredictions(8453);
+ *
+ *   if (isLoading) return <Skeleton />;
+ *
+ *   return (
+ *     <div>
+ *       <p>1h: {predictions['1h'].toFixed(4)} gwei</p>
+ *       <p>4h: {predictions['4h'].toFixed(4)} gwei</p>
+ *       <p>24h: {predictions['24h'].toFixed(4)} gwei</p>
+ *     </div>
+ *   );
+ * }
+ * ```
  */
 export function usePredictions(chainId?: number) {
   return useQuery({
@@ -79,8 +135,43 @@ export function usePredictions(chainId?: number) {
 }
 
 /**
- * Combined hook for gas data for a specific chain
- * @param chainId - Chain ID (defaults to Base/8453 if not provided)
+ * Combined hook for all gas data (current price + predictions).
+ *
+ * Convenience hook that combines useCurrentGas and usePredictions
+ * into a single interface. Ideal for components that need both
+ * current price and predictions.
+ *
+ * @param {number} [chainId] - Chain ID (defaults to Base/8453 if not provided)
+ *
+ * @returns {Object} Combined gas data state
+ * @returns {number} returns.currentGas - Current gas price in gwei (0 if unavailable)
+ * @returns {Object} returns.predictions - Predictions for 1h, 4h, 24h horizons
+ * @returns {boolean} returns.isLoading - True while either query is loading
+ * @returns {boolean} returns.isError - True if either query failed
+ * @returns {Error|null} returns.error - First error encountered
+ * @returns {Function} returns.refetch - Function to refresh all data
+ *
+ * @example
+ * ```tsx
+ * function GasDashboard() {
+ *   const {
+ *     currentGas,
+ *     predictions,
+ *     isLoading,
+ *     refetch
+ *   } = useGasData(8453);
+ *
+ *   if (isLoading) return <LoadingSpinner />;
+ *
+ *   return (
+ *     <div>
+ *       <CurrentPrice value={currentGas} />
+ *       <PredictionCard horizon="1h" value={predictions['1h']} />
+ *       <button onClick={refetch}>Refresh</button>
+ *     </div>
+ *   );
+ * }
+ * ```
  */
 export function useGasData(chainId?: number) {
   const currentGas = useCurrentGas();
