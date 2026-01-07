@@ -67,15 +67,15 @@ const Dashboard: React.FC = () => {
               {/* Profile & Defaults */}
               <div className="space-y-3 min-w-0">
                 <div className="text-[11px] tracking-[0.2em] text-gray-500 uppercase px-1">Profile</div>
-                <div className="h-full min-h-[500px] w-full overflow-hidden">
+                <div className="h-full min-h-[320px] w-full overflow-hidden">
                   <PersonalizationPanel />
                 </div>
               </div>
-              
+
               {/* Personalized Recommendations */}
               <div className="space-y-3 min-w-0">
                 <div className="text-[11px] tracking-[0.2em] text-gray-500 uppercase px-1">Recommendations</div>
-                <div className="h-full min-h-[500px] w-full">
+                <div className="h-full min-h-[320px] w-full">
                   {walletAddress ? (
                     <PersonalizedRecommendations walletAddress={walletAddress} />
                   ) : (
@@ -85,11 +85,11 @@ const Dashboard: React.FC = () => {
                   )}
                 </div>
               </div>
-              
+
               {/* Multi-Chain Gas */}
               <div className="space-y-3 min-w-0">
                 <div className="text-[11px] tracking-[0.2em] text-gray-500 uppercase px-1">Network Insights</div>
-                <div className="h-full min-h-[500px] w-full overflow-hidden">
+                <div className="h-full min-h-[320px] w-full overflow-hidden">
                   <MultiChainComparison txType="swap" ethPrice={ethPrice} />
                 </div>
               </div>
@@ -98,24 +98,24 @@ const Dashboard: React.FC = () => {
             {/* Additional sections below */}
             <div className="space-y-4">
               <div className="text-[11px] tracking-[0.2em] text-gray-500 uppercase">Forecast</div>
-              <div className="min-h-[500px]">
+              <div className="min-h-[280px]">
                 <CompactForecast />
               </div>
             </div>
             <div className="space-y-4">
               <div className="text-[11px] tracking-[0.2em] text-gray-500 uppercase">System</div>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div className="min-h-[500px]">
+                <div className="min-h-[300px]">
                   <ApiStatusPanel />
                 </div>
-                <div className="min-h-[500px]">
+                <div className="min-h-[300px]">
                   <AccuracyMetricsCard />
                 </div>
               </div>
-              <div className="min-h-[500px]">
+              <div className="min-h-[400px]">
                 <AccuracyMetricsDashboard />
               </div>
-              <div className="min-h-[500px]">
+              <div className="min-h-[350px]">
                 <FeatureImportanceChart />
               </div>
             </div>

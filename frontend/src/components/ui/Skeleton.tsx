@@ -68,4 +68,60 @@ export const SkeletonList: React.FC<{ count?: number }> = ({ count = 3 }) => (
   </div>
 );
 
+export const SkeletonMetrics: React.FC<{ className?: string }> = ({ className }) => (
+  <div className={`bg-gray-800/50 rounded-xl p-4 space-y-4 ${className}`}>
+    <div className="flex items-center justify-between">
+      <Skeleton variant="text" width={120} height={20} />
+      <Skeleton variant="rect" width={80} height={28} />
+    </div>
+    <div className="grid grid-cols-2 gap-3">
+      {Array.from({ length: 4 }).map((_, i) => (
+        <div key={i} className="bg-gray-900/50 rounded-lg p-3 space-y-2">
+          <Skeleton variant="text" width="60%" height={12} />
+          <Skeleton variant="text" width="80%" height={24} />
+          <Skeleton variant="text" width="50%" height={10} />
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
+export const SkeletonChart: React.FC<{ className?: string; height?: number }> = ({
+  className,
+  height = 200,
+}) => (
+  <div className={`bg-gray-800/50 rounded-xl p-4 space-y-4 ${className}`}>
+    <div className="flex items-center justify-between">
+      <Skeleton variant="text" width={150} height={20} />
+      <div className="flex gap-2">
+        <Skeleton variant="rect" width={60} height={24} />
+        <Skeleton variant="rect" width={60} height={24} />
+      </div>
+    </div>
+    <Skeleton variant="rect" height={height} className="w-full" />
+  </div>
+);
+
+export const SkeletonTable: React.FC<{ rows?: number; cols?: number }> = ({
+  rows = 5,
+  cols = 4,
+}) => (
+  <div className="bg-gray-800/50 rounded-xl overflow-hidden">
+    {/* Header */}
+    <div className="bg-gray-900/50 px-4 py-3 flex gap-4">
+      {Array.from({ length: cols }).map((_, i) => (
+        <Skeleton key={i} variant="text" width={`${100 / cols}%`} height={16} />
+      ))}
+    </div>
+    {/* Rows */}
+    {Array.from({ length: rows }).map((_, rowIdx) => (
+      <div key={rowIdx} className="px-4 py-3 flex gap-4 border-t border-gray-700/50">
+        {Array.from({ length: cols }).map((_, colIdx) => (
+          <Skeleton key={colIdx} variant="text" width={`${100 / cols}%`} height={14} />
+        ))}
+      </div>
+    ))}
+  </div>
+);
+
 export default Skeleton;
