@@ -42,6 +42,7 @@ export const API_CONFIG = {
     ACCURACY_SUMMARY: '/accuracy/summary',
     ACCURACY_FEATURES: '/accuracy/features',
     ACCURACY_HISTORY: '/accuracy/history',
+    ACCURACY_RESET: '/accuracy/reset',
     // Explanation endpoint
     EXPLAIN: '/explain'
   },

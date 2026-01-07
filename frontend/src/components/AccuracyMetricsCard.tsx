@@ -9,7 +9,7 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import { TrendingUp, Target, Compass, BarChart3, RefreshCw, AlertCircle } from 'lucide-react';
+import { TrendingUp, Target, Compass, BarChart3, RefreshCw, AlertCircle, RotateCcw } from 'lucide-react';
 import { API_CONFIG, getApiUrl } from '../config/api';
 
 /**
@@ -64,8 +64,31 @@ interface MetricsData {
 const AccuracyMetricsCard: React.FC = () => {
   const [metrics, setMetrics] = useState<MetricsData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [resetting, setResetting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedHorizon, setSelectedHorizon] = useState<'1h' | '4h' | '24h'>('1h');
+
+  const resetMetrics = async () => {
+    if (!confirm('Reset all accuracy data? This will clear bad metrics and seed fresh data.')) {
+      return;
+    }
+    try {
+      setResetting(true);
+      const response = await fetch(getApiUrl(API_CONFIG.ENDPOINTS.ACCURACY_RESET), {
+        method: 'POST',
+      });
+      const data = await response.json();
+      if (data.success && data.metrics) {
+        setMetrics(data.metrics);
+        setError(null);
+      }
+      await fetchMetrics();
+    } catch (err) {
+      setError('Failed to reset metrics');
+    } finally {
+      setResetting(false);
+    }
+  };
 
   const fetchMetrics = async () => {
     try {
@@ -146,14 +169,25 @@ const AccuracyMetricsCard: React.FC = () => {
           <BarChart3 className="w-4 h-4 text-purple-400" />
           <h3 className="font-semibold text-white">Model Accuracy</h3>
         </div>
-        <button
-          onClick={fetchMetrics}
-          className="btn-gradient-secondary text-xs text-white px-3 py-1.5 rounded-lg flex items-center gap-1.5 font-medium disabled:opacity-50"
-          disabled={loading}
-        >
-          <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
-          Refresh
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={resetMetrics}
+            className="text-xs text-red-400 hover:text-red-300 px-2 py-1.5 rounded-lg flex items-center gap-1 font-medium disabled:opacity-50 border border-red-500/30 hover:border-red-500/50 transition-colors"
+            disabled={resetting || loading}
+            title="Reset metrics data"
+          >
+            <RotateCcw className={`w-3 h-3 ${resetting ? 'animate-spin' : ''}`} />
+            Reset
+          </button>
+          <button
+            onClick={fetchMetrics}
+            className="btn-gradient-secondary text-xs text-white px-3 py-1.5 rounded-lg flex items-center gap-1.5 font-medium disabled:opacity-50"
+            disabled={loading}
+          >
+            <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
+          </button>
+        </div>
       </div>
 
       {/* Horizon Tabs */}
