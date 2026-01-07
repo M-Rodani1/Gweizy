@@ -571,13 +571,19 @@ def get_predictions():
                 # Track hybrid predictions for accuracy monitoring
                 for horizon, pred in hybrid_preds.items():
                     try:
-                        accuracy_tracker.record_prediction(
-                            horizon=horizon,
-                            predicted=pred['prediction']['price'],
-                            timestamp=datetime.now()
-                        )
+                        if accuracy_tracker is not None:
+                            accuracy_tracker.record_prediction(
+                                horizon=horizon,
+                                predicted=pred['prediction']['price'],
+                                timestamp=datetime.now()
+                            )
+                            logger.debug(f"Recorded {horizon} prediction: {pred['prediction']['price']:.6f} gwei")
+                        else:
+                            logger.warning("Accuracy tracker not available - predictions not being tracked")
                     except Exception as track_err:
                         logger.warning(f"Could not track hybrid prediction: {track_err}")
+                        import traceback
+                        logger.debug(traceback.format_exc())
 
                 return jsonify({
                     'chain_id': chain_id,
@@ -816,13 +822,19 @@ def get_predictions():
 
                     # Track prediction for accuracy monitoring
                     try:
-                        accuracy_tracker.record_prediction(
-                            horizon=horizon,
-                            predicted=pred_value,
-                            timestamp=datetime.now()
-                        )
+                        if accuracy_tracker is not None:
+                            accuracy_tracker.record_prediction(
+                                horizon=horizon,
+                                predicted=pred_value,
+                                timestamp=datetime.now()
+                            )
+                            logger.debug(f"Recorded {horizon} prediction: {pred_value:.6f} gwei")
+                        else:
+                            logger.warning("Accuracy tracker not available - predictions not being tracked")
                     except Exception as track_err:
                         logger.warning(f"Could not track prediction: {track_err}")
+                        import traceback
+                        logger.debug(traceback.format_exc())
 
             # Format historical data for graph
             historical = []
