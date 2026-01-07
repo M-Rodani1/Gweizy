@@ -34,13 +34,14 @@ def _update_stats(func_name: str, stat_type: str):
 
 def cached(ttl=300, key_prefix: Optional[str] = None):
     """
-    Enhanced decorator to cache function results with statistics
-    
+    Enhanced decorator to cache function results with statistics.
+    Includes Flask request args/path in cache key for proper per-request caching.
+
     Args:
         ttl: Time to live in seconds
         key_prefix: Optional prefix for cache key
-    
-    Usage: 
+
+    Usage:
         @cached(ttl=300, key_prefix='predictions')
         def get_predictions():
             ...
@@ -49,23 +50,43 @@ def cached(ttl=300, key_prefix: Optional[str] = None):
         @wraps(func)
         def wrapper(*args, **kwargs):
             prefix = key_prefix or func.__name__
-            key = f"{prefix}_{cache_key(*args, **kwargs)}"
-            
+
+            # Include Flask request context in cache key if available
+            request_context = {}
+            try:
+                from flask import request, has_request_context
+                if has_request_context():
+                    # Include query parameters and path in cache key
+                    request_context = {
+                        'path': request.path,
+                        'args': dict(request.args)
+                    }
+            except ImportError:
+                pass
+
+            # Combine function args with request context
+            key_data = {
+                'func_args': args,
+                'func_kwargs': kwargs,
+                'request': request_context
+            }
+            key = f"{prefix}_{cache_key(json.dumps(key_data, sort_keys=True, default=str))}"
+
             # Check cache
             if key in cache:
                 _update_stats(func.__name__, 'hits')
                 logger.debug(f"Cache HIT: {func.__name__} (key: {key[:20]}...)")
                 return cache[key]
-            
+
             # Execute function
             _update_stats(func.__name__, 'misses')
             logger.debug(f"Cache MISS: {func.__name__}")
             result = func(*args, **kwargs)
-            
+
             # Store in cache
             cache[key] = result
             _update_stats(func.__name__, 'sets')
-            
+
             return result
         return wrapper
     return decorator

@@ -612,6 +612,23 @@ def get_predictions():
         
         if not models:
             logger.warning("Models not loaded, using fallback predictions")
+            # Format historical data for graph even when models aren't loaded
+            historical = []
+            for d in recent_data[-100:] if len(recent_data) > 0 else []:
+                timestamp = d.get('timestamp', '')
+                if isinstance(timestamp, str):
+                    try:
+                        from dateutil import parser
+                        dt = parser.parse(timestamp)
+                        time_str = dt.strftime('%H:%M')
+                    except:
+                        time_str = timestamp[:5] if len(timestamp) > 5 else timestamp
+                else:
+                    time_str = str(timestamp)[:5]
+                historical.append({
+                    'time': time_str,
+                    'gwei': round(d.get('gwei', 0) or d.get('current_gas', 0), 4)
+                })
             return jsonify({
                 'chain_id': chain_id,
                 'current': current,
@@ -619,6 +636,7 @@ def get_predictions():
                     '1h': [{'time': '1h', 'predictedGwei': current['current_gas'] * 1.05}],
                     '4h': [{'time': '4h', 'predictedGwei': current['current_gas'] * 1.1}],
                     '24h': [{'time': '24h', 'predictedGwei': current['current_gas'] * 1.15}],
+                    'historical': historical,
                 },
                 'note': 'Using fallback predictions. Train models for ML predictions.'
             })
