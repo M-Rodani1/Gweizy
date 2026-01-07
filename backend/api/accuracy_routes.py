@@ -774,6 +774,75 @@ def get_diagnostics():
         }), 500
 
 
+@accuracy_bp.route('/reset', methods=['POST'])
+def reset_accuracy_data():
+    """
+    Reset/clear all accuracy tracking data.
+
+    Use this when:
+    - Metrics show bad values due to scale mismatch
+    - Starting fresh after model changes
+    - Testing purposes
+
+    This will:
+    - Clear all predictions from the database
+    - Reset in-memory prediction buffers
+    - Trigger auto-seeding of new test data
+    """
+    tracker = get_tracker()
+
+    if tracker is None:
+        return jsonify({
+            'success': False,
+            'error': 'Accuracy tracker not available'
+        }), 503
+
+    try:
+        import sqlite3
+        import os
+
+        db_path = tracker.db_path
+
+        # Clear database
+        if os.path.exists(db_path):
+            with sqlite3.connect(db_path) as conn:
+                # Delete all predictions
+                conn.execute('DELETE FROM predictions')
+                conn.commit()
+
+                # Get count to verify
+                remaining = conn.execute('SELECT COUNT(*) FROM predictions').fetchone()[0]
+        else:
+            remaining = 0
+
+        # Clear in-memory buffers
+        for horizon in ['1h', '4h', '24h']:
+            tracker.predictions[horizon] = []
+
+        # Re-seed with fresh test data using current prices
+        tracker._auto_seed_if_empty()
+
+        # Get new metrics
+        metrics = {}
+        for horizon in ['1h', '4h', '24h']:
+            metrics[horizon] = tracker.get_current_metrics(horizon)
+
+        return jsonify({
+            'success': True,
+            'message': 'Accuracy data reset successfully. Fresh test data has been seeded.',
+            'remaining_predictions': remaining,
+            'metrics': metrics
+        })
+    except Exception as e:
+        logger.error(f"Error resetting accuracy data: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
 @accuracy_bp.route('/features/train', methods=['POST'])
 def train_feature_selector():
     """

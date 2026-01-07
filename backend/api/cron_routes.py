@@ -323,17 +323,50 @@ def cron_update_accuracy():
         updates = {'1h': 0, '4h': 0, '24h': 0}
 
         # Update actuals for predictions made at the appropriate times
+        # Use wider time windows to catch more predictions
         for horizon, hours_ago in [('1h', 1), ('4h', 4), ('24h', 24)]:
             prediction_time = now - timedelta(hours=hours_ago)
 
             try:
-                accuracy_tracker.record_actual(
+                # Try with 30 minute tolerance
+                success = accuracy_tracker.record_actual(
                     horizon=horizon,
                     actual=actual_gas,
-                    prediction_timestamp=prediction_time
+                    prediction_timestamp=prediction_time,
+                    tolerance_minutes=30
                 )
-                updates[horizon] = 1
-                logger.info(f"Updated {horizon} actual: {actual_gas:.6f} gwei")
+                if success:
+                    updates[horizon] = 1
+                    logger.info(f"Updated {horizon} actual: {actual_gas:.6f} gwei")
+                else:
+                    # Try to find any pending predictions for this horizon
+                    # and validate the oldest ones
+                    import sqlite3
+                    db_path = accuracy_tracker.db_path
+                    with sqlite3.connect(db_path) as conn:
+                        # Find oldest unvalidated prediction for this horizon
+                        row = conn.execute('''
+                            SELECT timestamp FROM predictions
+                            WHERE horizon = ? AND actual IS NULL
+                            ORDER BY timestamp ASC
+                            LIMIT 1
+                        ''', (horizon,)).fetchone()
+                        
+                        if row:
+                            from dateutil import parser
+                            oldest_pred_time = parser.parse(row[0])
+                            # Only validate if it's old enough (at least 80% of the horizon)
+                            min_age = timedelta(hours=hours_ago * 0.8)
+                            if now - oldest_pred_time >= min_age:
+                                success = accuracy_tracker.record_actual(
+                                    horizon=horizon,
+                                    actual=actual_gas,
+                                    prediction_timestamp=oldest_pred_time,
+                                    tolerance_minutes=60
+                                )
+                                if success:
+                                    updates[horizon] = 1
+                                    logger.info(f"Updated oldest {horizon} prediction: {actual_gas:.6f} gwei")
             except Exception as e:
                 logger.warning(f"Could not update {horizon} actual: {e}")
 

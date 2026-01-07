@@ -248,24 +248,28 @@ class HybridPredictor:
             class_color = self.CLASS_COLORS[int(spike_class)]
 
             # Generate price prediction based on classification
+            # Use current_price as base for all predictions to maintain scale consistency
             current_price = recent_data['gas_price'].iloc[-1]
 
             if spike_class == 0:  # Normal
-                predicted_price = current_price * 0.95  # Expect slight decrease
-                lower_bound = 0.001
-                upper_bound = self.NORMAL_THRESHOLD
+                # Expect slight decrease or stable prices
+                predicted_price = current_price * 0.95
+                lower_bound = current_price * 0.8
+                upper_bound = current_price * 1.1
                 confidence = spike_probs[0]
 
             elif spike_class == 1:  # Elevated
-                predicted_price = (self.NORMAL_THRESHOLD + self.ELEVATED_THRESHOLD) / 2
-                lower_bound = self.NORMAL_THRESHOLD
-                upper_bound = self.ELEVATED_THRESHOLD
+                # Expect moderate increase
+                predicted_price = current_price * 1.3
+                lower_bound = current_price * 1.0
+                upper_bound = current_price * 1.8
                 confidence = spike_probs[1]
 
             else:  # Spike
-                predicted_price = max(current_price * 1.5, self.ELEVATED_THRESHOLD * 2)
-                lower_bound = self.ELEVATED_THRESHOLD
-                upper_bound = min(predicted_price * 2, 1.0)  # Cap at 1 Gwei
+                # Expect significant increase
+                predicted_price = current_price * 2.0
+                lower_bound = current_price * 1.5
+                upper_bound = current_price * 3.0
                 confidence = spike_probs[2]
 
             predictions[horizon] = {
