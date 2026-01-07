@@ -64,13 +64,15 @@ def create_app():
          resources={
              r"/*": {
                  "origins": "*",
-                 "methods": ["GET", "POST", "OPTIONS", "PUT", "DELETE"],
-                 "allow_headers": ["Content-Type", "Authorization", "Cache-Control", "Pragma"],
+                 "methods": ["GET", "POST", "OPTIONS", "PUT", "DELETE", "PATCH"],
+                 "allow_headers": ["Content-Type", "Authorization", "Cache-Control", "Pragma", "X-Requested-With"],
                  "expose_headers": ["Content-Type", "Cache-Control"],
                  "supports_credentials": False,
-                 "max_age": 3600
+                 "max_age": 3600,
+                 "send_wildcard": True
              }
-         })
+         },
+         automatic_options=True)
     
     # Rate limiting
     limiter.init_app(app)
@@ -107,6 +109,19 @@ def create_app():
         logger.warning(f"Failed to register autonomous pipeline routes: {e}")
     app.register_blueprint(base_config_bp)  # No prefix - serves at root for /config.json
     
+    # Handle OPTIONS preflight requests explicitly
+    @app.before_request
+    def handle_preflight():
+        """Handle CORS preflight requests"""
+        from flask import request
+        if request.method == "OPTIONS":
+            response = jsonify({})
+            response.headers['Access-Control-Allow-Origin'] = '*'
+            response.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS, PUT, DELETE, PATCH'
+            response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, Cache-Control, Pragma, X-Requested-With'
+            response.headers['Access-Control-Max-Age'] = '3600'
+            return response
+
     # Add HTTP caching and CORS headers
     @app.after_request
     def add_headers(response):
@@ -115,9 +130,10 @@ def create_app():
 
         # Always add CORS headers (belt and suspenders with flask-cors)
         response.headers['Access-Control-Allow-Origin'] = '*'
-        response.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS, PUT, DELETE'
-        response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, Cache-Control, Pragma'
+        response.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS, PUT, DELETE, PATCH'
+        response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, Cache-Control, Pragma, X-Requested-With'
         response.headers['Access-Control-Max-Age'] = '3600'
+        response.headers['Access-Control-Allow-Credentials'] = 'false'
 
         # Only cache GET requests
         if request.method == 'GET':
