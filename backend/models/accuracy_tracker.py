@@ -398,6 +398,19 @@ class AccuracyTracker:
         # Use most recent window_size records
         recent = records[-self.window_size:]
 
+        # Filter out extreme outliers (predictions > 5x or < 0.2x of actual)
+        # These indicate broken predictions that would skew metrics
+        filtered = []
+        for r in recent:
+            if r.actual and r.actual > 0 and r.predicted and r.predicted > 0:
+                ratio = r.predicted / r.actual
+                if 0.2 <= ratio <= 5.0:  # Within 5x range
+                    filtered.append(r)
+
+        # Use filtered records if we have enough, otherwise use all
+        if len(filtered) >= 5:
+            recent = filtered
+
         actuals = np.array([r.actual for r in recent])
         predictions = np.array([r.predicted for r in recent])
         errors = np.array([r.error for r in recent])
@@ -690,11 +703,17 @@ class AccuracyTracker:
                     else:  # hourly
                         bucket_key = ts.strftime('%Y-%m-%d %H:00')
 
-                    buckets[horizon][bucket_key].append({
-                        'predicted': row['predicted'],
-                        'actual': row['actual'],
-                        'error': row['error']
-                    })
+                    # Filter out extreme outliers (> 5x off from actual)
+                    predicted = row['predicted']
+                    actual = row['actual']
+                    if predicted and actual and actual > 0 and predicted > 0:
+                        ratio = predicted / actual
+                        if 0.2 <= ratio <= 5.0:  # Within reasonable range
+                            buckets[horizon][bucket_key].append({
+                                'predicted': predicted,
+                                'actual': actual,
+                                'error': row['error']
+                            })
 
                 # Calculate metrics for each bucket
                 for horizon in ['1h', '4h', '24h']:
