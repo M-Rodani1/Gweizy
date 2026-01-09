@@ -248,29 +248,37 @@ class HybridPredictor:
             class_color = self.CLASS_COLORS[int(spike_class)]
 
             # Generate price prediction based on classification
-            # Use current_price as base for all predictions to maintain scale consistency
+            # Use blend of current price and historical mean for stability
             current_price = recent_data['gas_price'].iloc[-1]
+            hist_mean = recent_data['gas_price'].iloc[-100:].mean()
+            # 70% historical mean, 30% current - more stable predictions
+            base_price = hist_mean * 0.7 + current_price * 0.3
 
             if spike_class == 0:  # Normal
-                # Expect slight decrease or stable prices
-                predicted_price = current_price * 0.95
-                lower_bound = current_price * 0.8
-                upper_bound = current_price * 1.1
+                # Expect stable to slight decrease
+                predicted_price = base_price * 0.98
+                lower_bound = base_price * 0.85
+                upper_bound = base_price * 1.1
                 confidence = spike_probs[0]
 
             elif spike_class == 1:  # Elevated
-                # Expect moderate increase
-                predicted_price = current_price * 1.3
-                lower_bound = current_price * 1.0
-                upper_bound = current_price * 1.8
+                # Expect moderate increase (capped at 20%)
+                predicted_price = base_price * 1.12
+                lower_bound = base_price * 1.0
+                upper_bound = base_price * 1.3
                 confidence = spike_probs[1]
 
             else:  # Spike
-                # Expect significant increase
-                predicted_price = current_price * 2.0
-                lower_bound = current_price * 1.5
-                upper_bound = current_price * 3.0
+                # Expect significant but bounded increase (capped at 50%)
+                predicted_price = base_price * 1.35
+                lower_bound = base_price * 1.15
+                upper_bound = base_price * 1.6
                 confidence = spike_probs[2]
+
+            # Final sanity check: clamp prediction within 0.5x to 2x of historical mean
+            predicted_price = max(hist_mean * 0.5, min(predicted_price, hist_mean * 2.0))
+            lower_bound = max(hist_mean * 0.4, min(lower_bound, hist_mean * 1.5))
+            upper_bound = max(hist_mean * 0.6, min(upper_bound, hist_mean * 2.5))
 
             predictions[horizon] = {
                 'classification': {

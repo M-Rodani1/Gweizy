@@ -614,6 +614,7 @@ def get_predictions():
             logger.warning("Models not loaded, using fallback predictions")
             # Format historical data for graph even when models aren't loaded
             historical = []
+            hist_prices = []
             for d in recent_data[-100:] if len(recent_data) > 0 else []:
                 timestamp = d.get('timestamp', '')
                 if isinstance(timestamp, str):
@@ -625,17 +626,25 @@ def get_predictions():
                         time_str = timestamp[:5] if len(timestamp) > 5 else timestamp
                 else:
                     time_str = str(timestamp)[:5]
+                price = d.get('gwei', 0) or d.get('current_gas', 0)
+                if price and price > 0:
+                    hist_prices.append(price)
                 historical.append({
                     'time': time_str,
-                    'gwei': round(d.get('gwei', 0) or d.get('current_gas', 0), 4)
+                    'gwei': round(price, 4)
                 })
+
+            # Use historical mean blended with current for more stable predictions
+            hist_mean = np.mean(hist_prices) if hist_prices else current['current_gas']
+            base_price = hist_mean * 0.7 + current['current_gas'] * 0.3
+
             return jsonify({
                 'chain_id': chain_id,
                 'current': current,
                 'predictions': {
-                    '1h': [{'time': '1h', 'predictedGwei': current['current_gas'] * 1.05}],
-                    '4h': [{'time': '4h', 'predictedGwei': current['current_gas'] * 1.1}],
-                    '24h': [{'time': '24h', 'predictedGwei': current['current_gas'] * 1.15}],
+                    '1h': [{'time': '1h', 'predictedGwei': round(base_price * 1.02, 6)}],
+                    '4h': [{'time': '4h', 'predictedGwei': round(base_price * 1.05, 6)}],
+                    '24h': [{'time': '24h', 'predictedGwei': round(base_price * 1.08, 6)}],
                     'historical': historical,
                 },
                 'note': 'Using fallback predictions. Train models for ML predictions.'
@@ -649,23 +658,10 @@ def get_predictions():
             logger.warning(f"Not enough data: {len(recent_data)} records, using fallback predictions")
             # Use fallback instead of returning 500 error
             fallback_predictions = {}
-            for horizon in ['1h', '4h', '24h']:
-                multiplier = 1.05 if horizon == '1h' else 1.1 if horizon == '4h' else 1.15
-                pred_value = round(current['current_gas'] * multiplier, 6)
 
-                fallback_predictions[horizon] = [{
-                    'time': horizon,
-                    'predictedGwei': pred_value,
-                    'lowerBound': round(pred_value * 0.9, 6),
-                    'upperBound': round(pred_value * 1.1, 6),
-                    'confidence': 0.5,
-                    'confidenceLevel': 'low',
-                    'confidenceEmoji': '🔴',
-                    'confidenceColor': 'red'
-                }]
-            
-            # Format historical data for graph
+            # Gather historical prices and format for graph
             historical = []
+            hist_prices = []
             for d in recent_data[-100:] if len(recent_data) > 0 else []:
                 timestamp = d.get('timestamp', '')
                 if isinstance(timestamp, str):
@@ -678,10 +674,33 @@ def get_predictions():
                 else:
                     time_str = str(timestamp)[:5]
 
+                price = d.get('gwei', 0) or d.get('current_gas', 0)
+                if price and price > 0:
+                    hist_prices.append(price)
                 historical.append({
                     'time': time_str,
-                    'gwei': round(d.get('gwei', 0) or d.get('current_gas', 0), 4)
+                    'gwei': round(price, 4)
                 })
+
+            # Use historical mean blended with current for stable predictions
+            hist_mean = np.mean(hist_prices) if hist_prices else current['current_gas']
+            base_price = hist_mean * 0.7 + current['current_gas'] * 0.3
+
+            for horizon in ['1h', '4h', '24h']:
+                # Smaller multipliers for more conservative predictions
+                multiplier = 1.02 if horizon == '1h' else 1.05 if horizon == '4h' else 1.08
+                pred_value = round(base_price * multiplier, 6)
+
+                fallback_predictions[horizon] = [{
+                    'time': horizon,
+                    'predictedGwei': pred_value,
+                    'lowerBound': round(pred_value * 0.9, 6),
+                    'upperBound': round(pred_value * 1.1, 6),
+                    'confidence': 0.5,
+                    'confidenceLevel': 'low',
+                    'confidenceEmoji': '🔴',
+                    'confidenceColor': 'red'
+                }]
 
             fallback_predictions['historical'] = historical
 
@@ -790,14 +809,37 @@ def get_predictions():
                     elif predicts_pct_change:
                         # Model predicts percentage change, convert to absolute price
                         pct_change = float(pred)
-                        # Clamp percentage change to reasonable range (-90% to +500%)
-                        pct_change = max(-90, min(500, pct_change))
-                        pred_value = round(current['current_gas'] * (1 + pct_change / 100), 6)
-                        # Ensure prediction is positive and reasonable
-                        pred_value = max(0.0001, min(pred_value, current['current_gas'] * 10))
+
+                        # Calculate historical mean as anchor (more stable reference)
+                        hist_prices = [d.get('gwei', 0) or d.get('current_gas', 0) for d in recent_data[-100:]]
+                        hist_prices = [p for p in hist_prices if p and p > 0]
+                        hist_mean = np.mean(hist_prices) if hist_prices else current['current_gas']
+
+                        # MUCH tighter clamp: gas prices don't change dramatically short-term
+                        # 1h: ±30%, 4h: ±50%, 24h: ±80%
+                        horizon_clamps = {'1h': 30, '4h': 50, '24h': 80}
+                        max_clamp = horizon_clamps.get(horizon, 50)
+                        pct_change = max(-max_clamp, min(max_clamp, pct_change))
+
+                        # Blend: 70% historical mean, 30% current price - makes predictions more stable
+                        base_price = hist_mean * 0.7 + current['current_gas'] * 0.3
+                        pred_value = round(base_price * (1 + pct_change / 100), 6)
+
+                        # Final sanity check: prediction must be within 2x of historical mean
+                        pred_value = max(hist_mean * 0.5, min(pred_value, hist_mean * 2.0))
+                        pred_value = round(pred_value, 6)
                     else:
                         # Model predicts absolute price directly
                         pred_value = round(float(pred), 6)
+
+                        # Sanity check absolute predictions against historical mean
+                        hist_prices = [d.get('gwei', 0) or d.get('current_gas', 0) for d in recent_data[-100:]]
+                        hist_prices = [p for p in hist_prices if p and p > 0]
+                        hist_mean = np.mean(hist_prices) if hist_prices else current['current_gas']
+
+                        # Clamp to reasonable range (0.5x to 2x historical mean)
+                        pred_value = max(hist_mean * 0.5, min(pred_value, hist_mean * 2.0))
+                        pred_value = round(pred_value, 6)
 
                     # Estimate confidence (simple heuristic)
                     confidence = 0.75  # Default medium confidence
