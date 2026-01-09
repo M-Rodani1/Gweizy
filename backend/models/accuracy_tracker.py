@@ -112,6 +112,10 @@ class AccuracyTracker:
 
         # Initialize database
         self._init_db()
+
+        # Clean up extreme outliers from database (predictions > 5x off)
+        self._cleanup_outliers()
+
         self._load_recent_predictions()
 
         # Auto-seed with initial data if database is empty
@@ -169,6 +173,27 @@ class AccuracyTracker:
             ''')
 
             conn.commit()
+
+    def _cleanup_outliers(self):
+        """Remove extreme outlier predictions from database (predictions > 5x off from actuals)."""
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                # Delete predictions where ratio is outside 0.2x - 5x range
+                cursor = conn.execute('''
+                    DELETE FROM predictions
+                    WHERE actual IS NOT NULL
+                    AND actual > 0
+                    AND predicted > 0
+                    AND (predicted / actual > 5.0 OR predicted / actual < 0.2)
+                ''')
+                deleted = cursor.rowcount
+                conn.commit()
+
+                if deleted > 0:
+                    logger.info(f"Cleaned up {deleted} extreme outlier predictions from database")
+
+        except Exception as e:
+            logger.warning(f"Could not cleanup outliers: {e}")
 
     def _load_recent_predictions(self):
         """Load recent predictions from database into memory."""
