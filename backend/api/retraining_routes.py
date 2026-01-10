@@ -293,8 +293,9 @@ def trigger_simple_retraining():
             """Run training in background thread"""
             try:
                 logger.info("Background training thread started")
-                
-                # Execute the script
+
+                # Step 1: Train main RandomForest models
+                logger.info("Step 1/2: Training RandomForest percentage change models...")
                 result = subprocess.run(
                     [sys.executable, script_path],
                     capture_output=True,
@@ -302,6 +303,34 @@ def trigger_simple_retraining():
                     timeout=600,  # 10 minute timeout
                     cwd=current_dir
                 )
+
+                if result.returncode != 0:
+                    logger.error(f"Main model training failed: {result.stderr}")
+                    logger.error(f"Output: {result.stdout[:500]}...")
+                    return
+
+                logger.info("Main model training completed successfully")
+
+                # Step 2: Train spike detector models
+                logger.info("Step 2/2: Training spike detector classifiers...")
+                spike_script_path = os.path.join(current_dir, "scripts", "train_spike_detectors.py")
+
+                if os.path.exists(spike_script_path):
+                    spike_result = subprocess.run(
+                        [sys.executable, spike_script_path],
+                        capture_output=True,
+                        text=True,
+                        timeout=300,  # 5 minute timeout for spike detectors
+                        cwd=current_dir
+                    )
+
+                    if spike_result.returncode == 0:
+                        logger.info("Spike detector training completed successfully")
+                    else:
+                        logger.warning(f"Spike detector training failed: {spike_result.stderr}")
+                        logger.warning("Continuing without spike detectors...")
+                else:
+                    logger.warning(f"Spike detector script not found at {spike_script_path}")
 
                 if result.returncode == 0:
                     # Auto-reload models after successful training

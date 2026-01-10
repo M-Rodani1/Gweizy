@@ -302,7 +302,41 @@ class AutonomousPipeline:
                     'success': True,
                     'duration_minutes': ml_duration
                 }
-                
+
+                # Step 1b: Train spike detector models
+                logger.info("🎯 Training spike detector classifiers...")
+                spike_script_path = os.path.join(current_dir, "scripts", "train_spike_detectors.py")
+
+                if os.path.exists(spike_script_path):
+                    spike_start = datetime.now()
+                    spike_result = subprocess.run(
+                        [sys.executable, spike_script_path],
+                        cwd=current_dir,
+                        capture_output=True,
+                        text=True,
+                        timeout=300  # 5 minute timeout
+                    )
+                    spike_duration = (datetime.now() - spike_start).total_seconds() / 60
+
+                    if spike_result.returncode == 0:
+                        logger.info(f"✅ Spike detector training completed in {spike_duration:.1f} minutes")
+                        results['spike_detector_training'] = {
+                            'success': True,
+                            'duration_minutes': spike_duration
+                        }
+                    else:
+                        logger.warning(f"⚠️ Spike detector training failed: {spike_result.stderr[:200]}")
+                        results['spike_detector_training'] = {
+                            'success': False,
+                            'error': spike_result.stderr[:200]
+                        }
+                else:
+                    logger.warning(f"Spike detector script not found: {spike_script_path}")
+                    results['spike_detector_training'] = {
+                        'skipped': True,
+                        'reason': 'Script not found'
+                    }
+
                 # Auto-reload models
                 if reload_models:
                     try:
@@ -313,7 +347,7 @@ class AutonomousPipeline:
                             logger.warning(f"⚠️ Model reload failed: {reload_result.get('error')}")
                     except Exception as e:
                         logger.warning(f"⚠️ Error reloading models: {e}")
-                
+
                 # Evaluate new model
                 evaluation = self.evaluate_new_model()
                 results['evaluation'] = evaluation
