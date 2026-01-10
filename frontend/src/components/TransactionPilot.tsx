@@ -42,6 +42,8 @@ const TransactionPilot: React.FC<TransactionPilotProps> = ({ ethPrice = 3000 }) 
   const [recommendation, setRecommendation] = useState<AgentRecommendation | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [loadingState, setLoadingState] = useState<'idle' | 'analyzing' | 'timeout' | 'error'>('analyzing');
+  const [retryCount, setRetryCount] = useState(0);
   const [countdown, setCountdown] = useState<number | null>(null);
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [showExecuteModal, setShowExecuteModal] = useState(false);
@@ -65,23 +67,30 @@ const TransactionPilot: React.FC<TransactionPilotProps> = ({ ethPrice = 3000 }) 
   const fetchRecommendation = useCallback(async () => {
     try {
       setLoading(true);
+      setLoadingState('analyzing');
       setError(null);
+
       const response = await fetch(
         getApiUrl(API_CONFIG.ENDPOINTS.AGENT_RECOMMEND, { urgency }),
         {
           signal: AbortSignal.timeout(API_CONFIG.TIMEOUT)
         }
       );
+
       if (!response.ok) {
-        setError('Agent offline — showing live gas only');
+        setLoadingState('error');
+        setError('Server error — using live gas data');
         setRecommendation(null);
         return;
       }
+
       const data = await response.json();
 
       if (data.success) {
         setRecommendation(data.recommendation);
+        setLoadingState('idle');
         setError(null);
+        setRetryCount(0);
 
         if (data.recommendation.action === 'WAIT') {
           const waitMinutes = Math.round((1 - data.recommendation.confidence) * 60);
@@ -90,11 +99,18 @@ const TransactionPilot: React.FC<TransactionPilotProps> = ({ ethPrice = 3000 }) 
           setCountdown(null);
         }
       } else {
-        setError(data.error || 'Agent offline — showing live gas only');
+        setLoadingState('error');
+        setError(data.error || 'Could not get recommendation');
       }
     } catch (err) {
       console.error('Failed to fetch recommendation:', err);
-      setError('Agent offline — showing live gas only');
+      const isTimeout = err instanceof Error && err.name === 'TimeoutError';
+      setLoadingState(isTimeout ? 'timeout' : 'error');
+      setError(isTimeout
+        ? 'Analysis taking longer than usual...'
+        : 'Connection issue — showing live gas'
+      );
+      setRetryCount((prev: number) => prev + 1);
     } finally {
       setLoading(false);
     }
@@ -357,17 +373,25 @@ const TransactionPilot: React.FC<TransactionPilotProps> = ({ ethPrice = 3000 }) 
             <div className="h-48 flex items-center justify-center">
               <div className="text-center">
                 <div className="w-12 h-12 border-3 border-gray-600 border-t-cyan-400 rounded-full animate-spin mx-auto mb-4" />
-                <div className="text-gray-400">Analyzing network...</div>
+                <div className="text-gray-400">
+                  {loadingState === 'timeout' ? 'Still analyzing... (complex calculation)' : 'Analyzing network...'}
+                </div>
+                {retryCount > 0 && (
+                  <div className="text-xs text-gray-500 mt-2">Attempt {retryCount + 1}</div>
+                )}
               </div>
             </div>
           ) : error || !recommendation ? (
             <div className="relative rounded-xl p-6 bg-gradient-to-r from-gray-700/50 to-gray-800/50 border border-gray-600/50">
               <div className="text-center">
                 <div className="text-2xl font-bold text-white mb-2">
-                  {error ? 'Agent Offline' : currentGas > 0 ? 'Gas Looks Good' : 'Connecting...'}
+                  {loadingState === 'timeout' ? 'Agent Busy' :
+                   loadingState === 'error' ? 'Using Live Data' :
+                   currentGas > 0 ? 'Gas Looks Good' : 'Connecting...'}
                 </div>
                 <div className="text-gray-400 mb-4">
-                  {error || 'Agent is analyzing network conditions'}
+                  {loadingState === 'timeout' ? 'AI is analyzing 234k+ data points — this can take a moment' :
+                   error || 'Agent is analyzing network conditions'}
                 </div>
                 <div className="grid grid-cols-2 gap-4 mb-4">
                   <div className="bg-black/20 rounded-lg p-3">
@@ -385,10 +409,28 @@ const TransactionPilot: React.FC<TransactionPilotProps> = ({ ethPrice = 3000 }) 
                 </div>
                 <button
                   onClick={fetchRecommendation}
-                  className="px-6 py-2 min-h-[44px] bg-cyan-500 hover:bg-cyan-600 text-white rounded-lg transition-colors"
+                  disabled={loading}
+                  className={`px-6 py-2 min-h-[44px] rounded-lg transition-colors flex items-center justify-center gap-2 mx-auto ${
+                    loading ? 'bg-gray-600 cursor-not-allowed' : 'bg-cyan-500 hover:bg-cyan-600'
+                  } text-white`}
                 >
-                  Retry Agent
+                  {loading ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      Analyzing...
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="w-4 h-4" />
+                      {retryCount > 2 ? 'Try Again' : 'Refresh'}
+                    </>
+                  )}
                 </button>
+                {retryCount > 2 && (
+                  <div className="text-xs text-gray-500 mt-3">
+                    Tip: The agent works fine — it just needs time to crunch the data
+                  </div>
+                )}
               </div>
             </div>
           ) : (

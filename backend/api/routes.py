@@ -1560,3 +1560,66 @@ def stats():
     except Exception as e:
         logger.error(f"Error in /stats: {traceback.format_exc()}")
         return jsonify({'error': str(e)}), 500
+
+
+@api_bp.route('/export', methods=['GET'])
+def export_data():
+    """
+    Export historical gas price data as CSV or JSON.
+
+    Query params:
+        format: 'csv' or 'json' (default: json)
+        hours: Number of hours of data (default: 24, max: 720 = 30 days)
+
+    Returns:
+        CSV file download or JSON array
+    """
+    try:
+        export_format = request.args.get('format', 'json').lower()
+        hours = min(request.args.get('hours', 24, type=int), 720)  # Max 30 days
+
+        data = db.get_historical_data(hours)
+
+        if not data:
+            return jsonify({'error': 'No data available'}), 404
+
+        # Format data for export
+        export_data = []
+        for record in data:
+            export_data.append({
+                'timestamp': record.get('timestamp', ''),
+                'gas_price_gwei': record.get('gwei', record.get('current_gas', 0)),
+                'base_fee_gwei': record.get('base_fee', 0),
+                'priority_fee_gwei': record.get('priority_fee', 0),
+                'block_number': record.get('block_number', ''),
+                'chain_id': record.get('chain_id', 8453)
+            })
+
+        if export_format == 'csv':
+            import csv
+            import io
+
+            output = io.StringIO()
+            if export_data:
+                writer = csv.DictWriter(output, fieldnames=export_data[0].keys())
+                writer.writeheader()
+                writer.writerows(export_data)
+
+            response = api_bp.response_class(
+                output.getvalue(),
+                mimetype='text/csv',
+                headers={'Content-Disposition': f'attachment; filename=gas_data_{hours}h.csv'}
+            )
+            return response
+
+        # Default: JSON
+        return jsonify({
+            'success': True,
+            'hours': hours,
+            'count': len(export_data),
+            'data': export_data
+        })
+
+    except Exception as e:
+        logger.error(f"Error in /export: {traceback.format_exc()}")
+        return jsonify({'error': str(e)}), 500

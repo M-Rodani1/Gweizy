@@ -44,7 +44,9 @@ export const API_CONFIG = {
     ACCURACY_HISTORY: '/accuracy/history',
     ACCURACY_RESET: '/accuracy/reset',
     // Explanation endpoint
-    EXPLAIN: '/explain'
+    EXPLAIN: '/explain',
+    // Data export endpoint
+    EXPORT: '/export'
   },
   TIMEOUT: 10000, // 10 seconds
   RETRY_ATTEMPTS: 3,
