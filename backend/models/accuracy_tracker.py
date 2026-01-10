@@ -177,14 +177,19 @@ class AccuracyTracker:
     def _cleanup_outliers(self):
         """Remove extreme outlier predictions from database (predictions > 5x off from actuals)."""
         try:
-            with sqlite3.connect(self.db_path) as conn:
+            with sqlite3.connect(self.db_path, timeout=5.0) as conn:
                 # Delete predictions where ratio is outside 0.2x - 5x range
+                # Limit to 1000 rows at a time to avoid long locks
                 cursor = conn.execute('''
                     DELETE FROM predictions
-                    WHERE actual IS NOT NULL
-                    AND actual > 0
-                    AND predicted > 0
-                    AND (predicted / actual > 5.0 OR predicted / actual < 0.2)
+                    WHERE id IN (
+                        SELECT id FROM predictions
+                        WHERE actual IS NOT NULL
+                        AND actual > 0
+                        AND predicted > 0
+                        AND (predicted / actual > 5.0 OR predicted / actual < 0.2)
+                        LIMIT 1000
+                    )
                 ''')
                 deleted = cursor.rowcount
                 conn.commit()
