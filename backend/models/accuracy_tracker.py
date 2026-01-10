@@ -746,28 +746,42 @@ class AccuracyTracker:
                             })
 
                 # Calculate metrics for each bucket
+                # 24h predictions are sparse, so allow single data points
+                min_predictions = {'1h': 2, '4h': 2, '24h': 1}
+
                 for horizon in ['1h', '4h', '24h']:
+                    min_n = min_predictions[horizon]
                     for bucket_key, predictions in sorted(buckets[horizon].items()):
-                        if len(predictions) < 2:
+                        if len(predictions) < min_n:
                             continue
 
                         errors = np.array([p['error'] for p in predictions if p['error'] is not None])
                         actuals = np.array([p['actual'] for p in predictions])
                         preds = np.array([p['predicted'] for p in predictions])
 
-                        if len(errors) < 2:
+                        if len(errors) < min_n:
                             continue
 
                         mae = float(np.mean(np.abs(errors)))
                         rmse = float(np.sqrt(np.mean(errors ** 2)))
 
-                        ss_res = np.sum(errors ** 2)
-                        ss_tot = np.sum((actuals - np.mean(actuals)) ** 2)
-                        r2 = float(1 - (ss_res / ss_tot)) if ss_tot > 0 else 0
+                        # R² requires variance - for single points, use a simple metric
+                        if len(actuals) > 1:
+                            ss_res = np.sum(errors ** 2)
+                            ss_tot = np.sum((actuals - np.mean(actuals)) ** 2)
+                            r2 = float(1 - (ss_res / ss_tot)) if ss_tot > 0 else 0
+                        else:
+                            # For single point, estimate R² from relative error
+                            rel_error = abs(errors[0]) / (actuals[0] + 1e-10)
+                            r2 = max(0, 1 - rel_error)  # Simple approximation
 
-                        actual_diff = np.diff(actuals)
-                        pred_diff = np.diff(preds)
-                        dir_acc = float(np.mean((actual_diff > 0) == (pred_diff > 0))) if len(actuals) > 1 else 0
+                        # Directional accuracy requires at least 2 points
+                        if len(actuals) > 1:
+                            actual_diff = np.diff(actuals)
+                            pred_diff = np.diff(preds)
+                            dir_acc = float(np.mean((actual_diff > 0) == (pred_diff > 0)))
+                        else:
+                            dir_acc = 0.5  # Unknown direction for single point
 
                         history[horizon].append({
                             'timestamp': bucket_key,
