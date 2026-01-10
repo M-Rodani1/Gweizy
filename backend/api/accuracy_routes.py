@@ -129,10 +129,11 @@ def check_drift():
 
     Returns:
         {
-            "1h": {"is_drifting": false, "drift_ratio": 0.05, ...},
+            "1h": {"is_drifting": false, "drift_ratio": 0.05, "alert_level": "normal", ...},
             "4h": {...},
             "24h": {...},
-            "should_retrain": false
+            "should_retrain": false,
+            "alerts": []
         }
     """
     tracker = get_tracker()
@@ -145,24 +146,63 @@ def check_drift():
 
     try:
         drift_info = {}
+        alerts = []
+        drifting_horizons = []
+
         for horizon in ['1h', '4h', '24h']:
             drift = tracker.check_drift(horizon)
+
+            # Determine alert level
+            alert_level = 'normal'
+            if drift.is_drifting and drift.confidence >= 0.8:
+                alert_level = 'critical'
+                drifting_horizons.append(horizon)
+                alerts.append({
+                    'horizon': horizon,
+                    'level': 'critical',
+                    'message': f'{horizon} predictions degraded by {drift.drift_ratio*100:.1f}%',
+                    'mae_current': drift.mae_current,
+                    'mae_baseline': drift.mae_baseline
+                })
+            elif drift.is_drifting:
+                alert_level = 'warning'
+                alerts.append({
+                    'horizon': horizon,
+                    'level': 'warning',
+                    'message': f'{horizon} showing drift ({drift.drift_ratio*100:.1f}%) - low confidence',
+                    'confidence': drift.confidence
+                })
+            elif drift.drift_ratio > 0.15:  # 15% increase but not yet drifting
+                alert_level = 'elevated'
+
             drift_info[horizon] = {
                 'is_drifting': drift.is_drifting,
                 'drift_ratio': drift.drift_ratio,
+                'drift_percent': round(drift.drift_ratio * 100, 1),
                 'mae_current': drift.mae_current,
                 'mae_baseline': drift.mae_baseline,
                 'confidence': drift.confidence,
-                'sample_size': drift.sample_size
+                'sample_size': drift.sample_size,
+                'alert_level': alert_level
             }
 
         should_retrain, reasons = tracker.should_retrain()
 
+        # Auto-retrain recommendation
+        auto_retrain_triggered = len(drifting_horizons) > 0
+
         return jsonify({
             'success': True,
             'drift': drift_info,
-            'should_retrain': should_retrain,
-            'retrain_reasons': reasons
+            'should_retrain': should_retrain or auto_retrain_triggered,
+            'retrain_reasons': reasons,
+            'alerts': alerts,
+            'drifting_horizons': drifting_horizons,
+            'auto_retrain_triggered': auto_retrain_triggered,
+            'summary': {
+                'status': 'critical' if auto_retrain_triggered else ('warning' if should_retrain else 'healthy'),
+                'message': f"Drift detected in {', '.join(drifting_horizons)}" if drifting_horizons else "Models performing normally"
+            }
         })
     except Exception as e:
         logger.error(f"Error checking drift: {e}")

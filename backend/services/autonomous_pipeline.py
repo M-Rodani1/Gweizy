@@ -77,6 +77,14 @@ class AutonomousPipeline:
         # Data quality thresholds
         self.min_continuity_score = 0.7  # 70% data continuity
         self.max_feature_nan_rate = 0.1  # Max 10% NaN in features
+
+        # Drift detection thresholds
+        self.drift_threshold = 0.25  # 25% MAE increase triggers retrain
+        self.drift_confidence_required = 0.8  # Need 80% confidence to act on drift
+
+        # Alert tracking (avoid spam)
+        self.last_drift_alert = {}  # {horizon: datetime}
+        self.drift_alert_cooldown_hours = 1  # Don't alert more than once per hour
         
         # Model performance thresholds
         self.min_r2 = 0.1  # Minimum R² to deploy
@@ -190,9 +198,74 @@ class AutonomousPipeline:
                 issues=[f"Error checking data: {str(e)}"]
             )
     
+    def check_drift_status(self) -> Dict:
+        """
+        Check drift status across all horizons.
+        Returns drift info and whether retraining is recommended.
+        """
+        try:
+            tracker = AccuracyTracker()
+            drift_status = {
+                'horizons': {},
+                'any_drifting': False,
+                'should_retrain': False,
+                'drifting_horizons': []
+            }
+
+            for horizon in ['1h', '4h', '24h']:
+                drift = tracker.check_drift(horizon)
+                drift_status['horizons'][horizon] = {
+                    'is_drifting': drift.is_drifting,
+                    'drift_ratio': drift.drift_ratio,
+                    'mae_current': drift.mae_current,
+                    'mae_baseline': drift.mae_baseline,
+                    'confidence': drift.confidence,
+                    'sample_size': drift.sample_size
+                }
+
+                if drift.is_drifting and drift.confidence >= self.drift_confidence_required:
+                    drift_status['any_drifting'] = True
+                    drift_status['drifting_horizons'].append(horizon)
+
+                    # Log alert (with cooldown to avoid spam)
+                    self._log_drift_alert(horizon, drift)
+
+            # Recommend retrain if any horizon is drifting with high confidence
+            drift_status['should_retrain'] = drift_status['any_drifting']
+
+            return drift_status
+
+        except Exception as e:
+            logger.warning(f"Error checking drift status: {e}")
+            return {
+                'horizons': {},
+                'any_drifting': False,
+                'should_retrain': False,
+                'drifting_horizons': [],
+                'error': str(e)
+            }
+
+    def _log_drift_alert(self, horizon: str, drift_metrics):
+        """Log drift alert with cooldown to prevent spam."""
+        now = datetime.now()
+        last_alert = self.last_drift_alert.get(horizon)
+
+        if last_alert:
+            hours_since = (now - last_alert).total_seconds() / 3600
+            if hours_since < self.drift_alert_cooldown_hours:
+                return  # Skip, within cooldown
+
+        # Log the alert
+        logger.warning(f"🚨 DRIFT ALERT [{horizon}]: MAE increased by {drift_metrics.drift_ratio*100:.1f}% "
+                      f"(current: {drift_metrics.mae_current:.6f}, baseline: {drift_metrics.mae_baseline:.6f})")
+        logger.warning(f"   Confidence: {drift_metrics.confidence*100:.0f}%, Samples: {drift_metrics.sample_size}")
+        logger.warning(f"   → Recommend retraining models for {horizon} horizon")
+
+        self.last_drift_alert[horizon] = now
+
     def should_train(self, data_quality: DataQualityMetrics) -> TrainingDecision:
         """Determine if training should be triggered (ML models and/or DQN agents)"""
-        
+
         # Don't train if already training
         if self.training_in_progress:
             return TrainingDecision(
@@ -201,7 +274,7 @@ class AutonomousPipeline:
                 priority="none",
                 estimated_duration_minutes=0
             )
-        
+
         # Check if data is sufficient
         if not data_quality.sufficient_for_training:
             return TrainingDecision(
@@ -210,40 +283,53 @@ class AutonomousPipeline:
                 priority="none",
                 estimated_duration_minutes=0
             )
-        
-        # Check if it's been too long since last training
-        should_train_by_time = False
-        if self.last_training_time is None:
-            should_train_by_time = True
-            reason = "No previous training recorded"
-            priority = "high"
-        else:
-            hours_since_training = (datetime.now() - self.last_training_time).total_seconds() / 3600
-            if hours_since_training >= self.retrain_interval_hours:
-                should_train_by_time = True
-                reason = f"Last training was {hours_since_training:.1f} hours ago (threshold: {self.retrain_interval_hours}h)"
-                priority = "medium"
-        
-        # Check if we have optimal data (high priority)
-        if data_quality.total_records >= self.optimal_data_points and data_quality.days_of_data >= self.optimal_days_data:
-            if should_train_by_time:
+
+        # Initialize decision variables
+        should_train = False
+        reason = "No training needed"
+        priority = "none"
+
+        # Check 1: Drift detection (highest priority)
+        drift_status = self.check_drift_status()
+        if drift_status['should_retrain']:
+            should_train = True
+            drifting = ', '.join(drift_status['drifting_horizons'])
+            reason = f"🚨 Drift detected in {drifting} - accuracy degraded >25%"
+            priority = "critical"
+            logger.info(f"Auto-retrain triggered by drift: {reason}")
+
+        # Check 2: Time-based (if not already triggered by drift)
+        if not should_train:
+            if self.last_training_time is None:
+                should_train = True
+                reason = "No previous training recorded"
+                priority = "high"
+            else:
+                hours_since_training = (datetime.now() - self.last_training_time).total_seconds() / 3600
+                if hours_since_training >= self.retrain_interval_hours:
+                    should_train = True
+                    reason = f"Last training was {hours_since_training:.1f} hours ago (threshold: {self.retrain_interval_hours}h)"
+                    priority = "medium"
+
+        # Check 3: Optimal data boost (upgrade priority if lots of data)
+        if should_train and priority != "critical":
+            if data_quality.total_records >= self.optimal_data_points and data_quality.days_of_data >= self.optimal_days_data:
                 priority = "high"
                 reason = f"Optimal data available ({data_quality.total_records} records, {data_quality.days_of_data:.1f} days)"
-        
+
         # Estimate training duration (based on data size)
-        # ML training: 5-15 minutes, Agent training: +10-20 minutes
         estimated_duration = 5  # Base 5 minutes for ML
         if data_quality.total_records > 2000:
-            estimated_duration = 15  # ML training
+            estimated_duration = 15
         elif data_quality.total_records > 1000:
-            estimated_duration = 10  # ML training
-        
-        # Add agent training time if we have enough data (500+ records for agents)
+            estimated_duration = 10
+
+        # Add agent training time if we have enough data
         if data_quality.total_records >= 500:
-            estimated_duration += 10  # Add 10 minutes for agent training
-        
+            estimated_duration += 10
+
         return TrainingDecision(
-            should_train=should_train_by_time,
+            should_train=should_train,
             reason=reason,
             priority=priority,
             estimated_duration_minutes=estimated_duration
