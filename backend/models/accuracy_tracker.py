@@ -175,10 +175,10 @@ class AccuracyTracker:
             conn.commit()
 
     def _cleanup_outliers(self):
-        """Remove extreme outlier predictions from database (predictions > 5x off from actuals)."""
+        """Remove extreme outlier predictions from database (predictions > 3x off from actuals)."""
         try:
             with sqlite3.connect(self.db_path, timeout=5.0) as conn:
-                # Delete predictions where ratio is outside 0.2x - 5x range
+                # Delete predictions where ratio is outside 0.33x - 3x range
                 # Limit to 1000 rows at a time to avoid long locks
                 cursor = conn.execute('''
                     DELETE FROM predictions
@@ -187,7 +187,7 @@ class AccuracyTracker:
                         WHERE actual IS NOT NULL
                         AND actual > 0
                         AND predicted > 0
-                        AND (predicted / actual > 5.0 OR predicted / actual < 0.2)
+                        AND (predicted / actual > 3.0 OR predicted / actual < 0.33)
                         LIMIT 1000
                     )
                 ''')
@@ -428,13 +428,13 @@ class AccuracyTracker:
         # Use most recent window_size records
         recent = records[-self.window_size:]
 
-        # Filter out extreme outliers (predictions > 5x or < 0.2x of actual)
+        # Filter out extreme outliers (predictions > 3x or < 0.33x of actual)
         # These indicate broken predictions that would skew metrics
         filtered = []
         for r in recent:
             if r.actual and r.actual > 0 and r.predicted and r.predicted > 0:
                 ratio = r.predicted / r.actual
-                if 0.2 <= ratio <= 5.0:  # Within 5x range
+                if 0.33 <= ratio <= 3.0:  # Within 3x range (tighter filter)
                     filtered.append(r)
 
         # Use filtered records if we have enough, otherwise use all
@@ -449,10 +449,19 @@ class AccuracyTracker:
         rmse = np.sqrt(np.mean(errors ** 2))
         mape = np.mean(np.abs(errors / actuals) * 100) if np.all(actuals != 0) else None
 
-        # R² score
+        # R² score with proper bounds
         ss_res = np.sum(errors ** 2)
         ss_tot = np.sum((actuals - np.mean(actuals)) ** 2)
-        r2 = 1 - (ss_res / ss_tot) if ss_tot > 0 else 0
+
+        if ss_tot < 1e-12:
+            # No variance in actuals - use relative error approach
+            mean_rel_error = np.mean(np.abs(errors) / (np.abs(actuals) + 1e-10))
+            r2 = max(-1.0, 1 - mean_rel_error)
+        else:
+            r2 = 1 - (ss_res / ss_tot)
+
+        # Clamp R² to [-1, 1] for display purposes
+        r2 = max(-1.0, min(1.0, r2))
 
         # Directional accuracy
         if len(recent) > 1:
@@ -575,9 +584,15 @@ class AccuracyTracker:
         rmse = np.sqrt(np.mean(errors ** 2))
         mape = np.mean(np.abs(errors / actuals) * 100) if np.all(actuals != 0) else 0
 
+        # R² with proper bounds
         ss_res = np.sum(errors ** 2)
         ss_tot = np.sum((actuals - np.mean(actuals)) ** 2)
-        r2 = 1 - (ss_res / ss_tot) if ss_tot > 0 else 0
+        if ss_tot < 1e-12:
+            mean_rel_error = np.mean(np.abs(errors) / (np.abs(actuals) + 1e-10))
+            r2 = max(-1.0, 1 - mean_rel_error)
+        else:
+            r2 = 1 - (ss_res / ss_tot)
+        r2 = max(-1.0, min(1.0, r2))
 
         actual_diff = np.diff(actuals)
         pred_diff = np.diff(predictions)
@@ -733,12 +748,12 @@ class AccuracyTracker:
                     else:  # hourly
                         bucket_key = ts.strftime('%Y-%m-%d %H:00')
 
-                    # Filter out extreme outliers (> 5x off from actual)
+                    # Filter out extreme outliers (> 3x off from actual)
                     predicted = row['predicted']
                     actual = row['actual']
                     if predicted and actual and actual > 0 and predicted > 0:
                         ratio = predicted / actual
-                        if 0.2 <= ratio <= 5.0:  # Within reasonable range
+                        if 0.33 <= ratio <= 3.0:  # Within 3x range (tighter filter)
                             buckets[horizon][bucket_key].append({
                                 'predicted': predicted,
                                 'actual': actual,
@@ -765,15 +780,28 @@ class AccuracyTracker:
                         mae = float(np.mean(np.abs(errors)))
                         rmse = float(np.sqrt(np.mean(errors ** 2)))
 
-                        # R² requires variance - for single points, use a simple metric
+                        # R² calculation with proper bounds
+                        # R² can technically go negative (model worse than mean), but extreme
+                        # negatives like -1500 indicate numerical issues, not real performance
                         if len(actuals) > 1:
                             ss_res = np.sum(errors ** 2)
                             ss_tot = np.sum((actuals - np.mean(actuals)) ** 2)
-                            r2 = float(1 - (ss_res / ss_tot)) if ss_tot > 0 else 0
+
+                            # If ss_tot is very small (no variance in actuals), R² is undefined
+                            # Use relative error approach instead
+                            if ss_tot < 1e-12:
+                                mean_rel_error = np.mean(np.abs(errors) / (np.abs(actuals) + 1e-10))
+                                r2 = max(-1.0, 1 - mean_rel_error)
+                            else:
+                                r2 = float(1 - (ss_res / ss_tot))
+
+                            # Clamp R² to reasonable display range [-1, 1]
+                            # Values below -1 indicate severe model issues but aren't meaningful for display
+                            r2 = max(-1.0, min(1.0, r2))
                         else:
                             # For single point, estimate R² from relative error
-                            rel_error = abs(errors[0]) / (actuals[0] + 1e-10)
-                            r2 = max(0, 1 - rel_error)  # Simple approximation
+                            rel_error = abs(errors[0]) / (abs(actuals[0]) + 1e-10)
+                            r2 = max(-1.0, min(1.0, 1 - rel_error))
 
                         # Directional accuracy requires at least 2 points
                         if len(actuals) > 1:
