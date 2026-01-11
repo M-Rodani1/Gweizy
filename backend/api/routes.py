@@ -513,38 +513,90 @@ def get_predictions():
                 if 'gas_price' not in df.columns or len(df) == 0:
                     raise ValueError("Invalid DataFrame format for hybrid predictor")
 
-                # Get hybrid predictions
-                hybrid_preds = hybrid_predictor.predict(df)
-                
-                # Validate predictions were generated
-                if not hybrid_preds or len(hybrid_preds) == 0:
-                    raise ValueError("Hybrid predictor returned empty predictions")
+                # Try ensemble predictor first (combines hybrid + stacking + statistical)
+                try:
+                    from models.ensemble_predictor import get_ensemble_predictor
+                    ensemble = get_ensemble_predictor()
+                    ensemble_preds = ensemble.predict(df)
 
-                # Format for API response
-                prediction_data = {}
-                for horizon, pred in hybrid_preds.items():
-                    classification = pred['classification']
-                    prediction = pred['prediction']
-                    alert = pred['alert']
-                    recommendation = pred['recommendation']
+                    # Also get hybrid predictions for classification info
+                    hybrid_preds = hybrid_predictor.predict(df)
 
-                    prediction_data[horizon] = [{
-                        'time': horizon,
-                        'predictedGwei': prediction['price'],
-                        'lowerBound': prediction['lower_bound'],
-                        'upperBound': prediction['upper_bound'],
-                        'confidence': classification['confidence'],
-                        'confidenceLevel': classification['class'],
-                        'confidenceEmoji': classification['emoji'],
-                        'confidenceColor': classification['color'],
-                        'classification': {
-                            'class': classification['class'],
-                            'emoji': classification['emoji'],
-                            'probabilities': classification['probabilities']
-                        },
-                        'alert': alert,
-                        'recommendation': recommendation
-                    }]
+                    # Format for API response - use ensemble predictions with hybrid classification
+                    prediction_data = {}
+                    for horizon in ['1h', '4h', '24h']:
+                        if horizon not in ensemble_preds:
+                            continue
+
+                        ens_pred = ensemble_preds[horizon]
+                        hybrid_pred = hybrid_preds.get(horizon, {})
+                        classification = hybrid_pred.get('classification', {
+                            'class': 'normal',
+                            'emoji': '🟢',
+                            'color': 'green',
+                            'confidence': ens_pred['confidence'],
+                            'probabilities': {'normal': 0.8, 'elevated': 0.15, 'spike': 0.05}
+                        })
+                        alert = hybrid_pred.get('alert', {'show_alert': False, 'message': '', 'severity': 'normal'})
+                        recommendation = hybrid_pred.get('recommendation', {'action': 'transact', 'message': 'Good time to transact'})
+
+                        prediction_data[horizon] = [{
+                            'time': horizon,
+                            'predictedGwei': ens_pred['ensemble_prediction'],
+                            'lowerBound': ens_pred['confidence_interval'][0],
+                            'upperBound': ens_pred['confidence_interval'][1],
+                            'confidence': ens_pred['confidence'],
+                            'confidenceLevel': classification.get('class', 'normal'),
+                            'confidenceEmoji': classification.get('emoji', '🟢'),
+                            'confidenceColor': classification.get('color', 'green'),
+                            'classification': {
+                                'class': classification.get('class', 'normal'),
+                                'emoji': classification.get('emoji', '🟢'),
+                                'probabilities': classification.get('probabilities', {})
+                            },
+                            'alert': alert,
+                            'recommendation': recommendation,
+                            'ensemble_info': {
+                                'individual_predictions': ens_pred['individual_predictions'],
+                                'model_weights': ens_pred['model_weights']
+                            }
+                        }]
+
+                    logger.info(f"Ensemble predictions generated - 1h: {prediction_data.get('1h', [{}])[0].get('predictedGwei', 'N/A'):.6f} gwei")
+
+                except Exception as ensemble_err:
+                    logger.warning(f"Ensemble predictor failed, using hybrid only: {ensemble_err}")
+                    # Fallback to hybrid-only predictions
+                    hybrid_preds = hybrid_predictor.predict(df)
+
+                    if not hybrid_preds or len(hybrid_preds) == 0:
+                        raise ValueError("Hybrid predictor returned empty predictions")
+
+                    # Format for API response
+                    prediction_data = {}
+                    for horizon, pred in hybrid_preds.items():
+                        classification = pred['classification']
+                        prediction = pred['prediction']
+                        alert = pred['alert']
+                        recommendation = pred['recommendation']
+
+                        prediction_data[horizon] = [{
+                            'time': horizon,
+                            'predictedGwei': prediction['price'],
+                            'lowerBound': prediction['lower_bound'],
+                            'upperBound': prediction['upper_bound'],
+                            'confidence': classification['confidence'],
+                            'confidenceLevel': classification['class'],
+                            'confidenceEmoji': classification['emoji'],
+                            'confidenceColor': classification['color'],
+                            'classification': {
+                                'class': classification['class'],
+                                'emoji': classification['emoji'],
+                                'probabilities': classification['probabilities']
+                            },
+                            'alert': alert,
+                            'recommendation': recommendation
+                        }]
 
                 # Format historical data for graph
                 historical = []
@@ -566,33 +618,32 @@ def get_predictions():
 
                 prediction_data['historical'] = historical
 
-                logger.info(f"Hybrid predictions - 1h: {classification['class']} ({classification['confidence']:.1%})")
-
-                # Track hybrid predictions for accuracy monitoring
-                for horizon, pred in hybrid_preds.items():
+                # Track predictions for accuracy monitoring (use ensemble prediction if available)
+                for horizon in ['1h', '4h', '24h']:
                     try:
-                        if accuracy_tracker is not None:
+                        if accuracy_tracker is not None and horizon in prediction_data:
+                            pred_value = prediction_data[horizon][0]['predictedGwei']
                             accuracy_tracker.record_prediction(
                                 horizon=horizon,
-                                predicted=pred['prediction']['price'],
+                                predicted=pred_value,
                                 timestamp=datetime.now()
                             )
-                            logger.debug(f"Recorded {horizon} prediction: {pred['prediction']['price']:.6f} gwei")
-                        else:
-                            logger.warning("Accuracy tracker not available - predictions not being tracked")
+                            logger.debug(f"Recorded {horizon} prediction: {pred_value:.6f} gwei")
                     except Exception as track_err:
-                        logger.warning(f"Could not track hybrid prediction: {track_err}")
-                        import traceback
-                        logger.debug(traceback.format_exc())
+                        logger.warning(f"Could not track prediction: {track_err}")
+
+                # Determine model type for info
+                model_type = 'ensemble' if 'ensemble_info' in prediction_data.get('1h', [{}])[0] else 'hybrid'
 
                 return jsonify({
                     'chain_id': chain_id,
                     'current': current,
                     'predictions': prediction_data,
                     'model_info': {
-                        'type': 'hybrid',
-                        'version': 'spike_detection_v1',
-                        'description': 'Classification-based prediction (Normal/Elevated/Spike)',
+                        'type': model_type,
+                        'version': 'ensemble_v1' if model_type == 'ensemble' else 'spike_detection_v1',
+                        'description': 'Ensemble prediction (Hybrid + Stacking + Statistical)' if model_type == 'ensemble'
+                                      else 'Classification-based prediction (Normal/Elevated/Spike)',
                         'chain_id': chain_id
                     }
                 })
