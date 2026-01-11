@@ -105,7 +105,8 @@ class EnsemblePredictor:
         self,
         recent_data: pd.DataFrame,
         features: Optional[np.ndarray] = None,
-        horizons: List[str] = ['1h', '4h', '24h']
+        horizons: List[str] = ['1h', '4h', '24h'],
+        include_mempool: bool = True
     ) -> Dict[str, Dict[str, Any]]:
         """
         Generate ensemble predictions for all horizons.
@@ -114,6 +115,7 @@ class EnsemblePredictor:
             recent_data: DataFrame with recent gas price data
             features: Pre-computed feature matrix (optional)
             horizons: Which horizons to predict
+            include_mempool: Include mempool features in prediction
 
         Returns:
             Dictionary with predictions per horizon, including:
@@ -122,11 +124,13 @@ class EnsemblePredictor:
             - confidence: Ensemble confidence score
             - confidence_interval: (lower, upper) bounds
             - model_weights: Weights used for each model
+            - mempool_status: Current mempool metrics (if available)
         """
         if not self.loaded:
             self.load_models()
 
         predictions = {}
+        mempool_status = None
 
         # Ensure data has required columns
         if 'gas_price' not in recent_data.columns and 'gas' in recent_data.columns:
@@ -134,11 +138,18 @@ class EnsemblePredictor:
         elif 'gas_price' not in recent_data.columns and 'gwei' in recent_data.columns:
             recent_data = recent_data.rename(columns={'gwei': 'gas_price'})
 
+        # Get mempool status for confidence adjustment
+        if include_mempool:
+            mempool_status = self._get_mempool_status()
+
         # Build feature matrix if not provided
         if features is None and self.stacking_ensembles:
             try:
                 from models.feature_pipeline import build_feature_matrix
-                feature_df, metadata, _ = build_feature_matrix(recent_data)
+                feature_df, metadata, _ = build_feature_matrix(
+                    recent_data,
+                    include_mempool_features=include_mempool
+                )
                 # Get the last row (most recent) as features
                 features = feature_df.iloc[[-1]].values
             except Exception as e:
@@ -149,16 +160,38 @@ class EnsemblePredictor:
             predictions[horizon] = self._predict_horizon(
                 recent_data,
                 features,
-                horizon
+                horizon,
+                mempool_status
             )
 
         return predictions
+
+    def _get_mempool_status(self) -> Optional[Dict[str, Any]]:
+        """Get current mempool metrics for prediction adjustment."""
+        try:
+            from data.mempool_collector import get_mempool_collector
+            collector = get_mempool_collector()
+            features = collector.get_current_features()
+
+            return {
+                'pending_count': features.get('mempool_pending_count', 0),
+                'avg_gas_price': features.get('mempool_avg_gas_price', 0),
+                'is_congested': features.get('mempool_is_congested', 0) > 0,
+                'arrival_rate': features.get('mempool_arrival_rate', 0),
+                'count_momentum': features.get('mempool_count_momentum', 0),
+                'gas_momentum': features.get('mempool_gas_momentum', 0),
+                'available': True
+            }
+        except Exception as e:
+            logger.debug(f"Mempool status unavailable: {e}")
+            return {'available': False}
 
     def _predict_horizon(
         self,
         recent_data: pd.DataFrame,
         features: Optional[np.ndarray],
-        horizon: str
+        horizon: str,
+        mempool_status: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         """Generate prediction for a single horizon."""
 
@@ -212,10 +245,11 @@ class EnsemblePredictor:
             weights,
             current_price,
             hist_mean,
-            recent_data
+            recent_data,
+            mempool_status
         )
 
-        return {
+        result = {
             'ensemble_prediction': ensemble_prediction,
             'individual_predictions': individual_predictions,
             'confidence': confidence,
@@ -224,6 +258,16 @@ class EnsemblePredictor:
             'current_price': current_price,
             'historical_mean': hist_mean
         }
+
+        # Add mempool status if available
+        if mempool_status and mempool_status.get('available'):
+            result['mempool_status'] = {
+                'pending_count': mempool_status.get('pending_count', 0),
+                'is_congested': mempool_status.get('is_congested', False),
+                'gas_momentum': mempool_status.get('gas_momentum', 0)
+            }
+
+        return result
 
     def _statistical_prediction(
         self,
@@ -320,7 +364,8 @@ class EnsemblePredictor:
         weights: Dict[str, float],
         current_price: float,
         hist_mean: float,
-        recent_data: pd.DataFrame
+        recent_data: pd.DataFrame,
+        mempool_status: Optional[Dict[str, Any]] = None
     ) -> Tuple[float, Tuple[float, float]]:
         """
         Calculate ensemble confidence and adaptive interval.
@@ -329,6 +374,7 @@ class EnsemblePredictor:
         - Model agreement/disagreement
         - Individual model confidences
         - Recent volatility
+        - Mempool congestion status (leading indicator)
         """
 
         pred_values = list(predictions.values())
@@ -360,18 +406,31 @@ class EnsemblePredictor:
         # High disagreement = lower confidence
         disagreement_penalty = min(0.3, disagreement * 2)
         ensemble_confidence = weighted_confidence * (1 - disagreement_penalty)
+
+        # Mempool-based confidence adjustment
+        mempool_factor = 1.0
+        if mempool_status and mempool_status.get('available'):
+            # High congestion = more uncertainty
+            if mempool_status.get('is_congested'):
+                mempool_factor = 1.3  # Widen intervals during congestion
+            # Strong gas momentum = directional confidence
+            gas_momentum = abs(mempool_status.get('gas_momentum', 0))
+            if gas_momentum > 0.1:  # Significant momentum
+                mempool_factor *= 1.1  # More uncertainty during rapid changes
+
         ensemble_confidence = max(0.3, min(0.95, ensemble_confidence))
 
         # Calculate interval width based on:
         # 1. Model disagreement
         # 2. Recent volatility
         # 3. Ensemble confidence
+        # 4. Mempool status (leading indicator)
         base_width = 0.10  # 10% base interval
         disagreement_factor = 1 + disagreement * 2  # Widen for disagreement
         volatility_factor = 1 + recent_volatility * 3  # Widen for volatility
         confidence_factor = 2 - ensemble_confidence  # Widen for low confidence
 
-        interval_width = base_width * disagreement_factor * volatility_factor * confidence_factor
+        interval_width = base_width * disagreement_factor * volatility_factor * confidence_factor * mempool_factor
         interval_width = min(0.50, interval_width)  # Cap at 50%
 
         # Calculate bounds

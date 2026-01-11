@@ -1,10 +1,13 @@
 import numpy as np
 import pandas as pd
 from typing import Any, Dict, Optional, Sequence, Tuple, Union
+import logging
 
 from models.advanced_features import create_advanced_features
 
-PIPELINE_VERSION = "v1"
+logger = logging.getLogger(__name__)
+
+PIPELINE_VERSION = "v2"  # Updated for mempool features
 
 
 def normalize_gas_dataframe(records: Union[Sequence[Dict[str, Any]], pd.DataFrame]) -> pd.DataFrame:
@@ -87,11 +90,66 @@ def add_external_features(df: pd.DataFrame, steps_per_hour: int) -> pd.DataFrame
     return df
 
 
+def add_mempool_features(df: pd.DataFrame) -> pd.DataFrame:
+    """Add mempool-derived features as leading indicators for gas price prediction.
+
+    Mempool features provide real-time insight into network demand before
+    it's reflected in gas prices.
+    """
+    df = df.copy()
+
+    try:
+        from data.mempool_collector import get_mempool_collector
+        collector = get_mempool_collector()
+        mempool_features = collector.get_current_features()
+
+        # Add mempool features to the last row (most recent observation)
+        for feature_name, value in mempool_features.items():
+            df[feature_name] = 0.0  # Default for historical rows
+            df.loc[df.index[-1], feature_name] = value
+
+        # Forward-fill mempool features for consistency
+        mempool_cols = [c for c in df.columns if c.startswith('mempool_')]
+        df[mempool_cols] = df[mempool_cols].ffill()
+
+        logger.debug(f"Added {len(mempool_features)} mempool features")
+
+    except Exception as e:
+        logger.debug(f"Mempool features unavailable: {e}")
+        # Add placeholder columns with default values
+        default_mempool_features = {
+            'mempool_pending_count': 0,
+            'mempool_avg_gas_price': 0,
+            'mempool_median_gas_price': 0,
+            'mempool_p90_gas_price': 0,
+            'mempool_gas_price_spread': 0,
+            'mempool_large_tx_ratio': 0,
+            'mempool_is_congested': 0,
+            'mempool_arrival_rate': 0,
+            'mempool_count_momentum': 0,
+            'mempool_gas_momentum': 0
+        }
+        for feature_name, value in default_mempool_features.items():
+            df[feature_name] = value
+
+    return df
+
+
 def build_feature_matrix(
     records: Union[Sequence[Dict[str, Any]], pd.DataFrame],
-    include_external_features: bool = True
+    include_external_features: bool = True,
+    include_mempool_features: bool = True
 ) -> Tuple[pd.DataFrame, Dict[str, Any], pd.DataFrame]:
-    """Build the feature matrix and metadata from raw records."""
+    """Build the feature matrix and metadata from raw records.
+
+    Args:
+        records: Raw gas price records with timestamp and price
+        include_external_features: Add derived features like volatility, momentum
+        include_mempool_features: Add mempool-derived leading indicators
+
+    Returns:
+        Tuple of (feature_matrix, metadata_dict, enriched_dataframe)
+    """
     df = normalize_gas_dataframe(records)
 
     sample_rate_minutes = detect_sample_rate_minutes(df)
@@ -100,6 +158,9 @@ def build_feature_matrix(
     if include_external_features:
         df = add_external_features(df, steps_per_hour)
 
+    if include_mempool_features:
+        df = add_mempool_features(df)
+
     features, _ = create_advanced_features(df)
 
     metadata = {
@@ -107,7 +168,8 @@ def build_feature_matrix(
         'feature_names': list(features.columns),
         'sample_rate_minutes': sample_rate_minutes,
         'steps_per_hour': steps_per_hour,
-        'external_features': include_external_features
+        'external_features': include_external_features,
+        'mempool_features': include_mempool_features
     }
 
     return features, metadata, df

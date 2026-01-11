@@ -24,6 +24,7 @@ from api.personalization_routes import personalization_bp
 from api.retraining_automated_routes import automated_retraining_bp
 from api.model_versioning_routes import versioning_bp
 from api.monitoring_routes import monitoring_bp
+from api.mempool_routes import mempool_bp
 from api.middleware import limiter, error_handlers, log_request
 from config import Config
 from utils.logger import logger
@@ -99,6 +100,7 @@ def create_app():
     app.register_blueprint(personalization_bp, url_prefix='/api')
     app.register_blueprint(versioning_bp, url_prefix='/api/versioning')
     app.register_blueprint(monitoring_bp, url_prefix='/api/monitoring')
+    app.register_blueprint(mempool_bp, url_prefix='/api')
     app.register_blueprint(automated_retraining_bp, url_prefix='/api')
     
     # Register autonomous pipeline routes
