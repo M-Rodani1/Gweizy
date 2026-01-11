@@ -429,13 +429,56 @@ class MempoolCollector:
 
     def _collection_loop(self):
         """Background collection loop."""
+        save_counter = 0
         while self._running:
             try:
-                self.collect_snapshot()
+                snapshot = self.collect_snapshot()
+
+                # Save to database every 2nd snapshot (every ~60s at 30s intervals)
+                save_counter += 1
+                if snapshot and save_counter >= 2:
+                    self._save_snapshot_to_db(snapshot)
+                    save_counter = 0
+
             except Exception as e:
                 logger.error(f"Error in mempool collection loop: {e}")
 
             time.sleep(self.snapshot_interval)
+
+    def _save_snapshot_to_db(self, snapshot: MempoolSnapshot):
+        """Save a snapshot to the database."""
+        try:
+            from data.database import DatabaseManager, MempoolSnapshotRecord
+
+            db = DatabaseManager()
+            session = db._get_session()
+
+            # Calculate momentum at save time
+            momentum = self._calculate_momentum()
+
+            record = MempoolSnapshotRecord(
+                timestamp=snapshot.timestamp,
+                block_number=snapshot.block_number,
+                pending_count=snapshot.pending_count,
+                total_gas=snapshot.total_gas,
+                large_tx_count=snapshot.large_tx_count,
+                avg_gas_price=snapshot.avg_gas_price,
+                median_gas_price=snapshot.median_gas_price,
+                p90_gas_price=snapshot.p90_gas_price,
+                tx_arrival_rate=snapshot.tx_arrival_rate,
+                is_congested=1 if snapshot.pending_count > self.HIGH_CONGESTION_PENDING else 0,
+                count_momentum=momentum['count_momentum'],
+                gas_price_momentum=momentum['gas_price_momentum']
+            )
+
+            session.add(record)
+            session.commit()
+            session.close()
+
+            logger.debug(f"Saved mempool snapshot to database: {snapshot.pending_count} pending txs")
+
+        except Exception as e:
+            logger.warning(f"Could not save mempool snapshot to database: {e}")
 
     def get_history(self, minutes: int = 30) -> List[Dict]:
         """Get snapshot history for the last N minutes."""
@@ -446,39 +489,60 @@ class MempoolCollector:
                 if s.timestamp >= cutoff
             ]
 
-    def save_to_database(self, db_manager):
-        """Save current snapshot to database."""
+    @property
+    def snapshot_history(self) -> List[MempoolSnapshot]:
+        """Get in-memory snapshot history."""
         with self._lock:
-            if not self.snapshots:
-                return
+            return list(self.snapshots)
 
-            latest = self.snapshots[-1]
+    def get_latest_snapshot(self) -> Optional[MempoolSnapshot]:
+        """Get the most recent snapshot."""
+        with self._lock:
+            return self.snapshots[-1] if self.snapshots else None
 
+    @property
+    def running(self) -> bool:
+        """Check if background collection is running."""
+        return self._running
+
+    @property
+    def collection_interval(self) -> int:
+        """Get the collection interval in seconds."""
+        return self.snapshot_interval
+
+    def get_history_from_db(self, hours: int = 24) -> List[Dict]:
+        """Get historical mempool data from database."""
         try:
-            from data.database import OnChainFeatures
+            from data.database import DatabaseManager, MempoolSnapshotRecord
 
-            session = db_manager._get_session()
+            db = DatabaseManager()
+            session = db._get_session()
 
-            # Update or create OnChainFeatures record
-            record = OnChainFeatures(
-                timestamp=latest.timestamp,
-                block_number=latest.block_number,
-                pending_tx_count=latest.pending_count,
-                tx_per_second=latest.tx_arrival_rate,
-                avg_tx_gas=latest.total_gas / max(1, latest.pending_count),
-                large_tx_ratio=latest.large_tx_count / max(1, latest.pending_count),
-                congestion_level=min(5, latest.pending_count // 20),
-                is_highly_congested=1 if latest.pending_count > self.HIGH_CONGESTION_PENDING else 0
-            )
+            cutoff = datetime.now() - timedelta(hours=hours)
+            records = session.query(MempoolSnapshotRecord).filter(
+                MempoolSnapshotRecord.timestamp >= cutoff
+            ).order_by(MempoolSnapshotRecord.timestamp.asc()).all()
 
-            session.add(record)
-            session.commit()
             session.close()
 
-            logger.debug(f"Saved mempool snapshot to database")
+            return [{
+                'timestamp': r.timestamp.isoformat(),
+                'block_number': r.block_number,
+                'pending_count': r.pending_count,
+                'total_gas': r.total_gas,
+                'large_tx_count': r.large_tx_count,
+                'avg_gas_price': r.avg_gas_price,
+                'median_gas_price': r.median_gas_price,
+                'p90_gas_price': r.p90_gas_price,
+                'tx_arrival_rate': r.tx_arrival_rate,
+                'is_congested': r.is_congested,
+                'count_momentum': r.count_momentum,
+                'gas_price_momentum': r.gas_price_momentum
+            } for r in records]
 
         except Exception as e:
-            logger.error(f"Error saving mempool to database: {e}")
+            logger.warning(f"Could not load mempool history from database: {e}")
+            return []
 
 
 # Global singleton instance

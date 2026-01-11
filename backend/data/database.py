@@ -86,6 +86,25 @@ class UserTransaction(Base):
     optimal_time = Column(DateTime, nullable=True)  # When would have been optimal
 
 
+class MempoolSnapshotRecord(Base):
+    """Mempool snapshot data for leading indicator analysis."""
+    __tablename__ = 'mempool_snapshots'
+
+    id = Column(Integer, primary_key=True)
+    timestamp = Column(DateTime, default=datetime.now, index=True)
+    block_number = Column(Integer, index=True)
+    pending_count = Column(Integer)
+    total_gas = Column(Integer)
+    large_tx_count = Column(Integer)
+    avg_gas_price = Column(Float)
+    median_gas_price = Column(Float)
+    p90_gas_price = Column(Float)
+    tx_arrival_rate = Column(Float)
+    is_congested = Column(Integer)  # Boolean as int
+    count_momentum = Column(Float, nullable=True)
+    gas_price_momentum = Column(Float, nullable=True)
+
+
 class DatabaseManager:
     def __init__(self):
         # Ensure database directory exists for SQLite

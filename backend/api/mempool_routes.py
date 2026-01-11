@@ -84,7 +84,8 @@ def get_mempool_history():
     Get recent mempool snapshot history.
 
     Query params:
-        - minutes: Number of minutes to look back (default: 60, max: 240)
+        - minutes: Number of minutes to look back (default: 60, max: 240) - uses in-memory
+        - hours: Number of hours to look back (default: 0) - uses database if > 0
 
     Returns time series of mempool metrics.
     """
@@ -92,24 +93,42 @@ def get_mempool_history():
         from data.mempool_collector import get_mempool_collector
         from datetime import timedelta
 
+        hours = int(request.args.get('hours', 0))
         minutes = min(int(request.args.get('minutes', 60)), 240)
         collector = get_mempool_collector()
 
-        # Get snapshots from history
-        snapshots = collector.snapshot_history
-        cutoff = datetime.utcnow() - timedelta(minutes=minutes)
+        # If hours specified, fetch from database for longer history
+        if hours > 0:
+            db_history = collector.get_history_from_db(hours=hours)
+            history = [{
+                'timestamp': h['timestamp'] + 'Z' if not h['timestamp'].endswith('Z') else h['timestamp'],
+                'pending_count': h['pending_count'],
+                'avg_gas_price': round(h['avg_gas_price'] or 0, 4),
+                'median_gas_price': round(h['median_gas_price'] or 0, 4),
+                'p90_gas_price': round(h['p90_gas_price'] or 0, 4),
+                'large_tx_count': h['large_tx_count'],
+                'is_congested': h['is_congested'],
+                'count_momentum': h.get('count_momentum'),
+                'gas_price_momentum': h.get('gas_price_momentum')
+            } for h in db_history]
+            source = 'database'
+        else:
+            # Get from in-memory snapshots
+            snapshots = collector.snapshot_history
+            cutoff = datetime.utcnow() - timedelta(minutes=minutes)
 
-        history = []
-        for snapshot in snapshots:
-            if snapshot.timestamp >= cutoff:
-                history.append({
-                    'timestamp': snapshot.timestamp.isoformat() + 'Z',
-                    'pending_count': snapshot.pending_count,
-                    'avg_gas_price': round(snapshot.avg_gas_price, 4),
-                    'median_gas_price': round(snapshot.median_gas_price, 4),
-                    'p90_gas_price': round(snapshot.p90_gas_price, 4),
-                    'large_tx_count': snapshot.large_tx_count
-                })
+            history = []
+            for snapshot in snapshots:
+                if snapshot.timestamp >= cutoff:
+                    history.append({
+                        'timestamp': snapshot.timestamp.isoformat() + 'Z',
+                        'pending_count': snapshot.pending_count,
+                        'avg_gas_price': round(snapshot.avg_gas_price, 4),
+                        'median_gas_price': round(snapshot.median_gas_price, 4),
+                        'p90_gas_price': round(snapshot.p90_gas_price, 4),
+                        'large_tx_count': snapshot.large_tx_count
+                    })
+            source = 'memory'
 
         # Calculate summary stats
         if history:
@@ -120,7 +139,8 @@ def get_mempool_history():
             avg_pending = max_pending = avg_gas = 0
 
         return jsonify({
-            'minutes': minutes,
+            'source': source,
+            'period': f"{hours}h" if hours > 0 else f"{minutes}m",
             'snapshot_count': len(history),
             'history': history,
             'summary': {
