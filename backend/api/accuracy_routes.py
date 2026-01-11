@@ -176,13 +176,13 @@ def check_drift():
                 alert_level = 'elevated'
 
             drift_info[horizon] = {
-                'is_drifting': drift.is_drifting,
-                'drift_ratio': drift.drift_ratio,
-                'drift_percent': round(drift.drift_ratio * 100, 1),
-                'mae_current': drift.mae_current,
-                'mae_baseline': drift.mae_baseline,
-                'confidence': drift.confidence,
-                'sample_size': drift.sample_size,
+                'is_drifting': bool(drift.is_drifting),
+                'drift_ratio': float(drift.drift_ratio),
+                'drift_percent': round(float(drift.drift_ratio) * 100, 1),
+                'mae_current': float(drift.mae_current),
+                'mae_baseline': float(drift.mae_baseline),
+                'confidence': float(drift.confidence),
+                'sample_size': int(drift.sample_size),
                 'alert_level': alert_level
             }
 
@@ -194,7 +194,7 @@ def check_drift():
         return jsonify({
             'success': True,
             'drift': drift_info,
-            'should_retrain': should_retrain or auto_retrain_triggered,
+            'should_retrain': bool(should_retrain or auto_retrain_triggered),
             'retrain_reasons': reasons,
             'alerts': alerts,
             'drifting_horizons': drifting_horizons,
