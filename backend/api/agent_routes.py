@@ -7,6 +7,7 @@ import numpy as np
 import os
 
 from utils.logger import logger
+from api.cache import cached
 
 agent_bp = Blueprint('agent', __name__)
 
@@ -98,9 +99,13 @@ def get_dqn_agent(chain_id: int = 8453):
 
 
 @agent_bp.route('/recommend', methods=['GET', 'POST'])
+@cached(ttl=30, key_prefix='agent_recommend')
 def get_recommendation():
     """
     Get AI recommendation for transaction timing.
+
+    Cached for 30 seconds to improve response times.
+    Cache key includes request parameters (urgency, chain_id, tx_type).
 
     GET params or POST body:
         {
@@ -236,7 +241,8 @@ def get_recommendation():
                 'model': 'dqn',
                 'chain_id': chain_id,
                 'current_gas': current_gas,
-                'urgency': urgency
+                'urgency': urgency,
+                'generated_at': datetime.utcnow().isoformat() + 'Z'
             })
         
         else:
@@ -342,13 +348,15 @@ def _heuristic_recommendation(current_gas, price_history, urgency, gas_amount):
         },
         'model': 'heuristic',
         'current_gas': current_gas,
-        'urgency': urgency
+        'urgency': urgency,
+        'generated_at': datetime.utcnow().isoformat() + 'Z'
     })
 
 
 @agent_bp.route('/status', methods=['GET'])
+@cached(ttl=60, key_prefix='agent_status')
 def agent_status():
-    """Get DQN agent status with detailed information."""
+    """Get DQN agent status with detailed information. Cached for 60 seconds."""
     agent = get_dqn_agent()
     
     # Convert dimensions to native Python int
