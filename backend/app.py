@@ -231,6 +231,11 @@ def create_app():
                     'data-quality': '/api/monitoring/data-quality',
                     'health': '/api/monitoring/health',
                     'summary': '/api/monitoring/summary'
+                },
+                'mempool': {
+                    'status': '/api/mempool/status',
+                    'history': '/api/mempool/history',
+                    'features': '/api/mempool/features'
                 }
             }
         })
@@ -366,6 +371,15 @@ if not use_worker_process:
             onchain_thread = threading.Thread(target=onchain_service.start, name="OnChainCollector", daemon=True)
             onchain_thread.start()
             logger.info("✓ On-chain features collection started")
+
+            # Start mempool collector for leading indicators
+            try:
+                from data.mempool_collector import get_mempool_collector
+                mempool_collector = get_mempool_collector()
+                mempool_collector.start_background_collection()
+                logger.info("✓ Mempool data collection started")
+            except Exception as e:
+                logger.warning(f"Could not start mempool collector: {e}")
 
             logger.info("="*60)
 
