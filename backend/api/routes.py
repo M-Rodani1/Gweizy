@@ -635,7 +635,21 @@ def get_predictions():
                 # Determine model type for info
                 model_type = 'ensemble' if 'ensemble_info' in prediction_data.get('1h', [{}])[0] else 'hybrid'
 
-                return jsonify({
+                # Get pattern matching insights
+                pattern_data = None
+                try:
+                    from models.pattern_matcher import get_pattern_matcher
+                    pattern_matcher = get_pattern_matcher()
+
+                    # Use df that's already been created for predictions
+                    matches = pattern_matcher.find_similar_patterns(df, df)
+                    if matches:
+                        current_price = current.get('current_gas', 0.01)
+                        pattern_data = pattern_matcher.predict_from_patterns(matches, current_price)
+                except Exception as pattern_err:
+                    logger.debug(f"Pattern matching unavailable: {pattern_err}")
+
+                response = {
                     'chain_id': chain_id,
                     'current': current,
                     'predictions': prediction_data,
@@ -646,7 +660,12 @@ def get_predictions():
                                       else 'Classification-based prediction (Normal/Elevated/Spike)',
                         'chain_id': chain_id
                     }
-                })
+                }
+
+                if pattern_data and pattern_data.get('available'):
+                    response['pattern_analysis'] = pattern_data
+
+                return jsonify(response)
             else:
                 logger.warning(f"Not enough data for hybrid predictor: {len(recent_data)} records")
 
@@ -1673,4 +1692,106 @@ def export_data():
 
     except Exception as e:
         logger.error(f"Error in /export: {traceback.format_exc()}")
+        return jsonify({'error': str(e)}), 500
+
+
+@api_bp.route('/patterns', methods=['GET'])
+@cached(ttl=30)
+def get_pattern_analysis():
+    """
+    Get detailed historical pattern matching analysis.
+
+    Returns similar patterns from history and what happened after them.
+    Query params:
+        - hours: Hours of historical data to search (default: 168 = 1 week)
+    """
+    try:
+        import pandas as pd
+        from dateutil import parser
+        from models.pattern_matcher import get_pattern_matcher
+
+        hours = int(request.args.get('hours', 168))
+        chain_id = request.args.get('chain_id', 8453, type=int)
+
+        # Get historical data
+        historical_data = db.get_historical_data(hours=hours, chain_id=chain_id)
+
+        if len(historical_data) < 50:
+            return jsonify({
+                'available': False,
+                'reason': f'Not enough historical data: {len(historical_data)} records (need 50+)',
+                'data_points': len(historical_data)
+            }), 200
+
+        # Convert to DataFrame
+        df_data = []
+        for d in historical_data:
+            timestamp = d.get('timestamp', '')
+            if isinstance(timestamp, str):
+                try:
+                    dt = parser.parse(timestamp)
+                except:
+                    dt = datetime.now()
+            else:
+                dt = timestamp if hasattr(timestamp, 'hour') else datetime.now()
+
+            gas_price = d.get('gwei', 0) or d.get('current_gas', 0)
+            if gas_price and gas_price > 0:
+                df_data.append({
+                    'timestamp': dt,
+                    'gas_price': gas_price
+                })
+
+        if len(df_data) < 50:
+            return jsonify({
+                'available': False,
+                'reason': f'Not enough valid data: {len(df_data)} records',
+                'data_points': len(df_data)
+            }), 200
+
+        df = pd.DataFrame(df_data).sort_values('timestamp').reset_index(drop=True)
+
+        # Find patterns
+        pattern_matcher = get_pattern_matcher()
+        matches = pattern_matcher.find_similar_patterns(df, df)
+
+        if not matches:
+            return jsonify({
+                'available': True,
+                'match_count': 0,
+                'reason': 'No similar patterns found in history',
+                'data_points': len(df)
+            }), 200
+
+        # Generate predictions from patterns
+        current_price = df['gas_price'].iloc[-1]
+        predictions = pattern_matcher.predict_from_patterns(matches, current_price)
+
+        # Format detailed match information
+        match_details = []
+        for match in matches[:5]:  # Top 5 matches
+            match_details.append({
+                'timestamp': match.timestamp.isoformat() + 'Z',
+                'correlation': round(match.correlation, 4),
+                'time_similarity': round(match.time_similarity, 4),
+                'combined_score': round(match.combined_score, 4),
+                'outcome': {
+                    '1h_change': round(match.outcome_change_1h * 100, 2),
+                    '4h_change': round(match.outcome_change_4h * 100, 2)
+                }
+            })
+
+        return jsonify({
+            'available': True,
+            'current_price': round(current_price, 6),
+            'data_points': len(df),
+            'search_period_hours': hours,
+            'match_count': len(matches),
+            'predictions': predictions,
+            'top_matches': match_details,
+            'timestamp': datetime.now().isoformat() + 'Z'
+        }), 200
+
+    except Exception as e:
+        logger.error(f"Error in pattern analysis: {traceback.format_exc()}")
         return jsonify({'error': str(e)}), 500
