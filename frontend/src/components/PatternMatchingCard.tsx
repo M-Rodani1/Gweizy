@@ -56,7 +56,17 @@ const PatternMatchingCard: React.FC = () => {
   const fetchPatterns = async () => {
     try {
       setLoading(true);
-      const response = await fetch(getApiUrl(API_CONFIG.ENDPOINTS.PATTERNS, { hours: 168 }));
+
+      // Use AbortController for timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout
+
+      const response = await fetch(
+        getApiUrl(API_CONFIG.ENDPOINTS.PATTERNS, { hours: 48 }), // Reduced from 168 to 48 hours
+        { signal: controller.signal }
+      );
+
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         throw new Error('Failed to fetch patterns');
@@ -66,7 +76,11 @@ const PatternMatchingCard: React.FC = () => {
       setData(result);
       setError(null);
     } catch (err) {
-      setError('Pattern analysis unavailable');
+      if (err instanceof Error && err.name === 'AbortError') {
+        setError('Request timed out');
+      } else {
+        setError('Pattern analysis unavailable');
+      }
       setData(null);
     } finally {
       setLoading(false);
