@@ -62,7 +62,7 @@ const PatternMatchingCard: React.FC = () => {
       const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout
 
       const response = await fetch(
-        getApiUrl(API_CONFIG.ENDPOINTS.PATTERNS, { hours: 48 }), // Reduced from 168 to 48 hours
+        getApiUrl(API_CONFIG.ENDPOINTS.PATTERNS, { hours: 72 }), // 72 hours for sufficient data points
         { signal: controller.signal }
       );
 
