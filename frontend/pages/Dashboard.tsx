@@ -9,6 +9,7 @@ import CollapsibleSection from '../src/components/ui/CollapsibleSection';
 import ApiStatusPanel from '../src/components/ApiStatusPanel';
 import AccuracyMetricsCard from '../src/components/AccuracyMetricsCard';
 import AccuracyMetricsDashboard from '../src/components/AccuracyMetricsDashboard';
+import PatternMatchingCard from '../src/components/PatternMatchingCard';
 import FeatureImportanceChart from '../src/components/FeatureImportanceChart';
 import DriftAlertBanner from '../src/components/DriftAlertBanner';
 import PersonalizationPanel from '../src/components/PersonalizationPanel';
@@ -115,8 +116,13 @@ const Dashboard: React.FC = () => {
               <div className="min-h-[400px]">
                 <AccuracyMetricsDashboard />
               </div>
-              <div className="min-h-[350px]">
-                <FeatureImportanceChart />
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="min-h-[350px]">
+                  <FeatureImportanceChart />
+                </div>
+                <div className="min-h-[350px]">
+                  <PatternMatchingCard />
+                </div>
               </div>
             </div>
             

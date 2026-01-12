@@ -236,6 +236,10 @@ def create_app():
                     'status': '/api/mempool/status',
                     'history': '/api/mempool/history',
                     'features': '/api/mempool/features'
+                },
+                'patterns': {
+                    'analysis': '/api/patterns',
+                    'description': 'Historical pattern matching for gas price prediction'
                 }
             }
         })

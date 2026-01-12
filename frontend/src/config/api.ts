@@ -46,7 +46,12 @@ export const API_CONFIG = {
     // Explanation endpoint
     EXPLAIN: '/explain',
     // Data export endpoint
-    EXPORT: '/export'
+    EXPORT: '/export',
+    // Pattern matching endpoint
+    PATTERNS: '/patterns',
+    // Mempool endpoints
+    MEMPOOL_STATUS: '/mempool/status',
+    MEMPOOL_HISTORY: '/mempool/history'
   },
   TIMEOUT: 10000, // 10 seconds
   RETRY_ATTEMPTS: 3,

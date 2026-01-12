@@ -24,6 +24,44 @@ interface GasPriceUpdate {
 }
 
 /**
+ * Prediction update payload from WebSocket.
+ */
+interface PredictionUpdate {
+  current_price: number;
+  predictions: {
+    [horizon: string]: {
+      price: number;
+      confidence: number;
+      lower_bound: number;
+      upper_bound: number;
+    };
+  };
+  timestamp: string;
+}
+
+/**
+ * Mempool status update from WebSocket.
+ */
+interface MempoolUpdate {
+  pending_count: number;
+  avg_gas_price: number;
+  is_congested: boolean;
+  gas_momentum: number;
+  count_momentum: number;
+  timestamp: string;
+}
+
+/**
+ * Combined update with all real-time data.
+ */
+interface CombinedUpdate {
+  gas: GasPriceUpdate;
+  predictions?: PredictionUpdate;
+  mempool?: MempoolUpdate;
+  timestamp: string;
+}
+
+/**
  * Configuration options for the WebSocket hook.
  */
 interface UseWebSocketOptions {
@@ -76,6 +114,8 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
   const [socket, setSocket] = useState<Socket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [gasPrice, setGasPrice] = useState<GasPriceUpdate | null>(null);
+  const [predictions, setPredictions] = useState<PredictionUpdate | null>(null);
+  const [mempool, setMempool] = useState<MempoolUpdate | null>(null);
   const [error, setError] = useState<Error | null>(null);
   const reconnectAttempts = useRef(0);
   const maxReconnectAttempts = 5;
@@ -110,7 +150,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
     });
 
     // Connection lost
-    newSocket.on('disconnect', (reason) => {
+    newSocket.on('disconnect', (reason: string) => {
       console.log('WebSocket disconnected:', reason);
       setIsConnected(false);
       onDisconnect?.();
@@ -132,7 +172,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
     });
 
     // Connection error
-    newSocket.on('connect_error', (err) => {
+    newSocket.on('connect_error', (err: Error) => {
       console.error('WebSocket connection error:', err);
       setError(err);
       onError?.(err);
@@ -144,8 +184,26 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
       setError(null);
     });
 
+    // Prediction update
+    newSocket.on('prediction_update', (data: PredictionUpdate) => {
+      setPredictions(data);
+    });
+
+    // Mempool status update
+    newSocket.on('mempool_update', (data: MempoolUpdate) => {
+      setMempool(data);
+    });
+
+    // Combined update (gas + predictions + mempool)
+    newSocket.on('combined_update', (data: CombinedUpdate) => {
+      if (data.gas) setGasPrice(data.gas);
+      if (data.predictions) setPredictions(data.predictions);
+      if (data.mempool) setMempool(data.mempool);
+      setError(null);
+    });
+
     // Connection established confirmation
-    newSocket.on('connection_established', (data) => {
+    newSocket.on('connection_established', (data: { message: string }) => {
       console.log('Connection confirmed:', data);
     });
 
@@ -179,9 +237,13 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
     socket,
     isConnected,
     gasPrice,
+    predictions,
+    mempool,
     error,
     disconnect,
     reconnect,
   };
 }
+
+export type { GasPriceUpdate, PredictionUpdate, MempoolUpdate, CombinedUpdate };
 
