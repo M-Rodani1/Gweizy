@@ -10,6 +10,7 @@ import ApiStatusPanel from '../src/components/ApiStatusPanel';
 import AccuracyMetricsCard from '../src/components/AccuracyMetricsCard';
 import AccuracyMetricsDashboard from '../src/components/AccuracyMetricsDashboard';
 import PatternMatchingCard from '../src/components/PatternMatchingCard';
+import MempoolStatusCard from '../src/components/MempoolStatusCard';
 import FeatureImportanceChart from '../src/components/FeatureImportanceChart';
 import DriftAlertBanner from '../src/components/DriftAlertBanner';
 import PersonalizationPanel from '../src/components/PersonalizationPanel';
@@ -105,12 +106,15 @@ const Dashboard: React.FC = () => {
             </div>
             <div className="space-y-4">
               <div className="text-[11px] tracking-[0.2em] text-gray-500 uppercase">System</div>
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="min-h-[300px]">
                   <ApiStatusPanel />
                 </div>
                 <div className="min-h-[300px]">
                   <AccuracyMetricsCard />
+                </div>
+                <div className="min-h-[300px]">
+                  <MempoolStatusCard />
                 </div>
               </div>
               <div className="min-h-[400px]">

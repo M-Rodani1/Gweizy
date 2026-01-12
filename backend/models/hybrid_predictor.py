@@ -128,12 +128,16 @@ class HybridPredictor:
                         self.spike_detectors[horizon] = pickle.load(f)
                     logger.info(f"✓ Loaded spike detector for {horizon} from {detector_path}")
                 else:
-                    logger.warning(f"⚠️  Spike detector not found: tried {possible_paths[0] if possible_paths else 'N/A'}")
+                    # Debug level - expected during initial setup before training
+                    logger.debug(f"Spike detector not found for {horizon}")
 
             self.loaded = len(self.spike_detectors) > 0
 
             if not self.loaded:
-                logger.error("No spike detectors loaded!")
+                # Only log once per instance
+                if not hasattr(self, '_warned_no_detectors'):
+                    logger.info("Spike detectors not available - using statistical fallback. Run training to enable.")
+                    self._warned_no_detectors = True
 
             return self.loaded
 

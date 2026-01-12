@@ -305,7 +305,32 @@ if TRAIN_MODELS_ON_STARTUP:
                     # Log summary (last 20 lines usually contain the summary)
                     summary = "\n".join(output_lines[-20:])
                     logger.info(f"Training summary:\n{summary}")
-                    
+
+                    # Step 2: Train spike detectors
+                    spike_script_path = os.path.join(current_dir, "scripts", "train_spike_detectors.py")
+                    if os.path.exists(spike_script_path):
+                        logger.info("🎯 Training spike detectors...")
+                        spike_process = subprocess.Popen(
+                            [sys.executable, spike_script_path],
+                            stdout=subprocess.PIPE,
+                            stderr=subprocess.STDOUT,
+                            text=True,
+                            bufsize=1,
+                            universal_newlines=True,
+                            cwd=current_dir
+                        )
+                        for line in spike_process.stdout:
+                            line = line.strip()
+                            if line:
+                                logger.info(f"[SPIKE] {line}")
+                        spike_returncode = spike_process.wait(timeout=300)
+                        if spike_returncode == 0:
+                            logger.info("✅ Spike detector training completed")
+                        else:
+                            logger.warning(f"⚠️  Spike detector training failed (code {spike_returncode})")
+                    else:
+                        logger.warning(f"Spike detector script not found: {spike_script_path}")
+
                     # Auto-reload models after successful training
                     try:
                         logger.info("🔄 Auto-reloading models to use newly trained models...")
