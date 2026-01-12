@@ -91,19 +91,9 @@ class GasCollectorService:
                         f"[{elapsed:.2f}s]"
                     )
 
-                    # Emit WebSocket update if available
+                    # Emit WebSocket updates with predictions and mempool
                     if self.socketio:
-                        try:
-                            self.socketio.emit('gas_price_update', {
-                                'current_gas': data['current_gas'],
-                                'base_fee': data['base_fee'],
-                                'priority_fee': data['priority_fee'],
-                                'timestamp': data.get('timestamp', datetime.now().isoformat()),
-                                'collection_count': self.collection_count
-                            })
-                            logger.debug("WebSocket update emitted")
-                        except Exception as ws_error:
-                            logger.warning(f"Failed to emit WebSocket update: {ws_error}")
+                        self._emit_realtime_updates(data)
 
                     # Log stats every 12 collections (1 hour)
                     if self.collection_count % 12 == 0:
@@ -161,6 +151,54 @@ class GasCollectorService:
                 logger.info("="*60)
         except Exception as e:
             logger.warning(f"Could not generate stats: {e}")
+
+    def _emit_realtime_updates(self, gas_data):
+        """Emit comprehensive real-time updates via WebSocket."""
+        try:
+            from services.websocket_events import emit_combined_update, emit_gas_update
+
+            # Always emit gas update
+            emit_gas_update(gas_data)
+
+            # Get predictions (every collection)
+            predictions = None
+            mempool_status = None
+
+            try:
+                from models.ensemble_predictor import get_ensemble_predictor
+                import pandas as pd
+
+                # Get recent data for predictions
+                recent = self.db.get_historical_data(hours=24)
+                if recent and len(recent) >= 10:
+                    df = pd.DataFrame(recent)
+                    predictor = get_ensemble_predictor()
+                    predictions = predictor.predict(df)
+            except Exception as pred_error:
+                logger.debug(f"Could not get predictions for WebSocket: {pred_error}")
+
+            # Get mempool status
+            try:
+                from data.mempool_collector import get_mempool_collector
+                collector = get_mempool_collector()
+                features = collector.get_current_features()
+                mempool_status = {
+                    'pending_count': features.get('mempool_pending_count', 0),
+                    'avg_gas_price': features.get('mempool_avg_gas_price', 0),
+                    'is_congested': features.get('mempool_is_congested', 0) > 0,
+                    'gas_momentum': features.get('mempool_gas_price_momentum', 0),
+                    'count_momentum': features.get('mempool_count_momentum', 0)
+                }
+            except Exception as mp_error:
+                logger.debug(f"Could not get mempool for WebSocket: {mp_error}")
+
+            # Emit combined update
+            emit_combined_update(gas_data, predictions, mempool_status)
+
+            logger.debug("Real-time WebSocket updates emitted")
+
+        except Exception as e:
+            logger.warning(f"Failed to emit real-time updates: {e}")
 
     def health_check(self):
         """Check service health"""

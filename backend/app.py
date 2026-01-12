@@ -338,6 +338,14 @@ if SOCKETIO_AVAILABLE:
     socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
     app.socketio = socketio
     logger.info("WebSocket support enabled")
+
+    # Initialize WebSocket events module
+    try:
+        from services.websocket_events import init_socketio
+        init_socketio(socketio)
+        logger.info("WebSocket events module initialized")
+    except Exception as e:
+        logger.warning(f"Could not initialize websocket events: {e}")
 else:
     socketio = None
     app.socketio = None
