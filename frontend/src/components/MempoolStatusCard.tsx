@@ -11,27 +11,37 @@ import React, { useEffect, useState } from 'react';
 import { Activity, TrendingUp, TrendingDown, Minus, RefreshCw, AlertTriangle, CheckCircle } from 'lucide-react';
 import { API_CONFIG, getApiUrl } from '../config/api';
 
-interface MempoolStatus {
+interface MempoolMetrics {
   pending_count: number;
-  total_gas: number;
-  large_tx_count: number;
   avg_gas_price: number;
   median_gas_price: number;
   p90_gas_price: number;
-  tx_arrival_rate: number;
+  gas_price_spread: number;
+  large_tx_ratio: number;
+  arrival_rate: number;
+}
+
+interface MempoolSignals {
   is_congested: boolean;
-  congestion_score: number;
-  gas_price_momentum: number;
+  congestion_level: 'low' | 'moderate' | 'high' | 'unknown';
   count_momentum: number;
-  timestamp: string;
-  block_number: number;
+  gas_momentum: number;
+}
+
+interface MempoolInterpretation {
+  trend: string;
+  trend_description: string;
+  recommendation: string;
 }
 
 interface MempoolResponse {
-  status: string;
-  data: MempoolStatus;
-  collection_active: boolean;
-  snapshots_in_memory: number;
+  status: 'active' | 'inactive' | 'error';
+  metrics: MempoolMetrics;
+  signals: MempoolSignals;
+  interpretation: MempoolInterpretation;
+  timestamp: string;
+  snapshot_time?: string;
+  error?: string;
 }
 
 const MempoolStatusCard: React.FC = () => {
@@ -42,7 +52,17 @@ const MempoolStatusCard: React.FC = () => {
   const fetchMempoolStatus = async () => {
     try {
       setLoading(true);
-      const response = await fetch(getApiUrl(API_CONFIG.ENDPOINTS.MEMPOOL_STATUS));
+
+      // Use AbortController for timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
+
+      const response = await fetch(
+        getApiUrl(API_CONFIG.ENDPOINTS.MEMPOOL_STATUS),
+        { signal: controller.signal }
+      );
+
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         throw new Error('Failed to fetch mempool status');
@@ -52,7 +72,11 @@ const MempoolStatusCard: React.FC = () => {
       setData(result);
       setError(null);
     } catch (err) {
-      setError('Mempool data unavailable');
+      if (err instanceof Error && err.name === 'AbortError') {
+        setError('Request timed out');
+      } else {
+        setError('Mempool data unavailable');
+      }
       setData(null);
     } finally {
       setLoading(false);
@@ -82,8 +106,8 @@ const MempoolStatusCard: React.FC = () => {
     return `${sign}${(momentum * 100).toFixed(1)}%`;
   };
 
-  const getCongestionStatus = (isCongested: boolean, score: number) => {
-    if (isCongested) {
+  const getCongestionStatus = (level: string, isCongested: boolean) => {
+    if (isCongested || level === 'high') {
       return {
         icon: <AlertTriangle className="w-5 h-5 text-amber-400" />,
         text: 'Congested',
@@ -92,7 +116,7 @@ const MempoolStatusCard: React.FC = () => {
         borderColor: 'border-amber-400/30'
       };
     }
-    if (score > 0.5) {
+    if (level === 'moderate') {
       return {
         icon: <Activity className="w-5 h-5 text-yellow-400" />,
         text: 'Moderate',
@@ -124,7 +148,7 @@ const MempoolStatusCard: React.FC = () => {
     );
   }
 
-  if (error || !data?.data) {
+  if (error || !data?.metrics) {
     return (
       <div className="bg-gray-800/50 rounded-xl p-6 border border-gray-700">
         <div className="flex items-center gap-2 mb-4">
@@ -136,8 +160,8 @@ const MempoolStatusCard: React.FC = () => {
     );
   }
 
-  const status = data.data;
-  const congestion = getCongestionStatus(status.is_congested, status.congestion_score || 0);
+  const { metrics, signals, interpretation } = data;
+  const congestion = getCongestionStatus(signals.congestion_level, signals.is_congested);
 
   return (
     <div className="bg-gray-800/50 rounded-xl p-6 border border-gray-700">
@@ -159,12 +183,17 @@ const MempoolStatusCard: React.FC = () => {
       <div className={`flex items-center gap-2 p-3 rounded-lg mb-4 ${congestion.bgColor} border ${congestion.borderColor}`}>
         {congestion.icon}
         <span className={`font-medium ${congestion.color}`}>{congestion.text}</span>
-        {status.congestion_score !== undefined && (
-          <span className="text-gray-400 text-sm ml-auto">
-            Score: {(status.congestion_score * 100).toFixed(0)}%
-          </span>
-        )}
+        <span className="text-gray-400 text-sm ml-auto capitalize">
+          {signals.congestion_level}
+        </span>
       </div>
+
+      {/* Recommendation */}
+      {interpretation?.recommendation && (
+        <p className="text-sm text-gray-300 mb-4 bg-gray-700/50 p-3 rounded-lg">
+          {interpretation.recommendation}
+        </p>
+      )}
 
       {/* Key Metrics Grid */}
       <div className="grid grid-cols-2 gap-3 mb-4">
@@ -173,11 +202,11 @@ const MempoolStatusCard: React.FC = () => {
           <div className="text-xs text-gray-400 mb-1">Pending Txs</div>
           <div className="flex items-center gap-2">
             <span className="text-xl font-semibold text-white">
-              {status.pending_count?.toLocaleString() || 'N/A'}
+              {metrics.pending_count?.toLocaleString() || 'N/A'}
             </span>
-            {status.count_momentum !== undefined && (
-              <span className={`text-xs ${getMomentumColor(status.count_momentum)}`}>
-                {formatMomentum(status.count_momentum)}
+            {signals.count_momentum !== undefined && (
+              <span className={`text-xs ${getMomentumColor(signals.count_momentum)}`}>
+                {formatMomentum(signals.count_momentum)}
               </span>
             )}
           </div>
@@ -188,7 +217,7 @@ const MempoolStatusCard: React.FC = () => {
           <div className="text-xs text-gray-400 mb-1">Avg Gas Price</div>
           <div className="flex items-center gap-2">
             <span className="text-xl font-semibold text-white">
-              {status.avg_gas_price?.toFixed(4) || 'N/A'}
+              {metrics.avg_gas_price?.toFixed(4) || 'N/A'}
             </span>
             <span className="text-xs text-gray-500">gwei</span>
           </div>
@@ -198,30 +227,30 @@ const MempoolStatusCard: React.FC = () => {
         <div className="bg-gray-700/50 rounded-lg p-3">
           <div className="text-xs text-gray-400 mb-1">Price Momentum</div>
           <div className="flex items-center gap-2">
-            {getMomentumIcon(status.gas_price_momentum || 0)}
-            <span className={`text-lg font-semibold ${getMomentumColor(status.gas_price_momentum || 0)}`}>
-              {formatMomentum(status.gas_price_momentum || 0)}
+            {getMomentumIcon(signals.gas_momentum || 0)}
+            <span className={`text-lg font-semibold ${getMomentumColor(signals.gas_momentum || 0)}`}>
+              {formatMomentum(signals.gas_momentum || 0)}
             </span>
           </div>
         </div>
 
-        {/* Large Transactions */}
+        {/* Arrival Rate */}
         <div className="bg-gray-700/50 rounded-lg p-3">
-          <div className="text-xs text-gray-400 mb-1">Large Txs</div>
+          <div className="text-xs text-gray-400 mb-1">Arrival Rate</div>
           <div className="flex items-center gap-2">
             <span className="text-xl font-semibold text-white">
-              {status.large_tx_count || 0}
+              {metrics.arrival_rate?.toFixed(1) || '0'}
             </span>
-            <span className="text-xs text-gray-500">&gt;100k gas</span>
+            <span className="text-xs text-gray-500">tx/s</span>
           </div>
         </div>
       </div>
 
       {/* Additional Stats */}
       <div className="flex items-center justify-between text-xs text-gray-500 pt-2 border-t border-gray-700">
-        <span>Block #{status.block_number?.toLocaleString()}</span>
+        <span>{interpretation?.trend_description || 'Analyzing...'}</span>
         <span>
-          {data.collection_active ? (
+          {data.status === 'active' ? (
             <span className="flex items-center gap-1">
               <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
               Live

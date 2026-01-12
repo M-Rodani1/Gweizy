@@ -88,7 +88,8 @@ class MempoolCollector:
         self,
         rpc_urls: List[str] = None,
         snapshot_interval: int = 30,  # seconds between snapshots
-        history_size: int = 100  # number of snapshots to keep
+        history_size: int = 100,  # number of snapshots to keep
+        rpc_timeout: float = 5.0  # timeout for RPC connections
     ):
         """
         Initialize mempool collector.
@@ -97,6 +98,7 @@ class MempoolCollector:
             rpc_urls: List of RPC endpoints to try
             snapshot_interval: Seconds between snapshots
             history_size: Number of snapshots to keep in memory
+            rpc_timeout: Timeout for RPC connections in seconds
         """
         if rpc_urls is None:
             from config import Config
@@ -110,17 +112,19 @@ class MempoolCollector:
         self.rpc_urls = rpc_urls
         self.snapshot_interval = snapshot_interval
         self.history_size = history_size
+        self.rpc_timeout = rpc_timeout
 
-        # Initialize Web3 connections
+        # Initialize Web3 connections (try only first 2 for faster startup)
         self.w3_connections = []
-        for url in rpc_urls:
+        for url in rpc_urls[:2]:  # Limit to 2 RPCs for faster init
             try:
-                w3 = Web3(Web3.HTTPProvider(url, request_kwargs={'timeout': 10}))
+                w3 = Web3(Web3.HTTPProvider(url, request_kwargs={'timeout': rpc_timeout}))
                 if w3.is_connected():
                     self.w3_connections.append(w3)
                     logger.info(f"Connected to RPC: {url}")
+                    break  # One connection is enough for init
             except Exception as e:
-                logger.warning(f"Could not connect to {url}: {e}")
+                logger.debug(f"Could not connect to {url}: {e}")
 
         if not self.w3_connections:
             logger.error("No RPC connections available for mempool collector")
@@ -547,14 +551,42 @@ class MempoolCollector:
 
 # Global singleton instance
 _mempool_collector: Optional[MempoolCollector] = None
+_collector_initializing: bool = False
 
 
-def get_mempool_collector() -> MempoolCollector:
-    """Get or create the global mempool collector."""
-    global _mempool_collector
-    if _mempool_collector is None:
-        _mempool_collector = MempoolCollector()
-    return _mempool_collector
+def get_mempool_collector(timeout: float = 5.0) -> Optional[MempoolCollector]:
+    """
+    Get or create the global mempool collector.
+
+    Args:
+        timeout: Max time to wait for initialization (default 5s)
+
+    Returns:
+        MempoolCollector instance or None if not ready
+    """
+    global _mempool_collector, _collector_initializing
+
+    if _mempool_collector is not None:
+        return _mempool_collector
+
+    # Prevent multiple simultaneous initializations
+    if _collector_initializing:
+        return None
+
+    try:
+        _collector_initializing = True
+        _mempool_collector = MempoolCollector(rpc_timeout=timeout)
+        return _mempool_collector
+    except Exception as e:
+        logger.error(f"Failed to initialize mempool collector: {e}")
+        return None
+    finally:
+        _collector_initializing = False
+
+
+def is_collector_ready() -> bool:
+    """Check if the mempool collector is initialized and ready."""
+    return _mempool_collector is not None and len(_mempool_collector.w3_connections) > 0
 
 
 # CLI test

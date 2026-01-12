@@ -23,9 +23,37 @@ def get_mempool_status():
     congestion indicators, and momentum signals.
     """
     try:
-        from data.mempool_collector import get_mempool_collector
+        from data.mempool_collector import get_mempool_collector, is_collector_ready
 
-        collector = get_mempool_collector()
+        collector = get_mempool_collector(timeout=3.0)
+
+        # Return fallback if collector not ready
+        if collector is None or not is_collector_ready():
+            return jsonify({
+                'status': 'inactive',
+                'metrics': {
+                    'pending_count': 0,
+                    'avg_gas_price': 0,
+                    'median_gas_price': 0,
+                    'p90_gas_price': 0,
+                    'gas_price_spread': 0,
+                    'large_tx_ratio': 0,
+                    'arrival_rate': 0
+                },
+                'signals': {
+                    'is_congested': False,
+                    'congestion_level': 'unknown',
+                    'count_momentum': 0,
+                    'gas_momentum': 0
+                },
+                'interpretation': {
+                    'trend': 'unknown',
+                    'trend_description': 'Mempool collector initializing...',
+                    'recommendation': 'Data collection starting up'
+                },
+                'timestamp': datetime.utcnow().isoformat() + 'Z'
+            }), 200
+
         features = collector.get_current_features()
         latest_snapshot = collector.get_latest_snapshot()
 
