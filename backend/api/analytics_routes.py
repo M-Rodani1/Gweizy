@@ -2,6 +2,7 @@
 Analytics API Routes
 
 Provides real-time analytics, model performance tracking, and prediction accuracy metrics.
+Includes rate limiting for compute-intensive endpoints.
 """
 
 from flask import Blueprint, jsonify, request
@@ -9,6 +10,7 @@ from utils.prediction_validator import PredictionValidator
 from data.database import DatabaseManager
 from utils.logger import logger
 from api.cache import cached
+from api.middleware import limiter, get_rate_limit
 from datetime import datetime, timedelta
 import traceback
 import numpy as np
@@ -304,6 +306,7 @@ def get_recent_predictions():
 # ============================================================================
 
 @analytics_bp.route('/volatility', methods=['GET'])
+@limiter.limit(get_rate_limit('analytics_volatility'))
 @cached(ttl=60)
 def get_volatility_index():
     """
@@ -391,7 +394,8 @@ def get_volatility_index():
 
 
 @analytics_bp.route('/whales', methods=['GET'])
-@cached(ttl=30)
+@limiter.limit(get_rate_limit('analytics_whales'))
+@cached(ttl=45)  # 45 seconds - balance between freshness and compute cost
 def get_whale_activity():
     """
     Monitor large transaction (whale) activity.
@@ -453,7 +457,8 @@ def get_whale_activity():
 
 
 @analytics_bp.route('/anomalies', methods=['GET'])
-@cached(ttl=30)
+@limiter.limit(get_rate_limit('analytics_anomalies'))
+@cached(ttl=45)  # 45 seconds - balance between freshness and compute cost
 def get_anomaly_detection():
     """
     Detect anomalies in gas price patterns using z-score analysis.
@@ -546,6 +551,7 @@ def get_anomaly_detection():
 
 
 @analytics_bp.route('/ensemble', methods=['GET'])
+@limiter.limit(get_rate_limit('analytics_ensemble'))
 @cached(ttl=60)
 def get_ensemble_weights():
     """Get model ensemble weights and contributions."""
