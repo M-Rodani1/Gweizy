@@ -411,10 +411,13 @@ if not use_worker_process:
 
             # Start mempool collector for leading indicators
             try:
-                from data.mempool_collector import get_mempool_collector
-                mempool_collector = get_mempool_collector()
-                mempool_collector.start_background_collection()
-                logger.info("✓ Mempool data collection started")
+                from data.mempool_collector import get_mempool_collector, is_collector_ready
+                mempool_collector = get_mempool_collector(timeout=5.0)
+                if mempool_collector:
+                    mempool_collector.start_background_collection()
+                    logger.info("✓ Mempool data collection started")
+                else:
+                    logger.warning("Mempool collector initialization pending - will retry on first request")
             except Exception as e:
                 logger.warning(f"Could not start mempool collector: {e}")
 
@@ -442,6 +445,55 @@ if not use_worker_process:
             logger.warning(f"Failed to start autonomous pipeline: {e}")
             import traceback
             logger.warning(traceback.format_exc())
+
+        # Check and train spike detectors if missing
+        def train_spike_detectors_if_missing():
+            """Train spike detectors in background if they don't exist."""
+            import time
+            time.sleep(30)  # Wait for other services to start
+
+            try:
+                # Check if spike detectors exist
+                models_dir = os.environ.get('MODELS_DIR', '/data/models')
+                horizons = ['1h', '4h', '24h']
+                missing = []
+
+                for horizon in horizons:
+                    detector_path = os.path.join(models_dir, f'spike_detector_{horizon}.pkl')
+                    if not os.path.exists(detector_path):
+                        missing.append(horizon)
+
+                if missing:
+                    logger.info(f"🎯 Spike detectors missing for {missing} - starting training...")
+                    current_dir = os.path.dirname(os.path.abspath(__file__))
+                    spike_script = os.path.join(current_dir, "scripts", "train_spike_detectors.py")
+
+                    if os.path.exists(spike_script):
+                        import subprocess
+                        process = subprocess.Popen(
+                            [sys.executable, spike_script],
+                            stdout=subprocess.PIPE,
+                            stderr=subprocess.STDOUT,
+                            text=True,
+                            cwd=current_dir
+                        )
+                        for line in process.stdout:
+                            if line.strip():
+                                logger.info(f"[SPIKE] {line.strip()}")
+                        returncode = process.wait(timeout=300)
+                        if returncode == 0:
+                            logger.info("✅ Spike detector training completed")
+                        else:
+                            logger.warning(f"⚠️  Spike detector training failed (code {returncode})")
+                    else:
+                        logger.warning(f"Spike detector script not found: {spike_script}")
+                else:
+                    logger.info("✓ Spike detectors already exist")
+            except Exception as e:
+                logger.warning(f"Spike detector check/training failed: {e}")
+
+        spike_thread = threading.Thread(target=train_spike_detectors_if_missing, name="SpikeDetectorTrainer", daemon=True)
+        spike_thread.start()
 else:
     logger.info("Skipping background threads - using separate worker process")
 
