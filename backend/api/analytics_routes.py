@@ -320,11 +320,8 @@ def get_volatility_index():
         hours: Lookback period (default: 24)
     """
     try:
-        from data.database import Database
-
         hours = min(int(request.args.get('hours', 24)), 168)
-        db_instance = Database()
-        data = db_instance.get_historical_data(hours=hours)
+        data = db.get_historical_data(hours=hours)
 
         if not data or len(data) < 10:
             return jsonify({
@@ -415,7 +412,7 @@ def get_whale_activity():
         avg_whale_txs = 0
 
         if collector and is_collector_ready():
-            snapshots = list(collector.snapshots)[-20:]
+            snapshots = collector.snapshot_history[-20:]
             large_tx_counts = [s.large_tx_count for s in snapshots if hasattr(s, 'large_tx_count')]
             total_whale_txs = sum(large_tx_counts)
             avg_whale_txs = np.mean(large_tx_counts) if large_tx_counts else 0
@@ -466,14 +463,11 @@ def get_anomaly_detection():
         sensitivity: 1-3 (default: 2)
     """
     try:
-        from data.database import Database
-
         hours = min(int(request.args.get('hours', 24)), 168)
         sensitivity = min(max(int(request.args.get('sensitivity', 2)), 1), 3)
         z_threshold = {1: 3.0, 2: 2.5, 3: 2.0}[sensitivity]
 
-        db_instance = Database()
-        data = db_instance.get_historical_data(hours=hours)
+        data = db.get_historical_data(hours=hours)
 
         if not data or len(data) < 20:
             return jsonify({'available': False, 'reason': 'Insufficient data'}), 200
@@ -557,10 +551,10 @@ def get_ensemble_weights():
     """Get model ensemble weights and contributions."""
     try:
         from models.ensemble_predictor import get_ensemble_predictor
-        from models.hybrid_predictor import get_hybrid_predictor
+        from models.hybrid_predictor import hybrid_predictor
 
         ensemble = get_ensemble_predictor()
-        hybrid = get_hybrid_predictor()
+        hybrid = hybrid_predictor
 
         models = []
 
