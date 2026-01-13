@@ -83,13 +83,13 @@ def get_dqn_agent(chain_id: int = 8453):
             return agent
         else:
             # Only log detailed paths once, then use brief message
-            if not hasattr(get_or_load_agent, '_warned_chains'):
-                get_or_load_agent._warned_chains = set()
+            if not hasattr(get_dqn_agent, '_warned_chains'):
+                get_dqn_agent._warned_chains = set()
 
-            if chain_id not in get_or_load_agent._warned_chains:
+            if chain_id not in get_dqn_agent._warned_chains:
                 logger.info(f"DQN model not found for chain {chain_id} - using heuristic fallback")
                 logger.debug(f"Searched paths: {possible_paths[:3]}...")
-                get_or_load_agent._warned_chains.add(chain_id)
+                get_dqn_agent._warned_chains.add(chain_id)
 
             _chain_agents[chain_id] = None
             _chain_agents_loaded[chain_id] = True
