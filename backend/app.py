@@ -7,6 +7,9 @@ from flask import Flask, jsonify
 from flask_cors import CORS
 import sentry_sdk
 from sentry_sdk.integrations.flask import FlaskIntegration
+from sentry_sdk.integrations.logging import LoggingIntegration
+from sentry_sdk.integrations.threading import ThreadingIntegration
+import logging
 from api.routes import api_bp
 from api.base_config import base_config_bp
 from api.stats import stats_bp
@@ -46,14 +49,41 @@ from services.onchain_collector_service import OnChainCollectorService
 # Initialize Sentry for error tracking
 sentry_dsn = os.getenv('SENTRY_DSN')
 if sentry_dsn:
+    # Logging integration - capture logger.error() and above
+    sentry_logging = LoggingIntegration(
+        level=logging.INFO,        # Capture INFO and above as breadcrumbs
+        event_level=logging.ERROR  # Send ERROR and above to Sentry as events
+    )
+
     sentry_sdk.init(
         dsn=sentry_dsn,
-        integrations=[FlaskIntegration()],
-        traces_sample_rate=0.1,  # 10% performance monitoring
-        profiles_sample_rate=0.1,
-        environment='production' if not Config.DEBUG else 'development'
+        integrations=[
+            FlaskIntegration(),      # Flask request errors
+            sentry_logging,          # Python logging integration
+            ThreadingIntegration(    # Background thread errors
+                propagate_hub=True   # Propagate Sentry context to threads
+            ),
+        ],
+        traces_sample_rate=0.1,      # 10% performance monitoring
+        profiles_sample_rate=0.1,    # 10% profiling
+        environment='production' if not Config.DEBUG else 'development',
+
+        # Error capture settings - ALL errors should be captured
+        sample_rate=1.0,             # 100% of errors (default, but explicit)
+        send_default_pii=False,      # Don't send PII for security
+        attach_stacktrace=True,      # Always attach stack traces
+        max_breadcrumbs=50,          # Keep last 50 breadcrumbs for context
+
+        # Enable automatic session tracking
+        auto_session_tracking=True,
+
+        # Release tracking (if version available)
+        release=os.getenv('APP_VERSION', '1.0.0'),
     )
-    logger.info("Sentry error tracking initialized")
+    logger.info("Sentry error tracking initialized with full coverage")
+    logger.info("  - Flask errors: ✓")
+    logger.info("  - Logger.error() calls: ✓")
+    logger.info("  - Background thread errors: ✓")
 
 
 def create_app():

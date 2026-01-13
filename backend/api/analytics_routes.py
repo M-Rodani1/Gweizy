@@ -8,7 +8,7 @@ Includes rate limiting for compute-intensive endpoints.
 from flask import Blueprint, jsonify, request
 from utils.prediction_validator import PredictionValidator
 from data.database import DatabaseManager
-from utils.logger import logger
+from utils.logger import logger, capture_exception
 from api.cache import cached
 from api.middleware import limiter, get_rate_limit
 from datetime import datetime, timedelta
@@ -56,6 +56,7 @@ def get_performance_metrics():
 
     except Exception as e:
         logger.error(f"Error in /analytics/performance: {traceback.format_exc()}")
+        capture_exception(e, {'endpoint': '/analytics/performance'})
         return jsonify({'error': str(e)}), 500
 
 
@@ -88,6 +89,7 @@ def get_performance_trends():
 
     except Exception as e:
         logger.error(f"Error in /analytics/trends: {traceback.format_exc()}")
+        capture_exception(e, {'endpoint': '/analytics/trends'})
         return jsonify({'error': str(e)}), 500
 
 
@@ -101,6 +103,7 @@ def get_validation_summary():
 
     except Exception as e:
         logger.error(f"Error in /analytics/validation-summary: {traceback.format_exc()}")
+        capture_exception(e, {'endpoint': '/analytics/validation-summary'})
         return jsonify({'error': str(e)}), 500
 
 
@@ -121,6 +124,7 @@ def get_model_health():
 
     except Exception as e:
         logger.error(f"Error in /analytics/model-health: {traceback.format_exc()}")
+        capture_exception(e, {'endpoint': '/analytics/model-health'})
         return jsonify({'error': str(e)}), 500
 
 
@@ -176,6 +180,7 @@ def get_collection_stats():
 
     except Exception as e:
         logger.error(f"Error in /analytics/collection-stats: {traceback.format_exc()}")
+        capture_exception(e, {'endpoint': '/analytics/collection-stats'})
         return jsonify({'error': str(e)}), 500
 
 
@@ -242,6 +247,7 @@ def get_analytics_dashboard():
 
     except Exception as e:
         logger.error(f"Error in /analytics/dashboard: {traceback.format_exc()}")
+        capture_exception(e, {'endpoint': '/analytics/dashboard'})
         return jsonify({'error': str(e)}), 500
 
 
@@ -298,6 +304,7 @@ def get_recent_predictions():
 
     except Exception as e:
         logger.error(f"Error in /analytics/recent-predictions: {traceback.format_exc()}")
+        capture_exception(e, {'endpoint': '/analytics/recent-predictions'})
         return jsonify({'error': str(e)}), 500
 
 
@@ -390,6 +397,7 @@ def get_volatility_index():
 
     except Exception as e:
         logger.error(f"Error calculating volatility index: {e}")
+        capture_exception(e, {'endpoint': '/analytics/volatility'})
         return jsonify({'error': str(e)}), 500
 
 
@@ -453,6 +461,7 @@ def get_whale_activity():
 
     except Exception as e:
         logger.error(f"Error getting whale activity: {e}")
+        capture_exception(e, {'endpoint': '/analytics/whales'})
         return jsonify({'error': str(e)}), 500
 
 
@@ -547,6 +556,7 @@ def get_anomaly_detection():
 
     except Exception as e:
         logger.error(f"Error in anomaly detection: {e}")
+        capture_exception(e, {'endpoint': '/analytics/anomalies'})
         return jsonify({'error': str(e)}), 500
 
 
@@ -613,4 +623,5 @@ def get_ensemble_weights():
 
     except Exception as e:
         logger.error(f"Error getting ensemble weights: {e}")
+        capture_exception(e, {'endpoint': '/analytics/ensemble'})
         return jsonify({'error': str(e)}), 500

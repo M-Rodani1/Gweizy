@@ -7,7 +7,7 @@ Provides rate limiting, performance monitoring, and request logging.
 from flask import request, jsonify, g
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
-from utils.logger import logger
+from utils.logger import logger, capture_exception
 from config import Config
 import time
 import threading
@@ -288,6 +288,7 @@ def error_handlers(app):
     @app.errorhandler(500)
     def internal_error(error):
         logger.error(f"500 Internal Error: {str(error)}")
+        capture_exception(error, {'error_type': '500_internal'})
         response = jsonify({'error': 'Internal server error'})
         return add_cors_headers(response), 500
 
@@ -305,5 +306,6 @@ def error_handlers(app):
     @app.errorhandler(503)
     def service_unavailable(error):
         logger.error(f"503 Service Unavailable: {str(error)}")
+        capture_exception(error, {'error_type': '503_unavailable'})
         response = jsonify({'error': 'Service temporarily unavailable'})
         return add_cors_headers(response), 503

@@ -12,7 +12,7 @@ from flask import Blueprint, jsonify, request
 from services.monitoring_service import get_monitoring_service
 from api.middleware import performance_metrics, limiter, get_rate_limit
 from api.cache import get_cache_stats
-from utils.logger import logger
+from utils.logger import logger, capture_exception
 
 monitoring_bp = Blueprint('monitoring', __name__)
 
@@ -29,6 +29,7 @@ def get_dashboard():
         })
     except Exception as e:
         logger.error(f"Error getting dashboard: {e}")
+        capture_exception(e, {'endpoint': '/monitoring/dashboard'})
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
@@ -44,6 +45,7 @@ def get_data_quality():
         })
     except Exception as e:
         logger.error(f"Error getting data quality: {e}")
+        capture_exception(e, {'endpoint': '/monitoring/data-quality'})
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
@@ -59,6 +61,7 @@ def get_health():
         })
     except Exception as e:
         logger.error(f"Error getting health: {e}")
+        capture_exception(e, {'endpoint': '/monitoring/health'})
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
@@ -74,6 +77,7 @@ def get_summary():
         })
     except Exception as e:
         logger.error(f"Error getting summary: {e}")
+        capture_exception(e, {'endpoint': '/monitoring/summary'})
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
@@ -101,6 +105,7 @@ def get_api_performance():
         })
     except Exception as e:
         logger.error(f"Error getting API performance: {e}")
+        capture_exception(e, {'endpoint': '/monitoring/api-performance'})
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
@@ -124,6 +129,7 @@ def get_endpoint_performance():
         })
     except Exception as e:
         logger.error(f"Error getting endpoint performance: {e}")
+        capture_exception(e, {'endpoint': '/monitoring/api-performance/endpoints'})
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
@@ -148,6 +154,7 @@ def get_single_endpoint_performance(endpoint_path):
         })
     except Exception as e:
         logger.error(f"Error getting endpoint stats: {e}")
+        capture_exception(e, {'endpoint': '/monitoring/api-performance/endpoint'})
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
@@ -169,6 +176,7 @@ def get_cache_statistics():
         })
     except Exception as e:
         logger.error(f"Error getting cache stats: {e}")
+        capture_exception(e, {'endpoint': '/monitoring/cache-stats'})
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
