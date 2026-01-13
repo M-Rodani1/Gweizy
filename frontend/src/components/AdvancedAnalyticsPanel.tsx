@@ -1,11 +1,47 @@
 /**
  * AdvancedAnalyticsPanel Component
  *
- * Displays advanced analytics including:
- * - Gas Volatility Index (VIX-style)
- * - Whale Activity Monitor
- * - Anomaly Detection Alerts
- * - Model Ensemble Visualization
+ * A comprehensive dashboard panel that displays four key analytics metrics
+ * for gas price monitoring and prediction quality assessment.
+ *
+ * @component
+ * @example
+ * ```tsx
+ * <AdvancedAnalyticsPanel />
+ * ```
+ *
+ * ## Features
+ *
+ * ### Gas Volatility Index (GVI)
+ * VIX-style indicator (0-100) showing current gas price stability.
+ * - 0-20: Very Low (green) - stable prices
+ * - 20-40: Low (green) - relatively stable
+ * - 40-60: Moderate (yellow) - normal fluctuations
+ * - 60-80: High (orange) - volatile, time carefully
+ * - 80-100: Extreme (red) - high uncertainty
+ *
+ * ### Whale Activity Monitor
+ * Tracks large transactions (>500k gas) that may impact prices.
+ * Shows current whale count, activity level, and estimated price impact.
+ *
+ * ### Anomaly Detection
+ * Z-score based analysis identifying unusual price movements:
+ * - Spikes: Sudden price increases
+ * - Drops: Sudden price decreases
+ * - Volatility anomalies: Unusual variance patterns
+ *
+ * ### Model Ensemble Status
+ * Shows health of the ML prediction system:
+ * - Which models are loaded and active
+ * - Overall health percentage
+ * - Current prediction mode (ML vs fallback)
+ *
+ * ## Data Refresh
+ * - Auto-refreshes every 60 seconds
+ * - Manual refresh via button
+ * - 15 second fetch timeout
+ *
+ * @see {@link https://docs.gweizy.com/analytics} for API documentation
  */
 
 import React, { useEffect, useState } from 'react';
