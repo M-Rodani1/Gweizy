@@ -51,7 +51,12 @@ export const API_CONFIG = {
     PATTERNS: '/patterns',
     // Mempool endpoints
     MEMPOOL_STATUS: '/mempool/status',
-    MEMPOOL_HISTORY: '/mempool/history'
+    MEMPOOL_HISTORY: '/mempool/history',
+    // Advanced analytics endpoints
+    ANALYTICS_VOLATILITY: '/analytics/volatility',
+    ANALYTICS_WHALES: '/analytics/whales',
+    ANALYTICS_ANOMALIES: '/analytics/anomalies',
+    ANALYTICS_ENSEMBLE: '/analytics/ensemble'
   },
   TIMEOUT: 10000, // 10 seconds
   RETRY_ATTEMPTS: 3,

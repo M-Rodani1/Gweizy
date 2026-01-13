@@ -15,6 +15,7 @@ import FeatureImportanceChart from '../src/components/FeatureImportanceChart';
 import DriftAlertBanner from '../src/components/DriftAlertBanner';
 import PersonalizationPanel from '../src/components/PersonalizationPanel';
 import PersonalizedRecommendations from '../src/components/PersonalizedRecommendations';
+import AdvancedAnalyticsPanel from '../src/components/AdvancedAnalyticsPanel';
 import { checkHealth } from '../src/api/gasApi';
 import { useChain } from '../src/contexts/ChainContext';
 import { useEthPrice } from '../src/hooks/useEthPrice';
@@ -128,8 +129,11 @@ const Dashboard: React.FC = () => {
                   <PatternMatchingCard />
                 </div>
               </div>
+              <div className="min-h-[350px]">
+                <AdvancedAnalyticsPanel />
+              </div>
             </div>
-            
+
             {/* Transaction Management */}
             <div className="space-y-4">
               <div className="text-[11px] tracking-[0.2em] text-gray-500 uppercase">Transactions</div>

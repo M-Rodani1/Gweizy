@@ -297,3 +297,320 @@ def get_recent_predictions():
     except Exception as e:
         logger.error(f"Error in /analytics/recent-predictions: {traceback.format_exc()}")
         return jsonify({'error': str(e)}), 500
+
+
+# ============================================================================
+# Advanced Analytics Endpoints
+# ============================================================================
+
+@analytics_bp.route('/volatility', methods=['GET'])
+@cached(ttl=60)
+def get_volatility_index():
+    """
+    Calculate Gas Volatility Index (GVI) - similar to VIX for gas prices.
+
+    Returns a 0-100 score where:
+    - 0-20: Very Low volatility (stable)
+    - 20-40: Low volatility
+    - 40-60: Moderate volatility
+    - 60-80: High volatility
+    - 80-100: Extreme volatility
+
+    Query params:
+        hours: Lookback period (default: 24)
+    """
+    try:
+        from data.database import Database
+
+        hours = min(int(request.args.get('hours', 24)), 168)
+        db_instance = Database()
+        data = db_instance.get_historical_data(hours=hours)
+
+        if not data or len(data) < 10:
+            return jsonify({
+                'available': False,
+                'reason': 'Insufficient data for volatility calculation'
+            }), 200
+
+        prices = [d['gas_price'] for d in data if d.get('gas_price')]
+
+        if len(prices) < 10:
+            return jsonify({
+                'available': False,
+                'reason': 'Insufficient price data'
+            }), 200
+
+        prices = np.array(prices)
+        returns = np.diff(prices) / prices[:-1]
+
+        std_returns = np.std(returns) * 100
+        recent_returns = returns[-12:] if len(returns) >= 12 else returns
+        recent_vol = np.std(recent_returns) * 100
+        cv = (np.std(prices) / np.mean(prices)) * 100
+        price_range = (np.max(prices) - np.min(prices)) / np.mean(prices) * 100
+
+        raw_index = (std_returns * 0.4 + recent_vol * 0.3 + cv * 0.2 + price_range * 0.1)
+        volatility_index = min(100, raw_index * 5)
+
+        if volatility_index < 20:
+            level, description, color = 'very_low', 'Gas prices are very stable', 'green'
+        elif volatility_index < 40:
+            level, description, color = 'low', 'Gas prices are relatively stable', 'green'
+        elif volatility_index < 60:
+            level, description, color = 'moderate', 'Normal gas price fluctuations', 'yellow'
+        elif volatility_index < 80:
+            level, description, color = 'high', 'Gas prices are volatile - consider timing carefully', 'orange'
+        else:
+            level, description, color = 'extreme', 'Extreme volatility - high uncertainty', 'red'
+
+        trend = 'stable'
+        if len(returns) >= 6:
+            recent_trend = np.mean(returns[-6:])
+            trend = 'increasing' if recent_trend > 0.02 else 'decreasing' if recent_trend < -0.02 else 'stable'
+
+        return jsonify({
+            'available': True,
+            'volatility_index': round(volatility_index, 1),
+            'level': level,
+            'description': description,
+            'color': color,
+            'trend': trend,
+            'metrics': {
+                'std_returns': round(std_returns, 4),
+                'recent_volatility': round(recent_vol, 4),
+                'coefficient_of_variation': round(cv, 2),
+                'price_range_pct': round(price_range, 2),
+                'current_price': round(float(prices[-1]), 6),
+                'avg_price': round(float(np.mean(prices)), 6)
+            },
+            'data_points': len(prices),
+            'period_hours': hours,
+            'timestamp': datetime.utcnow().isoformat() + 'Z'
+        }), 200
+
+    except Exception as e:
+        logger.error(f"Error calculating volatility index: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@analytics_bp.route('/whales', methods=['GET'])
+@cached(ttl=30)
+def get_whale_activity():
+    """
+    Monitor large transaction (whale) activity.
+
+    Whales are transactions with gas > 500k, indicating:
+    - Contract deployments
+    - Large DeFi operations
+    - NFT batch mints
+    """
+    try:
+        from data.mempool_collector import get_mempool_collector, is_collector_ready
+
+        whale_threshold = 500_000
+        collector = get_mempool_collector(timeout=2.0)
+
+        current_whale_count = 0
+        total_whale_txs = 0
+        avg_whale_txs = 0
+
+        if collector and is_collector_ready():
+            snapshots = list(collector.snapshots)[-20:]
+            large_tx_counts = [s.large_tx_count for s in snapshots if hasattr(s, 'large_tx_count')]
+            total_whale_txs = sum(large_tx_counts)
+            avg_whale_txs = np.mean(large_tx_counts) if large_tx_counts else 0
+            latest = collector.get_latest_snapshot()
+            current_whale_count = latest.large_tx_count if latest else 0
+
+        if current_whale_count == 0:
+            activity_level, description, impact = 'none', 'No whale activity detected', 'neutral'
+        elif current_whale_count <= 2:
+            activity_level, description, impact = 'low', 'Light whale activity', 'minimal'
+        elif current_whale_count <= 5:
+            activity_level, description, impact = 'moderate', 'Moderate whale activity', 'moderate'
+        else:
+            activity_level, description, impact = 'high', 'Heavy whale activity', 'significant'
+
+        estimated_impact_pct = min(current_whale_count * 2, 20) if current_whale_count > 0 else 0
+
+        return jsonify({
+            'available': True,
+            'current': {
+                'whale_count': current_whale_count,
+                'activity_level': activity_level,
+                'description': description,
+                'estimated_price_impact_pct': estimated_impact_pct,
+                'impact': impact
+            },
+            'recent': {
+                'total_whale_txs': total_whale_txs,
+                'avg_whale_txs_per_snapshot': round(avg_whale_txs, 1)
+            },
+            'threshold': {'gas_limit': whale_threshold},
+            'timestamp': datetime.utcnow().isoformat() + 'Z'
+        }), 200
+
+    except Exception as e:
+        logger.error(f"Error getting whale activity: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@analytics_bp.route('/anomalies', methods=['GET'])
+@cached(ttl=30)
+def get_anomaly_detection():
+    """
+    Detect anomalies in gas price patterns using z-score analysis.
+
+    Query params:
+        hours: Lookback period (default: 24)
+        sensitivity: 1-3 (default: 2)
+    """
+    try:
+        from data.database import Database
+
+        hours = min(int(request.args.get('hours', 24)), 168)
+        sensitivity = min(max(int(request.args.get('sensitivity', 2)), 1), 3)
+        z_threshold = {1: 3.0, 2: 2.5, 3: 2.0}[sensitivity]
+
+        db_instance = Database()
+        data = db_instance.get_historical_data(hours=hours)
+
+        if not data or len(data) < 20:
+            return jsonify({'available': False, 'reason': 'Insufficient data'}), 200
+
+        prices = np.array([d['gas_price'] for d in data if d.get('gas_price')])
+        if len(prices) < 20:
+            return jsonify({'available': False, 'reason': 'Insufficient price data'}), 200
+
+        mean_price = np.mean(prices)
+        std_price = np.std(prices)
+        current_price = prices[-1]
+        z_score = (current_price - mean_price) / std_price if std_price > 0 else 0
+
+        anomalies = []
+
+        if abs(z_score) > z_threshold:
+            anomaly_type = 'spike' if z_score > 0 else 'drop'
+            anomalies.append({
+                'type': anomaly_type,
+                'severity': 'high' if abs(z_score) > z_threshold + 1 else 'medium',
+                'z_score': round(z_score, 2),
+                'deviation_pct': round((current_price - mean_price) / mean_price * 100, 1),
+                'message': f"Gas price {anomaly_type} detected"
+            })
+
+        if len(prices) >= 5:
+            recent_change = (prices[-1] - prices[-5]) / prices[-5] * 100
+            if abs(recent_change) > 30:
+                anomalies.append({
+                    'type': 'rapid_change',
+                    'severity': 'high' if abs(recent_change) > 50 else 'medium',
+                    'change_pct': round(recent_change, 1),
+                    'message': f"Rapid {'increase' if recent_change > 0 else 'decrease'} of {abs(round(recent_change, 1))}%"
+                })
+
+        if len(prices) >= 10:
+            recent_std = np.std(prices[-10:])
+            vol_ratio = recent_std / std_price if std_price > 0 else 1
+            if vol_ratio > 2:
+                anomalies.append({
+                    'type': 'volatility_spike',
+                    'severity': 'high' if vol_ratio > 3 else 'medium',
+                    'volatility_ratio': round(vol_ratio, 2),
+                    'message': f"Volatility is {round(vol_ratio, 1)}x higher than normal"
+                })
+
+        if not anomalies:
+            status, status_color = 'normal', 'green'
+        elif any(a['severity'] == 'high' for a in anomalies):
+            status, status_color = 'alert', 'red'
+        else:
+            status, status_color = 'warning', 'yellow'
+
+        return jsonify({
+            'available': True,
+            'status': status,
+            'status_color': status_color,
+            'anomaly_count': len(anomalies),
+            'anomalies': anomalies,
+            'current_analysis': {
+                'price': round(float(current_price), 6),
+                'z_score': round(z_score, 2),
+                'vs_average_pct': round((current_price - mean_price) / mean_price * 100, 1)
+            },
+            'baseline': {
+                'mean': round(float(mean_price), 6),
+                'std': round(float(std_price), 6),
+                'data_points': len(prices)
+            },
+            'timestamp': datetime.utcnow().isoformat() + 'Z'
+        }), 200
+
+    except Exception as e:
+        logger.error(f"Error in anomaly detection: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@analytics_bp.route('/ensemble', methods=['GET'])
+@cached(ttl=60)
+def get_ensemble_weights():
+    """Get model ensemble weights and contributions."""
+    try:
+        from models.ensemble_predictor import get_ensemble_predictor
+        from models.hybrid_predictor import get_hybrid_predictor
+
+        ensemble = get_ensemble_predictor()
+        hybrid = get_hybrid_predictor()
+
+        models = []
+
+        if hasattr(ensemble, 'models') and ensemble.models:
+            for name, model_info in ensemble.models.items():
+                models.append({
+                    'name': name,
+                    'type': 'ensemble_member',
+                    'loaded': True,
+                    'weight': model_info.get('weight', 1.0) if isinstance(model_info, dict) else 1.0
+                })
+
+        hybrid_loaded = hybrid.loaded if hybrid else False
+        spike_count = len(hybrid.spike_detectors) if hybrid and hasattr(hybrid, 'spike_detectors') else 0
+
+        models.extend([
+            {'name': 'hybrid_predictor', 'type': 'primary', 'loaded': hybrid_loaded, 'description': 'Main ML model'},
+            {'name': 'spike_detectors', 'type': 'classifier', 'loaded': spike_count > 0, 'count': spike_count},
+            {'name': 'pattern_matcher', 'type': 'statistical', 'loaded': True},
+            {'name': 'fallback_predictor', 'type': 'heuristic', 'loaded': True}
+        ])
+
+        loaded_count = sum(1 for m in models if m.get('loaded'))
+        health_pct = (loaded_count / len(models)) * 100
+
+        if health_pct >= 80:
+            health_status, health_color = 'healthy', 'green'
+        elif health_pct >= 50:
+            health_status, health_color = 'degraded', 'yellow'
+        else:
+            health_status, health_color = 'limited', 'red'
+
+        primary_model = 'hybrid_predictor' if hybrid_loaded else 'fallback_predictor'
+        prediction_mode = 'ML-based predictions' if hybrid_loaded else 'Heuristic predictions'
+
+        return jsonify({
+            'available': True,
+            'health': {
+                'status': health_status,
+                'color': health_color,
+                'loaded_models': loaded_count,
+                'total_models': len(models),
+                'health_pct': round(health_pct, 1)
+            },
+            'primary_model': primary_model,
+            'prediction_mode': prediction_mode,
+            'models': models,
+            'timestamp': datetime.utcnow().isoformat() + 'Z'
+        }), 200
+
+    except Exception as e:
+        logger.error(f"Error getting ensemble weights: {e}")
+        return jsonify({'error': str(e)}), 500
