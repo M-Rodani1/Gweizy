@@ -1,10 +1,13 @@
 from sqlalchemy import create_engine, Column, Integer, Float, String, DateTime
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import QueuePool
 from datetime import datetime
-from typing import Dict, List
+from typing import Dict, List, Any
 from config import Config
 from utils.logger import logger
+import threading
+import time
 
 
 Base = declarative_base()
@@ -408,4 +411,87 @@ class DatabaseManager:
     def session(self):
         """Backward compatibility - returns a new session"""
         return self._get_session()
+
+    def get_pool_status(self) -> Dict[str, Any]:
+        """Get connection pool status for monitoring."""
+        pool = self.engine.pool
+
+        # Basic pool info
+        status = {
+            'pool_class': pool.__class__.__name__,
+            'database_url_type': 'sqlite' if Config.DATABASE_URL.startswith('sqlite') else 'other',
+            'timestamp': datetime.now().isoformat()
+        }
+
+        # QueuePool-specific metrics (not applicable to SQLite's NullPool/StaticPool)
+        if hasattr(pool, 'size'):
+            status['pool_size'] = pool.size()
+        if hasattr(pool, 'checkedin'):
+            status['checked_in'] = pool.checkedin()
+        if hasattr(pool, 'checkedout'):
+            status['checked_out'] = pool.checkedout()
+        if hasattr(pool, 'overflow'):
+            status['overflow'] = pool.overflow()
+
+        # Calculate utilization
+        if 'pool_size' in status and status['pool_size'] > 0:
+            checked_out = status.get('checked_out', 0)
+            overflow = status.get('overflow', 0)
+            total_capacity = status['pool_size'] + 10  # Default max_overflow
+            status['utilization_percent'] = round((checked_out + overflow) / total_capacity * 100, 2)
+            status['is_saturated'] = status['utilization_percent'] > 80
+        else:
+            status['utilization_percent'] = 0
+            status['is_saturated'] = False
+
+        return status
+
+    def get_health_check(self) -> Dict[str, Any]:
+        """Perform database health check with timing."""
+        start_time = time.time()
+        health = {
+            'status': 'unknown',
+            'timestamp': datetime.now().isoformat()
+        }
+
+        try:
+            # Try to execute a simple query
+            session = self._get_session()
+            try:
+                from sqlalchemy import text
+                session.execute(text("SELECT 1"))
+                session.commit()
+                health['status'] = 'healthy'
+            finally:
+                session.close()
+
+            # Get recent record counts
+            session = self._get_session()
+            try:
+                from datetime import timedelta
+                one_hour_ago = datetime.now() - timedelta(hours=1)
+
+                gas_count = session.query(GasPrice).filter(
+                    GasPrice.timestamp >= one_hour_ago
+                ).count()
+
+                onchain_count = session.query(OnChainFeatures).filter(
+                    OnChainFeatures.timestamp >= one_hour_ago
+                ).count()
+
+                health['recent_gas_records'] = gas_count
+                health['recent_onchain_records'] = onchain_count
+                health['data_collection_active'] = gas_count > 0 or onchain_count > 0
+            finally:
+                session.close()
+
+        except Exception as e:
+            health['status'] = 'unhealthy'
+            health['error'] = str(e)
+            logger.error(f"Database health check failed: {e}")
+
+        health['response_time_ms'] = round((time.time() - start_time) * 1000, 2)
+        health['pool_status'] = self.get_pool_status()
+
+        return health
 

@@ -28,7 +28,7 @@ from api.retraining_automated_routes import automated_retraining_bp
 from api.model_versioning_routes import versioning_bp
 from api.monitoring_routes import monitoring_bp
 from api.mempool_routes import mempool_bp
-from api.middleware import limiter, error_handlers, log_request
+from api.middleware import limiter, error_handlers, log_request, setup_request_id
 from config import Config
 from utils.logger import logger
 
@@ -96,8 +96,8 @@ def create_app():
              r"/*": {
                  "origins": "*",
                  "methods": ["GET", "POST", "OPTIONS", "PUT", "DELETE", "PATCH"],
-                 "allow_headers": ["Content-Type", "Authorization", "Cache-Control", "Pragma", "X-Requested-With"],
-                 "expose_headers": ["Content-Type", "Cache-Control"],
+                 "allow_headers": ["Content-Type", "Authorization", "Cache-Control", "Pragma", "X-Requested-With", "X-Request-ID"],
+                 "expose_headers": ["Content-Type", "Cache-Control", "X-Request-ID", "X-Response-Time"],
                  "supports_credentials": False,
                  "max_age": 3600,
                  "send_wildcard": True
@@ -107,7 +107,10 @@ def create_app():
     
     # Rate limiting
     limiter.init_app(app)
-    
+
+    # Request ID tracking for distributed tracing (must be before log_request)
+    setup_request_id(app)
+
     # Request logging
     log_request(app)
     
@@ -475,6 +478,15 @@ if not use_worker_process:
             logger.warning(f"Failed to start autonomous pipeline: {e}")
             import traceback
             logger.warning(traceback.format_exc())
+
+        # Start automatic model rollback service
+        try:
+            from services.auto_rollback_service import get_auto_rollback_service
+            auto_rollback = get_auto_rollback_service()
+            auto_rollback.start()
+            logger.info("✓ Automatic model rollback service started")
+        except Exception as e:
+            logger.warning(f"Failed to start auto-rollback service: {e}")
 
         # Check and train spike detectors if missing
         def train_spike_detectors_if_missing():

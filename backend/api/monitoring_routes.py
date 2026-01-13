@@ -195,3 +195,286 @@ def get_rate_limits():
         'endpoint_limits': ENDPOINT_RATE_LIMITS
     })
 
+
+@monitoring_bp.route('/database', methods=['GET'])
+def get_database_health():
+    """
+    Get database connection pool health and metrics.
+
+    Returns:
+        - Pool status (size, checked in/out, overflow)
+        - Database health check with timing
+        - Recent record counts
+    """
+    try:
+        from data.database import DatabaseManager
+        db = DatabaseManager()
+        health = db.get_health_check()
+
+        return jsonify({
+            'success': True,
+            'database': health
+        })
+    except Exception as e:
+        logger.error(f"Error getting database health: {e}")
+        capture_exception(e, {'endpoint': '/monitoring/database'})
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@monitoring_bp.route('/circuit-breakers', methods=['GET'])
+def get_circuit_breaker_status():
+    """
+    Get status of all circuit breakers.
+
+    Returns:
+        - Per-circuit: state (open/closed/half-open), stats, config
+        - Useful for diagnosing external service issues
+    """
+    try:
+        from utils.circuit_breaker import CircuitBreaker
+
+        status = CircuitBreaker.get_all_status()
+
+        return jsonify({
+            'success': True,
+            'circuit_breakers': status,
+            'count': len(status)
+        })
+    except Exception as e:
+        logger.error(f"Error getting circuit breaker status: {e}")
+        capture_exception(e, {'endpoint': '/monitoring/circuit-breakers'})
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@monitoring_bp.route('/circuit-breakers/<name>/reset', methods=['POST'])
+def reset_circuit_breaker(name: str):
+    """
+    Manually reset a circuit breaker to closed state.
+
+    Use with caution - only reset if you've verified the underlying
+    service has recovered.
+
+    Args:
+        name: Circuit breaker name (e.g., 'rpc_provider', 'owlracle_api')
+    """
+    try:
+        from utils.circuit_breaker import CircuitBreaker
+
+        if name not in CircuitBreaker._registry:
+            return jsonify({
+                'success': False,
+                'error': f"Circuit breaker '{name}' not found",
+                'available': list(CircuitBreaker._registry.keys())
+            }), 404
+
+        cb = CircuitBreaker._registry[name]
+        cb.reset()
+
+        return jsonify({
+            'success': True,
+            'message': f"Circuit breaker '{name}' has been reset to closed state",
+            'status': cb.get_status()
+        })
+    except Exception as e:
+        logger.error(f"Error resetting circuit breaker: {e}")
+        capture_exception(e, {'endpoint': '/monitoring/circuit-breakers/reset'})
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@monitoring_bp.route('/auto-rollback', methods=['GET'])
+def get_auto_rollback_status():
+    """
+    Get automatic model rollback service status.
+
+    Returns:
+        - Service enabled/running state
+        - Per-horizon accuracy tracking
+        - Rollback thresholds
+        - Recent rollback history
+    """
+    try:
+        from services.auto_rollback_service import get_auto_rollback_service
+
+        service = get_auto_rollback_service()
+        status = service.get_status()
+
+        return jsonify({
+            'success': True,
+            'auto_rollback': status
+        })
+    except Exception as e:
+        logger.error(f"Error getting auto-rollback status: {e}")
+        capture_exception(e, {'endpoint': '/monitoring/auto-rollback'})
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@monitoring_bp.route('/auto-rollback/enable', methods=['POST'])
+def enable_auto_rollback():
+    """Enable automatic model rollback."""
+    try:
+        from services.auto_rollback_service import get_auto_rollback_service
+
+        service = get_auto_rollback_service()
+        service.enable()
+
+        return jsonify({
+            'success': True,
+            'message': 'Auto-rollback enabled',
+            'status': service.get_status()
+        })
+    except Exception as e:
+        logger.error(f"Error enabling auto-rollback: {e}")
+        capture_exception(e, {'endpoint': '/monitoring/auto-rollback/enable'})
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@monitoring_bp.route('/auto-rollback/disable', methods=['POST'])
+def disable_auto_rollback():
+    """Disable automatic model rollback (monitoring continues)."""
+    try:
+        from services.auto_rollback_service import get_auto_rollback_service
+
+        service = get_auto_rollback_service()
+        service.disable()
+
+        return jsonify({
+            'success': True,
+            'message': 'Auto-rollback disabled (monitoring continues)',
+            'status': service.get_status()
+        })
+    except Exception as e:
+        logger.error(f"Error disabling auto-rollback: {e}")
+        capture_exception(e, {'endpoint': '/monitoring/auto-rollback/disable'})
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@monitoring_bp.route('/auto-rollback/baseline/<horizon>', methods=['POST'])
+def update_rollback_baseline(horizon: str):
+    """
+    Update accuracy baseline for a horizon.
+
+    Use after successful retraining to set new accuracy expectations.
+
+    Args:
+        horizon: Prediction horizon ('1h', '4h', '24h')
+
+    Body:
+        accuracy: New baseline accuracy (0.0 - 1.0)
+    """
+    try:
+        from services.auto_rollback_service import get_auto_rollback_service
+
+        if horizon not in ['1h', '4h', '24h']:
+            return jsonify({
+                'success': False,
+                'error': f"Invalid horizon: {horizon}"
+            }), 400
+
+        data = request.get_json() or {}
+        accuracy = data.get('accuracy')
+
+        if accuracy is None:
+            return jsonify({
+                'success': False,
+                'error': "accuracy field required"
+            }), 400
+
+        if not 0 <= accuracy <= 1:
+            return jsonify({
+                'success': False,
+                'error': "accuracy must be between 0 and 1"
+            }), 400
+
+        service = get_auto_rollback_service()
+        service.update_baseline(horizon, accuracy)
+
+        return jsonify({
+            'success': True,
+            'message': f'Baseline updated for {horizon}',
+            'horizon': horizon,
+            'new_baseline': accuracy
+        })
+    except Exception as e:
+        logger.error(f"Error updating baseline: {e}")
+        capture_exception(e, {'endpoint': '/monitoring/auto-rollback/baseline'})
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@monitoring_bp.route('/reliability', methods=['GET'])
+def get_reliability_summary():
+    """
+    Get comprehensive reliability status for all systems.
+
+    Aggregates:
+        - Database health
+        - Circuit breaker states
+        - API performance
+        - Auto-rollback status
+        - Cache stats
+    """
+    try:
+        from data.database import DatabaseManager
+        from utils.circuit_breaker import CircuitBreaker
+        from services.auto_rollback_service import get_auto_rollback_service
+
+        # Database health
+        db = DatabaseManager()
+        db_health = db.get_health_check()
+
+        # Circuit breakers
+        circuit_status = CircuitBreaker.get_all_status()
+        circuits_healthy = all(
+            cb['state'] == 'closed' for cb in circuit_status.values()
+        )
+
+        # API performance
+        api_summary = performance_metrics.get_summary()
+
+        # Auto-rollback service
+        try:
+            rollback_service = get_auto_rollback_service()
+            rollback_status = rollback_service.get_status()
+            rollback_healthy = rollback_status.get('running', False)
+            recent_rollbacks = rollback_status.get('total_rollbacks', 0)
+        except Exception:
+            rollback_healthy = False
+            recent_rollbacks = 0
+
+        # Overall status
+        overall_healthy = (
+            db_health.get('status') == 'healthy' and
+            circuits_healthy and
+            api_summary.get('error_rate_percent', 0) < 5
+        )
+
+        return jsonify({
+            'success': True,
+            'overall_status': 'healthy' if overall_healthy else 'degraded',
+            'components': {
+                'database': {
+                    'status': db_health.get('status'),
+                    'response_time_ms': db_health.get('response_time_ms'),
+                    'data_collection_active': db_health.get('data_collection_active')
+                },
+                'circuit_breakers': {
+                    'status': 'healthy' if circuits_healthy else 'degraded',
+                    'total': len(circuit_status),
+                    'open': sum(1 for cb in circuit_status.values() if cb['state'] == 'open'),
+                    'half_open': sum(1 for cb in circuit_status.values() if cb['state'] == 'half_open')
+                },
+                'api': {
+                    'total_requests': api_summary.get('total_requests', 0),
+                    'error_rate_percent': api_summary.get('error_rate_percent', 0),
+                    'avg_response_time_ms': api_summary.get('avg_response_time_ms', 0)
+                },
+                'auto_rollback': {
+                    'status': 'healthy' if rollback_healthy else 'inactive',
+                    'total_rollbacks': recent_rollbacks
+                }
+            }
+        })
+    except Exception as e:
+        logger.error(f"Error getting reliability summary: {e}")
+        capture_exception(e, {'endpoint': '/monitoring/reliability'})
+        return jsonify({'success': False, 'error': str(e)}), 500
+

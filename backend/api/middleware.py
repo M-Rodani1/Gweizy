@@ -11,9 +11,10 @@ from utils.logger import logger, capture_exception
 from config import Config
 import time
 import threading
+import uuid
 from collections import defaultdict
 from datetime import datetime, timedelta
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 import numpy as np
 
 
@@ -218,6 +219,62 @@ def get_rate_limit(endpoint_key: str) -> str:
 
 
 # =============================================================================
+# Request ID Middleware for Distributed Tracing
+# =============================================================================
+
+class RequestContext:
+    """Thread-local storage for request context."""
+    _local = threading.local()
+
+    @classmethod
+    def get_request_id(cls) -> Optional[str]:
+        """Get the current request ID."""
+        return getattr(cls._local, 'request_id', None)
+
+    @classmethod
+    def set_request_id(cls, request_id: str) -> None:
+        """Set the current request ID."""
+        cls._local.request_id = request_id
+
+    @classmethod
+    def clear(cls) -> None:
+        """Clear the request context."""
+        cls._local.request_id = None
+
+
+def generate_request_id() -> str:
+    """Generate a unique request ID."""
+    return f"req_{uuid.uuid4().hex[:16]}"
+
+
+def setup_request_id(app):
+    """Add request ID tracking to all requests."""
+
+    @app.before_request
+    def assign_request_id():
+        # Use incoming request ID header if present (for distributed tracing)
+        request_id = request.headers.get('X-Request-ID')
+        if not request_id:
+            request_id = generate_request_id()
+
+        # Store in both Flask's g object and thread-local for access in services
+        g.request_id = request_id
+        RequestContext.set_request_id(request_id)
+
+    @app.after_request
+    def add_request_id_header(response):
+        # Add request ID to response for correlation
+        request_id = getattr(g, 'request_id', None)
+        if request_id:
+            response.headers['X-Request-ID'] = request_id
+        return response
+
+    @app.teardown_request
+    def cleanup_request_context(exception=None):
+        RequestContext.clear()
+
+
+# =============================================================================
 # Request Logging with Performance Tracking
 # =============================================================================
 
@@ -227,14 +284,16 @@ def log_request(app):
     @app.before_request
     def before_request():
         request.start_time = time.time()
+        request_id = getattr(g, 'request_id', 'unknown')
         # Only log non-health requests to reduce noise
         if '/health' not in request.path:
-            logger.debug(f"{request.method} {request.path} from {request.remote_addr}")
+            logger.debug(f"[{request_id}] {request.method} {request.path} from {request.remote_addr}")
 
     @app.after_request
     def after_request(response):
         if hasattr(request, 'start_time'):
             duration = time.time() - request.start_time
+            request_id = getattr(g, 'request_id', 'unknown')
 
             # Record performance metrics
             endpoint = request.path
@@ -243,12 +302,12 @@ def log_request(app):
             # Log slow requests with warning
             if duration > 1.0:
                 logger.warning(
-                    f"SLOW REQUEST: {request.method} {request.path} - "
+                    f"[{request_id}] SLOW REQUEST: {request.method} {request.path} - "
                     f"{response.status_code} - {duration:.3f}s"
                 )
             elif '/health' not in request.path:
                 logger.debug(
-                    f"{request.method} {request.path} - "
+                    f"[{request_id}] {request.method} {request.path} - "
                     f"{response.status_code} - {duration:.3f}s"
                 )
 
