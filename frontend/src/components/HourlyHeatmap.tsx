@@ -163,19 +163,30 @@ const HourlyHeatmap: React.FC = () => {
   if (loading) {
     return (
       <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-4 shadow-xl">
-        <div className="flex items-center justify-center py-12">
-          <RefreshCw className="w-6 h-6 text-gray-500 animate-spin" />
+        <div className="flex items-center justify-center py-12" role="status" aria-label="Loading heatmap data">
+          <RefreshCw className="w-6 h-6 text-gray-500 animate-spin" aria-hidden="true" />
+          <span className="sr-only">Loading weekly gas heatmap...</span>
         </div>
       </div>
     );
   }
+
+  // Generate screen reader summary
+  const heatmapSummary = useMemo(() => {
+    if (!data) return 'Loading heatmap data';
+
+    return `Weekly gas price heatmap showing patterns for each hour of each day. ` +
+      `Best time to transact: ${DAYS[data.bestTime.day]} at ${formatHour(data.bestTime.hour)} with average ${data.bestTime.gwei.toFixed(6)} gwei. ` +
+      `Worst time: ${DAYS[data.worstTime.day]} at ${formatHour(data.worstTime.hour)} with average ${data.worstTime.gwei.toFixed(6)} gwei. ` +
+      `Gas prices range from ${data.minGwei.toFixed(6)} to ${data.maxGwei.toFixed(6)} gwei.`;
+  }, [data]);
 
   return (
     <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-4 shadow-xl">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <Calendar className="w-4 h-4 text-purple-400" />
+          <Calendar className="w-4 h-4 text-purple-400" aria-hidden="true" />
           <h3 className="font-semibold text-white text-sm">Weekly Gas Heatmap</h3>
         </div>
         <div className="flex items-center gap-2">
@@ -186,12 +197,16 @@ const HourlyHeatmap: React.FC = () => {
           )}
           <button
             onClick={fetchData}
-            className="p-1 text-gray-500 hover:text-gray-300 transition-colors"
+            aria-label="Refresh heatmap data"
+            className="p-1 text-gray-500 hover:text-gray-300 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 rounded"
           >
-            <RefreshCw className="w-3 h-3" />
+            <RefreshCw className="w-3 h-3" aria-hidden="true" />
           </button>
         </div>
       </div>
+
+      {/* Screen reader description */}
+      <p className="sr-only">{heatmapSummary}</p>
 
       {/* Best/Worst times */}
       {data && (
@@ -212,8 +227,8 @@ const HourlyHeatmap: React.FC = () => {
       )}
 
       {/* Heatmap Grid */}
-      <div className="overflow-x-auto">
-        <div className="min-w-[400px]">
+      <div className="overflow-x-auto" role="img" aria-label="Weekly gas price heatmap visualization">
+        <div className="min-w-[400px]" aria-hidden="true">
           {/* Hour labels */}
           <div className="flex mb-1">
             <div className="w-8 shrink-0" />
@@ -274,7 +289,7 @@ const HourlyHeatmap: React.FC = () => {
       </div>
 
       {/* Legend */}
-      <div className="flex items-center justify-center gap-3 mt-4 text-[10px] text-gray-500">
+      <div className="flex items-center justify-center gap-3 mt-4 text-[10px] text-gray-500" aria-hidden="true">
         <div className="flex items-center gap-1">
           <div className="w-3 h-3 rounded-sm bg-green-500" />
           <span>Low</span>

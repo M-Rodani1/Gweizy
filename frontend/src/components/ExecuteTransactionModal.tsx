@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useId } from 'react';
 import { AlertTriangle, CheckCircle, ExternalLink, Send } from 'lucide-react';
 import { SUPPORTED_CHAINS, TransactionType } from '../config/chains';
 import { getTxLabel } from '../config/transactions';
@@ -37,6 +37,15 @@ const ExecuteTransactionModal: React.FC<ExecuteTransactionModalProps> = ({
 }) => {
   const { selectedChainId } = useChain();
   const { preferences } = usePreferences();
+
+  // Generate unique IDs for form accessibility
+  const recipientId = useId();
+  const amountId = useId();
+  const gasPriceId = useId();
+  const gasLimitId = useId();
+  const dataId = useId();
+  const acknowledgeId = useId();
+
   const [fromAddress, setFromAddress] = useState<string | null>(null);
   const [toAddress, setToAddress] = useState(defaultToAddress || '');
   const [amountEth, setAmountEth] = useState(defaultAmountEth || '');
@@ -129,22 +138,33 @@ const ExecuteTransactionModal: React.FC<ExecuteTransactionModalProps> = ({
     }
   };
 
+  const modalTitleId = useId();
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div className="w-full max-w-xl rounded-2xl border border-gray-700 bg-gray-900 shadow-xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" role="presentation">
+      {/* Backdrop */}
+      <div className="absolute inset-0" onClick={onClose} aria-hidden="true" />
+
+      <div
+        className="relative w-full max-w-xl rounded-2xl border border-gray-700 bg-gray-900 shadow-xl"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={modalTitleId}
+      >
         <div className="flex items-center justify-between border-b border-gray-800 px-6 py-4">
           <div>
-            <h2 className="text-lg font-semibold text-white">Execute {txLabel}</h2>
+            <h2 id={modalTitleId} className="text-lg font-semibold text-white">Execute {txLabel}</h2>
             <p className="text-xs text-gray-400">
               {chain?.name} • Recommended gas {gasPriceGwei || 'auto'} gwei
             </p>
           </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-white"
+            type="button"
+            className="text-gray-400 hover:text-white p-1 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 focus:ring-offset-gray-900"
             aria-label="Close execution modal"
           >
-            ×
+            <span aria-hidden="true">×</span>
           </button>
         </div>
 
@@ -160,38 +180,47 @@ const ExecuteTransactionModal: React.FC<ExecuteTransactionModalProps> = ({
           )}
 
           <div>
-            <label className="text-xs text-gray-400">Recipient</label>
+            <label htmlFor={recipientId} className="text-xs text-gray-400">
+              Recipient <span className="text-red-400" aria-hidden="true">*</span>
+            </label>
             <input
+              id={recipientId}
               type="text"
               value={toAddress}
               onChange={(e) => setToAddress(e.target.value.trim())}
               placeholder="0x..."
-              className="mt-2 w-full rounded-lg border border-gray-800 bg-gray-950/60 px-3 py-2 text-sm text-gray-100"
+              aria-required="true"
+              className="mt-2 w-full rounded-lg border border-gray-800 bg-gray-950/60 px-3 py-2 text-sm text-gray-100 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
             />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="text-xs text-gray-400">Amount (ETH)</label>
+              <label htmlFor={amountId} className="text-xs text-gray-400">Amount (ETH)</label>
               <input
+                id={amountId}
                 type="number"
                 min="0"
                 step="0.0001"
                 value={amountEth}
                 onChange={(e) => setAmountEth(e.target.value)}
-                className="mt-2 w-full rounded-lg border border-gray-800 bg-gray-950/60 px-3 py-2 text-sm text-gray-100"
+                className="mt-2 w-full rounded-lg border border-gray-800 bg-gray-950/60 px-3 py-2 text-sm text-gray-100 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
                 placeholder="0.0"
               />
             </div>
             <div>
-              <label className="text-xs text-gray-400">Gas price (gwei)</label>
+              <label htmlFor={gasPriceId} className="text-xs text-gray-400">
+                Gas price (gwei) <span className="text-red-400" aria-hidden="true">*</span>
+              </label>
               <input
+                id={gasPriceId}
                 type="number"
                 min="0"
                 step="0.0001"
                 value={gasPriceGwei}
                 onChange={(e) => setGasPriceGwei(e.target.value)}
-                className="mt-2 w-full rounded-lg border border-gray-800 bg-gray-950/60 px-3 py-2 text-sm text-gray-100"
+                aria-required="true"
+                className="mt-2 w-full rounded-lg border border-gray-800 bg-gray-950/60 px-3 py-2 text-sm text-gray-100 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
                 placeholder="0.001"
               />
             </div>
@@ -200,59 +229,67 @@ const ExecuteTransactionModal: React.FC<ExecuteTransactionModalProps> = ({
           {(preferences.showAdvancedFields || data || gasLimit) && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="text-xs text-gray-400">Gas limit (optional)</label>
+                <label htmlFor={gasLimitId} className="text-xs text-gray-400">Gas limit (optional)</label>
                 <input
+                  id={gasLimitId}
                   type="number"
                   min="21000"
                   step="1"
                   value={gasLimit}
                   onChange={(e) => setGasLimit(e.target.value)}
-                  className="mt-2 w-full rounded-lg border border-gray-800 bg-gray-950/60 px-3 py-2 text-sm text-gray-100"
+                  className="mt-2 w-full rounded-lg border border-gray-800 bg-gray-950/60 px-3 py-2 text-sm text-gray-100 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
                   placeholder="21000"
                 />
               </div>
               <div>
-                <label className="text-xs text-gray-400">Data (hex, optional)</label>
+                <label htmlFor={dataId} className="text-xs text-gray-400">Data (hex, optional)</label>
                 <input
+                  id={dataId}
                   type="text"
                   value={data}
                   onChange={(e) => setData(e.target.value)}
-                  className="mt-2 w-full rounded-lg border border-gray-800 bg-gray-950/60 px-3 py-2 text-sm text-gray-100"
+                  className="mt-2 w-full rounded-lg border border-gray-800 bg-gray-950/60 px-3 py-2 text-sm text-gray-100 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
                   placeholder="0x"
                 />
               </div>
             </div>
           )}
 
-          <label className="flex items-start gap-2 text-xs text-gray-400">
+          <div className="flex items-start gap-2">
             <input
+              id={acknowledgeId}
               type="checkbox"
               checked={acknowledged}
               onChange={(e) => setAcknowledged(e.target.checked)}
-              className="mt-0.5 h-4 w-4 rounded border-gray-700 bg-gray-900 text-cyan-400"
+              aria-required="true"
+              className="mt-0.5 h-4 w-4 rounded border-gray-700 bg-gray-900 text-cyan-400 focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 focus:ring-offset-gray-900"
             />
-            I understand this sends a live transaction and gas fees apply.
-          </label>
+            <label htmlFor={acknowledgeId} className="text-xs text-gray-400 cursor-pointer">
+              I understand this sends a live transaction and gas fees apply.
+              <span className="text-red-400 ml-1" aria-hidden="true">*</span>
+            </label>
+          </div>
 
           {error && (
             <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-300 flex items-center gap-2" role="alert">
-              <AlertTriangle className="w-4 h-4" />
+              <AlertTriangle className="w-4 h-4" aria-hidden="true" />
               {error}
             </div>
           )}
 
           {txHash && (
-            <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm text-emerald-200 flex items-center gap-2">
-              <CheckCircle className="w-4 h-4" />
+            <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm text-emerald-200 flex items-center gap-2" role="status" aria-live="polite">
+              <CheckCircle className="w-4 h-4" aria-hidden="true" />
               Transaction submitted.
               <a
                 href={`${chain?.blockExplorer}/tx/${txHash}`}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center gap-1 text-emerald-200 underline"
+                className="inline-flex items-center gap-1 text-emerald-200 underline focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:ring-offset-2 focus:ring-offset-gray-900 rounded"
               >
-                View
-                <ExternalLink className="w-3 h-3" />
+                View on explorer
+                <ExternalLink className="w-3 h-3" aria-hidden="true" />
+                <span className="sr-only">(opens in new tab)</span>
               </a>
             </div>
           )}
@@ -262,7 +299,8 @@ const ExecuteTransactionModal: React.FC<ExecuteTransactionModalProps> = ({
           {!fromAddress ? (
             <button
               onClick={handleConnect}
-              className="flex-1 rounded-xl bg-cyan-500 px-4 py-3 text-sm font-semibold text-white hover:bg-cyan-600"
+              type="button"
+              className="flex-1 rounded-xl bg-cyan-500 px-4 py-3 text-sm font-semibold text-white hover:bg-cyan-600 focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:ring-offset-2 focus:ring-offset-gray-900"
             >
               Connect Wallet
             </button>
@@ -270,11 +308,13 @@ const ExecuteTransactionModal: React.FC<ExecuteTransactionModalProps> = ({
             <button
               onClick={handleExecute}
               disabled={isSubmitting}
-              className="flex-1 rounded-xl bg-emerald-500 px-4 py-3 text-sm font-semibold text-white hover:bg-emerald-600 disabled:opacity-60"
+              type="button"
+              aria-busy={isSubmitting}
+              className="flex-1 rounded-xl bg-emerald-500 px-4 py-3 text-sm font-semibold text-white hover:bg-emerald-600 disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:ring-offset-2 focus:ring-offset-gray-900"
             >
               {isSubmitting ? 'Submitting...' : (
                 <span className="inline-flex items-center gap-2">
-                  <Send className="w-4 h-4" />
+                  <Send className="w-4 h-4" aria-hidden="true" />
                   Execute Transaction
                 </span>
               )}
@@ -282,7 +322,8 @@ const ExecuteTransactionModal: React.FC<ExecuteTransactionModalProps> = ({
           )}
           <button
             onClick={onClose}
-            className="flex-1 rounded-xl border border-gray-700 bg-gray-900 px-4 py-3 text-sm font-semibold text-gray-200 hover:bg-gray-800"
+            type="button"
+            className="flex-1 rounded-xl border border-gray-700 bg-gray-900 px-4 py-3 text-sm font-semibold text-gray-200 hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 focus:ring-offset-gray-900"
           >
             Cancel
           </button>

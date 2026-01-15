@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { TrendingUp, RefreshCw, Calendar, ChevronDown } from 'lucide-react';
 import { API_CONFIG, getApiUrl } from '../config/api';
 
@@ -141,50 +141,72 @@ const AccuracyHistoryChart: React.FC = () => {
 
   const trend = calcTrend();
 
+  // Generate screen reader summary
+  const chartSummary = useMemo(() => {
+    if (currentData.length === 0) return 'No historical accuracy data available.';
+
+    const latestValue = getMetricValue(currentData[currentData.length - 1]);
+    const metricName = getMetricLabel();
+    const trendDesc = trend.direction === 'flat' ? 'stable' :
+      trend.direction === 'up' ? 'increasing' : 'decreasing';
+
+    return `Accuracy history for ${selectedHorizon} predictions over ${timeRange}. ` +
+      `Current ${metricName}: ${formatMetricValue(latestValue)}. ` +
+      `Trend is ${trendDesc} by ${trend.percent.toFixed(1)}%. ` +
+      `Based on ${currentData.reduce((a, b) => a + b.n, 0)} data points.`;
+  }, [currentData, selectedHorizon, timeRange, trend, selectedMetric]);
+
   return (
     <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-4 shadow-xl">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
         <div className="flex items-center gap-2">
-          <TrendingUp className="w-4 h-4 text-purple-400" />
+          <TrendingUp className="w-4 h-4 text-purple-400" aria-hidden="true" />
           <h3 className="font-semibold text-white">Accuracy History</h3>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
           {/* Time Range Selector */}
           <div className="relative">
+            <label htmlFor="time-range-select" className="sr-only">Select time range</label>
             <select
+              id="time-range-select"
               value={timeRange}
               onChange={(e) => setTimeRange(e.target.value as TimeRange)}
-              className="appearance-none bg-gray-800 text-gray-300 text-xs px-3 py-1.5 pr-7 rounded-lg border border-gray-700 focus:outline-none focus:border-purple-500"
+              className="appearance-none bg-gray-800 text-gray-300 text-xs px-3 py-1.5 pr-7 rounded-lg border border-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
             >
               <option value="24h">24 Hours</option>
               <option value="7d">7 Days</option>
               <option value="30d">30 Days</option>
             </select>
-            <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-500 pointer-events-none" />
+            <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-500 pointer-events-none" aria-hidden="true" />
           </div>
 
           {/* Refresh */}
           <button
             onClick={fetchHistory}
-            className="text-xs text-purple-300 hover:text-purple-200 transition-colors flex items-center gap-1 px-2 py-1.5"
+            aria-label="Refresh accuracy history"
+            className="text-xs text-purple-300 hover:text-purple-200 transition-colors flex items-center gap-1 px-2 py-1.5 rounded focus:outline-none focus:ring-2 focus:ring-purple-500"
             disabled={loading}
           >
-            <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} aria-hidden="true" />
           </button>
         </div>
       </div>
 
+      {/* Screen reader description */}
+      <p className="sr-only">{chartSummary}</p>
+
       {/* Controls */}
       <div className="flex flex-wrap gap-2 mb-4">
         {/* Horizon Tabs */}
-        <div className="flex gap-1 bg-gray-800/50 rounded-lg p-1">
+        <div className="flex gap-1 bg-gray-800/50 rounded-lg p-1" role="group" aria-label="Select prediction horizon">
           {(['1h', '4h', '24h'] as const).map((horizon) => (
             <button
               key={horizon}
               onClick={() => setSelectedHorizon(horizon)}
-              className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
+              aria-pressed={selectedHorizon === horizon}
+              className={`px-3 py-1 text-xs font-medium rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 ${
                 selectedHorizon === horizon
                   ? 'bg-purple-500 text-white'
                   : 'text-gray-400 hover:text-white'
@@ -196,7 +218,7 @@ const AccuracyHistoryChart: React.FC = () => {
         </div>
 
         {/* Metric Selector */}
-        <div className="flex gap-1 bg-gray-800/50 rounded-lg p-1">
+        <div className="flex gap-1 bg-gray-800/50 rounded-lg p-1" role="group" aria-label="Select metric type">
           {([
             { key: 'mae', label: 'MAE' },
             { key: 'r2', label: 'R²' },
@@ -205,7 +227,8 @@ const AccuracyHistoryChart: React.FC = () => {
             <button
               key={key}
               onClick={() => setSelectedMetric(key)}
-              className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
+              aria-pressed={selectedMetric === key}
+              className={`px-3 py-1 text-xs font-medium rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-cyan-500 ${
                 selectedMetric === key
                   ? 'bg-cyan-500 text-white'
                   : 'text-gray-400 hover:text-white'
@@ -219,8 +242,9 @@ const AccuracyHistoryChart: React.FC = () => {
 
       {/* Chart */}
       {loading && !history ? (
-        <div className="flex items-center justify-center py-12">
-          <RefreshCw className="w-6 h-6 text-gray-500 animate-spin" />
+        <div className="flex items-center justify-center py-12" role="status" aria-label="Loading">
+          <RefreshCw className="w-6 h-6 text-gray-500 animate-spin" aria-hidden="true" />
+          <span className="sr-only">Loading accuracy history...</span>
         </div>
       ) : currentData.length === 0 ? (
         <div className="flex items-center justify-center py-12 text-gray-500 text-sm">
@@ -258,8 +282,8 @@ const AccuracyHistoryChart: React.FC = () => {
           </div>
 
           {/* Sparkline Chart */}
-          <div className="relative h-32 sm:h-40">
-            <svg className="w-full h-full" viewBox={`0 0 ${currentData.length * 10} 100`} preserveAspectRatio="none">
+          <div className="relative h-32 sm:h-40" role="img" aria-label={`${getMetricLabel()} chart for ${selectedHorizon} predictions`}>
+            <svg className="w-full h-full" viewBox={`0 0 ${currentData.length * 10} 100`} preserveAspectRatio="none" aria-hidden="true">
               {/* Grid lines */}
               {[0, 25, 50, 75, 100].map((y) => (
                 <line
@@ -329,8 +353,8 @@ const AccuracyHistoryChart: React.FC = () => {
 
       {/* Footer */}
       {error && (
-        <div className="mt-3 text-xs text-amber-400/80 flex items-center gap-1">
-          <Calendar className="w-3 h-3" />
+        <div className="mt-3 text-xs text-amber-400/80 flex items-center gap-1" role="status">
+          <Calendar className="w-3 h-3" aria-hidden="true" />
           Using demo data
         </div>
       )}

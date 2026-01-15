@@ -94,18 +94,36 @@ const GasPriceGraph: React.FC = () => {
     );
   }
 
+  // Generate summary for screen readers
+  const chartSummary = useMemo(() => {
+    if (data.length === 0) return 'No data available';
+
+    const actualPrices = data.filter(d => d.gwei !== null).map(d => d.gwei as number);
+    const predictions = data.filter(d => d.predictedGwei !== null).map(d => d.predictedGwei as number);
+
+    const parts = [];
+    if (currentGas) parts.push(`Current gas price is ${currentGas.toFixed(4)} gwei.`);
+    if (predictions.length > 0) {
+      const minPred = Math.min(...predictions);
+      const maxPred = Math.max(...predictions);
+      parts.push(`Predictions range from ${minPred.toFixed(4)} to ${maxPred.toFixed(4)} gwei over the ${timeScale} timeframe.`);
+    }
+    return parts.join(' ');
+  }, [data, currentGas, timeScale]);
+
   return (
     <div className="bg-gradient-to-br from-gray-800 to-gray-900 p-4 sm:p-6 rounded-2xl shadow-2xl border border-gray-700/50 card-hover h-64 md:h-80 lg:h-96">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-3">
         <h2 className="text-lg sm:text-xl font-bold bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
           Gas Price Predictions - {timeScale.toUpperCase()}
         </h2>
-        <div className="flex flex-wrap gap-1 bg-gray-700/50 p-1 rounded-md">
+        <div className="flex flex-wrap gap-1 bg-gray-700/50 p-1 rounded-md" role="group" aria-label="Select time range">
           {(['1h', '4h', '24h', 'historical'] as TimeScale[]).map((scale) => (
             <button
               key={scale}
               onClick={() => setTimeScale(scale)}
-              className={`px-3 py-2 text-sm font-medium rounded-md transition-colors min-w-[60px] ${
+              aria-pressed={timeScale === scale}
+              className={`px-3 py-2 text-sm font-medium rounded-md transition-colors min-w-[60px] focus:outline-none focus:ring-2 focus:ring-cyan-500 ${
                 timeScale === scale
                   ? 'bg-cyan-500 text-white'
                   : 'text-gray-300 hover:bg-gray-600'
@@ -117,7 +135,12 @@ const GasPriceGraph: React.FC = () => {
         </div>
       </div>
 
-      <ResponsiveContainer width="100%" height="85%" minHeight={200}>
+      {/* Screen reader description */}
+      <p className="sr-only">{chartSummary}</p>
+
+      {/* Chart container - visual only, description provided above */}
+      <div role="img" aria-label={`Gas price chart showing ${timeScale} predictions`}>
+        <ResponsiveContainer width="100%" height="85%" minHeight={200}>
         <ComposedChart data={data} margin={{ top: 5, right: 10, left: 0, bottom: 20 }}>
           <defs>
             <linearGradient id="colorGwei" x1="0" y1="0" x2="0" y2="1">
@@ -176,7 +199,8 @@ const GasPriceGraph: React.FC = () => {
             connectNulls={false}
           />
         </ComposedChart>
-      </ResponsiveContainer>
+        </ResponsiveContainer>
+      </div>
     </div>
   );
 };

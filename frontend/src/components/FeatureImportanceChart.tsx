@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { Layers, RefreshCw, Info, ChevronDown, ChevronUp } from 'lucide-react';
 import { API_CONFIG, getApiUrl } from '../config/api';
 
@@ -77,33 +77,60 @@ const FeatureImportanceChart: React.FC = () => {
 
   const displayFeatures = expanded ? features : features.slice(0, 5);
 
+  // Generate screen reader summary
+  const featureSummary = useMemo(() => {
+    if (features.length === 0) return 'No feature importance data available.';
+
+    const topFeatures = features.slice(0, 3);
+    const topList = topFeatures.map((f, i) =>
+      `${i + 1}. ${formatFeatureName(f.feature)} at ${(f.importance * 100).toFixed(1)}%`
+    ).join('; ');
+
+    return `Feature importance chart showing ${features.length} features. ` +
+      `Top 3 features: ${topList}.`;
+  }, [features]);
+
   return (
     <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-6 shadow-xl widget-glow h-full flex flex-col">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <Layers className="w-4 h-4 text-purple-400" />
+          <Layers className="w-4 h-4 text-purple-400" aria-hidden="true" />
           <h3 className="font-semibold text-white">Feature Importance</h3>
           <div className="group relative">
-            <Info className="w-3.5 h-3.5 text-gray-500 cursor-help" />
-            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-xs text-gray-300 w-48 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+            <button
+              type="button"
+              className="focus:outline-none focus:ring-2 focus:ring-purple-500 rounded"
+              aria-label="Information about feature importance"
+            >
+              <Info className="w-3.5 h-3.5 text-gray-500 cursor-help" aria-hidden="true" />
+            </button>
+            <div
+              role="tooltip"
+              className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-xs text-gray-300 w-48 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity pointer-events-none z-10"
+            >
               SHAP-based feature importance shows which inputs most influence predictions
             </div>
           </div>
         </div>
         <button
           onClick={fetchFeatures}
-          className="btn-gradient-secondary text-xs text-white px-3 py-1.5 rounded-lg flex items-center gap-1.5 font-medium disabled:opacity-50"
+          aria-label="Refresh feature importance"
+          className="btn-gradient-secondary text-xs text-white px-3 py-1.5 rounded-lg flex items-center gap-1.5 font-medium disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-purple-500"
           disabled={loading}
         >
-          <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
+          <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} aria-hidden="true" />
         </button>
       </div>
 
+      {/* Screen reader summary */}
+      <p className="sr-only">{featureSummary}</p>
+
       {/* Chart */}
       {loading && features.length === 0 ? (
-        <div className="flex items-center justify-center py-8">
-          <RefreshCw className="w-5 h-5 text-gray-500 animate-spin" />
+        <div className="flex items-center justify-center py-8" role="status" aria-label="Loading">
+          <RefreshCw className="w-5 h-5 text-gray-500 animate-spin" aria-hidden="true" />
+          <span className="sr-only">Loading feature importance...</span>
         </div>
       ) : (
         <div className="space-y-2">
@@ -135,16 +162,17 @@ const FeatureImportanceChart: React.FC = () => {
       {features.length > 5 && (
         <button
           onClick={() => setExpanded(!expanded)}
-          className="w-full mt-3 pt-2 border-t border-gray-800 flex items-center justify-center gap-1 text-xs text-gray-400 hover:text-gray-300 transition-colors"
+          aria-expanded={expanded}
+          className="w-full mt-3 pt-2 border-t border-gray-800 flex items-center justify-center gap-1 text-xs text-gray-400 hover:text-gray-300 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 rounded"
         >
           {expanded ? (
             <>
-              <ChevronUp className="w-3 h-3" />
+              <ChevronUp className="w-3 h-3" aria-hidden="true" />
               Show less
             </>
           ) : (
             <>
-              <ChevronDown className="w-3 h-3" />
+              <ChevronDown className="w-3 h-3" aria-hidden="true" />
               Show {features.length - 5} more
             </>
           )}

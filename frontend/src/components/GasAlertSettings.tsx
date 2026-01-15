@@ -251,54 +251,59 @@ const GasAlertSettings: React.FC<GasAlertSettingsProps> = ({ currentGas, walletA
 
       {/* Create Form */}
       {showCreateForm && (
-        <form onSubmit={createAlert} className="mb-6 p-4 bg-slate-700/30 rounded-lg border border-slate-600">
+        <form onSubmit={createAlert} className="mb-6 p-4 bg-slate-700/30 rounded-lg border border-slate-600" aria-label="Create new gas price alert">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">Alert Type</label>
+              <label htmlFor="alert-type" className="block text-sm font-medium text-gray-300 mb-2">Alert Type</label>
               <select
+                id="alert-type"
                 value={alertType}
                 onChange={(e) => setAlertType(e.target.value as 'below' | 'above')}
-                className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white focus:border-blue-500 focus:outline-none"
+                className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
               >
                 <option value="below">Notify when below</option>
                 <option value="above">Notify when above</option>
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
+              <label htmlFor="threshold-gwei" className="block text-sm font-medium text-gray-300 mb-2">
                 Threshold (gwei)
                 {currentGas > 0 && (
                   <button
                     type="button"
                     onClick={() => setThresholdGwei(getSuggestion())}
-                    className="ml-2 text-xs text-blue-400 hover:text-blue-300"
+                    className="ml-2 text-xs text-blue-400 hover:text-blue-300 focus:outline-none focus:underline"
+                    aria-label={`Use suggested threshold of ${getSuggestion()} gwei`}
                   >
                     Suggest: {getSuggestion()}
                   </button>
                 )}
               </label>
               <input
+                id="threshold-gwei"
                 type="number"
                 step="0.0001"
                 value={thresholdGwei}
                 onChange={(e) => setThresholdGwei(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white focus:border-blue-500 focus:outline-none"
+                className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
                 placeholder="0.001"
                 required
+                aria-required="true"
               />
             </div>
           </div>
-          
+
           {/* Notification Method Selection */}
           <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-300 mb-2">Notification Method</label>
+            <label htmlFor="notification-method" className="block text-sm font-medium text-gray-300 mb-2">Notification Method</label>
             <select
+              id="notification-method"
               value={notificationMethod}
               onChange={(e) => {
                 setNotificationMethod(e.target.value);
                 setNotificationTarget('');  // Clear target when method changes
               }}
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white focus:border-blue-500 focus:outline-none"
+              className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
             >
               <option value="browser">Browser Notification</option>
               <option value="email">Email</option>
@@ -306,38 +311,41 @@ const GasAlertSettings: React.FC<GasAlertSettingsProps> = ({ currentGas, walletA
               <option value="telegram">Telegram</option>
             </select>
           </div>
-          
+
           {/* Notification Target Input (for email/discord/telegram) */}
           {notificationMethod !== 'browser' && (
             <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-300 mb-2">
+              <label htmlFor="notification-target" className="block text-sm font-medium text-gray-300 mb-2">
                 {notificationMethod === 'email' && 'Email Address'}
                 {notificationMethod === 'discord' && 'Discord Webhook URL'}
                 {notificationMethod === 'telegram' && 'Telegram Chat ID'}
               </label>
               <input
-                type="text"
+                id="notification-target"
+                type={notificationMethod === 'email' ? 'email' : 'text'}
                 value={notificationTarget}
                 onChange={(e) => setNotificationTarget(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white focus:border-blue-500 focus:outline-none"
+                className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
                 placeholder={
                   notificationMethod === 'email' ? 'your@email.com' :
                   notificationMethod === 'discord' ? 'https://discord.com/api/webhooks/...' :
                   '123456789'  // Telegram chat ID
                 }
                 required={notificationMethod !== 'browser'}
+                aria-required={notificationMethod !== 'browser' ? 'true' : undefined}
+                aria-describedby={notificationMethod === 'telegram' ? 'telegram-help' : undefined}
               />
               {notificationMethod === 'telegram' && (
-                <p className="text-xs text-gray-400 mt-1">
+                <p id="telegram-help" className="text-xs text-gray-400 mt-1">
                   Get your chat ID by messaging @userinfobot on Telegram
                 </p>
               )}
             </div>
           )}
-          
+
           <button
             type="submit"
-            className="w-full px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-colors"
+            className="w-full px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-800"
           >
             Create Alert
           </button>
@@ -383,24 +391,25 @@ const GasAlertSettings: React.FC<GasAlertSettingsProps> = ({ currentGas, walletA
                     )}
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2" role="group" aria-label="Alert actions">
                   <button
                     onClick={() => toggleAlert(alert.id, alert.is_active)}
-                    className={`p-2 rounded-lg transition-colors ${
+                    className={`p-2 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-800 ${
                       alert.is_active
-                        ? 'bg-green-500/20 text-green-400 hover:bg-green-500/30'
-                        : 'bg-gray-500/20 text-gray-400 hover:bg-gray-500/30'
+                        ? 'bg-green-500/20 text-green-400 hover:bg-green-500/30 focus:ring-green-500'
+                        : 'bg-gray-500/20 text-gray-400 hover:bg-gray-500/30 focus:ring-gray-500'
                     }`}
-                    title={alert.is_active ? 'Disable' : 'Enable'}
+                    aria-label={`${alert.is_active ? 'Disable' : 'Enable'} alert for ${alert.alert_type} ${alert.threshold_gwei.toFixed(4)} gwei`}
+                    aria-pressed={alert.is_active}
                   >
-                    <Power className="w-4 h-4" />
+                    <Power className="w-4 h-4" aria-hidden="true" />
                   </button>
                   <button
                     onClick={() => deleteAlert(alert.id)}
-                    className="p-2 bg-red-500/20 text-red-400 hover:bg-red-500/30 rounded-lg transition-colors"
-                    title="Delete"
+                    className="p-2 bg-red-500/20 text-red-400 hover:bg-red-500/30 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 focus:ring-offset-slate-800"
+                    aria-label={`Delete alert for ${alert.alert_type} ${alert.threshold_gwei.toFixed(4)} gwei`}
                   >
-                    <Trash2 className="w-4 h-4" />
+                    <Trash2 className="w-4 h-4" aria-hidden="true" />
                   </button>
                 </div>
               </div>
