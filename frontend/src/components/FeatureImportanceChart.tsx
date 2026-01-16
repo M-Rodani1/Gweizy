@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, memo } from 'react';
 import { Layers, RefreshCw, Info, ChevronDown, ChevronUp } from 'lucide-react';
 import { API_CONFIG, getApiUrl } from '../config/api';
 
@@ -189,4 +189,4 @@ const FeatureImportanceChart: React.FC = () => {
   );
 };
 
-export default FeatureImportanceChart;
+export default memo(FeatureImportanceChart);

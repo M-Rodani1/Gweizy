@@ -7,7 +7,7 @@
  * @module components/MempoolStatusCard
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, memo } from 'react';
 import { Activity, TrendingUp, TrendingDown, Minus, RefreshCw, AlertTriangle, CheckCircle } from 'lucide-react';
 import { API_CONFIG, getApiUrl } from '../config/api';
 
@@ -264,4 +264,4 @@ const MempoolStatusCard: React.FC = () => {
   );
 };
 
-export default MempoolStatusCard;
+export default memo(MempoolStatusCard);

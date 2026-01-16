@@ -44,7 +44,7 @@
  * @see {@link https://docs.gweizy.com/analytics} for API documentation
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, memo } from 'react';
 import {
   Activity,
   AlertTriangle,
@@ -376,4 +376,4 @@ const AdvancedAnalyticsPanel: React.FC = () => {
   );
 };
 
-export default AdvancedAnalyticsPanel;
+export default memo(AdvancedAnalyticsPanel);

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, memo } from 'react';
 import { ArrowRight, Sparkles, TrendingDown, TrendingUp } from 'lucide-react';
 import { useChain } from '../contexts/ChainContext';
 import { fetchPredictions } from '../api/gasApi';
@@ -191,4 +191,4 @@ const CompactForecast: React.FC = () => {
   );
 };
 
-export default CompactForecast;
+export default memo(CompactForecast);

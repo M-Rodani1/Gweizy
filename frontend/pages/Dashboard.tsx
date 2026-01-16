@@ -6,6 +6,7 @@ import MultiChainComparison from '../src/components/MultiChainComparison';
 import CompactForecast from '../src/components/CompactForecast';
 import { LazySection } from '../src/components/LazySection';
 import CollapsibleSection from '../src/components/ui/CollapsibleSection';
+import { SectionErrorBoundary } from '../src/components/SectionErrorBoundary';
 import ApiStatusPanel from '../src/components/ApiStatusPanel';
 import AccuracyMetricsCard from '../src/components/AccuracyMetricsCard';
 import AccuracyMetricsDashboard from '../src/components/AccuracyMetricsDashboard';
@@ -58,7 +59,9 @@ const Dashboard: React.FC = () => {
         {/* Hero: AI Transaction Pilot - Sticky on scroll */}
         <div className="mb-8 relative">
           <div className="lg:sticky lg:top-[88px] lg:z-[90] lg:bg-[#05070f] lg:backdrop-blur-xl lg:py-4 lg:shadow-xl lg:border-b lg:border-gray-800/50 lg:-mx-4 lg:mx-0 lg:px-4">
-            <TransactionPilot ethPrice={ethPrice} />
+            <SectionErrorBoundary sectionName="Transaction Pilot">
+              <TransactionPilot ethPrice={ethPrice} />
+            </SectionErrorBoundary>
           </div>
         </div>
 
@@ -71,7 +74,9 @@ const Dashboard: React.FC = () => {
               <div className="space-y-3 min-w-0">
                 <div className="text-[11px] tracking-[0.2em] text-gray-500 uppercase px-1">Profile</div>
                 <div className="h-full min-h-[320px] w-full overflow-hidden">
-                  <PersonalizationPanel />
+                  <SectionErrorBoundary sectionName="Profile Settings">
+                    <PersonalizationPanel />
+                  </SectionErrorBoundary>
                 </div>
               </div>
 
@@ -79,13 +84,15 @@ const Dashboard: React.FC = () => {
               <div className="space-y-3 min-w-0">
                 <div className="text-[11px] tracking-[0.2em] text-gray-500 uppercase px-1">Recommendations</div>
                 <div className="h-full min-h-[320px] w-full">
-                  {walletAddress ? (
-                    <PersonalizedRecommendations walletAddress={walletAddress} />
-                  ) : (
-                    <div className="bg-gradient-to-br from-blue-900/20 to-purple-900/20 border border-blue-500/30 rounded-2xl p-6 h-full flex flex-col items-center justify-center shadow-xl">
-                      <p className="text-gray-400 text-center">Connect your wallet to see personalized recommendations</p>
-                    </div>
-                  )}
+                  <SectionErrorBoundary sectionName="Recommendations">
+                    {walletAddress ? (
+                      <PersonalizedRecommendations walletAddress={walletAddress} />
+                    ) : (
+                      <div className="bg-gradient-to-br from-blue-900/20 to-purple-900/20 border border-blue-500/30 rounded-2xl p-6 h-full flex flex-col items-center justify-center shadow-xl">
+                        <p className="text-gray-400 text-center">Connect your wallet to see personalized recommendations</p>
+                      </div>
+                    )}
+                  </SectionErrorBoundary>
                 </div>
               </div>
 
@@ -93,44 +100,62 @@ const Dashboard: React.FC = () => {
               <div className="space-y-3 min-w-0">
                 <div className="text-[11px] tracking-[0.2em] text-gray-500 uppercase px-1">Network Insights</div>
                 <div className="h-full min-h-[320px] w-full overflow-hidden">
-                  <MultiChainComparison txType="swap" ethPrice={ethPrice} />
+                  <SectionErrorBoundary sectionName="Network Insights">
+                    <MultiChainComparison txType="swap" ethPrice={ethPrice} />
+                  </SectionErrorBoundary>
                 </div>
               </div>
             </div>
-            
+
             {/* Additional sections below */}
             <div className="space-y-4">
               <div className="text-[11px] tracking-[0.2em] text-gray-500 uppercase">Forecast</div>
               <div className="min-h-[280px]">
-                <CompactForecast />
+                <SectionErrorBoundary sectionName="Price Forecast">
+                  <CompactForecast />
+                </SectionErrorBoundary>
               </div>
             </div>
             <div className="space-y-4">
               <div className="text-[11px] tracking-[0.2em] text-gray-500 uppercase">System</div>
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="min-h-[300px]">
-                  <ApiStatusPanel />
+                  <SectionErrorBoundary sectionName="API Status">
+                    <ApiStatusPanel />
+                  </SectionErrorBoundary>
                 </div>
                 <div className="min-h-[300px]">
-                  <AccuracyMetricsCard />
+                  <SectionErrorBoundary sectionName="Model Accuracy">
+                    <AccuracyMetricsCard />
+                  </SectionErrorBoundary>
                 </div>
                 <div className="min-h-[300px]">
-                  <MempoolStatusCard />
+                  <SectionErrorBoundary sectionName="Mempool Status">
+                    <MempoolStatusCard />
+                  </SectionErrorBoundary>
                 </div>
               </div>
               <div className="min-h-[400px]">
-                <AccuracyMetricsDashboard />
+                <SectionErrorBoundary sectionName="Accuracy Dashboard">
+                  <AccuracyMetricsDashboard />
+                </SectionErrorBoundary>
               </div>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div className="min-h-[350px]">
-                  <FeatureImportanceChart />
+                  <SectionErrorBoundary sectionName="Feature Importance">
+                    <FeatureImportanceChart />
+                  </SectionErrorBoundary>
                 </div>
                 <div className="min-h-[350px]">
-                  <PatternMatchingCard />
+                  <SectionErrorBoundary sectionName="Pattern Matching">
+                    <PatternMatchingCard />
+                  </SectionErrorBoundary>
                 </div>
               </div>
               <div className="min-h-[350px]">
-                <AdvancedAnalyticsPanel />
+                <SectionErrorBoundary sectionName="Advanced Analytics">
+                  <AdvancedAnalyticsPanel />
+                </SectionErrorBoundary>
               </div>
             </div>
 
@@ -165,15 +190,19 @@ const Dashboard: React.FC = () => {
 
           {/* Full Width: Charts */}
           <div className="col-span-12">
-            <LazySection rootMargin="200px">
-              <GasPriceGraph />
-            </LazySection>
+            <SectionErrorBoundary sectionName="Gas Price Chart">
+              <LazySection rootMargin="200px">
+                <GasPriceGraph />
+              </LazySection>
+            </SectionErrorBoundary>
           </div>
 
           <div className="col-span-12">
-            <LazySection rootMargin="300px">
-              <GasPatternHeatmap />
-            </LazySection>
+            <SectionErrorBoundary sectionName="Gas Pattern Heatmap">
+              <LazySection rootMargin="300px">
+                <GasPatternHeatmap />
+              </LazySection>
+            </SectionErrorBoundary>
           </div>
         </div>
 

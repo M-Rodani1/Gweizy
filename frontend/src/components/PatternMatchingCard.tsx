@@ -7,7 +7,7 @@
  * @module components/PatternMatchingCard
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, memo } from 'react';
 import { Search, TrendingUp, TrendingDown, Minus, RefreshCw, Clock, Target } from 'lucide-react';
 import { API_CONFIG, getApiUrl } from '../config/api';
 
@@ -237,4 +237,4 @@ const PatternMatchingCard: React.FC = () => {
   );
 };
 
-export default PatternMatchingCard;
+export default memo(PatternMatchingCard);
