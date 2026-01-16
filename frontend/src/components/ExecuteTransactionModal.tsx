@@ -1,5 +1,5 @@
-import React, { useEffect, useState, useId } from 'react';
-import { AlertTriangle, CheckCircle, ExternalLink, Send } from 'lucide-react';
+import React, { useEffect, useState, useId, useMemo } from 'react';
+import { AlertTriangle, CheckCircle, ExternalLink, Send, AlertCircle } from 'lucide-react';
 import { SUPPORTED_CHAINS, TransactionType } from '../config/chains';
 import { getTxLabel } from '../config/transactions';
 import { useChain } from '../contexts/ChainContext';
@@ -11,6 +11,12 @@ import {
   sendTransaction,
   switchToChain
 } from '../utils/wallet';
+import {
+  useFormValidation,
+  required,
+  ethereumAddress,
+  positiveNumber
+} from '../hooks/useFormValidation';
 
 interface ExecuteTransactionModalProps {
   isOpen: boolean;
@@ -47,27 +53,53 @@ const ExecuteTransactionModal: React.FC<ExecuteTransactionModalProps> = ({
   const acknowledgeId = useId();
 
   const [fromAddress, setFromAddress] = useState<string | null>(null);
-  const [toAddress, setToAddress] = useState(defaultToAddress || '');
   const [amountEth, setAmountEth] = useState(defaultAmountEth || '');
   const [data, setData] = useState(defaultData || '');
-  const [gasPriceGwei, setGasPriceGwei] = useState(
-    gasGwei ? gasGwei.toFixed(6) : ''
-  );
   const [gasLimit, setGasLimit] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [txHash, setTxHash] = useState<string | null>(null);
   const [acknowledged, setAcknowledged] = useState(false);
 
+  // Validation schema for required fields
+  const validationSchema = useMemo(() => ({
+    toAddress: {
+      initialValue: defaultToAddress || '',
+      rules: [
+        required('Recipient address is required'),
+        ethereumAddress('Please enter a valid Ethereum address (0x...)')
+      ]
+    },
+    gasPriceGwei: {
+      initialValue: gasGwei ? gasGwei.toFixed(6) : '',
+      rules: [
+        required('Gas price is required'),
+        positiveNumber('Gas price must be a positive number')
+      ]
+    }
+  }), [defaultToAddress, gasGwei]);
+
+  const {
+    values,
+    errors: fieldErrors,
+    touched,
+    getFieldProps,
+    validateAll,
+    reset: resetForm,
+    setValues
+  } = useFormValidation(validationSchema);
+
   useEffect(() => {
     if (!isOpen) return;
     setError(null);
     setTxHash(null);
     setAcknowledged(false);
-    setToAddress(defaultToAddress || '');
+    setValues({
+      toAddress: defaultToAddress || '',
+      gasPriceGwei: gasGwei ? gasGwei.toFixed(6) : ''
+    });
     setAmountEth(defaultAmountEth || '');
     setData(defaultData || '');
-    setGasPriceGwei(gasGwei ? gasGwei.toFixed(6) : '');
     setGasLimit('');
 
     const loadAccount = async () => {
@@ -75,7 +107,7 @@ const ExecuteTransactionModal: React.FC<ExecuteTransactionModalProps> = ({
       setFromAddress(account);
     };
     loadAccount();
-  }, [isOpen, defaultToAddress, defaultAmountEth, defaultData, gasGwei]);
+  }, [isOpen, defaultToAddress, defaultAmountEth, defaultData, gasGwei, setValues]);
 
   if (!isOpen) return null;
 
@@ -100,14 +132,12 @@ const ExecuteTransactionModal: React.FC<ExecuteTransactionModalProps> = ({
       setError('Connect a wallet before executing.');
       return;
     }
-    if (!toAddress || !/^0x[a-fA-F0-9]{40}$/.test(toAddress)) {
-      setError('Enter a valid recipient address.');
+
+    // Validate form fields
+    if (!validateAll()) {
       return;
     }
-    if (!gasPriceGwei || Number(gasPriceGwei) <= 0) {
-      setError('Enter a valid gas price.');
-      return;
-    }
+
     if (!acknowledged) {
       setError('Confirm you understand gas fees before executing.');
       return;
@@ -123,9 +153,9 @@ const ExecuteTransactionModal: React.FC<ExecuteTransactionModalProps> = ({
       const txData = data.trim();
       const normalizedData = txData ? (txData.startsWith('0x') ? txData : `0x${txData}`) : undefined;
       const tx = await sendTransaction({
-        to: toAddress,
+        to: values.toAddress,
         valueEth: amountEth || '0',
-        gasPriceGwei,
+        gasPriceGwei: values.gasPriceGwei,
         gasLimit: gasLimit || undefined,
         data: normalizedData
       });
@@ -155,7 +185,7 @@ const ExecuteTransactionModal: React.FC<ExecuteTransactionModalProps> = ({
           <div>
             <h2 id={modalTitleId} className="text-lg font-semibold text-white">Execute {txLabel}</h2>
             <p className="text-xs text-gray-400">
-              {chain?.name} • Recommended gas {gasPriceGwei || 'auto'} gwei
+              {chain?.name} • Recommended gas {values.gasPriceGwei || 'auto'} gwei
             </p>
           </div>
           <button
@@ -186,12 +216,25 @@ const ExecuteTransactionModal: React.FC<ExecuteTransactionModalProps> = ({
             <input
               id={recipientId}
               type="text"
-              value={toAddress}
-              onChange={(e) => setToAddress(e.target.value.trim())}
+              {...getFieldProps('toAddress')}
+              onChange={(e) => {
+                const trimmed = e.target.value.trim();
+                getFieldProps('toAddress').onChange({ target: { value: trimmed } } as React.ChangeEvent<HTMLInputElement>);
+              }}
               placeholder="0x..."
               aria-required="true"
-              className="mt-2 w-full rounded-lg border border-gray-800 bg-gray-950/60 px-3 py-2 text-sm text-gray-100 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+              className={`mt-2 w-full rounded-lg border bg-gray-950/60 px-3 py-2 text-sm text-gray-100 focus:outline-none focus:ring-2 transition-colors ${
+                touched.toAddress && fieldErrors.toAddress
+                  ? 'border-red-500 focus:ring-red-500 focus:border-red-500'
+                  : 'border-gray-800 focus:ring-cyan-500 focus:border-cyan-500'
+              }`}
             />
+            {touched.toAddress && fieldErrors.toAddress && (
+              <p id="toAddress-error" className="mt-1 text-xs text-red-400 flex items-center gap-1" role="alert">
+                <AlertCircle className="w-3 h-3" aria-hidden="true" />
+                {fieldErrors.toAddress}
+              </p>
+            )}
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -217,12 +260,21 @@ const ExecuteTransactionModal: React.FC<ExecuteTransactionModalProps> = ({
                 type="number"
                 min="0"
                 step="0.0001"
-                value={gasPriceGwei}
-                onChange={(e) => setGasPriceGwei(e.target.value)}
+                {...getFieldProps('gasPriceGwei')}
                 aria-required="true"
-                className="mt-2 w-full rounded-lg border border-gray-800 bg-gray-950/60 px-3 py-2 text-sm text-gray-100 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+                className={`mt-2 w-full rounded-lg border bg-gray-950/60 px-3 py-2 text-sm text-gray-100 focus:outline-none focus:ring-2 transition-colors ${
+                  touched.gasPriceGwei && fieldErrors.gasPriceGwei
+                    ? 'border-red-500 focus:ring-red-500 focus:border-red-500'
+                    : 'border-gray-800 focus:ring-cyan-500 focus:border-cyan-500'
+                }`}
                 placeholder="0.001"
               />
+              {touched.gasPriceGwei && fieldErrors.gasPriceGwei && (
+                <p id="gasPriceGwei-error" className="mt-1 text-xs text-red-400 flex items-center gap-1" role="alert">
+                  <AlertCircle className="w-3 h-3" aria-hidden="true" />
+                  {fieldErrors.gasPriceGwei}
+                </p>
+              )}
             </div>
           </div>
 

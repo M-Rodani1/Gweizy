@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Bell, Plus, Trash2, Power, Check, X, BellOff, BellRing } from 'lucide-react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { Bell, Plus, Trash2, Power, Check, X, BellOff, BellRing, AlertCircle } from 'lucide-react';
 import { API_CONFIG, getApiUrl } from '../config/api';
 import {
   isNotificationSupported,
@@ -7,6 +7,14 @@ import {
   requestNotificationPermission,
   checkAndTriggerAlerts
 } from '../utils/pushNotifications';
+import {
+  useFormValidation,
+  required,
+  email,
+  positiveNumber,
+  discordWebhook,
+  numericOnly
+} from '../hooks/useFormValidation';
 
 interface Alert {
   id: number;
@@ -31,11 +39,39 @@ const GasAlertSettings: React.FC<GasAlertSettingsProps> = ({ currentGas, walletA
   const [requestingPermission, setRequestingPermission] = useState(false);
   const previousGasRef = useRef<number | null>(null);
 
-  // Form state
+  // Form state with separate selects
   const [alertType, setAlertType] = useState<'below' | 'above'>('below');
-  const [thresholdGwei, setThresholdGwei] = useState('0.001');
   const [notificationMethod, setNotificationMethod] = useState('browser');
-  const [notificationTarget, setNotificationTarget] = useState('');  // Email, Discord webhook, or Telegram chat ID
+
+  // Dynamic validation schema based on notification method
+  const validationSchema = useMemo(() => ({
+    thresholdGwei: {
+      initialValue: '0.001',
+      rules: [
+        required('Threshold is required'),
+        positiveNumber('Threshold must be a positive number')
+      ]
+    },
+    notificationTarget: {
+      initialValue: '',
+      rules: notificationMethod === 'browser' ? [] : [
+        required(`${notificationMethod === 'email' ? 'Email' : notificationMethod === 'discord' ? 'Webhook URL' : 'Chat ID'} is required`),
+        ...(notificationMethod === 'email' ? [email('Please enter a valid email address')] : []),
+        ...(notificationMethod === 'discord' ? [discordWebhook('Please enter a valid Discord webhook URL')] : []),
+        ...(notificationMethod === 'telegram' ? [numericOnly('Chat ID must contain only numbers')] : [])
+      ]
+    }
+  }), [notificationMethod]);
+
+  const {
+    values,
+    errors,
+    touched,
+    getFieldProps,
+    validateAll,
+    reset: resetForm,
+    setValue
+  } = useFormValidation(validationSchema);
 
   const userId = walletAddress || 'anonymous';
 
@@ -86,6 +122,11 @@ const GasAlertSettings: React.FC<GasAlertSettingsProps> = ({ currentGas, walletA
   const createAlert = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Validate form before submission
+    if (!validateAll()) {
+      return;
+    }
+
     try {
       const response = await fetch(getApiUrl(API_CONFIG.ENDPOINTS.ALERTS), {
         method: 'POST',
@@ -93,9 +134,9 @@ const GasAlertSettings: React.FC<GasAlertSettingsProps> = ({ currentGas, walletA
         body: JSON.stringify({
           user_id: userId,
           alert_type: alertType,
-          threshold_gwei: parseFloat(thresholdGwei),
+          threshold_gwei: parseFloat(values.thresholdGwei),
           notification_method: notificationMethod,
-          notification_target: notificationTarget || undefined
+          notification_target: values.notificationTarget || undefined
         })
       });
 
@@ -104,7 +145,7 @@ const GasAlertSettings: React.FC<GasAlertSettingsProps> = ({ currentGas, walletA
       if (data.success) {
         setAlerts([data.alert, ...alerts]);
         setShowCreateForm(false);
-        setThresholdGwei('0.001');
+        resetForm();
       }
     } catch (error) {
       console.error('Failed to create alert:', error);
@@ -271,7 +312,7 @@ const GasAlertSettings: React.FC<GasAlertSettingsProps> = ({ currentGas, walletA
                 {currentGas > 0 && (
                   <button
                     type="button"
-                    onClick={() => setThresholdGwei(getSuggestion())}
+                    onClick={() => setValue('thresholdGwei', getSuggestion())}
                     className="ml-2 text-xs text-blue-400 hover:text-blue-300 focus:outline-none focus:underline"
                     aria-label={`Use suggested threshold of ${getSuggestion()} gwei`}
                   >
@@ -283,13 +324,21 @@ const GasAlertSettings: React.FC<GasAlertSettingsProps> = ({ currentGas, walletA
                 id="threshold-gwei"
                 type="number"
                 step="0.0001"
-                value={thresholdGwei}
-                onChange={(e) => setThresholdGwei(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                {...getFieldProps('thresholdGwei')}
+                className={`w-full px-3 py-2 bg-slate-800 border rounded-lg text-white focus:outline-none focus:ring-2 transition-colors ${
+                  touched.thresholdGwei && errors.thresholdGwei
+                    ? 'border-red-500 focus:border-red-500 focus:ring-red-500/50'
+                    : 'border-slate-600 focus:border-blue-500 focus:ring-blue-500/50'
+                }`}
                 placeholder="0.001"
-                required
                 aria-required="true"
               />
+              {touched.thresholdGwei && errors.thresholdGwei && (
+                <p id="thresholdGwei-error" className="mt-1 text-xs text-red-400 flex items-center gap-1" role="alert">
+                  <AlertCircle className="w-3 h-3" aria-hidden="true" />
+                  {errors.thresholdGwei}
+                </p>
+              )}
             </div>
           </div>
 
@@ -301,7 +350,7 @@ const GasAlertSettings: React.FC<GasAlertSettingsProps> = ({ currentGas, walletA
               value={notificationMethod}
               onChange={(e) => {
                 setNotificationMethod(e.target.value);
-                setNotificationTarget('');  // Clear target when method changes
+                setValue('notificationTarget', '');  // Clear target when method changes
               }}
               className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
             >
@@ -323,23 +372,34 @@ const GasAlertSettings: React.FC<GasAlertSettingsProps> = ({ currentGas, walletA
               <input
                 id="notification-target"
                 type={notificationMethod === 'email' ? 'email' : 'text'}
-                value={notificationTarget}
-                onChange={(e) => setNotificationTarget(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                {...getFieldProps('notificationTarget')}
+                className={`w-full px-3 py-2 bg-slate-800 border rounded-lg text-white focus:outline-none focus:ring-2 transition-colors ${
+                  touched.notificationTarget && errors.notificationTarget
+                    ? 'border-red-500 focus:border-red-500 focus:ring-red-500/50'
+                    : 'border-slate-600 focus:border-blue-500 focus:ring-blue-500/50'
+                }`}
                 placeholder={
                   notificationMethod === 'email' ? 'your@email.com' :
                   notificationMethod === 'discord' ? 'https://discord.com/api/webhooks/...' :
                   '123456789'  // Telegram chat ID
                 }
-                required={notificationMethod !== 'browser'}
-                aria-required={notificationMethod !== 'browser' ? 'true' : undefined}
-                aria-describedby={notificationMethod === 'telegram' ? 'telegram-help' : undefined}
+                aria-required="true"
+                aria-describedby={
+                  touched.notificationTarget && errors.notificationTarget
+                    ? 'notificationTarget-error'
+                    : notificationMethod === 'telegram' ? 'telegram-help' : undefined
+                }
               />
-              {notificationMethod === 'telegram' && (
+              {touched.notificationTarget && errors.notificationTarget ? (
+                <p id="notificationTarget-error" className="mt-1 text-xs text-red-400 flex items-center gap-1" role="alert">
+                  <AlertCircle className="w-3 h-3" aria-hidden="true" />
+                  {errors.notificationTarget}
+                </p>
+              ) : notificationMethod === 'telegram' ? (
                 <p id="telegram-help" className="text-xs text-gray-400 mt-1">
                   Get your chat ID by messaging @userinfobot on Telegram
                 </p>
-              )}
+              ) : null}
             </div>
           )}
 

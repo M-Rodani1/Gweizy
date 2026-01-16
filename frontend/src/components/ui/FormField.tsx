@@ -6,40 +6,77 @@ interface FormFieldProps {
   /** Optional helper text displayed below the input */
   helperText?: string;
   /** Error message - displays in red if present */
-  error?: string;
+  error?: string | null;
+  /** Whether the field has been touched/interacted with */
+  touched?: boolean;
   /** Whether the field is required */
   required?: boolean;
   /** The input element(s) to render */
   children: React.ReactElement;
   /** Additional CSS classes for the container */
   className?: string;
+  /** Show error only when touched (default: true) */
+  showErrorOnlyWhenTouched?: boolean;
 }
 
 /**
  * Accessible form field wrapper that properly links labels to inputs.
+ * Supports real-time validation with touched state for better UX.
  *
  * @example
+ * // Basic usage
  * <FormField label="Email" required helperText="We'll never share your email">
  *   <input type="email" className="..." />
+ * </FormField>
+ *
+ * @example
+ * // With validation hook
+ * <FormField
+ *   label="Email"
+ *   required
+ *   error={errors.email}
+ *   touched={touched.email}
+ * >
+ *   <input {...getFieldProps('email')} className="..." />
  * </FormField>
  */
 const FormField: React.FC<FormFieldProps> = ({
   label,
   helperText,
   error,
+  touched = true,
   required = false,
   children,
   className = '',
+  showErrorOnlyWhenTouched = true,
 }) => {
   const id = useId();
   const helperId = `${id}-helper`;
   const errorId = `${id}-error`;
 
-  // Clone the child input to add accessibility attributes
+  // Determine if we should show the error
+  const showError = error && (showErrorOnlyWhenTouched ? touched : true);
+
+  // Get the existing className from the child input
+  const existingClassName = children.props.className || '';
+
+  // Build error-aware input styles
+  const inputClassName = showError
+    ? existingClassName.replace(
+        /border-(?:gray|slate)-\d{3}/g,
+        'border-red-500'
+      ).replace(
+        /focus:(?:ring|border)-(?:cyan|blue|purple)-\d{3}/g,
+        'focus:ring-red-500 focus:border-red-500'
+      ) + ' border-red-500'
+    : existingClassName;
+
+  // Clone the child input to add accessibility attributes and error styling
   const enhancedChild = React.cloneElement(children, {
     id,
-    'aria-describedby': error ? errorId : helperText ? helperId : undefined,
-    'aria-invalid': error ? 'true' : undefined,
+    className: inputClassName,
+    'aria-describedby': showError ? errorId : helperText ? helperId : undefined,
+    'aria-invalid': showError ? 'true' : undefined,
     'aria-required': required ? 'true' : undefined,
   });
 
@@ -47,7 +84,9 @@ const FormField: React.FC<FormFieldProps> = ({
     <div className={className}>
       <label
         htmlFor={id}
-        className="block text-sm font-medium text-gray-300 mb-2"
+        className={`block text-sm font-medium mb-2 transition-colors ${
+          showError ? 'text-red-400' : 'text-gray-300'
+        }`}
       >
         {label}
         {required && (
@@ -57,10 +96,10 @@ const FormField: React.FC<FormFieldProps> = ({
 
       {enhancedChild}
 
-      {error && (
+      {showError && (
         <p
           id={errorId}
-          className="mt-1.5 text-sm text-red-400 flex items-center gap-1"
+          className="mt-1.5 text-sm text-red-400 flex items-center gap-1 animate-in fade-in slide-in-from-top-1 duration-200"
           role="alert"
         >
           <svg
@@ -79,7 +118,7 @@ const FormField: React.FC<FormFieldProps> = ({
         </p>
       )}
 
-      {helperText && !error && (
+      {helperText && !showError && (
         <p id={helperId} className="mt-1.5 text-xs text-gray-400">
           {helperText}
         </p>
