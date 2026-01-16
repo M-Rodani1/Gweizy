@@ -3,11 +3,11 @@
  * Displays live model accuracy metrics and prediction performance
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { fetchAccuracyMetrics, fetchAccuracyHistory } from '../api/gasApi';
 import { API_CONFIG, getApiUrl } from '../config/api';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from 'recharts';
+import { SkeletonAccuracyMetrics } from './ui/Skeleton';
 
 interface AccuracyMetrics {
   '1h': {
@@ -114,14 +114,7 @@ const AccuracyMetricsDashboard: React.FC = () => {
   };
 
   if (metricsLoading) {
-    return (
-      <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
-        <div className="animate-pulse space-y-4">
-          <div className="h-6 bg-slate-700 rounded w-1/3"></div>
-          <div className="h-32 bg-slate-700 rounded"></div>
-        </div>
-      </div>
-    );
+    return <SkeletonAccuracyMetrics />;
   }
 
   return (

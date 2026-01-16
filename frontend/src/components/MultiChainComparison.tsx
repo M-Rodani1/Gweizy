@@ -5,6 +5,7 @@ import { TX_GAS_ESTIMATES, TransactionType } from '../config/chains';
 import ChainBadge from './ChainBadge';
 import Sparkline from './ui/Sparkline';
 import { formatGwei, formatUsd } from '../utils/formatNumber';
+import { SkeletonMultiChain } from './ui/Skeleton';
 
 interface MultiChainComparisonProps {
   txType?: TransactionType;
@@ -30,6 +31,11 @@ const MultiChainComparison: React.FC<MultiChainComparisonProps> = ({
   const cheapestCost = chainsWithCost[0]?.costUsd || 0;
   const mostExpensiveCost = chainsWithCost[chainsWithCost.length - 1]?.costUsd || 0;
 
+  // Show skeleton while initial data is loading
+  if (isLoading && chainsWithCost.every(c => !c.gas?.gasPrice)) {
+    return <SkeletonMultiChain count={chainComparison.length || 5} className="h-full" />;
+  }
+
   return (
     <div className="bg-gray-800/50 border border-gray-700 rounded-2xl overflow-hidden h-full flex flex-col shadow-xl widget-glow w-full max-w-full">
       {/* Header */}
@@ -38,12 +44,12 @@ const MultiChainComparison: React.FC<MultiChainComparisonProps> = ({
           <Network className="w-4 h-4 text-cyan-400" />
           <h3 className="font-semibold text-white">Multi-Chain Gas</h3>
         </div>
-        {isLoading ? (
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4 border-2 border-gray-500 border-t-cyan-400 rounded-full animate-spin" />
-            <span className="text-xs text-gray-400">Loading...</span>
+        {isLoading && (
+          <div className="flex items-center gap-1.5">
+            <div className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
+            <span className="text-xs text-gray-400">Updating</span>
           </div>
-        ) : null}
+        )}
       </div>
 
       {/* Chain List */}

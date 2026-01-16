@@ -124,4 +124,159 @@ export const SkeletonTable: React.FC<{ rows?: number; cols?: number }> = ({
   </div>
 );
 
+// ============================================================================
+// Application-Specific Skeletons
+// ============================================================================
+
+/**
+ * Skeleton for gas prediction card with big number display
+ */
+export const SkeletonGasPrediction: React.FC<{ className?: string }> = ({ className }) => (
+  <div className={`bg-gray-800/50 rounded-xl p-5 space-y-4 border border-gray-700/50 ${className}`}>
+    {/* Header */}
+    <div className="flex items-center justify-between">
+      <div className="flex items-center gap-2">
+        <Skeleton variant="circle" width={24} height={24} />
+        <Skeleton variant="text" width={100} height={16} />
+      </div>
+      <Skeleton variant="rect" width={50} height={20} className="rounded-full" />
+    </div>
+    {/* Big number */}
+    <div className="py-3">
+      <Skeleton variant="text" width="60%" height={48} className="mx-auto" />
+      <Skeleton variant="text" width="40%" height={14} className="mx-auto mt-2" />
+    </div>
+    {/* Bottom info */}
+    <div className="flex justify-between pt-3 border-t border-gray-700/30">
+      <Skeleton variant="text" width={80} height={12} />
+      <Skeleton variant="text" width={60} height={12} />
+    </div>
+  </div>
+);
+
+/**
+ * Skeleton for accuracy metrics dashboard
+ */
+export const SkeletonAccuracyMetrics: React.FC<{ className?: string }> = ({ className }) => (
+  <div className={`bg-slate-800 rounded-2xl p-6 border border-slate-700 space-y-6 ${className}`}>
+    {/* Header with tabs */}
+    <div className="flex items-center justify-between">
+      <Skeleton variant="text" width={200} height={24} />
+      <div className="flex gap-2">
+        <Skeleton variant="rect" width={40} height={28} className="rounded-lg" />
+        <Skeleton variant="rect" width={40} height={28} className="rounded-lg" />
+        <Skeleton variant="rect" width={40} height={28} className="rounded-lg" />
+      </div>
+    </div>
+    {/* Metrics cards */}
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      {Array.from({ length: 4 }).map((_, i) => (
+        <div key={i} className="bg-slate-900 rounded-lg p-4 border border-slate-700 space-y-2">
+          <Skeleton variant="text" width="70%" height={14} />
+          <Skeleton variant="text" width="50%" height={32} />
+          <Skeleton variant="text" width="60%" height={10} />
+        </div>
+      ))}
+    </div>
+    {/* Chart area */}
+    <div className="bg-slate-900 rounded-lg p-4 border border-slate-700">
+      <Skeleton variant="text" width={180} height={18} className="mb-4" />
+      <Skeleton variant="rect" height={200} className="w-full" />
+    </div>
+  </div>
+);
+
+/**
+ * Skeleton for multi-chain comparison list
+ */
+export const SkeletonMultiChain: React.FC<{ className?: string; count?: number }> = ({
+  className,
+  count = 5
+}) => (
+  <div className={`bg-gray-800/50 border border-gray-700 rounded-2xl overflow-hidden ${className}`}>
+    {/* Header */}
+    <div className="px-6 py-4 border-b border-gray-700/50 flex items-center justify-between">
+      <div className="flex items-center gap-2">
+        <Skeleton variant="circle" width={16} height={16} />
+        <Skeleton variant="text" width={120} height={18} />
+      </div>
+      <Skeleton variant="rect" width={60} height={20} className="rounded" />
+    </div>
+    {/* Chain list */}
+    <div className="divide-y divide-gray-700/30">
+      {Array.from({ length: count }).map((_, i) => (
+        <div key={i} className="px-6 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Skeleton variant="circle" width={28} height={28} />
+            <div className="flex items-center gap-2">
+              <Skeleton variant="circle" width={24} height={24} />
+              <div className="space-y-1">
+                <Skeleton variant="text" width={80} height={14} />
+                <Skeleton variant="text" width={50} height={10} />
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <Skeleton variant="rect" width={48} height={20} className="hidden sm:block" />
+            <div className="text-right space-y-1">
+              <Skeleton variant="text" width={55} height={16} />
+              <Skeleton variant="text" width={35} height={10} />
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+    {/* Footer */}
+    <div className="px-6 py-4 bg-gray-800/50 border-t border-gray-700/30">
+      <div className="flex items-center justify-between">
+        <Skeleton variant="text" width={150} height={14} />
+        <Skeleton variant="text" width={80} height={14} />
+      </div>
+    </div>
+  </div>
+);
+
+/**
+ * Skeleton for gas price header/hero section
+ */
+export const SkeletonGasHero: React.FC<{ className?: string }> = ({ className }) => (
+  <div className={`bg-gray-800/50 rounded-2xl p-6 border border-gray-700 ${className}`}>
+    <div className="flex flex-col items-center space-y-4">
+      <Skeleton variant="text" width={120} height={16} />
+      <Skeleton variant="text" width={200} height={64} />
+      <div className="flex items-center gap-4">
+        <Skeleton variant="rect" width={80} height={24} className="rounded-full" />
+        <Skeleton variant="text" width={100} height={14} />
+      </div>
+    </div>
+  </div>
+);
+
+/**
+ * Skeleton for network intelligence panel
+ */
+export const SkeletonNetworkIntel: React.FC<{ className?: string }> = ({ className }) => (
+  <div className={`bg-gray-800/50 rounded-xl p-4 border border-gray-700/50 space-y-4 ${className}`}>
+    {/* Header */}
+    <div className="flex items-center justify-between">
+      <div className="flex items-center gap-2">
+        <Skeleton variant="circle" width={20} height={20} />
+        <Skeleton variant="text" width={140} height={18} />
+      </div>
+      <Skeleton variant="rect" width={70} height={22} className="rounded-full" />
+    </div>
+    {/* Stats grid */}
+    <div className="grid grid-cols-2 gap-3">
+      {Array.from({ length: 4 }).map((_, i) => (
+        <div key={i} className="bg-gray-900/50 rounded-lg p-3 space-y-2">
+          <Skeleton variant="text" width="60%" height={12} />
+          <Skeleton variant="text" width="80%" height={20} />
+        </div>
+      ))}
+    </div>
+    {/* Mini chart */}
+    <Skeleton variant="rect" height={80} className="w-full rounded-lg" />
+  </div>
+);
+
 export default Skeleton;
