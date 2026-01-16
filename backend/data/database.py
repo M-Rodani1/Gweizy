@@ -1,14 +1,27 @@
 from sqlalchemy import create_engine, Column, Integer, Float, String, DateTime
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import QueuePool
+from sqlalchemy.pool import QueuePool, NullPool
 from datetime import datetime
 from typing import Dict, List, Any
 from config import Config
 from utils.logger import logger
 import threading
 import time
+import os
 
+
+# Connection pool configuration for production reliability
+POOL_CONFIG = {
+    # Number of connections to keep open
+    'pool_size': int(os.getenv('DB_POOL_SIZE', '5')),
+    # Max additional connections when pool is exhausted
+    'max_overflow': int(os.getenv('DB_MAX_OVERFLOW', '10')),
+    # Seconds to wait for a connection from pool before timeout
+    'pool_timeout': int(os.getenv('DB_POOL_TIMEOUT', '30')),
+    # Seconds before recycling a connection (prevents stale connections)
+    'pool_recycle': int(os.getenv('DB_POOL_RECYCLE', '1800')),  # 30 minutes
+}
 
 Base = declarative_base()
 
@@ -138,16 +151,35 @@ class DatabaseManager:
         
         # Add SQLite-specific configuration for concurrent access
         connect_args = {}
+        engine_kwargs = {
+            'pool_pre_ping': True,  # Verify connections before use
+        }
+
         if Config.DATABASE_URL.startswith('sqlite'):
             connect_args = {
                 'check_same_thread': False,
                 'timeout': 30  # 30 second timeout for locked database
             }
+            # SQLite uses NullPool or StaticPool, not QueuePool
+            engine_kwargs['poolclass'] = NullPool
+        else:
+            # Production database (PostgreSQL, MySQL, etc.) - use connection pooling
+            engine_kwargs.update({
+                'poolclass': QueuePool,
+                'pool_size': POOL_CONFIG['pool_size'],
+                'max_overflow': POOL_CONFIG['max_overflow'],
+                'pool_timeout': POOL_CONFIG['pool_timeout'],
+                'pool_recycle': POOL_CONFIG['pool_recycle'],
+            })
+            logger.info(f"Database pool configured: size={POOL_CONFIG['pool_size']}, "
+                       f"max_overflow={POOL_CONFIG['max_overflow']}, "
+                       f"timeout={POOL_CONFIG['pool_timeout']}s, "
+                       f"recycle={POOL_CONFIG['pool_recycle']}s")
 
         self.engine = create_engine(
             Config.DATABASE_URL,
-            pool_pre_ping=True,
-            connect_args=connect_args
+            connect_args=connect_args,
+            **engine_kwargs
         )
 
         # Enable WAL mode for SQLite to allow concurrent reads/writes
