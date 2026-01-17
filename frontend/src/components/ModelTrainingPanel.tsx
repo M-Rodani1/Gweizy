@@ -335,26 +335,28 @@ const ModelTrainingPanel: React.FC = () => {
             </div>
           )}
 
-          {/* Train Button */}
-          {!status.overall_ready && (
-            <button
-              onClick={triggerTraining}
-              disabled={training || !status.data_status.sufficient_for_training}
-              className="mt-4 w-full px-4 py-3 bg-gradient-to-r from-purple-500 to-cyan-500 hover:from-purple-400 hover:to-cyan-400 text-white font-medium rounded-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-all shadow-lg shadow-purple-500/20"
-            >
-              {training ? (
-                <>
-                  <RefreshCw className="w-4 h-4 animate-spin" />
-                  Starting Training...
-                </>
-              ) : (
-                <>
-                  <Play className="w-4 h-4" />
-                  Train All Models
-                </>
-              )}
-            </button>
-          )}
+          {/* Train Button - Always visible */}
+          <button
+            onClick={triggerTraining}
+            disabled={training || !status.data_status.sufficient_for_training}
+            className={`mt-4 w-full px-4 py-3 font-medium rounded-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-all shadow-lg ${
+              status.overall_ready
+                ? 'bg-gray-700 hover:bg-gray-600 text-white shadow-gray-900/20'
+                : 'bg-gradient-to-r from-purple-500 to-cyan-500 hover:from-purple-400 hover:to-cyan-400 text-white shadow-purple-500/20'
+            }`}
+          >
+            {training ? (
+              <>
+                <RefreshCw className="w-4 h-4 animate-spin" />
+                Starting Training...
+              </>
+            ) : (
+              <>
+                <Play className="w-4 h-4" />
+                {status.overall_ready ? 'Retrain All Models' : 'Train All Models'}
+              </>
+            )}
+          </button>
 
           {!status.data_status.sufficient_for_training && (
             <p className="mt-2 text-xs text-center text-amber-400">
