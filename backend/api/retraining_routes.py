@@ -295,7 +295,7 @@ def trigger_simple_retraining():
                 logger.info("Background training thread started")
 
                 # Step 1: Train main RandomForest models
-                logger.info("Step 1/2: Training RandomForest percentage change models...")
+                logger.info("Step 1/3: Training RandomForest percentage change models...")
                 result = subprocess.run(
                     [sys.executable, script_path],
                     capture_output=True,
@@ -312,7 +312,7 @@ def trigger_simple_retraining():
                 logger.info("Main model training completed successfully")
 
                 # Step 2: Train spike detector models
-                logger.info("Step 2/2: Training spike detector classifiers...")
+                logger.info("Step 2/3: Training spike detector classifiers...")
                 spike_script_path = os.path.join(current_dir, "scripts", "train_spike_detectors.py")
 
                 if os.path.exists(spike_script_path):
@@ -331,6 +331,27 @@ def trigger_simple_retraining():
                         logger.warning("Continuing without spike detectors...")
                 else:
                     logger.warning(f"Spike detector script not found at {spike_script_path}")
+
+                # Step 3: Train DQN agent (if enough data)
+                logger.info("Step 3/3: Training DQN reinforcement learning agent...")
+                dqn_script_path = os.path.join(current_dir, "scripts", "train_dqn_pipeline.py")
+
+                if os.path.exists(dqn_script_path):
+                    dqn_result = subprocess.run(
+                        [sys.executable, dqn_script_path, "--episodes", "500", "--no-evaluate", "--quiet"],
+                        capture_output=True,
+                        text=True,
+                        timeout=900,  # 15 minute timeout for DQN
+                        cwd=current_dir
+                    )
+
+                    if dqn_result.returncode == 0:
+                        logger.info("DQN agent training completed successfully")
+                    else:
+                        logger.warning(f"DQN training failed (may need more data): {dqn_result.stderr[:200]}")
+                        logger.warning("Continuing with heuristic fallback for agent recommendations...")
+                else:
+                    logger.warning(f"DQN training script not found at {dqn_script_path}")
 
                 if result.returncode == 0:
                     # Auto-reload models after successful training
@@ -368,9 +389,14 @@ def trigger_simple_retraining():
         # Return immediately
         return jsonify({
             'status': 'started',
-            'message': 'Model training started in background. This may take 3-10 minutes.',
+            'message': 'Model training started in background. This may take 5-15 minutes.',
+            'steps': [
+                '1/3: Training RandomForest prediction models',
+                '2/3: Training spike detector classifiers',
+                '3/3: Training DQN reinforcement learning agent'
+            ],
             'timestamp': datetime.now().isoformat(),
-            'note': 'Check logs or retraining status endpoint for progress'
+            'note': 'Check logs or /api/retraining/status for progress'
         }), 200
 
     except Exception as e:
@@ -385,3 +411,133 @@ def trigger_simple_retraining():
 
 # Initialize training status
 trigger_simple_retraining._training_in_progress = False
+
+
+@retraining_bp.route('/retraining/models-status', methods=['GET'])
+def get_models_status():
+    """
+    Check which ML models are currently available.
+
+    Returns:
+        Status of all model types:
+        - prediction_models: 1h, 4h, 24h prediction models
+        - spike_detectors: 1h, 4h, 24h spike classification models
+        - dqn_agent: Reinforcement learning agent for transaction timing
+    """
+    try:
+        from config import Config
+
+        models_dir = Config.MODELS_DIR
+        status = {
+            'prediction_models': {},
+            'spike_detectors': {},
+            'dqn_agent': {
+                'available': False,
+                'path': None
+            },
+            'data_status': {},
+            'overall_ready': False,
+            'missing_models': []
+        }
+
+        # Check prediction models (1h, 4h, 24h)
+        for horizon in ['1h', '4h', '24h']:
+            model_path = os.path.join(models_dir, f'model_{horizon}.pkl')
+            fallback_path = f'models/saved_models/model_{horizon}.pkl'
+
+            if os.path.exists(model_path):
+                status['prediction_models'][horizon] = {
+                    'available': True,
+                    'path': model_path
+                }
+            elif os.path.exists(fallback_path):
+                status['prediction_models'][horizon] = {
+                    'available': True,
+                    'path': fallback_path
+                }
+            else:
+                status['prediction_models'][horizon] = {
+                    'available': False,
+                    'path': None
+                }
+                status['missing_models'].append(f'prediction_model_{horizon}')
+
+        # Check spike detectors (1h, 4h, 24h)
+        for horizon in ['1h', '4h', '24h']:
+            spike_path = os.path.join(models_dir, f'spike_detector_{horizon}.pkl')
+            fallback_path = f'models/saved_models/spike_detector_{horizon}.pkl'
+
+            if os.path.exists(spike_path):
+                status['spike_detectors'][horizon] = {
+                    'available': True,
+                    'path': spike_path
+                }
+            elif os.path.exists(fallback_path):
+                status['spike_detectors'][horizon] = {
+                    'available': True,
+                    'path': fallback_path
+                }
+            else:
+                status['spike_detectors'][horizon] = {
+                    'available': False,
+                    'path': None
+                }
+                status['missing_models'].append(f'spike_detector_{horizon}')
+
+        # Check DQN agent
+        dqn_paths = [
+            os.path.join(models_dir, 'rl_agents', 'dqn_final.pkl'),
+            os.path.join(models_dir, 'rl_agents', 'chain_8453', 'dqn_final.pkl'),
+            'models/rl_agents/dqn_final.pkl',
+            'models/rl_agents/chain_8453/dqn_final.pkl'
+        ]
+
+        for dqn_path in dqn_paths:
+            if os.path.exists(dqn_path):
+                status['dqn_agent'] = {
+                    'available': True,
+                    'path': dqn_path
+                }
+                break
+
+        if not status['dqn_agent']['available']:
+            status['missing_models'].append('dqn_agent')
+
+        # Check data availability
+        try:
+            from data.database import GasPrice, DatabaseManager
+            db = DatabaseManager()
+            session = db._get_session()
+
+            try:
+                total_records = session.query(GasPrice).count()
+                status['data_status'] = {
+                    'total_records': total_records,
+                    'sufficient_for_training': total_records >= 50,
+                    'sufficient_for_dqn': total_records >= 500
+                }
+            finally:
+                session.close()
+        except Exception as e:
+            status['data_status'] = {
+                'error': str(e)
+            }
+
+        # Determine overall readiness
+        prediction_ready = all(m['available'] for m in status['prediction_models'].values())
+        spike_ready = all(m['available'] for m in status['spike_detectors'].values())
+        dqn_ready = status['dqn_agent']['available']
+
+        status['overall_ready'] = prediction_ready and spike_ready and dqn_ready
+        status['summary'] = {
+            'prediction_models_ready': prediction_ready,
+            'spike_detectors_ready': spike_ready,
+            'dqn_agent_ready': dqn_ready,
+            'action_needed': 'POST /api/retraining/simple to train all missing models' if status['missing_models'] else None
+        }
+
+        return jsonify(status), 200
+
+    except Exception as e:
+        logger.error(f"Error checking models status: {e}")
+        return jsonify({'error': str(e)}), 500

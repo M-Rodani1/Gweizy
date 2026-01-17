@@ -777,6 +777,135 @@ POST /api/agent/recommend
 
 ---
 
+## Model Training & Retraining Endpoints
+
+### Check Models Status
+
+Check which ML models are currently available and their training status.
+
+```http
+GET /api/retraining/models-status
+```
+
+**Response:**
+```json
+{
+  "prediction_models": {
+    "1h": { "available": true, "path": "/data/models/model_1h.pkl" },
+    "4h": { "available": true, "path": "/data/models/model_4h.pkl" },
+    "24h": { "available": false, "path": null }
+  },
+  "spike_detectors": {
+    "1h": { "available": false, "path": null },
+    "4h": { "available": false, "path": null },
+    "24h": { "available": false, "path": null }
+  },
+  "dqn_agent": {
+    "available": false,
+    "path": null
+  },
+  "data_status": {
+    "total_records": 150,
+    "sufficient_for_training": true,
+    "sufficient_for_dqn": false
+  },
+  "overall_ready": false,
+  "missing_models": ["prediction_model_24h", "spike_detector_1h", "spike_detector_4h", "spike_detector_24h", "dqn_agent"],
+  "summary": {
+    "prediction_models_ready": false,
+    "spike_detectors_ready": false,
+    "dqn_agent_ready": false,
+    "action_needed": "POST /api/retraining/simple to train all missing models"
+  }
+}
+```
+
+---
+
+### Check Training Data Availability
+
+Verify if sufficient data exists for model training.
+
+```http
+GET /api/retraining/check-data
+```
+
+**Response:**
+```json
+{
+  "total_records": 2500,
+  "date_range_days": 25,
+  "oldest_timestamp": "2025-12-01T00:00:00Z",
+  "newest_timestamp": "2025-12-26T12:00:00Z",
+  "recommended_days": 20,
+  "sufficient_data": true,
+  "readiness": "ready",
+  "progress_percent": 100
+}
+```
+
+---
+
+### Trigger Model Training
+
+Train all ML models (prediction models, spike detectors, and DQN agent).
+
+```http
+POST /api/retraining/simple
+```
+
+**Response:**
+```json
+{
+  "status": "started",
+  "message": "Model training started in background. This may take 5-15 minutes.",
+  "steps": [
+    "1/3: Training RandomForest prediction models",
+    "2/3: Training spike detector classifiers",
+    "3/3: Training DQN reinforcement learning agent"
+  ],
+  "timestamp": "2025-12-26T12:00:00Z",
+  "note": "Check logs or /api/retraining/status for progress"
+}
+```
+
+---
+
+### Get Retraining Status
+
+Check current retraining status and history.
+
+```http
+GET /api/retraining/status
+```
+
+**Response:**
+```json
+{
+  "should_retrain": false,
+  "reason": "Models are up to date",
+  "last_training": {
+    "timestamp": "2025-12-26T10:00:00Z",
+    "reason": "scheduled",
+    "models_trained": ["1h", "4h", "24h"],
+    "validation_passed": true
+  },
+  "checked_at": "2025-12-26T12:00:00Z"
+}
+```
+
+---
+
+### Get Retraining History
+
+View history of model retraining events.
+
+```http
+GET /api/retraining/history
+```
+
+---
+
 ## Error Responses
 
 All endpoints return errors in a consistent format:
