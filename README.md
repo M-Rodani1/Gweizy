@@ -8,6 +8,7 @@ AI-powered gas price predictions for Base network. Save up to 40% on transaction
 
 - **Frontend**: https://basegasfeesml.pages.dev
 - **Backend API**: https://basegasfeesml-production.up.railway.app/api
+- **API Documentation**: [docs/API.md](./docs/API.md)
 
 ## Features
 
