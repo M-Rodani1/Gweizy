@@ -1,9 +1,10 @@
 /**
  * Model Training Panel Component
  * Displays ML model status and allows triggering model training
+ * Shows real-time training progress with step indicators
  */
 
-import React, { useState, useEffect, useCallback, memo } from 'react';
+import React, { useState, useEffect, useCallback, memo, useRef } from 'react';
 import {
   Brain,
   RefreshCw,
@@ -13,9 +14,12 @@ import {
   Cpu,
   Database,
   Zap,
-  Play
+  Play,
+  Loader2,
+  Clock,
+  SkipForward
 } from 'lucide-react';
-import { API_CONFIG, getApiUrl } from '../config/api';
+import { getApiUrl } from '../config/api';
 
 interface ModelStatus {
   available: boolean;
@@ -42,6 +46,24 @@ interface ModelsStatusResponse {
   };
 }
 
+interface TrainingStep {
+  name: string;
+  status: 'pending' | 'running' | 'completed' | 'failed' | 'skipped';
+  message: string | null;
+}
+
+interface TrainingProgress {
+  is_training: boolean;
+  current_step: number;
+  total_steps: number;
+  step_name: string | null;
+  step_status: string | null;
+  steps: TrainingStep[];
+  started_at: string | null;
+  completed_at: string | null;
+  error: string | null;
+}
+
 interface TrainingResponse {
   status: 'started' | 'in_progress' | 'error';
   message: string;
@@ -55,8 +77,9 @@ const ModelTrainingPanel: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [training, setTraining] = useState(false);
-  const [trainingMessage, setTrainingMessage] = useState<string | null>(null);
+  const [trainingProgress, setTrainingProgress] = useState<TrainingProgress | null>(null);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
+  const progressPollRef = useRef<NodeJS.Timeout | null>(null);
 
   const fetchStatus = useCallback(async () => {
     try {
@@ -80,11 +103,57 @@ const ModelTrainingPanel: React.FC = () => {
     }
   }, []);
 
+  // Fetch training progress
+  const fetchProgress = useCallback(async () => {
+    try {
+      const response = await fetch(getApiUrl('/retraining/training-progress'));
+      if (response.ok) {
+        const data: TrainingProgress = await response.json();
+        setTrainingProgress(data);
+
+        // If training just completed, refresh model status
+        if (!data.is_training && training) {
+          setTraining(false);
+          fetchStatus();
+        }
+
+        // Update training state based on progress
+        if (data.is_training && !training) {
+          setTraining(true);
+        }
+
+        return data;
+      }
+    } catch (err) {
+      console.error('Failed to fetch training progress:', err);
+    }
+    return null;
+  }, [training, fetchStatus]);
+
   useEffect(() => {
     fetchStatus();
+    fetchProgress(); // Check initial progress on mount
+
     const interval = setInterval(fetchStatus, 30000); // Refresh every 30s
     return () => clearInterval(interval);
-  }, [fetchStatus]);
+  }, [fetchStatus, fetchProgress]);
+
+  // Poll progress while training
+  useEffect(() => {
+    if (training) {
+      // Poll every 2 seconds while training
+      progressPollRef.current = setInterval(fetchProgress, 2000);
+    } else if (progressPollRef.current) {
+      clearInterval(progressPollRef.current);
+      progressPollRef.current = null;
+    }
+
+    return () => {
+      if (progressPollRef.current) {
+        clearInterval(progressPollRef.current);
+      }
+    };
+  }, [training, fetchProgress]);
 
   const triggerTraining = async () => {
     if (!confirm('Start model training? This may take 5-15 minutes and runs in the background.')) {
@@ -92,7 +161,7 @@ const ModelTrainingPanel: React.FC = () => {
     }
 
     setTraining(true);
-    setTrainingMessage(null);
+    setError(null);
 
     try {
       const response = await fetch(getApiUrl('/retraining/simple'), {
@@ -103,16 +172,45 @@ const ModelTrainingPanel: React.FC = () => {
       const data: TrainingResponse = await response.json();
 
       if (data.status === 'started' || data.status === 'in_progress') {
-        setTrainingMessage(data.message);
-        // Poll for status updates
-        setTimeout(fetchStatus, 5000);
+        // Start polling for progress
+        fetchProgress();
       } else {
         setError(data.message || 'Failed to start training');
+        setTraining(false);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to trigger training');
-    } finally {
       setTraining(false);
+    }
+  };
+
+  const getStepIcon = (stepStatus: string) => {
+    switch (stepStatus) {
+      case 'completed':
+        return <CheckCircle2 className="w-4 h-4 text-emerald-400" />;
+      case 'running':
+        return <Loader2 className="w-4 h-4 text-cyan-400 animate-spin" />;
+      case 'failed':
+        return <XCircle className="w-4 h-4 text-red-400" />;
+      case 'skipped':
+        return <SkipForward className="w-4 h-4 text-gray-400" />;
+      default:
+        return <Clock className="w-4 h-4 text-gray-500" />;
+    }
+  };
+
+  const getStepColor = (stepStatus: string) => {
+    switch (stepStatus) {
+      case 'completed':
+        return 'border-emerald-500/50 bg-emerald-500/10';
+      case 'running':
+        return 'border-cyan-500/50 bg-cyan-500/10';
+      case 'failed':
+        return 'border-red-500/50 bg-red-500/10';
+      case 'skipped':
+        return 'border-gray-500/50 bg-gray-500/10';
+      default:
+        return 'border-gray-700/50 bg-gray-800/30';
     }
   };
 
@@ -321,10 +419,65 @@ const ModelTrainingPanel: React.FC = () => {
             </div>
           </div>
 
-          {/* Training Message */}
-          {trainingMessage && (
-            <div className="mt-4 p-3 bg-cyan-500/10 border border-cyan-500/30 rounded-xl">
-              <p className="text-sm text-cyan-400">{trainingMessage}</p>
+          {/* Training Progress */}
+          {(training || (trainingProgress?.completed_at && !trainingProgress?.error)) && trainingProgress && (
+            <div className="mt-4 p-4 bg-gray-800/60 border border-gray-700/50 rounded-xl">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-sm font-medium text-white">
+                  {training ? 'Training in Progress' : 'Training Complete'}
+                </span>
+                {training && (
+                  <span className="text-xs text-cyan-400">
+                    Step {trainingProgress.current_step + 1}/{trainingProgress.total_steps}
+                  </span>
+                )}
+              </div>
+
+              {/* Step Progress */}
+              <div className="space-y-2">
+                {trainingProgress.steps.map((step, index) => (
+                  <div
+                    key={index}
+                    className={`flex items-center gap-3 p-2 rounded-lg border ${getStepColor(step.status)}`}
+                  >
+                    {getStepIcon(step.status)}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between">
+                        <span className={`text-sm ${
+                          step.status === 'running' ? 'text-cyan-400' :
+                          step.status === 'completed' ? 'text-emerald-400' :
+                          step.status === 'failed' ? 'text-red-400' :
+                          'text-gray-400'
+                        }`}>
+                          {step.name}
+                        </span>
+                        <span className="text-xs text-gray-500 capitalize">
+                          {step.status}
+                        </span>
+                      </div>
+                      {step.message && (
+                        <p className="text-xs text-gray-400 mt-0.5 truncate">
+                          {step.message}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Training Error */}
+              {trainingProgress.error && (
+                <div className="mt-3 p-2 bg-red-500/10 border border-red-500/30 rounded-lg">
+                  <p className="text-xs text-red-400">{trainingProgress.error}</p>
+                </div>
+              )}
+
+              {/* Completion Time */}
+              {trainingProgress.completed_at && !training && (
+                <p className="text-xs text-gray-500 mt-3">
+                  Completed at {new Date(trainingProgress.completed_at).toLocaleTimeString()}
+                </p>
+              )}
             </div>
           )}
 

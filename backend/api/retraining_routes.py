@@ -6,6 +6,7 @@ Endpoints for managing automated model retraining:
 - Trigger manual retraining
 - View retraining history
 - Rollback to previous models
+- Track training progress in real-time
 """
 
 from flask import Blueprint, jsonify, request
@@ -13,9 +14,62 @@ from utils.model_retrainer import ModelRetrainer
 from utils.logger import logger
 from datetime import datetime
 import os
+import threading
 
 retraining_bp = Blueprint('retraining', __name__)
 retrainer = ModelRetrainer()
+
+# Training progress tracking (in-memory, thread-safe)
+_training_progress = {
+    'is_training': False,
+    'current_step': 0,
+    'total_steps': 3,
+    'step_name': None,
+    'step_status': None,  # 'running', 'completed', 'failed', 'skipped'
+    'steps': [
+        {'name': 'RandomForest Models', 'status': 'pending', 'message': None},
+        {'name': 'Spike Detectors', 'status': 'pending', 'message': None},
+        {'name': 'DQN Agent', 'status': 'pending', 'message': None}
+    ],
+    'started_at': None,
+    'completed_at': None,
+    'error': None
+}
+_progress_lock = threading.Lock()
+
+
+def _update_progress(step: int = None, status: str = None, message: str = None,
+                     is_training: bool = None, error: str = None, completed: bool = False):
+    """Thread-safe progress update"""
+    with _progress_lock:
+        if is_training is not None:
+            _training_progress['is_training'] = is_training
+            if is_training:
+                _training_progress['started_at'] = datetime.now().isoformat()
+                _training_progress['completed_at'] = None
+                _training_progress['error'] = None
+                # Reset all steps
+                for s in _training_progress['steps']:
+                    s['status'] = 'pending'
+                    s['message'] = None
+
+        if step is not None:
+            _training_progress['current_step'] = step
+            _training_progress['step_name'] = _training_progress['steps'][step]['name'] if step < 3 else None
+
+        if status is not None and step is not None and step < 3:
+            _training_progress['steps'][step]['status'] = status
+            _training_progress['step_status'] = status
+
+        if message is not None and step is not None and step < 3:
+            _training_progress['steps'][step]['message'] = message
+
+        if error is not None:
+            _training_progress['error'] = error
+
+        if completed:
+            _training_progress['is_training'] = False
+            _training_progress['completed_at'] = datetime.now().isoformat()
 
 
 @retraining_bp.route('/retraining/status', methods=['GET'])
@@ -288,14 +342,17 @@ def trigger_simple_retraining():
 
         # Mark training as in progress
         trigger_simple_retraining._training_in_progress = True
+        _update_progress(is_training=True)
 
         def run_training():
-            """Run training in background thread"""
+            """Run training in background thread with progress tracking"""
             try:
                 logger.info("Background training thread started")
 
                 # Step 1: Train main RandomForest models
+                _update_progress(step=0, status='running', message='Training prediction models...')
                 logger.info("Step 1/3: Training RandomForest percentage change models...")
+
                 result = subprocess.run(
                     [sys.executable, script_path],
                     capture_output=True,
@@ -305,13 +362,17 @@ def trigger_simple_retraining():
                 )
 
                 if result.returncode != 0:
+                    _update_progress(step=0, status='failed', message=f'Training failed: {result.stderr[:100]}')
                     logger.error(f"Main model training failed: {result.stderr}")
                     logger.error(f"Output: {result.stdout[:500]}...")
+                    _update_progress(error='RandomForest training failed', completed=True)
                     return
 
+                _update_progress(step=0, status='completed', message='Models trained successfully')
                 logger.info("Main model training completed successfully")
 
                 # Step 2: Train spike detector models
+                _update_progress(step=1, status='running', message='Training spike classifiers...')
                 logger.info("Step 2/3: Training spike detector classifiers...")
                 spike_script_path = os.path.join(current_dir, "scripts", "train_spike_detectors.py")
 
@@ -325,14 +386,18 @@ def trigger_simple_retraining():
                     )
 
                     if spike_result.returncode == 0:
+                        _update_progress(step=1, status='completed', message='Spike detectors trained')
                         logger.info("Spike detector training completed successfully")
                     else:
+                        _update_progress(step=1, status='failed', message='Training failed, using fallback')
                         logger.warning(f"Spike detector training failed: {spike_result.stderr}")
                         logger.warning("Continuing without spike detectors...")
                 else:
+                    _update_progress(step=1, status='skipped', message='Script not found')
                     logger.warning(f"Spike detector script not found at {spike_script_path}")
 
                 # Step 3: Train DQN agent (if enough data)
+                _update_progress(step=2, status='running', message='Training RL agent (500 episodes)...')
                 logger.info("Step 3/3: Training DQN reinforcement learning agent...")
                 dqn_script_path = os.path.join(current_dir, "scripts", "train_dqn_pipeline.py")
 
@@ -346,11 +411,14 @@ def trigger_simple_retraining():
                     )
 
                     if dqn_result.returncode == 0:
+                        _update_progress(step=2, status='completed', message='DQN agent trained')
                         logger.info("DQN agent training completed successfully")
                     else:
+                        _update_progress(step=2, status='failed', message='Needs more data, using heuristic')
                         logger.warning(f"DQN training failed (may need more data): {dqn_result.stderr[:200]}")
                         logger.warning("Continuing with heuristic fallback for agent recommendations...")
                 else:
+                    _update_progress(step=2, status='skipped', message='Script not found')
                     logger.warning(f"DQN training script not found at {dqn_script_path}")
 
                 if result.returncode == 0:
@@ -368,15 +436,19 @@ def trigger_simple_retraining():
                         logger.info("💡 You can manually reload models via POST /api/models/reload")
                     logger.info("Retraining completed successfully")
                     logger.info(f"Output: {result.stdout[:500]}...")  # Log first 500 chars
+                    _update_progress(completed=True)
                 else:
                     logger.error(f"Retraining failed: {result.stderr}")
                     logger.error(f"Output: {result.stdout[:500]}...")
+                    _update_progress(error='Training failed', completed=True)
             except subprocess.TimeoutExpired:
                 logger.error("Retraining timed out after 10 minutes")
+                _update_progress(error='Training timed out', completed=True)
             except Exception as e:
                 logger.error(f"Error during training: {e}")
                 import traceback
                 logger.error(traceback.format_exc())
+                _update_progress(error=str(e), completed=True)
             finally:
                 # Mark training as complete
                 trigger_simple_retraining._training_in_progress = False
@@ -411,6 +483,33 @@ def trigger_simple_retraining():
 
 # Initialize training status
 trigger_simple_retraining._training_in_progress = False
+
+
+@retraining_bp.route('/retraining/training-progress', methods=['GET'])
+def get_training_progress():
+    """
+    Get current training progress.
+
+    Returns detailed progress information including:
+    - is_training: Whether training is currently running
+    - current_step: Current step index (0-2)
+    - steps: Array of step statuses with names and messages
+    - started_at: When training started
+    - completed_at: When training completed (if done)
+    - error: Any error message
+    """
+    with _progress_lock:
+        return jsonify({
+            'is_training': _training_progress['is_training'],
+            'current_step': _training_progress['current_step'],
+            'total_steps': _training_progress['total_steps'],
+            'step_name': _training_progress['step_name'],
+            'step_status': _training_progress['step_status'],
+            'steps': _training_progress['steps'],
+            'started_at': _training_progress['started_at'],
+            'completed_at': _training_progress['completed_at'],
+            'error': _training_progress['error']
+        }), 200
 
 
 @retraining_bp.route('/retraining/models-status', methods=['GET'])
