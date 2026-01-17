@@ -17,6 +17,7 @@ import DriftAlertBanner from '../src/components/DriftAlertBanner';
 import PersonalizationPanel from '../src/components/PersonalizationPanel';
 import PersonalizedRecommendations from '../src/components/PersonalizedRecommendations';
 import AdvancedAnalyticsPanel from '../src/components/AdvancedAnalyticsPanel';
+import ModelTrainingPanel from '../src/components/ModelTrainingPanel';
 import { checkHealth } from '../src/api/gasApi';
 import { useChain } from '../src/contexts/ChainContext';
 import { useEthPrice } from '../src/hooks/useEthPrice';
@@ -118,7 +119,7 @@ const Dashboard: React.FC = () => {
             </div>
             <div className="space-y-4">
               <div className="text-[11px] tracking-[0.2em] text-gray-500 uppercase">System</div>
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-6">
                 <div className="min-h-[300px]">
                   <SectionErrorBoundary sectionName="API Status">
                     <ApiStatusPanel />
@@ -132,6 +133,11 @@ const Dashboard: React.FC = () => {
                 <div className="min-h-[300px]">
                   <SectionErrorBoundary sectionName="Mempool Status">
                     <MempoolStatusCard />
+                  </SectionErrorBoundary>
+                </div>
+                <div className="min-h-[300px]">
+                  <SectionErrorBoundary sectionName="Model Training">
+                    <ModelTrainingPanel />
                   </SectionErrorBoundary>
                 </div>
               </div>
