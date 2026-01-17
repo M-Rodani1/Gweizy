@@ -66,13 +66,15 @@ export function sanitizeNumber(
   if (value === null || value === undefined) {
     return defaultValue;
   }
-  
+
   const num = typeof value === 'string' ? parseFloat(value) : value;
-  
-  if (!isValidNumber(num, min, max)) {
+
+  // Check if it's a valid number (not NaN, is finite)
+  if (typeof num !== 'number' || isNaN(num) || !isFinite(num)) {
     return defaultValue;
   }
-  
+
+  // Clamp to range
   return Math.max(min, Math.min(max, num));
 }
 

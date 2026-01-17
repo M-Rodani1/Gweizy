@@ -153,7 +153,9 @@ describe('AccuracyMetricsCard', () => {
     render(<AccuracyMetricsCard />);
 
     await waitFor(() => {
-      expect(screen.getByText(/No metrics available/i)).toBeInTheDocument();
+      // Use getAllByText since the message appears in multiple places
+      const elements = screen.getAllByText(/No metrics available/i);
+      expect(elements.length).toBeGreaterThan(0);
     });
   });
 

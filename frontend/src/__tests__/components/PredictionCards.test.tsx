@@ -8,9 +8,13 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import PredictionCards from '../../components/PredictionCards';
 import { ChainProvider } from '../../contexts/ChainContext';
+import * as gasApi from '../../api/gasApi';
 
-// Mock fetch globally
-global.fetch = vi.fn();
+// Mock the API module
+vi.mock('../../api/gasApi', () => ({
+  fetchPredictions: vi.fn(),
+  fetchCurrentGas: vi.fn()
+}));
 
 // Mock ChainContext
 vi.mock('../../contexts/ChainContext', () => ({
@@ -26,12 +30,10 @@ const TestWrapper = ({ children }: { children: React.ReactNode }) => (
 describe('PredictionCards', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.useFakeTimers();
   });
 
   afterEach(() => {
     vi.resetAllMocks();
-    vi.useRealTimers();
   });
 
   const mockPredictionsResponse = {
@@ -80,7 +82,9 @@ describe('PredictionCards', () => {
   };
 
   it('renders loading state initially', () => {
-    (global.fetch as any).mockImplementation(() => new Promise(() => {}));
+    // Make the API calls hang indefinitely
+    vi.mocked(gasApi.fetchPredictions).mockImplementation(() => new Promise(() => {}));
+    vi.mocked(gasApi.fetchCurrentGas).mockImplementation(() => new Promise(() => {}));
 
     render(<PredictionCards />, { wrapper: TestWrapper });
 
@@ -88,61 +92,35 @@ describe('PredictionCards', () => {
   });
 
   it('renders prediction cards after successful fetch', async () => {
-    (global.fetch as any).mockImplementation((url: string) => {
-      if (url.includes('predictions')) {
-        return Promise.resolve({
-          ok: true,
-          json: async () => mockPredictionsResponse
-        });
-      }
-      if (url.includes('current')) {
-        return Promise.resolve({
-          ok: true,
-          json: async () => mockCurrentGasResponse
-        });
-      }
-      return Promise.resolve({ ok: true, json: async () => ({}) });
-    });
+    vi.mocked(gasApi.fetchPredictions).mockResolvedValue(mockPredictionsResponse);
+    vi.mocked(gasApi.fetchCurrentGas).mockResolvedValue(mockCurrentGasResponse);
 
     render(<PredictionCards />, { wrapper: TestWrapper });
 
     await waitFor(() => {
-      // Should show horizon labels
-      expect(screen.getByText('1h')).toBeInTheDocument();
+      // Should show horizon labels in uppercase format
+      expect(screen.getByText('1H PREDICTION')).toBeInTheDocument();
     });
 
     await waitFor(() => {
-      expect(screen.getByText('4h')).toBeInTheDocument();
-      expect(screen.getByText('24h')).toBeInTheDocument();
+      expect(screen.getByText('4H PREDICTION')).toBeInTheDocument();
+      expect(screen.getByText('24H PREDICTION')).toBeInTheDocument();
     });
   });
 
   describe('Prediction Display', () => {
     beforeEach(() => {
-      (global.fetch as any).mockImplementation((url: string) => {
-        if (url.includes('predictions')) {
-          return Promise.resolve({
-            ok: true,
-            json: async () => mockPredictionsResponse
-          });
-        }
-        if (url.includes('current')) {
-          return Promise.resolve({
-            ok: true,
-            json: async () => mockCurrentGasResponse
-          });
-        }
-        return Promise.resolve({ ok: true, json: async () => ({}) });
-      });
+      vi.mocked(gasApi.fetchPredictions).mockResolvedValue(mockPredictionsResponse);
+      vi.mocked(gasApi.fetchCurrentGas).mockResolvedValue(mockCurrentGasResponse);
     });
 
     it('displays all three prediction horizons', async () => {
       render(<PredictionCards />, { wrapper: TestWrapper });
 
       await waitFor(() => {
-        expect(screen.getByText('1h')).toBeInTheDocument();
-        expect(screen.getByText('4h')).toBeInTheDocument();
-        expect(screen.getByText('24h')).toBeInTheDocument();
+        expect(screen.getByText('1H PREDICTION')).toBeInTheDocument();
+        expect(screen.getByText('4H PREDICTION')).toBeInTheDocument();
+        expect(screen.getByText('24H PREDICTION')).toBeInTheDocument();
       });
     });
 
@@ -150,7 +128,7 @@ describe('PredictionCards', () => {
       render(<PredictionCards />, { wrapper: TestWrapper });
 
       await waitFor(() => {
-        // Should show some recommendation
+        // Should show some recommendation (the component shows recommendations like "Gas expected to...")
         const recommendations = screen.getAllByText(/expected|Consider|stable/i);
         expect(recommendations.length).toBeGreaterThan(0);
       });
@@ -162,26 +140,13 @@ describe('PredictionCards', () => {
       const risingResponse = {
         predictions: {
           '1h': [{ predictedGwei: 0.0015, confidence: 0.8, confidenceLevel: 'high' }],
-          '4h': [{ predictedGwei: 0.001, confidence: 0.7 }],
-          '24h': [{ predictedGwei: 0.001, confidence: 0.5 }]
+          '4h': [{ predictedGwei: 0.001, confidence: 0.7, confidenceLevel: 'medium' }],
+          '24h': [{ predictedGwei: 0.001, confidence: 0.5, confidenceLevel: 'low' }]
         }
       };
 
-      (global.fetch as any).mockImplementation((url: string) => {
-        if (url.includes('predictions')) {
-          return Promise.resolve({
-            ok: true,
-            json: async () => risingResponse
-          });
-        }
-        if (url.includes('current')) {
-          return Promise.resolve({
-            ok: true,
-            json: async () => mockCurrentGasResponse
-          });
-        }
-        return Promise.resolve({ ok: true, json: async () => ({}) });
-      });
+      vi.mocked(gasApi.fetchPredictions).mockResolvedValue(risingResponse);
+      vi.mocked(gasApi.fetchCurrentGas).mockResolvedValue(mockCurrentGasResponse);
 
       render(<PredictionCards />, { wrapper: TestWrapper });
 
@@ -196,26 +161,13 @@ describe('PredictionCards', () => {
       const droppingResponse = {
         predictions: {
           '1h': [{ predictedGwei: 0.0005, confidence: 0.8, confidenceLevel: 'high' }],
-          '4h': [{ predictedGwei: 0.001, confidence: 0.7 }],
-          '24h': [{ predictedGwei: 0.001, confidence: 0.5 }]
+          '4h': [{ predictedGwei: 0.001, confidence: 0.7, confidenceLevel: 'medium' }],
+          '24h': [{ predictedGwei: 0.001, confidence: 0.5, confidenceLevel: 'low' }]
         }
       };
 
-      (global.fetch as any).mockImplementation((url: string) => {
-        if (url.includes('predictions')) {
-          return Promise.resolve({
-            ok: true,
-            json: async () => droppingResponse
-          });
-        }
-        if (url.includes('current')) {
-          return Promise.resolve({
-            ok: true,
-            json: async () => mockCurrentGasResponse
-          });
-        }
-        return Promise.resolve({ ok: true, json: async () => ({}) });
-      });
+      vi.mocked(gasApi.fetchPredictions).mockResolvedValue(droppingResponse);
+      vi.mocked(gasApi.fetchCurrentGas).mockResolvedValue(mockCurrentGasResponse);
 
       render(<PredictionCards />, { wrapper: TestWrapper });
 
@@ -229,45 +181,36 @@ describe('PredictionCards', () => {
 
   describe('Confidence Display', () => {
     it('displays confidence level', async () => {
-      (global.fetch as any).mockImplementation((url: string) => {
-        if (url.includes('predictions')) {
-          return Promise.resolve({
-            ok: true,
-            json: async () => mockPredictionsResponse
-          });
-        }
-        if (url.includes('current')) {
-          return Promise.resolve({
-            ok: true,
-            json: async () => mockCurrentGasResponse
-          });
-        }
-        return Promise.resolve({ ok: true, json: async () => ({}) });
-      });
+      vi.mocked(gasApi.fetchPredictions).mockResolvedValue(mockPredictionsResponse);
+      vi.mocked(gasApi.fetchCurrentGas).mockResolvedValue(mockCurrentGasResponse);
 
       render(<PredictionCards />, { wrapper: TestWrapper });
 
       await waitFor(() => {
-        // Should show confidence percentage or level
-        const confidenceElements = screen.getAllByText(/%|high|medium|low/i);
-        expect(confidenceElements.length).toBeGreaterThanOrEqual(0);
+        // Should show confidence percentage or level text
+        const highConfidence = screen.queryAllByText(/HIGH CONFIDENCE/i);
+        const mediumConfidence = screen.queryAllByText(/MEDIUM CONFIDENCE/i);
+        const lowConfidence = screen.queryAllByText(/LOW CONFIDENCE/i);
+        expect(highConfidence.length + mediumConfidence.length + lowConfidence.length).toBeGreaterThan(0);
       });
     });
   });
 
   describe('Error Handling', () => {
     it('displays error message on fetch failure', async () => {
-      (global.fetch as any).mockRejectedValue(new Error('Network error'));
+      vi.mocked(gasApi.fetchPredictions).mockRejectedValue(new Error('Network error'));
+      vi.mocked(gasApi.fetchCurrentGas).mockRejectedValue(new Error('Network error'));
 
       render(<PredictionCards />, { wrapper: TestWrapper });
 
       await waitFor(() => {
-        expect(screen.getByText(/Failed|error|unavailable/i)).toBeInTheDocument();
+        expect(screen.getByText(/Network error/i)).toBeInTheDocument();
       });
     });
 
     it('shows retry button on error', async () => {
-      (global.fetch as any).mockRejectedValue(new Error('Network error'));
+      vi.mocked(gasApi.fetchPredictions).mockRejectedValue(new Error('Network error'));
+      vi.mocked(gasApi.fetchCurrentGas).mockRejectedValue(new Error('Network error'));
 
       render(<PredictionCards />, { wrapper: TestWrapper });
 
@@ -277,7 +220,8 @@ describe('PredictionCards', () => {
     });
 
     it('retries fetch when retry button clicked', async () => {
-      (global.fetch as any).mockRejectedValueOnce(new Error('Network error'));
+      vi.mocked(gasApi.fetchPredictions).mockRejectedValueOnce(new Error('Network error'));
+      vi.mocked(gasApi.fetchCurrentGas).mockRejectedValueOnce(new Error('Network error'));
 
       render(<PredictionCards />, { wrapper: TestWrapper });
 
@@ -286,62 +230,40 @@ describe('PredictionCards', () => {
       });
 
       // Setup success for retry
-      (global.fetch as any).mockImplementation((url: string) => {
-        if (url.includes('predictions')) {
-          return Promise.resolve({
-            ok: true,
-            json: async () => mockPredictionsResponse
-          });
-        }
-        if (url.includes('current')) {
-          return Promise.resolve({
-            ok: true,
-            json: async () => mockCurrentGasResponse
-          });
-        }
-        return Promise.resolve({ ok: true, json: async () => ({}) });
-      });
+      vi.mocked(gasApi.fetchPredictions).mockResolvedValue(mockPredictionsResponse);
+      vi.mocked(gasApi.fetchCurrentGas).mockResolvedValue(mockCurrentGasResponse);
 
       const retryButton = screen.getByText(/Retry/i);
       fireEvent.click(retryButton);
 
       await waitFor(() => {
-        expect(global.fetch).toHaveBeenCalled();
+        // Verify API was called again
+        expect(gasApi.fetchPredictions).toHaveBeenCalledTimes(2);
       });
     });
   });
 
   describe('Auto-refresh', () => {
     it('refreshes data every 30 seconds', async () => {
-      (global.fetch as any).mockImplementation((url: string) => {
-        if (url.includes('predictions')) {
-          return Promise.resolve({
-            ok: true,
-            json: async () => mockPredictionsResponse
-          });
-        }
-        if (url.includes('current')) {
-          return Promise.resolve({
-            ok: true,
-            json: async () => mockCurrentGasResponse
-          });
-        }
-        return Promise.resolve({ ok: true, json: async () => ({}) });
-      });
+      vi.useFakeTimers();
+
+      vi.mocked(gasApi.fetchPredictions).mockResolvedValue(mockPredictionsResponse);
+      vi.mocked(gasApi.fetchCurrentGas).mockResolvedValue(mockCurrentGasResponse);
 
       render(<PredictionCards />, { wrapper: TestWrapper });
 
-      await waitFor(() => {
-        expect(global.fetch).toHaveBeenCalled();
+      // Wait for initial load
+      await vi.waitFor(() => {
+        expect(gasApi.fetchPredictions).toHaveBeenCalledTimes(1);
       });
 
-      const initialCallCount = (global.fetch as any).mock.calls.length;
+      // Advance timer by 30 seconds
+      await vi.advanceTimersByTimeAsync(30000);
 
-      vi.advanceTimersByTime(30000);
+      // Should have been called again
+      expect(gasApi.fetchPredictions).toHaveBeenCalledTimes(2);
 
-      await waitFor(() => {
-        expect((global.fetch as any).mock.calls.length).toBeGreaterThan(initialCallCount);
-      });
+      vi.useRealTimers();
     });
   });
 
@@ -355,53 +277,29 @@ describe('PredictionCards', () => {
         }
       };
 
-      (global.fetch as any).mockImplementation((url: string) => {
-        if (url.includes('predictions')) {
-          return Promise.resolve({
-            ok: true,
-            json: async () => bestTimeResponse
-          });
-        }
-        if (url.includes('current')) {
-          return Promise.resolve({
-            ok: true,
-            json: async () => mockCurrentGasResponse
-          });
-        }
-        return Promise.resolve({ ok: true, json: async () => ({}) });
-      });
+      vi.mocked(gasApi.fetchPredictions).mockResolvedValue(bestTimeResponse);
+      vi.mocked(gasApi.fetchCurrentGas).mockResolvedValue(mockCurrentGasResponse);
 
       render(<PredictionCards />, { wrapper: TestWrapper });
 
       await waitFor(() => {
         // 4h should be marked as best
-        expect(screen.getByText('4h')).toBeInTheDocument();
+        expect(screen.getByText('4H PREDICTION')).toBeInTheDocument();
+        // BEST TIME badge should appear
+        expect(screen.getByText('BEST TIME')).toBeInTheDocument();
       });
     });
   });
 
   describe('Change Percentage', () => {
     it('shows percentage change from current', async () => {
-      (global.fetch as any).mockImplementation((url: string) => {
-        if (url.includes('predictions')) {
-          return Promise.resolve({
-            ok: true,
-            json: async () => mockPredictionsResponse
-          });
-        }
-        if (url.includes('current')) {
-          return Promise.resolve({
-            ok: true,
-            json: async () => mockCurrentGasResponse
-          });
-        }
-        return Promise.resolve({ ok: true, json: async () => ({}) });
-      });
+      vi.mocked(gasApi.fetchPredictions).mockResolvedValue(mockPredictionsResponse);
+      vi.mocked(gasApi.fetchCurrentGas).mockResolvedValue(mockCurrentGasResponse);
 
       render(<PredictionCards />, { wrapper: TestWrapper });
 
       await waitFor(() => {
-        // Should show percentage
+        // Should show percentage in the "Potential Savings" section
         const percentages = screen.getAllByText(/%/);
         expect(percentages.length).toBeGreaterThan(0);
       });
@@ -410,25 +308,12 @@ describe('PredictionCards', () => {
 
   describe('Empty State', () => {
     it('handles empty predictions gracefully', async () => {
-      (global.fetch as any).mockImplementation((url: string) => {
-        if (url.includes('predictions')) {
-          return Promise.resolve({
-            ok: true,
-            json: async () => ({ predictions: {} })
-          });
-        }
-        if (url.includes('current')) {
-          return Promise.resolve({
-            ok: true,
-            json: async () => mockCurrentGasResponse
-          });
-        }
-        return Promise.resolve({ ok: true, json: async () => ({}) });
-      });
+      vi.mocked(gasApi.fetchPredictions).mockResolvedValue({ predictions: {} });
+      vi.mocked(gasApi.fetchCurrentGas).mockResolvedValue(mockCurrentGasResponse);
 
       render(<PredictionCards />, { wrapper: TestWrapper });
 
-      // Should not crash
+      // Should not crash and should show loading/empty state
       await waitFor(() => {
         expect(document.body).toBeInTheDocument();
       });

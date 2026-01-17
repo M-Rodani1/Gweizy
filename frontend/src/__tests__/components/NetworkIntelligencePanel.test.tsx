@@ -9,17 +9,16 @@ import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import NetworkIntelligencePanel from '../../components/NetworkIntelligencePanel';
 
 // Mock fetch globally
-global.fetch = vi.fn();
+const mockFetch = vi.fn();
+global.fetch = mockFetch;
 
 describe('NetworkIntelligencePanel', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.useFakeTimers();
   });
 
   afterEach(() => {
     vi.resetAllMocks();
-    vi.useRealTimers();
   });
 
   const mockNetworkStateResponse = {
@@ -65,57 +64,47 @@ describe('NetworkIntelligencePanel', () => {
     }
   };
 
-  it('renders loading state initially', () => {
-    (global.fetch as any).mockImplementation(() => new Promise(() => {}));
-
-    render(<NetworkIntelligencePanel />);
-
-    // Should show loading indicator or panel title
-    expect(screen.getByText(/Network|Loading/i)).toBeInTheDocument();
-  });
-
-  it('renders network data after successful fetch', async () => {
-    (global.fetch as any).mockImplementation((url: string) => {
+  const setupSuccessfulMocks = () => {
+    mockFetch.mockImplementation((url: string) => {
       if (url.includes('network-state')) {
         return Promise.resolve({
           ok: true,
-          json: async () => mockNetworkStateResponse
+          json: () => Promise.resolve(mockNetworkStateResponse)
         });
       }
       if (url.includes('congestion-history')) {
         return Promise.resolve({
           ok: true,
-          json: async () => mockCongestionHistoryResponse
+          json: () => Promise.resolve(mockCongestionHistoryResponse)
         });
       }
-      return Promise.resolve({ ok: true, json: async () => ({}) });
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
     });
+  };
+
+  it('renders loading state initially', () => {
+    mockFetch.mockImplementation(() => new Promise(() => {}));
+
+    render(<NetworkIntelligencePanel />);
+
+    // Should show loading spinner (div with animate-spin class)
+    expect(document.querySelector('.animate-spin')).toBeInTheDocument();
+  });
+
+  it('renders network data after successful fetch', async () => {
+    setupSuccessfulMocks();
 
     render(<NetworkIntelligencePanel />);
 
     await waitFor(() => {
-      // Should display block number
-      expect(screen.getByText(/12345678|Block/i)).toBeInTheDocument();
+      // Should display "Network Intelligence" title
+      expect(screen.getByText('Network Intelligence')).toBeInTheDocument();
     });
   });
 
   describe('Congestion Display', () => {
     beforeEach(() => {
-      (global.fetch as any).mockImplementation((url: string) => {
-        if (url.includes('network-state')) {
-          return Promise.resolve({
-            ok: true,
-            json: async () => mockNetworkStateResponse
-          });
-        }
-        if (url.includes('congestion-history')) {
-          return Promise.resolve({
-            ok: true,
-            json: async () => mockCongestionHistoryResponse
-          });
-        }
-        return Promise.resolve({ ok: true, json: async () => ({}) });
-      });
+      setupSuccessfulMocks();
     });
 
     it('displays congestion level', async () => {
@@ -123,16 +112,16 @@ describe('NetworkIntelligencePanel', () => {
 
       await waitFor(() => {
         // Should show congestion level text
-        expect(screen.getByText(/moderate|low|high/i)).toBeInTheDocument();
+        expect(screen.getByText('moderate')).toBeInTheDocument();
       });
     });
 
     it('shows green color for low congestion', async () => {
-      (global.fetch as any).mockImplementation((url: string) => {
+      mockFetch.mockImplementation((url: string) => {
         if (url.includes('network-state')) {
           return Promise.resolve({
             ok: true,
-            json: async () => ({
+            json: () => Promise.resolve({
               ...mockNetworkStateResponse,
               interpretation: { ...mockNetworkStateResponse.interpretation, congestion_level: 'low' }
             })
@@ -141,10 +130,10 @@ describe('NetworkIntelligencePanel', () => {
         if (url.includes('congestion-history')) {
           return Promise.resolve({
             ok: true,
-            json: async () => mockCongestionHistoryResponse
+            json: () => Promise.resolve(mockCongestionHistoryResponse)
           });
         }
-        return Promise.resolve({ ok: true, json: async () => ({}) });
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
       });
 
       render(<NetworkIntelligencePanel />);
@@ -156,54 +145,40 @@ describe('NetworkIntelligencePanel', () => {
     });
 
     it('shows red color for high congestion', async () => {
-      (global.fetch as any).mockImplementation((url: string) => {
+      mockFetch.mockImplementation((url: string) => {
         if (url.includes('network-state')) {
           return Promise.resolve({
             ok: true,
-            json: async () => mockHighCongestionResponse
+            json: () => Promise.resolve(mockHighCongestionResponse)
           });
         }
         if (url.includes('congestion-history')) {
           return Promise.resolve({
             ok: true,
-            json: async () => mockCongestionHistoryResponse
+            json: () => Promise.resolve(mockCongestionHistoryResponse)
           });
         }
-        return Promise.resolve({ ok: true, json: async () => ({}) });
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
       });
 
       render(<NetworkIntelligencePanel />);
 
       await waitFor(() => {
-        expect(screen.getByText(/high/i)).toBeInTheDocument();
+        expect(screen.getByText('high')).toBeInTheDocument();
       });
     });
   });
 
   describe('Block Information', () => {
     beforeEach(() => {
-      (global.fetch as any).mockImplementation((url: string) => {
-        if (url.includes('network-state')) {
-          return Promise.resolve({
-            ok: true,
-            json: async () => mockNetworkStateResponse
-          });
-        }
-        if (url.includes('congestion-history')) {
-          return Promise.resolve({
-            ok: true,
-            json: async () => mockCongestionHistoryResponse
-          });
-        }
-        return Promise.resolve({ ok: true, json: async () => ({}) });
-      });
+      setupSuccessfulMocks();
     });
 
     it('displays current block number', async () => {
       render(<NetworkIntelligencePanel />);
 
       await waitFor(() => {
-        expect(screen.getByText(/12345678/)).toBeInTheDocument();
+        expect(screen.getByText('12,345,678')).toBeInTheDocument();
       });
     });
 
@@ -211,7 +186,7 @@ describe('NetworkIntelligencePanel', () => {
       render(<NetworkIntelligencePanel />);
 
       await waitFor(() => {
-        expect(screen.getByText(/150|Tx/i)).toBeInTheDocument();
+        expect(screen.getByText('150.0')).toBeInTheDocument();
       });
     });
 
@@ -219,65 +194,54 @@ describe('NetworkIntelligencePanel', () => {
       render(<NetworkIntelligencePanel />);
 
       await waitFor(() => {
-        // 65% utilization
-        expect(screen.getByText(/65|Utilization/i)).toBeInTheDocument();
+        // 65% utilization - the component formats as "65.0%" and it appears in multiple places
+        const elements = screen.getAllByText('65.0%');
+        expect(elements.length).toBeGreaterThan(0);
       });
     });
   });
 
   describe('Expand/Collapse', () => {
     beforeEach(() => {
-      (global.fetch as any).mockImplementation((url: string) => {
-        if (url.includes('network-state')) {
-          return Promise.resolve({
-            ok: true,
-            json: async () => mockNetworkStateResponse
-          });
-        }
-        if (url.includes('congestion-history')) {
-          return Promise.resolve({
-            ok: true,
-            json: async () => mockCongestionHistoryResponse
-          });
-        }
-        return Promise.resolve({ ok: true, json: async () => ({}) });
-      });
+      setupSuccessfulMocks();
     });
 
     it('can toggle expanded state', async () => {
       render(<NetworkIntelligencePanel />);
 
       await waitFor(() => {
-        expect(screen.getByText(/Network/i)).toBeInTheDocument();
+        expect(screen.getByText('Network Intelligence')).toBeInTheDocument();
       });
 
-      // Find and click toggle button if exists
-      const toggleButton = document.querySelector('button');
-      if (toggleButton) {
-        fireEvent.click(toggleButton);
-        // Component should still be visible
-        expect(screen.getByText(/Network/i)).toBeInTheDocument();
+      // Find the header and click to collapse
+      const header = screen.getByText('Network Intelligence').closest('div[class*="cursor-pointer"]');
+      if (header) {
+        fireEvent.click(header);
+        // After collapsing, the detailed content should be hidden
+        // The header should still be visible
+        expect(screen.getByText('Network Intelligence')).toBeInTheDocument();
       }
     });
   });
 
   describe('Error Handling', () => {
     it('displays error message on fetch failure', async () => {
-      (global.fetch as any).mockRejectedValue(new Error('Network error'));
+      mockFetch.mockRejectedValue(new Error('Network error'));
 
       render(<NetworkIntelligencePanel />);
 
       await waitFor(() => {
-        expect(screen.getByText(/Failed|error|unavailable/i)).toBeInTheDocument();
+        // Component displays the actual error message
+        expect(screen.getByText(/Network error/i)).toBeInTheDocument();
       });
     });
 
     it('handles partial API failure', async () => {
-      (global.fetch as any).mockImplementation((url: string) => {
+      mockFetch.mockImplementation((url: string) => {
         if (url.includes('network-state')) {
           return Promise.resolve({
             ok: true,
-            json: async () => mockNetworkStateResponse
+            json: () => Promise.resolve(mockNetworkStateResponse)
           });
         }
         if (url.includes('congestion-history')) {
@@ -286,7 +250,7 @@ describe('NetworkIntelligencePanel', () => {
             status: 500
           });
         }
-        return Promise.resolve({ ok: true, json: async () => ({}) });
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
       });
 
       render(<NetworkIntelligencePanel />);
@@ -300,160 +264,102 @@ describe('NetworkIntelligencePanel', () => {
 
   describe('Auto-refresh', () => {
     it('refreshes data every 30 seconds', async () => {
-      (global.fetch as any).mockImplementation((url: string) => {
-        if (url.includes('network-state')) {
-          return Promise.resolve({
-            ok: true,
-            json: async () => mockNetworkStateResponse
-          });
-        }
-        if (url.includes('congestion-history')) {
-          return Promise.resolve({
-            ok: true,
-            json: async () => mockCongestionHistoryResponse
-          });
-        }
-        return Promise.resolve({ ok: true, json: async () => ({}) });
-      });
+      vi.useFakeTimers();
+
+      setupSuccessfulMocks();
 
       render(<NetworkIntelligencePanel />);
 
-      await waitFor(() => {
-        expect(global.fetch).toHaveBeenCalled();
+      // Wait for initial load using vi.waitFor which works with fake timers
+      await vi.waitFor(() => {
+        expect(mockFetch).toHaveBeenCalled();
       });
 
-      const initialCallCount = (global.fetch as any).mock.calls.length;
+      const initialCallCount = mockFetch.mock.calls.length;
 
-      vi.advanceTimersByTime(30000);
+      // Advance timer by 30 seconds
+      await vi.advanceTimersByTimeAsync(30000);
 
-      await waitFor(() => {
-        expect((global.fetch as any).mock.calls.length).toBeGreaterThan(initialCallCount);
-      });
+      // Should have been called again
+      expect(mockFetch.mock.calls.length).toBeGreaterThan(initialCallCount);
+
+      vi.useRealTimers();
     });
   });
 
   describe('Gas Price Display', () => {
     it('displays gas price information', async () => {
-      (global.fetch as any).mockImplementation((url: string) => {
-        if (url.includes('network-state')) {
-          return Promise.resolve({
-            ok: true,
-            json: async () => mockNetworkStateResponse
-          });
-        }
-        if (url.includes('congestion-history')) {
-          return Promise.resolve({
-            ok: true,
-            json: async () => mockCongestionHistoryResponse
-          });
-        }
-        return Promise.resolve({ ok: true, json: async () => ({}) });
-      });
+      setupSuccessfulMocks();
 
       render(<NetworkIntelligencePanel />);
 
       await waitFor(() => {
-        // Should show gas price or Gwei
-        const gasElements = screen.getAllByText(/Gwei|Gas|0\.001/i);
-        expect(gasElements.length).toBeGreaterThanOrEqual(0);
+        // Should show "Gwei" label
+        expect(screen.getByText('Gwei')).toBeInTheDocument();
       });
     });
   });
 
   describe('Trend Indicators', () => {
     it('displays trend information', async () => {
-      (global.fetch as any).mockImplementation((url: string) => {
-        if (url.includes('network-state')) {
-          return Promise.resolve({
-            ok: true,
-            json: async () => mockNetworkStateResponse
-          });
-        }
-        if (url.includes('congestion-history')) {
-          return Promise.resolve({
-            ok: true,
-            json: async () => mockCongestionHistoryResponse
-          });
-        }
-        return Promise.resolve({ ok: true, json: async () => ({}) });
-      });
+      setupSuccessfulMocks();
 
       render(<NetworkIntelligencePanel />);
 
       await waitFor(() => {
-        // Should show trend indicator
-        expect(screen.getByText(/stable|rising|falling|trend/i)).toBeInTheDocument();
+        // Should show network insights section
+        expect(screen.getByText('Network Insights')).toBeInTheDocument();
       });
     });
   });
 
   describe('Recommendations', () => {
     it('displays transaction recommendation', async () => {
-      (global.fetch as any).mockImplementation((url: string) => {
-        if (url.includes('network-state')) {
-          return Promise.resolve({
-            ok: true,
-            json: async () => mockNetworkStateResponse
-          });
-        }
-        if (url.includes('congestion-history')) {
-          return Promise.resolve({
-            ok: true,
-            json: async () => mockCongestionHistoryResponse
-          });
-        }
-        return Promise.resolve({ ok: true, json: async () => ({}) });
-      });
+      setupSuccessfulMocks();
 
       render(<NetworkIntelligencePanel />);
 
       await waitFor(() => {
-        expect(screen.getByText(/Good time|Consider|transact/i)).toBeInTheDocument();
+        // Should show recommendation text in the insights
+        expect(screen.getByText(/good time for transactions|may vary/i)).toBeInTheDocument();
       });
     });
 
     it('shows wait recommendation during high congestion', async () => {
-      (global.fetch as any).mockImplementation((url: string) => {
+      mockFetch.mockImplementation((url: string) => {
         if (url.includes('network-state')) {
           return Promise.resolve({
             ok: true,
-            json: async () => mockHighCongestionResponse
+            json: () => Promise.resolve({
+              ...mockHighCongestionResponse,
+              network_state: {
+                ...mockHighCongestionResponse.network_state,
+                avg_utilization: 0.85
+              }
+            })
           });
         }
         if (url.includes('congestion-history')) {
           return Promise.resolve({
             ok: true,
-            json: async () => mockCongestionHistoryResponse
+            json: () => Promise.resolve(mockCongestionHistoryResponse)
           });
         }
-        return Promise.resolve({ ok: true, json: async () => ({}) });
+        return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
       });
 
       render(<NetworkIntelligencePanel />);
 
       await waitFor(() => {
-        expect(screen.getByText(/waiting|Consider/i)).toBeInTheDocument();
+        // High block utilization triggers warning message
+        expect(screen.getByText(/expect higher gas prices|heavily utilized/i)).toBeInTheDocument();
       });
     });
   });
 
   describe('Icons', () => {
     it('renders network-related icons', async () => {
-      (global.fetch as any).mockImplementation((url: string) => {
-        if (url.includes('network-state')) {
-          return Promise.resolve({
-            ok: true,
-            json: async () => mockNetworkStateResponse
-          });
-        }
-        if (url.includes('congestion-history')) {
-          return Promise.resolve({
-            ok: true,
-            json: async () => mockCongestionHistoryResponse
-          });
-        }
-        return Promise.resolve({ ok: true, json: async () => ({}) });
-      });
+      setupSuccessfulMocks();
 
       render(<NetworkIntelligencePanel />);
 

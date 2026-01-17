@@ -21,7 +21,7 @@ vi.mock('../../utils/baseRpc', () => ({
   fetchLiveBaseGas: vi.fn(),
 }));
 
-vi.mock('../useWebSocket', () => ({
+vi.mock('../../hooks/useWebSocket', () => ({
   useWebSocket: vi.fn(() => ({
     isConnected: false,
     gasPrice: null,

@@ -14,12 +14,10 @@ global.fetch = vi.fn();
 describe('MempoolStatusCard', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.useFakeTimers();
   });
 
   afterEach(() => {
     vi.resetAllMocks();
-    vi.useRealTimers();
   });
 
   const mockMempoolResponse = {
@@ -162,7 +160,8 @@ describe('MempoolStatusCard', () => {
 
       await waitFor(() => {
         expect(screen.getByText('Avg Gas Price')).toBeInTheDocument();
-        expect(screen.getByText('0.0012')).toBeInTheDocument();
+        // avg_gas_price: 0.00115 with toFixed(4) = "0.0011"
+        expect(screen.getByText('0.0011')).toBeInTheDocument();
       });
     });
 
@@ -374,6 +373,8 @@ describe('MempoolStatusCard', () => {
 
   describe('Auto-refresh', () => {
     it('refreshes data every 30 seconds', async () => {
+      vi.useFakeTimers();
+
       (global.fetch as any).mockResolvedValue({
         ok: true,
         json: async () => mockMempoolResponse
@@ -381,21 +382,20 @@ describe('MempoolStatusCard', () => {
 
       render(<MempoolStatusCard />);
 
-      await waitFor(() => {
-        expect(global.fetch).toHaveBeenCalledTimes(1);
-      });
-
-      vi.clearAllMocks();
-      (global.fetch as any).mockResolvedValue({
-        ok: true,
-        json: async () => mockMempoolResponse
-      });
-
-      vi.advanceTimersByTime(30000);
-
-      await waitFor(() => {
+      // Wait for initial load using vi.waitFor which works with fake timers
+      await vi.waitFor(() => {
         expect(global.fetch).toHaveBeenCalled();
       });
+
+      const initialCallCount = (global.fetch as any).mock.calls.length;
+
+      // Advance timer by 30 seconds
+      await vi.advanceTimersByTimeAsync(30000);
+
+      // Should have been called again
+      expect((global.fetch as any).mock.calls.length).toBeGreaterThan(initialCallCount);
+
+      vi.useRealTimers();
     });
   });
 });
