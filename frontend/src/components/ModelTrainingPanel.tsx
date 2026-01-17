@@ -17,7 +17,11 @@ import {
   Play,
   Loader2,
   Clock,
-  SkipForward
+  SkipForward,
+  History,
+  ChevronDown,
+  ChevronUp,
+  FileText
 } from 'lucide-react';
 import { getApiUrl } from '../config/api';
 
@@ -72,6 +76,17 @@ interface TrainingResponse {
   note?: string;
 }
 
+interface TrainingHistoryItem {
+  timestamp: string;
+  backup_path: string;
+  files: string[];
+}
+
+interface TrainingHistoryResponse {
+  total_backups: number;
+  backups: TrainingHistoryItem[];
+}
+
 const ModelTrainingPanel: React.FC = () => {
   const [status, setStatus] = useState<ModelsStatusResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -79,6 +94,9 @@ const ModelTrainingPanel: React.FC = () => {
   const [training, setTraining] = useState(false);
   const [trainingProgress, setTrainingProgress] = useState<TrainingProgress | null>(null);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
+  const [history, setHistory] = useState<TrainingHistoryItem[]>([]);
+  const [historyExpanded, setHistoryExpanded] = useState(false);
+  const [historyLoading, setHistoryLoading] = useState(false);
   const progressPollRef = useRef<NodeJS.Timeout | null>(null);
 
   const fetchStatus = useCallback(async () => {
@@ -130,6 +148,22 @@ const ModelTrainingPanel: React.FC = () => {
     return null;
   }, [training, fetchStatus]);
 
+  // Fetch training history
+  const fetchHistory = useCallback(async () => {
+    setHistoryLoading(true);
+    try {
+      const response = await fetch(getApiUrl('/retraining/history'));
+      if (response.ok) {
+        const data: TrainingHistoryResponse = await response.json();
+        setHistory(data.backups || []);
+      }
+    } catch (err) {
+      console.error('Failed to fetch training history:', err);
+    } finally {
+      setHistoryLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     fetchStatus();
     fetchProgress(); // Check initial progress on mount
@@ -137,6 +171,13 @@ const ModelTrainingPanel: React.FC = () => {
     const interval = setInterval(fetchStatus, 30000); // Refresh every 30s
     return () => clearInterval(interval);
   }, [fetchStatus, fetchProgress]);
+
+  // Fetch history when expanded
+  useEffect(() => {
+    if (historyExpanded && history.length === 0) {
+      fetchHistory();
+    }
+  }, [historyExpanded, history.length, fetchHistory]);
 
   // Poll progress while training
   useEffect(() => {
@@ -233,6 +274,35 @@ const ModelTrainingPanel: React.FC = () => {
         {label}
       </span>
     );
+  };
+
+  const formatHistoryDate = (isoString: string) => {
+    try {
+      const date = new Date(isoString);
+      const now = new Date();
+      const diffMs = now.getTime() - date.getTime();
+      const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+      if (diffDays === 0) {
+        return `Today at ${date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`;
+      } else if (diffDays === 1) {
+        return `Yesterday at ${date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`;
+      } else if (diffDays < 7) {
+        return `${diffDays} days ago`;
+      } else {
+        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      }
+    } catch {
+      return isoString;
+    }
+  };
+
+  const getModelTypesFromFiles = (files: string[]): string[] => {
+    const types: string[] = [];
+    if (files.some(f => f.includes('model_'))) types.push('Prediction');
+    if (files.some(f => f.includes('spike_'))) types.push('Spike');
+    if (files.some(f => f.includes('dqn'))) types.push('DQN');
+    return types;
   };
 
   if (loading && !status) {
@@ -516,6 +586,92 @@ const ModelTrainingPanel: React.FC = () => {
               Need at least 50 data records to train models
             </p>
           )}
+
+          {/* Training History Section */}
+          <div className="mt-4 border-t border-gray-800/50 pt-4">
+            <button
+              onClick={() => setHistoryExpanded(!historyExpanded)}
+              className="w-full flex items-center justify-between text-sm text-gray-400 hover:text-white transition-colors"
+            >
+              <div className="flex items-center gap-2">
+                <History className="w-4 h-4" />
+                <span>Training History</span>
+                {history.length > 0 && (
+                  <span className="text-xs bg-gray-700 px-1.5 py-0.5 rounded">
+                    {history.length}
+                  </span>
+                )}
+              </div>
+              {historyExpanded ? (
+                <ChevronUp className="w-4 h-4" />
+              ) : (
+                <ChevronDown className="w-4 h-4" />
+              )}
+            </button>
+
+            {historyExpanded && (
+              <div className="mt-3 space-y-2 max-h-48 overflow-y-auto">
+                {historyLoading ? (
+                  <div className="flex items-center justify-center py-4">
+                    <RefreshCw className="w-4 h-4 text-gray-500 animate-spin" />
+                  </div>
+                ) : history.length === 0 ? (
+                  <p className="text-xs text-gray-500 text-center py-4">
+                    No training history yet
+                  </p>
+                ) : (
+                  history.slice(0, 10).map((item, index) => {
+                    const modelTypes = getModelTypesFromFiles(item.files);
+                    return (
+                      <div
+                        key={index}
+                        className="bg-gray-800/40 rounded-lg p-3 border border-gray-700/50"
+                      >
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-xs text-gray-300">
+                            {formatHistoryDate(item.timestamp)}
+                          </span>
+                          <span className="text-xs text-gray-500">
+                            {item.files.length} files
+                          </span>
+                        </div>
+                        {modelTypes.length > 0 && (
+                          <div className="flex gap-1 mt-1">
+                            {modelTypes.map(type => (
+                              <span
+                                key={type}
+                                className="text-[10px] px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-400"
+                              >
+                                {type}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                        {item.files.length > 0 && (
+                          <div className="mt-2 flex flex-wrap gap-1">
+                            {item.files.slice(0, 3).map((file, i) => (
+                              <span
+                                key={i}
+                                className="text-[10px] text-gray-500 flex items-center gap-0.5"
+                              >
+                                <FileText className="w-3 h-3" />
+                                {file.replace('.pkl', '')}
+                              </span>
+                            ))}
+                            {item.files.length > 3 && (
+                              <span className="text-[10px] text-gray-500">
+                                +{item.files.length - 3} more
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            )}
+          </div>
         </>
       )}
 

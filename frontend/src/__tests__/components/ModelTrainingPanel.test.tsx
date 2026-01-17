@@ -798,4 +798,169 @@ describe('ModelTrainingPanel', () => {
       expect(screen.getByText('Step 2/3')).toBeInTheDocument();
     });
   });
+
+  it('displays Training History toggle button', async () => {
+    (global.fetch as any).mockImplementation((url: string) => {
+      if (url.includes('models-status')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => mockModelsStatusResponse
+        });
+      }
+      if (url.includes('training-progress')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => mockTrainingProgress
+        });
+      }
+      return Promise.resolve({ ok: false });
+    });
+
+    render(<ModelTrainingPanel />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Training History')).toBeInTheDocument();
+    });
+  });
+
+  it('expands history section when clicked', async () => {
+    const mockHistoryResponse = {
+      total_backups: 2,
+      backups: [
+        {
+          timestamp: new Date().toISOString(),
+          backup_path: '/backups/backup_20250117_120000',
+          files: ['model_1h.pkl', 'model_4h.pkl', 'spike_detector_1h.pkl']
+        },
+        {
+          timestamp: new Date(Date.now() - 86400000).toISOString(),
+          backup_path: '/backups/backup_20250116_100000',
+          files: ['dqn_final.pkl']
+        }
+      ]
+    };
+
+    (global.fetch as any).mockImplementation((url: string) => {
+      if (url.includes('models-status')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => mockModelsStatusResponse
+        });
+      }
+      if (url.includes('training-progress')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => mockTrainingProgress
+        });
+      }
+      if (url.includes('history')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => mockHistoryResponse
+        });
+      }
+      return Promise.resolve({ ok: false });
+    });
+
+    render(<ModelTrainingPanel />);
+
+    // Wait for the panel to load
+    await waitFor(() => {
+      expect(screen.getByText('Training History')).toBeInTheDocument();
+    });
+
+    // Click the history toggle
+    fireEvent.click(screen.getByText('Training History'));
+
+    // Should show history items
+    await waitFor(() => {
+      expect(screen.getByText('3 files')).toBeInTheDocument();
+    });
+  });
+
+  it('shows "No training history yet" when history is empty', async () => {
+    (global.fetch as any).mockImplementation((url: string) => {
+      if (url.includes('models-status')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => mockModelsStatusResponse
+        });
+      }
+      if (url.includes('training-progress')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => mockTrainingProgress
+        });
+      }
+      if (url.includes('history')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ total_backups: 0, backups: [] })
+        });
+      }
+      return Promise.resolve({ ok: false });
+    });
+
+    render(<ModelTrainingPanel />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Training History')).toBeInTheDocument();
+    });
+
+    // Click the history toggle
+    fireEvent.click(screen.getByText('Training History'));
+
+    await waitFor(() => {
+      expect(screen.getByText('No training history yet')).toBeInTheDocument();
+    });
+  });
+
+  it('displays model type badges in history items', async () => {
+    const mockHistoryResponse = {
+      total_backups: 1,
+      backups: [
+        {
+          timestamp: new Date().toISOString(),
+          backup_path: '/backups/backup_20250117_120000',
+          files: ['model_1h.pkl', 'spike_detector_1h.pkl', 'dqn_final.pkl']
+        }
+      ]
+    };
+
+    (global.fetch as any).mockImplementation((url: string) => {
+      if (url.includes('models-status')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => mockModelsStatusResponse
+        });
+      }
+      if (url.includes('training-progress')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => mockTrainingProgress
+        });
+      }
+      if (url.includes('history')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => mockHistoryResponse
+        });
+      }
+      return Promise.resolve({ ok: false });
+    });
+
+    render(<ModelTrainingPanel />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Training History')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText('Training History'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Prediction')).toBeInTheDocument();
+      expect(screen.getByText('Spike')).toBeInTheDocument();
+      expect(screen.getByText('DQN')).toBeInTheDocument();
+    });
+  });
 });
