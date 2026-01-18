@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
-import { TableRowData } from '../types';
+import { TableRowData } from '../../types';
 import { fetchTransactions } from '../api/gasApi';
 import LoadingSpinner from './LoadingSpinner';
 

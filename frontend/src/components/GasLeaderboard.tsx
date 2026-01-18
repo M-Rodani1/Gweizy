@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { CurrentGasData } from '../types';
+import { CurrentGasData } from '../../types';
 import { fetchCurrentGas } from '../api/gasApi';
 import LoadingSpinner from './LoadingSpinner';
 

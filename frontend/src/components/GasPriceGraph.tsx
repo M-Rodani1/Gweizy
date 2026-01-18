@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Area, ComposedChart } from 'recharts';
-import { GraphDataPoint } from '../types';
+import { GraphDataPoint } from '../../types';
 import { fetchPredictions, fetchCurrentGas } from '../api/gasApi';
 import LoadingSpinner from './LoadingSpinner';
 
