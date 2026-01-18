@@ -1,5 +1,5 @@
 import React, { useEffect, useState, lazy } from 'react';
-import { Bell, Calendar } from 'lucide-react';
+import { Bell, Calendar, BarChart3, Settings2, LayoutDashboard, ChevronRight } from 'lucide-react';
 import StickyHeader from '../src/components/StickyHeader';
 import TransactionPilot from '../src/components/TransactionPilot';
 import MultiChainComparison from '../src/components/MultiChainComparison';
@@ -29,8 +29,11 @@ const GasAlertSettings = lazy(() => import('../src/components/GasAlertSettings')
 const GasPriceGraph = lazy(() => import('../src/components/GasPriceGraph'));
 const GasPatternHeatmap = lazy(() => import('../src/components/GasPatternHeatmap'));
 
+type DashboardTab = 'overview' | 'analytics' | 'system';
+
 const Dashboard: React.FC = () => {
   const [apiStatus, setApiStatus] = useState<'checking' | 'online' | 'offline'>('checking');
+  const [activeTab, setActiveTab] = useState<DashboardTab>('overview');
   const { selectedChain, multiChainGas } = useChain();
   const { ethPrice } = useEthPrice(60000);
   const walletAddress = useWalletAddress();
@@ -57,119 +60,83 @@ const Dashboard: React.FC = () => {
         {/* Drift Alert Banner */}
         <DriftAlertBanner />
 
-        {/* Hero: AI Transaction Pilot - Sticky on scroll */}
-        <div className="mb-8 relative">
-          <div className="lg:sticky lg:top-[88px] lg:z-[90] lg:bg-[#05070f] lg:backdrop-blur-xl lg:py-4 lg:shadow-xl lg:border-b lg:border-gray-800/50 lg:-mx-4 lg:mx-0 lg:px-4">
-            <SectionErrorBoundary sectionName="Transaction Pilot">
-              <TransactionPilot ethPrice={ethPrice} />
-            </SectionErrorBoundary>
-          </div>
+        {/* Hero: AI Transaction Pilot */}
+        <div className="mb-6">
+          <SectionErrorBoundary sectionName="Transaction Pilot">
+            <TransactionPilot ethPrice={ethPrice} />
+          </SectionErrorBoundary>
         </div>
 
-        {/* Main Grid - with proper spacing to prevent overlap */}
-        <div className="grid grid-cols-12 gap-6 relative scroll-smooth-section">
-          {/* Left Column: Chain Comparison + Forecast - Centered */}
-          <div className="col-span-12 lg:col-start-3 lg:col-span-8 space-y-6 w-full relative">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Profile & Defaults */}
-              <div className="space-y-3 min-w-0">
-                <div className="text-[11px] tracking-[0.2em] text-gray-500 uppercase px-1">Profile</div>
-                <div className="h-full min-h-[320px] w-full overflow-hidden">
-                  <SectionErrorBoundary sectionName="Profile Settings">
-                    <PersonalizationPanel />
-                  </SectionErrorBoundary>
-                </div>
-              </div>
+        {/* Tab Navigation */}
+        <div className="flex items-center gap-2 mb-6 border-b border-gray-800 pb-4">
+          <button
+            onClick={() => setActiveTab('overview')}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium transition-all ${
+              activeTab === 'overview'
+                ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30'
+                : 'text-gray-400 hover:text-white hover:bg-gray-800/50'
+            }`}
+          >
+            <LayoutDashboard className="w-4 h-4" />
+            Overview
+          </button>
+          <button
+            onClick={() => setActiveTab('analytics')}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium transition-all ${
+              activeTab === 'analytics'
+                ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30'
+                : 'text-gray-400 hover:text-white hover:bg-gray-800/50'
+            }`}
+          >
+            <BarChart3 className="w-4 h-4" />
+            Analytics
+          </button>
+          <button
+            onClick={() => setActiveTab('system')}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium transition-all ${
+              activeTab === 'system'
+                ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                : 'text-gray-400 hover:text-white hover:bg-gray-800/50'
+            }`}
+          >
+            <Settings2 className="w-4 h-4" />
+            System
+          </button>
+        </div>
 
-              {/* Personalized Recommendations */}
-              <div className="space-y-3 min-w-0">
-                <div className="text-[11px] tracking-[0.2em] text-gray-500 uppercase px-1">Recommendations</div>
-                <div className="h-full min-h-[320px] w-full">
-                  <SectionErrorBoundary sectionName="Recommendations">
-                    {walletAddress ? (
-                      <PersonalizedRecommendations walletAddress={walletAddress} />
-                    ) : (
-                      <div className="bg-gradient-to-br from-blue-900/20 to-purple-900/20 border border-blue-500/30 rounded-2xl p-6 h-full flex flex-col items-center justify-center shadow-xl">
-                        <p className="text-gray-400 text-center">Connect your wallet to see personalized recommendations</p>
-                      </div>
-                    )}
-                  </SectionErrorBoundary>
-                </div>
-              </div>
-
-              {/* Multi-Chain Gas */}
-              <div className="space-y-3 min-w-0">
-                <div className="text-[11px] tracking-[0.2em] text-gray-500 uppercase px-1">Network Insights</div>
-                <div className="h-full min-h-[320px] w-full overflow-hidden">
-                  <SectionErrorBoundary sectionName="Network Insights">
-                    <MultiChainComparison txType="swap" ethPrice={ethPrice} />
-                  </SectionErrorBoundary>
-                </div>
-              </div>
-            </div>
-
-            {/* Additional sections below */}
-            <div className="space-y-4">
-              <div className="text-[11px] tracking-[0.2em] text-gray-500 uppercase">Forecast</div>
-              <div className="min-h-[280px]">
+        {/* Tab Content */}
+        <div className="space-y-6">
+          {/* OVERVIEW TAB */}
+          {activeTab === 'overview' && (
+            <div className="space-y-6 animate-fadeIn">
+              {/* Top row: Forecast + Network */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <SectionErrorBoundary sectionName="Price Forecast">
                   <CompactForecast />
                 </SectionErrorBoundary>
-              </div>
-            </div>
-            <div className="space-y-4">
-              <div className="text-[11px] tracking-[0.2em] text-gray-500 uppercase">System</div>
-              <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-6">
-                <div className="min-h-[300px]">
-                  <SectionErrorBoundary sectionName="API Status">
-                    <ApiStatusPanel />
-                  </SectionErrorBoundary>
-                </div>
-                <div className="min-h-[300px]">
-                  <SectionErrorBoundary sectionName="Model Accuracy">
-                    <AccuracyMetricsCard />
-                  </SectionErrorBoundary>
-                </div>
-                <div className="min-h-[300px]">
-                  <SectionErrorBoundary sectionName="Mempool Status">
-                    <MempoolStatusCard />
-                  </SectionErrorBoundary>
-                </div>
-                <div className="min-h-[300px]">
-                  <SectionErrorBoundary sectionName="Model Training">
-                    <ModelTrainingPanel />
-                  </SectionErrorBoundary>
-                </div>
-              </div>
-              <div className="min-h-[400px]">
-                <SectionErrorBoundary sectionName="Accuracy Dashboard">
-                  <AccuracyMetricsDashboard />
+                <SectionErrorBoundary sectionName="Network Insights">
+                  <MultiChainComparison txType="swap" ethPrice={ethPrice} />
                 </SectionErrorBoundary>
               </div>
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div className="min-h-[350px]">
-                  <SectionErrorBoundary sectionName="Feature Importance">
-                    <FeatureImportanceChart />
-                  </SectionErrorBoundary>
-                </div>
-                <div className="min-h-[350px]">
-                  <SectionErrorBoundary sectionName="Pattern Matching">
-                    <PatternMatchingCard />
-                  </SectionErrorBoundary>
-                </div>
-              </div>
-              <div className="min-h-[350px]">
-                <SectionErrorBoundary sectionName="Advanced Analytics">
-                  <AdvancedAnalyticsPanel />
-                </SectionErrorBoundary>
-              </div>
-            </div>
 
-            {/* Transaction Management */}
-            <div className="space-y-4">
-              <div className="text-[11px] tracking-[0.2em] text-gray-500 uppercase">Transactions</div>
+              {/* Second row: Personalization + Recommendations */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Scheduled Transactions - Collapsible */}
+                <SectionErrorBoundary sectionName="Profile Settings">
+                  <PersonalizationPanel />
+                </SectionErrorBoundary>
+                <SectionErrorBoundary sectionName="Recommendations">
+                  {walletAddress ? (
+                    <PersonalizedRecommendations walletAddress={walletAddress} />
+                  ) : (
+                    <div className="bg-gradient-to-br from-blue-900/20 to-purple-900/20 border border-blue-500/30 rounded-2xl p-6 h-full min-h-[200px] flex flex-col items-center justify-center shadow-xl">
+                      <p className="text-gray-400 text-center">Connect your wallet to see personalized recommendations</p>
+                    </div>
+                  )}
+                </SectionErrorBoundary>
+              </div>
+
+              {/* Transaction Management - Compact */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <CollapsibleSection
                   title="Scheduled Transactions"
                   icon={<Calendar className="w-4 h-4 text-cyan-300" />}
@@ -180,7 +147,6 @@ const Dashboard: React.FC = () => {
                   </LazySection>
                 </CollapsibleSection>
 
-                {/* Gas Alerts - Collapsible */}
                 <CollapsibleSection
                   title="Gas Price Alerts"
                   icon={<Bell className="w-4 h-4 text-cyan-300" />}
@@ -191,25 +157,87 @@ const Dashboard: React.FC = () => {
                   </LazySection>
                 </CollapsibleSection>
               </div>
+
+              {/* Quick link to other tabs */}
+              <div className="flex gap-4 pt-4">
+                <button
+                  onClick={() => setActiveTab('analytics')}
+                  className="flex items-center gap-2 text-sm text-gray-400 hover:text-purple-400 transition-colors"
+                >
+                  View detailed analytics <ChevronRight className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => setActiveTab('system')}
+                  className="flex items-center gap-2 text-sm text-gray-400 hover:text-amber-400 transition-colors"
+                >
+                  View system status <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
             </div>
-          </div>
+          )}
 
-          {/* Full Width: Charts */}
-          <div className="col-span-12">
-            <SectionErrorBoundary sectionName="Gas Price Chart">
-              <LazySection rootMargin="200px">
-                <GasPriceGraph />
-              </LazySection>
-            </SectionErrorBoundary>
-          </div>
+          {/* ANALYTICS TAB */}
+          {activeTab === 'analytics' && (
+            <div className="space-y-6 animate-fadeIn">
+              {/* Charts */}
+              <SectionErrorBoundary sectionName="Gas Price Chart">
+                <LazySection rootMargin="200px">
+                  <GasPriceGraph />
+                </LazySection>
+              </SectionErrorBoundary>
 
-          <div className="col-span-12">
-            <SectionErrorBoundary sectionName="Gas Pattern Heatmap">
-              <LazySection rootMargin="300px">
-                <GasPatternHeatmap />
-              </LazySection>
-            </SectionErrorBoundary>
-          </div>
+              <SectionErrorBoundary sectionName="Gas Pattern Heatmap">
+                <LazySection rootMargin="200px">
+                  <GasPatternHeatmap />
+                </LazySection>
+              </SectionErrorBoundary>
+
+              {/* Pattern Matching + Feature Importance */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <SectionErrorBoundary sectionName="Pattern Matching">
+                  <PatternMatchingCard />
+                </SectionErrorBoundary>
+                <SectionErrorBoundary sectionName="Feature Importance">
+                  <FeatureImportanceChart />
+                </SectionErrorBoundary>
+              </div>
+
+              {/* Advanced Analytics */}
+              <SectionErrorBoundary sectionName="Advanced Analytics">
+                <AdvancedAnalyticsPanel />
+              </SectionErrorBoundary>
+            </div>
+          )}
+
+          {/* SYSTEM TAB */}
+          {activeTab === 'system' && (
+            <div className="space-y-6 animate-fadeIn">
+              {/* Status Cards - 2x2 grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <SectionErrorBoundary sectionName="API Status">
+                  <ApiStatusPanel />
+                </SectionErrorBoundary>
+                <SectionErrorBoundary sectionName="Mempool Status">
+                  <MempoolStatusCard />
+                </SectionErrorBoundary>
+              </div>
+
+              {/* Model Status */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <SectionErrorBoundary sectionName="Model Accuracy">
+                  <AccuracyMetricsCard />
+                </SectionErrorBoundary>
+                <SectionErrorBoundary sectionName="Model Training">
+                  <ModelTrainingPanel />
+                </SectionErrorBoundary>
+              </div>
+
+              {/* Accuracy Dashboard - Full width */}
+              <SectionErrorBoundary sectionName="Accuracy Dashboard">
+                <AccuracyMetricsDashboard />
+              </SectionErrorBoundary>
+            </div>
+          )}
         </div>
 
         {/* Footer */}
