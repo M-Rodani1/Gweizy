@@ -8,6 +8,7 @@ import { LazySection } from '../src/components/LazySection';
 import CollapsibleSection from '../src/components/ui/CollapsibleSection';
 import { SectionErrorBoundary } from '../src/components/SectionErrorBoundary';
 import ApiStatusPanel from '../src/components/ApiStatusPanel';
+import OnboardingTour from '../src/components/OnboardingTour';
 import AccuracyMetricsCard from '../src/components/AccuracyMetricsCard';
 import AccuracyMetricsDashboard from '../src/components/AccuracyMetricsDashboard';
 import PatternMatchingCard from '../src/components/PatternMatchingCard';
@@ -61,14 +62,14 @@ const Dashboard: React.FC = () => {
         <DriftAlertBanner />
 
         {/* Hero: AI Transaction Pilot */}
-        <div className="mb-6">
+        <div className="mb-6" data-tour="pilot">
           <SectionErrorBoundary sectionName="Transaction Pilot">
             <TransactionPilot ethPrice={ethPrice} />
           </SectionErrorBoundary>
         </div>
 
         {/* Tab Navigation */}
-        <div className="flex items-center gap-2 mb-6 border-b border-gray-800 pb-4">
+        <div className="flex items-center gap-2 mb-6 border-b border-gray-800 pb-4" data-tour="tabs">
           <button
             onClick={() => setActiveTab('overview')}
             className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium transition-all ${
@@ -111,9 +112,11 @@ const Dashboard: React.FC = () => {
             <div className="space-y-6 animate-fadeIn">
               {/* Top row: Forecast + Network */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <SectionErrorBoundary sectionName="Price Forecast">
-                  <CompactForecast />
-                </SectionErrorBoundary>
+                <div data-tour="forecast">
+                  <SectionErrorBoundary sectionName="Price Forecast">
+                    <CompactForecast />
+                  </SectionErrorBoundary>
+                </div>
                 <SectionErrorBoundary sectionName="Network Insights">
                   <MultiChainComparison txType="swap" ethPrice={ethPrice} />
                 </SectionErrorBoundary>
@@ -121,9 +124,11 @@ const Dashboard: React.FC = () => {
 
               {/* Second row: Personalization + Recommendations */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <SectionErrorBoundary sectionName="Profile Settings">
-                  <PersonalizationPanel />
-                </SectionErrorBoundary>
+                <div data-tour="profile">
+                  <SectionErrorBoundary sectionName="Profile Settings">
+                    <PersonalizationPanel />
+                  </SectionErrorBoundary>
+                </div>
                 <SectionErrorBoundary sectionName="Recommendations">
                   {walletAddress ? (
                     <PersonalizedRecommendations walletAddress={walletAddress} />
@@ -258,6 +263,9 @@ const Dashboard: React.FC = () => {
           </div>
         </footer>
       </div>
+
+      {/* Onboarding Tour */}
+      <OnboardingTour />
     </div>
   );
 };
