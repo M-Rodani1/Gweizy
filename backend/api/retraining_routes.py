@@ -583,12 +583,16 @@ def get_models_status():
                 }
                 status['missing_models'].append(f'spike_detector_{horizon}')
 
-        # Check DQN agent
+        # Check DQN agent (supports both .pkl and .pt formats)
         dqn_paths = [
             os.path.join(models_dir, 'rl_agents', 'dqn_final.pkl'),
+            os.path.join(models_dir, 'rl_agents', 'dqn_final.pt'),
             os.path.join(models_dir, 'rl_agents', 'chain_8453', 'dqn_final.pkl'),
+            os.path.join(models_dir, 'rl_agents', 'chain_8453', 'dqn_final.pt'),
             'models/rl_agents/dqn_final.pkl',
-            'models/rl_agents/chain_8453/dqn_final.pkl'
+            'models/rl_agents/dqn_final.pt',
+            'models/rl_agents/chain_8453/dqn_final.pkl',
+            'models/rl_agents/chain_8453/dqn_final.pt'
         ]
 
         for dqn_path in dqn_paths:
