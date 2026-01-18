@@ -3,6 +3,7 @@ import { ArrowRight, Sparkles, TrendingDown, TrendingUp } from 'lucide-react';
 import { useChain } from '../contexts/ChainContext';
 import { fetchPredictions } from '../api/gasApi';
 import { SkeletonForecast } from './ui/Skeleton';
+import AnimatedNumber from './ui/AnimatedNumber';
 
 interface Prediction {
   horizon: '1h' | '4h' | '24h';
@@ -65,11 +66,11 @@ const CompactForecast: React.FC = () => {
   const getDirectionIcon = (direction: string) => {
     switch (direction) {
       case 'up':
-        return <TrendingUp className="w-4 h-4 text-red-400" />;
+        return <TrendingUp className="w-4 h-4 text-red-400 icon-bounce" />;
       case 'down':
-        return <TrendingDown className="w-4 h-4 text-green-400" />;
+        return <TrendingDown className="w-4 h-4 text-green-400 icon-bounce" />;
       default:
-        return <ArrowRight className="w-4 h-4 text-yellow-400" />;
+        return <ArrowRight className="w-4 h-4 text-yellow-400 icon-bounce" />;
     }
   };
 
@@ -109,7 +110,7 @@ const CompactForecast: React.FC = () => {
         <div className="flex items-center justify-between">
           <span className="text-sm text-gray-400">Current</span>
           <span className="font-mono font-bold text-cyan-400 text-lg">
-            {currentGas.toFixed(4)} gwei
+            <AnimatedNumber value={currentGas} decimals={4} suffix=" gwei" />
           </span>
         </div>
       </div>
@@ -128,10 +129,11 @@ const CompactForecast: React.FC = () => {
               <div className="flex items-center gap-4">
                 <div className="text-right">
                   <div className="font-mono font-bold text-white">
-                    {pred.predicted.toFixed(4)}
+                    <AnimatedNumber value={pred.predicted} decimals={4} />
                   </div>
                   <div className={`text-xs ${getDirectionColor(pred.direction)}`}>
-                    {pred.changePercent > 0 ? '+' : ''}{pred.changePercent.toFixed(1)}%
+                    {pred.changePercent > 0 ? '+' : ''}
+                    <AnimatedNumber value={pred.changePercent} decimals={1} suffix="%" />
                   </div>
                 </div>
 

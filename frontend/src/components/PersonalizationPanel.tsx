@@ -58,9 +58,9 @@ const PersonalizationPanel: React.FC = () => {
             <button
               key={option.id}
               onClick={() => setStrategy(option.id)}
-              className={`flex-1 rounded-lg border px-2 py-2 text-center transition ${
+              className={`flex-1 rounded-lg border px-2 py-2 text-center btn-press ${
                 preferences.strategy === option.id
-                  ? 'border-cyan-500/60 bg-cyan-500/10 text-cyan-200'
+                  ? 'border-cyan-500/60 bg-cyan-500/10 text-cyan-200 hover-glow'
                   : 'border-gray-700 bg-gray-900/40 text-gray-400 hover:border-gray-600'
               }`}
             >
@@ -85,7 +85,7 @@ const PersonalizationPanel: React.FC = () => {
               <button
                 key={type}
                 onClick={() => handleTxTypeChange(type as TransactionType)}
-                className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs transition ${
+                className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs btn-press ${
                   preferences.defaultTxType === type
                     ? 'border-cyan-500/60 bg-cyan-500/10 text-cyan-200'
                     : 'border-gray-700 bg-gray-900/40 text-gray-400 hover:border-gray-600'

@@ -72,9 +72,9 @@ const Dashboard: React.FC = () => {
         <div className="flex items-center gap-2 mb-6 border-b border-gray-800 pb-4" data-tour="tabs">
           <button
             onClick={() => setActiveTab('overview')}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium transition-all ${
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium btn-press ripple ${
               activeTab === 'overview'
-                ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30'
+                ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 hover-glow'
                 : 'text-gray-400 hover:text-white hover:bg-gray-800/50'
             }`}
           >
@@ -83,9 +83,9 @@ const Dashboard: React.FC = () => {
           </button>
           <button
             onClick={() => setActiveTab('analytics')}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium transition-all ${
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium btn-press ripple ${
               activeTab === 'analytics'
-                ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30'
+                ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30 hover-glow'
                 : 'text-gray-400 hover:text-white hover:bg-gray-800/50'
             }`}
           >
@@ -94,9 +94,9 @@ const Dashboard: React.FC = () => {
           </button>
           <button
             onClick={() => setActiveTab('system')}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium transition-all ${
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium btn-press ripple ${
               activeTab === 'system'
-                ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30 hover-glow'
                 : 'text-gray-400 hover:text-white hover:bg-gray-800/50'
             }`}
           >

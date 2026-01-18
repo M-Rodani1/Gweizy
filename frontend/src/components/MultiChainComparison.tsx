@@ -6,6 +6,7 @@ import ChainBadge from './ChainBadge';
 import Sparkline from './ui/Sparkline';
 import { formatGwei, formatUsd } from '../utils/formatNumber';
 import { SkeletonMultiChain } from './ui/Skeleton';
+import AnimatedNumber from './ui/AnimatedNumber';
 
 interface MultiChainComparisonProps {
   txType?: TransactionType;
@@ -151,8 +152,12 @@ const MultiChainComparison: React.FC<MultiChainComparisonProps> = ({
           <div className="flex items-center justify-between text-sm">
             <span className="text-gray-400">Max savings vs expensive:</span>
             <span className="font-mono font-bold text-green-400">
-              ${(mostExpensiveCost - cheapestCost).toFixed(4)}
-              ({((mostExpensiveCost - cheapestCost) / mostExpensiveCost * 100).toFixed(0)}%)
+              $<AnimatedNumber value={mostExpensiveCost - cheapestCost} decimals={4} />
+              {' '}(<AnimatedNumber
+                value={mostExpensiveCost > 0 ? ((mostExpensiveCost - cheapestCost) / mostExpensiveCost * 100) : 0}
+                decimals={0}
+                suffix="%"
+              />)
             </span>
           </div>
         </div>

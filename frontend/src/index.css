@@ -344,6 +344,163 @@ html {
   box-shadow: 0 12px 24px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.1);
 }
 
+.card-interactive:active {
+  transform: translateY(0) scale(0.98);
+  transition-duration: 0.1s;
+}
+
+/* ===== MICRO-INTERACTIONS ===== */
+
+/* Button press effect */
+.btn-press {
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.btn-press:hover {
+  transform: translateY(-1px);
+}
+
+.btn-press:active {
+  transform: translateY(1px) scale(0.97);
+  transition-duration: 0.05s;
+}
+
+/* Subtle glow on hover */
+.hover-glow {
+  transition: all 0.3s ease;
+}
+
+.hover-glow:hover {
+  box-shadow: 0 0 20px rgba(6, 182, 212, 0.3);
+}
+
+/* Icon bounce on hover */
+.icon-bounce {
+  transition: transform 0.2s ease;
+}
+
+.icon-bounce:hover {
+  transform: scale(1.15);
+}
+
+.icon-bounce:active {
+  transform: scale(0.95);
+}
+
+/* Pulse effect for important elements */
+@keyframes subtle-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+.animate-subtle-pulse {
+  animation: subtle-pulse 2s ease-in-out infinite;
+}
+
+/* Number change flash effect */
+@keyframes number-flash {
+  0% {
+    color: inherit;
+  }
+  25% {
+    color: #22d3ee;
+    text-shadow: 0 0 8px rgba(34, 211, 238, 0.5);
+  }
+  100% {
+    color: inherit;
+  }
+}
+
+.number-flash {
+  animation: number-flash 0.5s ease-out;
+}
+
+/* Smooth number counter transition */
+.number-animate {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: inline-block;
+}
+
+/* Scale up animation for new values */
+@keyframes scale-in {
+  0% {
+    transform: scale(0.8);
+    opacity: 0.5;
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.animate-scale-in {
+  animation: scale-in 0.3s ease-out;
+}
+
+/* Ripple effect for buttons */
+.ripple {
+  position: relative;
+  overflow: hidden;
+}
+
+.ripple::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  transition: width 0.4s ease, height 0.4s ease, opacity 0.4s ease;
+  opacity: 0;
+}
+
+.ripple:active::after {
+  width: 200%;
+  height: 200%;
+  opacity: 1;
+  transition: width 0s, height 0s, opacity 0s;
+}
+
+/* Badge bounce animation */
+@keyframes badge-bounce {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+}
+
+.badge-bounce {
+  animation: badge-bounce 0.3s ease;
+}
+
+/* Slide in from right */
+@keyframes slide-in-right {
+  from {
+    transform: translateX(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.animate-slide-in-right {
+  animation: slide-in-right 0.3s ease-out;
+}
+
 /* 20. Theme toggle styles */
 .theme-toggle {
   position: relative;
