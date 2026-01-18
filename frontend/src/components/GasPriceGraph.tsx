@@ -33,15 +33,13 @@ const GasPriceGraph: React.FC = () => {
       if (timeScale !== 'historical' && currentGasData?.current_gas) {
         const currentPoint: GraphDataPoint = {
           time: 'now',
-          gwei: currentGasData.current_gas,
-          predictedGwei: null
+          gwei: currentGasData.current_gas
         };
 
         // Get the first predicted point for this timeframe
         if (Array.isArray(selectedData) && selectedData.length > 0 && selectedData[0]?.predictedGwei !== undefined) {
           const firstPredicted: GraphDataPoint = {
             time: selectedData[0].time,
-            gwei: null,
             predictedGwei: selectedData[0].predictedGwei
           };
           // Combine current point + predicted point to show connection
