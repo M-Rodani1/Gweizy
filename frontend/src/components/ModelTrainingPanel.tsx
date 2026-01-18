@@ -23,6 +23,7 @@ import {
   ChevronUp,
   FileText
 } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { getApiUrl } from '../config/api';
 
 interface ModelStatus {
@@ -129,10 +130,25 @@ const ModelTrainingPanel: React.FC = () => {
         const data: TrainingProgress = await response.json();
         setTrainingProgress(data);
 
-        // If training just completed, refresh model status
+        // If training just completed, refresh model status and show notification
         if (!data.is_training && training) {
           setTraining(false);
           fetchStatus();
+
+          // Show completion toast based on result
+          if (data.error) {
+            toast.error(`Training failed: ${data.error}`);
+          } else {
+            // Count completed and failed steps
+            const completedSteps = data.steps.filter(s => s.status === 'completed').length;
+            const failedSteps = data.steps.filter(s => s.status === 'failed').length;
+
+            if (failedSteps > 0) {
+              toast.error(`Training completed with ${failedSteps} failed step${failedSteps > 1 ? 's' : ''}`);
+            } else if (completedSteps > 0) {
+              toast.success(`Training completed successfully! ${completedSteps} model${completedSteps > 1 ? 's' : ''} trained.`);
+            }
+          }
         }
 
         // Update training state based on progress
@@ -215,13 +231,17 @@ const ModelTrainingPanel: React.FC = () => {
       if (data.status === 'started' || data.status === 'in_progress') {
         // Start polling for progress
         fetchProgress();
+        toast.success('Model training started! This may take a few minutes.');
       } else {
         setError(data.message || 'Failed to start training');
         setTraining(false);
+        toast.error(data.message || 'Failed to start training');
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to trigger training');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to trigger training';
+      setError(errorMessage);
       setTraining(false);
+      toast.error(errorMessage);
     }
   };
 
