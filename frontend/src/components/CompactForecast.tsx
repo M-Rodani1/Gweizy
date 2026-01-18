@@ -2,6 +2,7 @@ import React, { useEffect, useState, memo } from 'react';
 import { ArrowRight, Sparkles, TrendingDown, TrendingUp } from 'lucide-react';
 import { useChain } from '../contexts/ChainContext';
 import { fetchPredictions } from '../api/gasApi';
+import { SkeletonForecast } from './ui/Skeleton';
 
 interface Prediction {
   horizon: '1h' | '4h' | '24h';
@@ -80,6 +81,11 @@ const CompactForecast: React.FC = () => {
     }
   };
 
+  // Show skeleton while loading
+  if (loading) {
+    return <SkeletonForecast className="shadow-xl widget-glow" />;
+  }
+
   return (
     <div className="bg-gray-800/50 border border-gray-700 rounded-2xl overflow-hidden h-full flex flex-col shadow-xl widget-glow bg-pattern-dots">
       {/* Header */}
@@ -109,16 +115,7 @@ const CompactForecast: React.FC = () => {
       </div>
 
       {/* Predictions */}
-      {loading ? (
-        <div className="p-6 flex items-center justify-center flex-1">
-          <div className="space-y-4 w-full max-w-md">
-            <div className="h-4 bg-gray-700/50 rounded animate-pulse" />
-            <div className="h-4 bg-gray-700/50 rounded animate-pulse w-3/4" />
-            <div className="h-4 bg-gray-700/50 rounded animate-pulse w-1/2" />
-          </div>
-        </div>
-      ) : (
-        <div className="divide-y divide-gray-700/30 flex-1">
+      <div className="divide-y divide-gray-700/30 flex-1">
           {predictions.map((pred) => (
             <div key={pred.horizon} className="px-6 py-4 flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -156,8 +153,7 @@ const CompactForecast: React.FC = () => {
               </div>
             </div>
           ))}
-        </div>
-      )}
+      </div>
 
       {/* Best time indicator */}
       {predictions.length > 0 && (

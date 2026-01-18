@@ -111,25 +111,25 @@ const Dashboard: React.FC = () => {
           {activeTab === 'overview' && (
             <div className="space-y-6 animate-fadeIn">
               {/* Top row: Forecast + Network */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div data-tour="forecast">
-                  <SectionErrorBoundary sectionName="Price Forecast">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:min-h-[400px]">
+                <div data-tour="forecast" className="h-full">
+                  <SectionErrorBoundary sectionName="Price Forecast" className="h-full">
                     <CompactForecast />
                   </SectionErrorBoundary>
                 </div>
-                <SectionErrorBoundary sectionName="Network Insights">
+                <SectionErrorBoundary sectionName="Network Insights" className="h-full">
                   <MultiChainComparison txType="swap" ethPrice={ethPrice} />
                 </SectionErrorBoundary>
               </div>
 
               {/* Second row: Personalization + Recommendations */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div data-tour="profile">
-                  <SectionErrorBoundary sectionName="Profile Settings">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:min-h-[320px]">
+                <div data-tour="profile" className="h-full">
+                  <SectionErrorBoundary sectionName="Profile Settings" className="h-full">
                     <PersonalizationPanel />
                   </SectionErrorBoundary>
                 </div>
-                <SectionErrorBoundary sectionName="Recommendations">
+                <SectionErrorBoundary sectionName="Recommendations" className="h-full">
                   {walletAddress ? (
                     <PersonalizedRecommendations walletAddress={walletAddress} />
                   ) : (

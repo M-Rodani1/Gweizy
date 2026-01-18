@@ -279,4 +279,102 @@ export const SkeletonNetworkIntel: React.FC<{ className?: string }> = ({ classNa
   </div>
 );
 
+/**
+ * Skeleton for CompactForecast component
+ */
+export const SkeletonForecast: React.FC<{ className?: string }> = ({ className }) => (
+  <div className={`bg-gray-800/50 border border-gray-700 rounded-2xl overflow-hidden h-full flex flex-col ${className}`}>
+    {/* Header */}
+    <div className="px-6 py-4 border-b border-gray-700/50 flex items-center justify-between">
+      <div className="flex items-center gap-2">
+        <Skeleton variant="circle" width={16} height={16} />
+        <Skeleton variant="text" width={100} height={16} />
+      </div>
+      <Skeleton variant="text" width={60} height={12} />
+    </div>
+
+    {/* Current Price */}
+    <div className="px-6 py-4 border-b border-gray-700/30 bg-gray-800/30">
+      <div className="flex items-center justify-between">
+        <Skeleton variant="text" width={50} height={14} />
+        <Skeleton variant="text" width={90} height={22} />
+      </div>
+    </div>
+
+    {/* Predictions */}
+    <div className="divide-y divide-gray-700/30 flex-1">
+      {[1, 2, 3].map((i) => (
+        <div key={i} className="px-6 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Skeleton variant="text" width={55} height={14} />
+            <Skeleton variant="circle" width={16} height={16} />
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="text-right space-y-1">
+              <Skeleton variant="text" width={65} height={16} />
+              <Skeleton variant="text" width={40} height={12} />
+            </div>
+            <div className="w-16 space-y-1">
+              <Skeleton variant="rect" width={64} height={6} className="rounded-full" />
+              <Skeleton variant="text" width={30} height={10} className="mx-auto" />
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+
+    {/* Footer */}
+    <div className="px-6 py-4 bg-gray-800/50 border-t border-gray-700/30">
+      <Skeleton variant="text" width="60%" height={14} />
+    </div>
+  </div>
+);
+
+/**
+ * Skeleton for ProfilePanel/PersonalizationPanel
+ */
+export const SkeletonProfile: React.FC<{ className?: string }> = ({ className }) => (
+  <div className={`bg-gray-900/50 border border-gray-800 rounded-2xl p-5 h-full flex flex-col ${className}`}>
+    {/* Header */}
+    <div className="flex items-center gap-2 mb-4">
+      <Skeleton variant="circle" width={16} height={16} />
+      <Skeleton variant="text" width={110} height={14} />
+    </div>
+
+    {/* Strategy */}
+    <div className="mb-4">
+      <Skeleton variant="text" width={55} height={12} className="mb-2" />
+      <div className="flex gap-2">
+        {[1, 2, 3].map((i) => (
+          <Skeleton key={i} variant="rect" height={36} className="flex-1 rounded-lg" />
+        ))}
+      </div>
+    </div>
+
+    {/* Transaction types */}
+    <div className="mb-4">
+      <Skeleton variant="text" width={110} height={12} className="mb-2" />
+      <div className="flex flex-wrap gap-1.5">
+        {[1, 2, 3, 4, 5].map((i) => (
+          <Skeleton key={i} variant="rect" width={65} height={28} className="rounded-lg" />
+        ))}
+      </div>
+    </div>
+
+    {/* Urgency */}
+    <div className="mb-4">
+      <div className="flex justify-between mb-1.5">
+        <Skeleton variant="text" width={50} height={12} />
+        <Skeleton variant="text" width={35} height={12} />
+      </div>
+      <Skeleton variant="rect" height={6} className="rounded-full" />
+    </div>
+
+    {/* Advanced toggle */}
+    <div className="mt-auto pt-2 border-t border-gray-800">
+      <Skeleton variant="rect" height={28} className="rounded" />
+    </div>
+  </div>
+);
+
 export default Skeleton;

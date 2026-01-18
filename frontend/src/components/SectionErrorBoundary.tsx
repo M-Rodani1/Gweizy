@@ -130,6 +130,11 @@ export class SectionErrorBoundary extends Component<SectionErrorBoundaryProps, S
       );
     }
 
+    // Wrap children in div if className is provided for consistent styling
+    if (className) {
+      return <div className={className}>{children}</div>;
+    }
+
     return children;
   }
 }
