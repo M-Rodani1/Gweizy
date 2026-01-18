@@ -339,7 +339,8 @@ def get_volatility_index():
                 'reason': 'Insufficient data for volatility calculation'
             }), 200
 
-        prices = [d['gas_price'] for d in data if d.get('gas_price')]
+        # Database returns 'gwei' field, not 'gas_price'
+        prices = [d.get('gwei') or d.get('gas_price') for d in data if d.get('gwei') or d.get('gas_price')]
 
         if len(prices) < 10:
             return jsonify({
@@ -486,7 +487,8 @@ def get_anomaly_detection():
         if not data or len(data) < 20:
             return jsonify({'available': False, 'reason': 'Insufficient data'}), 200
 
-        prices = np.array([d['gas_price'] for d in data if d.get('gas_price')])
+        # Database returns 'gwei' field, not 'gas_price'
+        prices = np.array([d.get('gwei') or d.get('gas_price') for d in data if d.get('gwei') or d.get('gas_price')])
         if len(prices) < 20:
             return jsonify({'available': False, 'reason': 'Insufficient price data'}), 200
 
