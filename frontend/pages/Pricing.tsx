@@ -397,7 +397,7 @@ const Pricing: React.FC = () => {
         <div className="container">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--space-lg)' }}>
             <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-              © 2024 Base Gas Optimiser. Built at Coinbase 2025 Hackathon.
+              © 2025 Base Gas Optimiser. Built at Coinbase 2025 Hackathon.
             </div>
             <div style={{ display: 'flex', gap: 'var(--space-lg)', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
               <Link to="/pricing" style={{ color: 'var(--text-muted)', textDecoration: 'none' }}>Pricing</Link>
