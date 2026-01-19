@@ -219,6 +219,67 @@ class GasModelTrainer:
             'metrics': self._evaluate_model(ridge, X_test, y_test)
         })
         
+        # 4. LightGBM (excellent for time series)
+        try:
+            print("📊 Training LightGBM...")
+            import lightgbm as lgb
+            lgbm = lgb.LGBMRegressor(
+                n_estimators=200,
+                max_depth=10,
+                learning_rate=0.05,
+                num_leaves=31,
+                min_child_samples=20,
+                subsample=0.8,
+                colsample_bytree=0.8,
+                reg_alpha=0.1,
+                reg_lambda=0.1,
+                random_state=42,
+                n_jobs=-1,
+                verbose=-1,
+                objective='regression',
+                metric='rmse'
+            )
+            lgbm.fit(X_train, y_train)
+            models.append({
+                'name': 'LightGBM',
+                'model': lgbm,
+                'metrics': self._evaluate_model(lgbm, X_test, y_test)
+            })
+        except ImportError:
+            print("⚠️  LightGBM not available - skipping")
+        except Exception as e:
+            print(f"⚠️  LightGBM training failed: {e}")
+        
+        # 5. XGBoost (robust gradient boosting)
+        try:
+            print("📊 Training XGBoost...")
+            import xgboost as xgb
+            xgb_model = xgb.XGBRegressor(
+                n_estimators=200,
+                max_depth=10,
+                learning_rate=0.05,
+                min_child_weight=3,
+                subsample=0.8,
+                colsample_bytree=0.8,
+                reg_alpha=0.1,
+                reg_lambda=1.0,
+                gamma=0.1,
+                random_state=42,
+                n_jobs=-1,
+                objective='reg:squarederror',
+                eval_metric='rmse'
+            )
+            xgb_model.fit(X_train, y_train)
+            models.append({
+                'name': 'XGBoost',
+                'model': xgb_model,
+                'metrics': self._evaluate_model(xgb_model, X_test, y_test)
+            })
+        except ImportError:
+            print("⚠️  XGBoost not available - skipping")
+        except Exception as e:
+            print(f"⚠️  XGBoost training failed: {e}")
+        
         return models
     
     def _evaluate_model(self, model, X_test, y_test):

@@ -109,6 +109,9 @@ class GasFeatureEngineer:
         df = self._add_time_features(df)
         df = self._add_lag_features(df)
         df = self._add_rolling_features(df)
+        df = self._add_momentum_features(df)
+        df = self._add_spike_features(df)
+        df = self._add_interaction_features(df)
         df = self._add_target_variables(df)
         
         # Remove NaN rows (from lag/rolling operations)
@@ -345,57 +348,295 @@ class GasFeatureEngineer:
     
     def _add_rolling_features(self, df):
         """
-        Add rolling window statistical features.
+        Add rolling window statistical features with enhanced volatility metrics.
 
         Rolling features capture the recent behavior and volatility of gas prices.
-        These statistics help the model understand:
-        - Recent average price levels (rolling mean)
-        - Price volatility (rolling std)
-        - Recent price range (rolling min/max)
-        - Price momentum (rate of change)
-
-        The window sizes are automatically adjusted based on the detected
-        sampling rate of the data.
+        Enhanced with volatility-specific features for better pattern recognition.
 
         Args:
             df (pd.DataFrame): DataFrame with 'gas' column.
 
         Returns:
-            pd.DataFrame: DataFrame with added rolling features:
-                - gas_rolling_mean_{1,3,6,12}h: Average price over window
-                - gas_rolling_std_{1,3,6,12}h: Price standard deviation
-                - gas_rolling_min_{1,3,6,12}h: Minimum price in window
-                - gas_rolling_max_{1,3,6,12}h: Maximum price in window
-                - gas_change_1h: Percent change over 1 hour
-                - gas_change_3h: Percent change over 3 hours
-
-        Note:
-            Rolling features will have NaN values for the first N rows
-            where the full window isn't available. These are filled with
-            forward-fill then zero in prepare_training_data to prevent
-            future data leakage.
+            pd.DataFrame: DataFrame with added rolling features including volatility metrics.
         """
         # Detect sample rate and adjust windows accordingly
         sample_rate = self._detect_sample_rate(df)
         
         if sample_rate >= 50:  # ~1 minute sampling (60/hour)
-            windows = [60, 180, 360, 720]  # 1h, 3h, 6h, 12h at 1-min intervals
-            window_hours = [1, 3, 6, 12]
+            windows = [60, 180, 360, 720, 1440]  # 1h, 3h, 6h, 12h, 24h at 1-min intervals
+            window_hours = [1, 3, 6, 12, 24]
             change_periods = [60, 180]  # 1h, 3h
         else:  # ~5 minute sampling (12/hour) - legacy data
-            windows = [12, 36, 72, 144]  # 1h, 3h, 6h, 12h at 5-min intervals
-            window_hours = [1, 3, 6, 12]
+            windows = [12, 36, 72, 144, 288]  # 1h, 3h, 6h, 12h, 24h at 5-min intervals
+            window_hours = [1, 3, 6, 12, 24]
             change_periods = [12, 36]  # 1h, 3h
         
         for window, hours in zip(windows, window_hours):
-            df[f'gas_rolling_mean_{hours}h'] = df['gas'].rolling(window).mean()
-            df[f'gas_rolling_std_{hours}h'] = df['gas'].rolling(window).std()
+            # Basic rolling statistics
+            rolling_mean = df['gas'].rolling(window).mean()
+            rolling_std = df['gas'].rolling(window).std()
+            
+            df[f'gas_rolling_mean_{hours}h'] = rolling_mean
+            df[f'gas_rolling_std_{hours}h'] = rolling_std
             df[f'gas_rolling_min_{hours}h'] = df['gas'].rolling(window).min()
             df[f'gas_rolling_max_{hours}h'] = df['gas'].rolling(window).max()
+            
+            # Enhanced volatility features
+            # Coefficient of variation (volatility/mean ratio)
+            df[f'gas_cv_{hours}h'] = rolling_std / (rolling_mean + 1e-8)  # Avoid division by zero
+            
+            # Realized volatility (historical price swings)
+            # Calculate as the standard deviation of returns
+            returns = df['gas'].pct_change().rolling(window).std()
+            df[f'gas_realized_vol_{hours}h'] = returns
+            
+            # Volatility percentiles - is current volatility high/low?
+            # Compare current rolling std to historical distribution
+            std_percentile = rolling_std.rolling(window * 2, min_periods=window).apply(
+                lambda x: (x.iloc[-1] - x.iloc[:-1].min()) / (x.iloc[:-1].max() - x.iloc[:-1].min() + 1e-8)
+                if len(x) > 1 and x.iloc[:-1].max() > x.iloc[:-1].min() else 0.5
+            )
+            df[f'gas_vol_percentile_{hours}h'] = std_percentile
         
-        # Rate of change
+        # Rate of change over multiple horizons
         df['gas_change_1h'] = df['gas'].pct_change(change_periods[0])
         df['gas_change_3h'] = df['gas'].pct_change(change_periods[1])
+        # Additional rate of change features
+        if sample_rate >= 50:
+            df['gas_change_6h'] = df['gas'].pct_change(360)
+            df['gas_change_12h'] = df['gas'].pct_change(720)
+            df['gas_change_24h'] = df['gas'].pct_change(1440)
+        else:
+            df['gas_change_6h'] = df['gas'].pct_change(72)
+            df['gas_change_12h'] = df['gas'].pct_change(144)
+            df['gas_change_24h'] = df['gas'].pct_change(288)
+        
+        return df
+    
+    def _add_momentum_features(self, df):
+        """
+        Add momentum and velocity features to capture rate of change and acceleration.
+        
+        Momentum features help identify trends and the strength of price movements:
+        - First derivative (velocity): rate of price change
+        - Second derivative (acceleration): rate of velocity change
+        - Momentum strength indicators
+        
+        Args:
+            df (pd.DataFrame): DataFrame with 'gas' column.
+            
+        Returns:
+            pd.DataFrame: DataFrame with added momentum features.
+        """
+        # Detect sample rate
+        sample_rate = self._detect_sample_rate(df)
+        
+        # Calculate first derivative (velocity) - rate of change
+        if sample_rate >= 50:
+            velocity_periods = [1, 60, 180, 360]  # 1min, 1h, 3h, 6h
+            velocity_hours = [1, 1, 3, 6]
+        else:
+            velocity_periods = [1, 12, 36, 72]  # 1 period, 1h, 3h, 6h
+            velocity_hours = [0, 1, 3, 6]
+        
+        for period, hours in zip(velocity_periods, velocity_hours):
+            if hours == 0:
+                df['gas_velocity_1period'] = df['gas'].diff(period)
+            else:
+                df[f'gas_velocity_{hours}h'] = df['gas'].diff(period)
+        
+        # Calculate second derivative (acceleration) - rate of velocity change
+        if 'gas_velocity_1h' in df.columns:
+            df['gas_acceleration_1h'] = df['gas_velocity_1h'].diff()
+        if 'gas_velocity_3h' in df.columns:
+            df['gas_acceleration_3h'] = df['gas_velocity_3h'].diff()
+        
+        # Percentage change momentum over different windows
+        if sample_rate >= 50:
+            momentum_windows = [60, 180, 360, 720]  # 1h, 3h, 6h, 12h
+            momentum_hours = [1, 3, 6, 12]
+        else:
+            momentum_windows = [12, 36, 72, 144]  # 1h, 3h, 6h, 12h
+            momentum_hours = [1, 3, 6, 12]
+        
+        for window, hours in zip(momentum_windows, momentum_hours):
+            pct_change = df['gas'].pct_change(window)
+            df[f'momentum_{hours}h'] = pct_change
+            
+            # Momentum strength: absolute value indicates strong vs weak trends
+            df[f'momentum_strength_{hours}h'] = pct_change.abs()
+            
+            # Momentum direction: +1 for up, -1 for down, 0 for flat
+            df[f'momentum_direction_{hours}h'] = np.sign(pct_change)
+        
+        # Momentum consistency: how many recent periods moved in same direction?
+        if 'momentum_direction_1h' in df.columns:
+            # Count consecutive same-direction moves
+            momentum_consistency = []
+            window_size = 6
+            for i in range(len(df)):
+                if i < window_size:
+                    momentum_consistency.append(0)
+                else:
+                    recent_dirs = df['momentum_direction_1h'].iloc[i-window_size:i]
+                    if len(recent_dirs) > 0:
+                        # Count how many match the most recent direction
+                        last_dir = recent_dirs.iloc[-1]
+                        consistency = (recent_dirs == last_dir).sum() / len(recent_dirs)
+                        momentum_consistency.append(consistency)
+                    else:
+                        momentum_consistency.append(0)
+            df['momentum_consistency'] = momentum_consistency
+        
+        return df
+    
+    def _add_spike_features(self, df):
+        """
+        Add spike detection features to identify unusual price movements.
+        
+        Spike features help identify anomalies and unusual market conditions:
+        - Spike indicators (price > quantile threshold)
+        - Spike magnitude (how extreme is the spike)
+        - Time since last spike
+        - Spike frequency
+        
+        Args:
+            df (pd.DataFrame): DataFrame with 'gas' column.
+            
+        Returns:
+            pd.DataFrame: DataFrame with added spike features.
+        """
+        # Detect sample rate
+        sample_rate = self._detect_sample_rate(df)
+        
+        if sample_rate >= 50:
+            spike_windows = [60, 180, 360, 720, 1440]  # 1h, 3h, 6h, 12h, 24h
+            spike_hours = [1, 3, 6, 12, 24]
+        else:
+            spike_windows = [12, 36, 72, 144, 288]  # 1h, 3h, 6h, 12h, 24h
+            spike_hours = [1, 3, 6, 12, 24]
+        
+        for window, hours in zip(spike_windows, spike_hours):
+            rolling_median = df['gas'].rolling(window).median()
+            rolling_q95 = df['gas'].rolling(window).quantile(0.95)
+            rolling_q90 = df['gas'].rolling(window).quantile(0.90)
+            rolling_q75 = df['gas'].rolling(window).quantile(0.75)
+            
+            # Spike indicator: is current price above 95th percentile?
+            df[f'is_spike_{hours}h'] = (df['gas'] > rolling_q95).astype(int)
+            
+            # Spike indicator at different thresholds
+            df[f'is_spike_90pct_{hours}h'] = (df['gas'] > rolling_q90).astype(int)
+            df[f'is_spike_75pct_{hours}h'] = (df['gas'] > rolling_q75).astype(int)
+            
+            # Spike magnitude: how many times median/mean is the current price?
+            df[f'spike_magnitude_{hours}h'] = df['gas'] / (rolling_median + 1e-8)
+            
+            # Spike magnitude relative to mean
+            rolling_mean = df['gas'].rolling(window).mean()
+            df[f'spike_magnitude_mean_{hours}h'] = df['gas'] / (rolling_mean + 1e-8)
+            
+            # Distance from median (standardized)
+            rolling_std = df['gas'].rolling(window).std()
+            df[f'spike_zscore_{hours}h'] = (df['gas'] - rolling_median) / (rolling_std + 1e-8)
+        
+        # Time since last spike (countdown feature)
+        # Count periods since last spike across different windows
+        if 'is_spike_24h' in df.columns:
+            time_since_spike = []
+            counter = 0
+            for spike in df['is_spike_24h'].fillna(0):
+                if spike > 0:
+                    counter = 0
+                else:
+                    counter += 1
+                time_since_spike.append(counter)
+            df['time_since_spike'] = time_since_spike
+            
+            # Normalize by max value to get 0-1 range
+            if len(time_since_spike) > 0:
+                max_time = max(time_since_spike) if max(time_since_spike) > 0 else 1
+                df['time_since_spike_norm'] = [t / max_time for t in time_since_spike]
+        
+        # Spike frequency: how often do spikes occur in a rolling window?
+        if 'is_spike_24h' in df.columns:
+            if sample_rate >= 50:
+                freq_window = 1440  # 24 hours
+            else:
+                freq_window = 288  # 24 hours
+            
+            df['spike_frequency'] = df['is_spike_24h'].rolling(freq_window).sum() / freq_window
+        
+        # Spike clustering: are we in a period with multiple spikes?
+        if 'is_spike_24h' in df.columns:
+            if sample_rate >= 50:
+                cluster_window = 360  # 6 hours
+            else:
+                cluster_window = 72  # 6 hours
+            
+            df['spike_cluster_indicator'] = df['is_spike_24h'].rolling(cluster_window).sum()
+            df['is_in_spike_period'] = (df['spike_cluster_indicator'] >= 2).astype(int)
+        
+        return df
+    
+    def _add_interaction_features(self, df):
+        """
+        Add interaction features that combine existing features for non-linear relationships.
+        
+        Interaction features capture how different factors interact:
+        - volatility * momentum
+        - spike_magnitude * congestion_level
+        - lag_1h * lag_24h
+        - hour * congestion_level
+        
+        Args:
+            df (pd.DataFrame): DataFrame with feature columns.
+            
+        Returns:
+            pd.DataFrame: DataFrame with added interaction features.
+        """
+        # Volatility * Momentum interactions
+        if 'gas_rolling_std_1h' in df.columns and 'momentum_1h' in df.columns:
+            df['volatility_momentum_1h'] = df['gas_rolling_std_1h'] * df['momentum_1h'].abs()
+        
+        if 'gas_rolling_std_3h' in df.columns and 'momentum_3h' in df.columns:
+            df['volatility_momentum_3h'] = df['gas_rolling_std_3h'] * df['momentum_3h'].abs()
+        
+        # Spike magnitude * Congestion level
+        if 'spike_magnitude_24h' in df.columns and 'congestion_level' in df.columns:
+            df['spike_congestion'] = df['spike_magnitude_24h'] * df['congestion_level']
+        
+        # Spike magnitude * is_highly_congested
+        if 'spike_magnitude_24h' in df.columns and 'is_highly_congested' in df.columns:
+            df['spike_during_congestion'] = df['spike_magnitude_24h'] * df['is_highly_congested']
+        
+        # Lag interactions - short vs long term relationship
+        if 'gas_lag_1h' in df.columns and 'gas_lag_24h' in df.columns:
+            df['lag_1h_24h_ratio'] = df['gas_lag_1h'] / (df['gas_lag_24h'] + 1e-8)
+            df['lag_1h_24h_diff'] = df['gas_lag_1h'] - df['gas_lag_24h']
+        
+        # Time-of-day * congestion patterns
+        if 'hour' in df.columns and 'congestion_level' in df.columns:
+            df['hour_congestion'] = df['hour'] * df['congestion_level']
+        
+        if 'hour_sin' in df.columns and 'congestion_level' in df.columns:
+            df['hour_sin_congestion'] = df['hour_sin'] * df['congestion_level']
+        
+        # Volatility * Congestion
+        if 'gas_cv_6h' in df.columns and 'congestion_level' in df.columns:
+            df['volatility_congestion'] = df['gas_cv_6h'] * df['congestion_level']
+        
+        # Momentum * Spike
+        if 'momentum_1h' in df.columns and 'is_spike_24h' in df.columns:
+            df['momentum_spike'] = df['momentum_1h'] * df['is_spike_24h']
+        
+        # Rolling mean * Lag ratio (trend consistency)
+        if 'gas_rolling_mean_6h' in df.columns and 'gas_lag_6h' in df.columns:
+            df['trend_consistency'] = df['gas_rolling_mean_6h'] / (df['gas_lag_6h'] + 1e-8)
+        
+        # Volatility percentile * Momentum direction
+        if 'gas_vol_percentile_6h' in df.columns and 'momentum_direction_1h' in df.columns:
+            df['volatility_percentile_momentum'] = df['gas_vol_percentile_6h'] * df['momentum_direction_1h']
         
         return df
     

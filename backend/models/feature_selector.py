@@ -1,21 +1,41 @@
 """
-SHAP-based Feature Selection for Gas Price Prediction
+Advanced Feature Selection for Gas Price Prediction
 
-Uses SHAP (SHapley Additive exPlanations) to identify the most important
-features from the 150+ engineered features, reducing to ~30 best features
-for faster inference and better accuracy.
+Uses multiple selection methods including SHAP, mutual information, RFE,
+and correlation-based selection to identify the most important features
+from the 150+ engineered features, reducing to ~30 best features for
+faster inference and better accuracy.
 """
 
 import numpy as np
 import pandas as pd
 from typing import List, Dict, Optional, Tuple
-from sklearn.ensemble import RandomForestRegressor
+from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
+from sklearn.feature_selection import (
+    mutual_info_regression, 
+    RFE, 
+    SelectKBest,
+    f_regression
+)
+from sklearn.linear_model import Ridge
 import joblib
 import os
 import logging
 from datetime import datetime
 
 logger = logging.getLogger(__name__)
+
+try:
+    import lightgbm as lgb
+    LIGHTGBM_AVAILABLE = True
+except ImportError:
+    LIGHTGBM_AVAILABLE = False
+
+try:
+    import xgboost as xgb
+    XGBOOST_AVAILABLE = True
+except ImportError:
+    XGBOOST_AVAILABLE = False
 
 
 class SHAPFeatureSelector:
@@ -26,19 +46,28 @@ class SHAPFeatureSelector:
     then selects the top N features by mean absolute SHAP value.
     """
 
-    def __init__(self, n_features: int = 30, model_samples: int = 5000):
+    def __init__(self, n_features: int = 30, model_samples: int = 5000, 
+                 use_multiple_methods: bool = True):
         """
         Args:
             n_features: Number of top features to select
             model_samples: Max samples for training surrogate model
+            use_multiple_methods: Use multiple selection methods and combine results
         """
         self.n_features = n_features
         self.model_samples = model_samples
+        self.use_multiple_methods = use_multiple_methods
         self.selected_features: List[str] = []
         self.feature_importances: Dict[str, float] = {}
         self.shap_values: Optional[np.ndarray] = None
         self.surrogate_model: Optional[RandomForestRegressor] = None
         self.fitted = False
+        
+        # Store results from different methods
+        self.mutual_info_scores: Optional[Dict[str, float]] = None
+        self.rfe_scores: Optional[Dict[str, float]] = None
+        self.correlation_scores: Optional[Dict[str, float]] = None
+        self.model_importances: Dict[str, Dict[str, float]] = {}
 
     def fit(self, X: pd.DataFrame, y: pd.Series, verbose: bool = True) -> 'SHAPFeatureSelector':
         """
@@ -89,10 +118,34 @@ class SHAPFeatureSelector:
 
         # Use permutation-free importance from tree structure
         # This is faster than full SHAP but captures similar information
-        importances = self._compute_tree_shap_approximation(X_sample, y_sample)
-
-        # Store feature importances
-        self.feature_importances = dict(zip(X.columns, importances))
+        shap_importances = self._compute_tree_shap_approximation(X_sample, y_sample)
+        
+        # Combine multiple selection methods if enabled
+        if self.use_multiple_methods:
+            if verbose:
+                print("   Computing multiple selection methods...")
+            
+            # Get importances from multiple methods
+            methods = {
+                'SHAP': dict(zip(X.columns, shap_importances)),
+                'MutualInfo': self._compute_mutual_information(X_sample, y_sample),
+                'RFE': self._compute_rfe_scores(X_sample, y_sample),
+                'Correlation': self._compute_correlation_scores(X_sample, y_sample),
+                'ModelImportances': self._compute_model_importances(X_sample, y_sample)
+            }
+            
+            # Combine scores from all methods (weighted average)
+            combined_importances = self._combine_method_scores(methods, X.columns)
+            self.feature_importances = combined_importances
+            
+            # Store individual method scores for analysis
+            self.mutual_info_scores = methods['MutualInfo']
+            self.rfe_scores = methods['RFE']
+            self.correlation_scores = methods['Correlation']
+            self.model_importances = methods['ModelImportances']
+        else:
+            # Use only SHAP
+            self.feature_importances = dict(zip(X.columns, shap_importances))
 
         # Sort by importance and select top N
         sorted_features = sorted(
@@ -146,6 +199,165 @@ class SHAPFeatureSelector:
         # Weight: 60% tree importance, 40% permutation (for robustness)
         combined = 0.6 * tree_importance + 0.4 * (permutation_importance / (permutation_importance.max() + 1e-8)) * tree_importance.max()
 
+        return combined
+    
+    def _compute_mutual_information(self, X: pd.DataFrame, y: pd.Series) -> Dict[str, float]:
+        """Compute mutual information scores for feature selection."""
+        try:
+            mi_scores = mutual_info_regression(X.fillna(0), y.fillna(y.median()), 
+                                               random_state=42, n_neighbors=3)
+            return dict(zip(X.columns, mi_scores))
+        except Exception as e:
+            logger.warning(f"Mutual information computation failed: {e}")
+            return {col: 0.0 for col in X.columns}
+    
+    def _compute_rfe_scores(self, X: pd.DataFrame, y: pd.Series) -> Dict[str, float]:
+        """Compute Recursive Feature Elimination scores."""
+        try:
+            # Use Ridge for faster RFE
+            estimator = Ridge(alpha=1.0)
+            n_features_to_select = min(self.n_features * 2, X.shape[1])
+            rfe = RFE(estimator=estimator, n_features_to_select=n_features_to_select, step=10)
+            rfe.fit(X.fillna(0), y.fillna(y.median()))
+            
+            # Convert ranking to scores (lower rank = higher score)
+            scores = {col: 1.0 / (rank + 1) for col, rank in zip(X.columns, rfe.ranking_)}
+            return scores
+        except Exception as e:
+            logger.warning(f"RFE computation failed: {e}")
+            return {col: 0.0 for col in X.columns}
+    
+    def _compute_correlation_scores(self, X: pd.DataFrame, y: pd.Series) -> Dict[str, float]:
+        """Compute correlation-based scores, removing highly correlated features."""
+        try:
+            # Compute correlations with target
+            correlations = X.fillna(0).corrwith(y.fillna(y.median())).abs()
+            
+            # Also identify and penalize features highly correlated with each other
+            # (redundancy removal)
+            X_filled = X.fillna(0)
+            corr_matrix = X_filled.corr().abs()
+            
+            # For each feature, find max correlation with other features
+            max_corrs = corr_matrix.max(axis=1) - 1.0  # Subtract 1 (self-correlation)
+            
+            # Combine target correlation with redundancy penalty
+            # Higher target correlation = better
+            # Higher max correlation with others = worse (redundancy)
+            scores = {}
+            for col in X.columns:
+                target_corr = correlations[col] if col in correlations.index else 0
+                redundancy = max_corrs[col] if col in max_corrs.index else 0
+                # Score = target correlation - redundancy penalty
+                scores[col] = target_corr - 0.5 * redundancy
+            
+            return scores
+        except Exception as e:
+            logger.warning(f"Correlation computation failed: {e}")
+            return {col: 0.0 for col in X.columns}
+    
+    def _compute_model_importances(self, X: pd.DataFrame, y: pd.Series) -> Dict[str, Dict[str, float]]:
+        """Compute feature importances from multiple models."""
+        X_filled = X.fillna(0)
+        y_filled = y.fillna(y.median())
+        
+        model_importances = {}
+        
+        # Random Forest
+        try:
+            rf = RandomForestRegressor(n_estimators=50, max_depth=10, 
+                                      random_state=42, n_jobs=-1)
+            rf.fit(X_filled, y_filled)
+            model_importances['RandomForest'] = dict(zip(X.columns, rf.feature_importances_))
+        except Exception as e:
+            logger.warning(f"RF importance failed: {e}")
+        
+        # Gradient Boosting
+        try:
+            gb = GradientBoostingRegressor(n_estimators=50, max_depth=5, 
+                                          random_state=42)
+            gb.fit(X_filled, y_filled)
+            model_importances['GradientBoosting'] = dict(zip(X.columns, gb.feature_importances_))
+        except Exception as e:
+            logger.warning(f"GB importance failed: {e}")
+        
+        # LightGBM (if available)
+        if LIGHTGBM_AVAILABLE:
+            try:
+                lgbm = lgb.LGBMRegressor(n_estimators=50, max_depth=10, 
+                                        random_state=42, n_jobs=-1, verbose=-1)
+                lgbm.fit(X_filled, y_filled)
+                model_importances['LightGBM'] = dict(zip(X.columns, lgbm.feature_importances_))
+            except Exception as e:
+                logger.warning(f"LightGBM importance failed: {e}")
+        
+        # XGBoost (if available)
+        if XGBOOST_AVAILABLE:
+            try:
+                xgb_model = xgb.XGBRegressor(n_estimators=50, max_depth=10, 
+                                            random_state=42, n_jobs=-1)
+                xgb_model.fit(X_filled, y_filled)
+                model_importances['XGBoost'] = dict(zip(X.columns, xgb_model.feature_importances_))
+            except Exception as e:
+                logger.warning(f"XGBoost importance failed: {e}")
+        
+        return model_importances
+    
+    def _combine_method_scores(self, methods: Dict[str, Dict[str, float]], 
+                               feature_names: List[str]) -> Dict[str, float]:
+        """Combine scores from multiple selection methods using weighted average."""
+        # Normalize each method's scores to 0-1 range
+        normalized_methods = {}
+        
+        for method_name, scores in methods.items():
+            if not scores:
+                continue
+            
+            # Handle nested dict (model importances)
+            if method_name == 'ModelImportances':
+                # Average across all models
+                avg_scores = {}
+                for col in feature_names:
+                    model_scores = [scores[model].get(col, 0) 
+                                   for model in scores if col in scores[model]]
+                    avg_scores[col] = np.mean(model_scores) if model_scores else 0
+                scores = avg_scores
+            
+            # Normalize to 0-1
+            score_values = list(scores.values())
+            if len(score_values) > 0:
+                min_score = min(score_values)
+                max_score = max(score_values)
+                range_score = max_score - min_score if max_score > min_score else 1.0
+                
+                normalized = {
+                    col: (scores.get(col, 0) - min_score) / range_score 
+                    for col in feature_names
+                }
+                normalized_methods[method_name] = normalized
+        
+        # Weighted combination (SHAP gets highest weight as it's most reliable)
+        weights = {
+            'SHAP': 0.35,
+            'MutualInfo': 0.20,
+            'RFE': 0.15,
+            'Correlation': 0.15,
+            'ModelImportances': 0.15
+        }
+        
+        # Combine weighted scores
+        combined = {}
+        for col in feature_names:
+            score = 0.0
+            total_weight = 0.0
+            
+            for method_name, weight in weights.items():
+                if method_name in normalized_methods:
+                    score += normalized_methods[method_name].get(col, 0) * weight
+                    total_weight += weight
+            
+            combined[col] = score / total_weight if total_weight > 0 else 0.0
+        
         return combined
 
     def transform(self, X: pd.DataFrame) -> pd.DataFrame:
