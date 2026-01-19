@@ -13,6 +13,7 @@ from flask import Blueprint, jsonify, request
 from utils.model_retrainer import ModelRetrainer
 from utils.logger import logger
 from datetime import datetime
+import time
 import os
 import threading
 
@@ -353,18 +354,40 @@ def trigger_simple_retraining():
                 _update_progress(step=0, status='running', message='Training prediction models...')
                 logger.info("Step 1/3: Training RandomForest percentage change models...")
 
-                result = subprocess.run(
-                    [sys.executable, script_path],
-                    capture_output=True,
+                # Use Popen for real-time log streaming
+                import select
+                process = subprocess.Popen(
+                    [sys.executable, '-u', script_path],  # -u for unbuffered output
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,  # Merge stderr into stdout
                     text=True,
-                    timeout=1200,  # 20 minute timeout for large datasets
-                    cwd=current_dir
+                    cwd=current_dir,
+                    bufsize=1  # Line buffered
                 )
+                
+                # Stream output to logger in real-time
+                start_time = time.time()
+                timeout_seconds = 1200  # 20 minutes
+                
+                while True:
+                    # Check timeout
+                    if time.time() - start_time > timeout_seconds:
+                        process.kill()
+                        raise subprocess.TimeoutExpired(cmd=script_path, timeout=timeout_seconds)
+                    
+                    line = process.stdout.readline()
+                    if line:
+                        logger.info(f"[TRAIN] {line.rstrip()}")
+                    elif process.poll() is not None:
+                        # Process finished
+                        break
+                
+                # Get return code
+                returncode = process.returncode
 
-                if result.returncode != 0:
-                    _update_progress(step=0, status='failed', message=f'Training failed: {result.stderr[:100]}')
-                    logger.error(f"Main model training failed: {result.stderr}")
-                    logger.error(f"Output: {result.stdout[:500]}...")
+                if returncode != 0:
+                    _update_progress(step=0, status='failed', message='Training script failed')
+                    logger.error(f"Main model training failed with code {returncode}")
                     _update_progress(error='RandomForest training failed', completed=True)
                     return
 
