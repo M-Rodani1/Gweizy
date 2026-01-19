@@ -44,10 +44,10 @@ export default defineConfig(({ mode }) => {
                 if (id.includes('react-router')) {
                   return 'vendor-router';
                 }
-                // lucide-react needs to load early with React - don't split it separately
-                // Keep it in main bundle or with React to avoid initialization issues
+                // lucide-react - keep in main bundle to avoid initialization race conditions
+                // Don't split it - this prevents "Cannot set properties of undefined" errors
                 if (id.includes('lucide-react')) {
-                  return 'vendor-react-core'; // Bundle with React to ensure proper initialization
+                  return undefined; // Include in main bundle, don't split
                 }
                 // Recharts is heavy - separate it completely
                 if (id.includes('recharts')) {
