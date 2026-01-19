@@ -24,6 +24,9 @@ export default defineConfig(({ mode }) => {
           '@': path.resolve(__dirname, '.'),
         }
       },
+      optimizeDeps: {
+        include: ['lucide-react'], // Force pre-bundling of lucide-react to avoid initialization issues
+      },
       build: {
         rollupOptions: {
           output: {
@@ -31,22 +34,27 @@ export default defineConfig(({ mode }) => {
               // Separate node_modules into more granular chunks
               if (id.includes('node_modules')) {
                 // React core - most critical, load first
-                if (id.includes('react') && !id.includes('react-dom')) {
+                if (id.includes('react') && !id.includes('react-dom') && !id.includes('react-router')) {
                   return 'vendor-react-core';
                 }
                 if (id.includes('react-dom')) {
                   return 'vendor-react-dom';
                 }
+                // Router - load with React
+                if (id.includes('react-router')) {
+                  return 'vendor-router';
+                }
+                // lucide-react needs to load early with React - don't split it separately
+                // Keep it in main bundle or with React to avoid initialization issues
+                if (id.includes('lucide-react')) {
+                  return 'vendor-react-core'; // Bundle with React to ensure proper initialization
+                }
                 // Recharts is heavy - separate it completely
                 if (id.includes('recharts')) {
                   return 'vendor-charts';
                 }
-                // Router
-                if (id.includes('react-router')) {
-                  return 'vendor-router';
-                }
-                // UI libraries
-                if (id.includes('lucide-react') || id.includes('framer-motion')) {
+                // UI libraries (except lucide-react)
+                if (id.includes('framer-motion')) {
                   return 'vendor-ui';
                 }
                 // Query library
@@ -87,11 +95,11 @@ export default defineConfig(({ mode }) => {
             }
           },
           // Enable tree-shaking optimizations
-          // Note: lucide-react needs side effects enabled
+          // Note: Preserve side effects for libraries that need them
           treeshake: {
             moduleSideEffects: (id) => {
-              // Preserve side effects for lucide-react
-              if (id.includes('lucide-react')) {
+              // Preserve side effects for lucide-react and other icon libraries
+              if (id.includes('lucide-react') || id.includes('lucide')) {
                 return true;
               }
               return false;

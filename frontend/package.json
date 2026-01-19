@@ -5,7 +5,8 @@
   "type": "module",
   "sideEffects": [
     "**/*.css",
-    "lucide-react/dist/esm/lucide-react.js"
+    "lucide-react/dist/esm/**/*.js",
+    "lucide-react/**/*.js"
   ],
   "scripts": {
     "dev": "vite",
