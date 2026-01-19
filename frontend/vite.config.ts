@@ -145,7 +145,7 @@ export default defineConfig(({ mode }) => {
             preserve_annotations: false
           }
         },
-        sourcemap: 'inline', // Temporary: Enable for debugging
+        sourcemap: false, // Disabled for production to reduce bundle size
         chunkSizeWarningLimit: 500,
         cssCodeSplit: true,
         assetsInlineLimit: 4096,
