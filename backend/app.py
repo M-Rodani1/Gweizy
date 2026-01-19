@@ -28,6 +28,7 @@ from api.retraining_automated_routes import automated_retraining_bp
 from api.model_versioning_routes import versioning_bp
 from api.monitoring_routes import monitoring_bp
 from api.mempool_routes import mempool_bp
+from api.resilient_training_routes import resilient_training_bp
 from api.middleware import limiter, error_handlers, log_request, setup_request_id
 from config import Config
 from utils.logger import logger
@@ -136,6 +137,7 @@ def create_app():
     app.register_blueprint(monitoring_bp, url_prefix='/api/monitoring')
     app.register_blueprint(mempool_bp, url_prefix='/api')
     app.register_blueprint(automated_retraining_bp, url_prefix='/api')
+    app.register_blueprint(resilient_training_bp)  # Routes at /api/training/*
     
     # Register autonomous pipeline routes
     try:
@@ -484,7 +486,7 @@ if not use_worker_process:
         train_models = os.getenv('TRAIN_MODELS', 'false').lower() == 'true'
         if train_models:
             def trigger_model_training():
-                """Trigger model training in background thread."""
+                """Trigger model training using resilient training service."""
                 import time
                 # Wait a bit for services to fully initialize
                 time.sleep(10)
@@ -492,35 +494,23 @@ if not use_worker_process:
                 logger.info("="*70)
                 logger.info("🚀 MODEL TRAINING TRIGGERED VIA TRAIN_MODELS ENV VAR")
                 logger.info("="*70)
+                logger.info("   Using resilient training service with graceful shutdown")
+                logger.info("="*70)
                 
                 try:
-                    # Import and run the training script
-                    import sys
-                    import subprocess
-                    script_path = os.path.join(os.path.dirname(__file__), 'scripts', 'retrain_models_simple.py')
+                    from services.resilient_training import get_resilient_training_service
+                    service = get_resilient_training_service()
                     
-                    logger.info(f"Starting model training script: {script_path}")
+                    # Start training in background (non-daemon thread so it can complete)
+                    result = service.start_training(background=True, force=False)
                     
-                    # Run training in a subprocess to avoid blocking
-                    process = subprocess.Popen(
-                        [sys.executable, script_path],
-                        stdout=subprocess.PIPE,
-                        stderr=subprocess.STDOUT,
-                        text=True,
-                        bufsize=1,
-                        universal_newlines=True
-                    )
-                    
-                    # Stream output to logger
-                    for line in process.stdout:
-                        logger.info(f"[TRAINING] {line.rstrip()}")
-                    
-                    process.wait()
-                    
-                    if process.returncode == 0:
-                        logger.info("✅ Model training completed successfully!")
+                    if result.get('success'):
+                        logger.info(f"✓ {result.get('message', 'Training started')}")
+                        logger.info("   Training runs in background - check /api/training/status for progress")
                     else:
-                        logger.error(f"❌ Model training failed with exit code {process.returncode}")
+                        logger.warning(f"⚠️  Could not start training: {result.get('error')}")
+                        if result.get('status'):
+                            logger.info(f"   Status: {result.get('status')}")
                         
                 except Exception as e:
                     logger.error(f"❌ Failed to trigger model training: {e}")
@@ -529,9 +519,9 @@ if not use_worker_process:
                 
                 logger.info("="*70)
             
-            training_thread = threading.Thread(target=trigger_model_training, name="ModelTraining", daemon=True)
+            training_thread = threading.Thread(target=trigger_model_training, name="ModelTrainingTrigger", daemon=True)
             training_thread.start()
-            logger.info("✓ Model training thread started (TRAIN_MODELS=true)")
+            logger.info("✓ Model training trigger started (TRAIN_MODELS=true)")
 
         # Start automatic model rollback service
         try:
