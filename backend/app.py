@@ -42,6 +42,7 @@ except ImportError:
     emit = None
     logger.warning("flask-socketio not available - WebSocket features disabled")
 import os
+import sys
 import threading
 from services.gas_collector_service import GasCollectorService
 from services.onchain_collector_service import OnChainCollectorService
@@ -478,6 +479,59 @@ if not use_worker_process:
             logger.warning(f"Failed to start autonomous pipeline: {e}")
             import traceback
             logger.warning(traceback.format_exc())
+        
+        # Check if model training is requested via environment variable
+        train_models = os.getenv('TRAIN_MODELS', 'false').lower() == 'true'
+        if train_models:
+            def trigger_model_training():
+                """Trigger model training in background thread."""
+                import time
+                # Wait a bit for services to fully initialize
+                time.sleep(10)
+                
+                logger.info("="*70)
+                logger.info("🚀 MODEL TRAINING TRIGGERED VIA TRAIN_MODELS ENV VAR")
+                logger.info("="*70)
+                
+                try:
+                    # Import and run the training script
+                    import sys
+                    import subprocess
+                    script_path = os.path.join(os.path.dirname(__file__), 'scripts', 'retrain_models_simple.py')
+                    
+                    logger.info(f"Starting model training script: {script_path}")
+                    
+                    # Run training in a subprocess to avoid blocking
+                    process = subprocess.Popen(
+                        [sys.executable, script_path],
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.STDOUT,
+                        text=True,
+                        bufsize=1,
+                        universal_newlines=True
+                    )
+                    
+                    # Stream output to logger
+                    for line in process.stdout:
+                        logger.info(f"[TRAINING] {line.rstrip()}")
+                    
+                    process.wait()
+                    
+                    if process.returncode == 0:
+                        logger.info("✅ Model training completed successfully!")
+                    else:
+                        logger.error(f"❌ Model training failed with exit code {process.returncode}")
+                        
+                except Exception as e:
+                    logger.error(f"❌ Failed to trigger model training: {e}")
+                    import traceback
+                    logger.error(traceback.format_exc())
+                
+                logger.info("="*70)
+            
+            training_thread = threading.Thread(target=trigger_model_training, name="ModelTraining", daemon=True)
+            training_thread.start()
+            logger.info("✓ Model training thread started (TRAIN_MODELS=true)")
 
         # Start automatic model rollback service
         try:
