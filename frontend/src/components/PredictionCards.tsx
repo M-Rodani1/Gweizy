@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, memo } from 'react';
 import { fetchPredictions, fetchCurrentGas } from '../api/gasApi';
 import { useChain } from '../contexts/ChainContext';
 import LoadingSpinner from './LoadingSpinner';
@@ -157,7 +157,7 @@ const PredictionCards: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [selectedChainId]);
 
   useEffect(() => {
     loadData();
@@ -383,5 +383,6 @@ const PredictionCards: React.FC = () => {
   );
 };
 
-export default PredictionCards;
+// Memoize the component to prevent unnecessary re-renders
+export default memo(PredictionCards);
 

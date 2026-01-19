@@ -15,19 +15,27 @@ const ReactQueryDevtools = import.meta.env.DEV
     )
   : null;
 
-// Create a client with default options
+// Create a client with optimized default options for performance
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 10000, // 10 seconds
-      gcTime: 300000, // 5 minutes (formerly cacheTime)
-      retry: 3,
+      // Increase staleTime for better caching - data is considered fresh for 30 seconds
+      staleTime: 30000, // 30 seconds (increased from 10s)
+      // Keep cached data for 10 minutes (increased from 5 minutes)
+      gcTime: 600000, // 10 minutes (formerly cacheTime)
+      // Retry configuration
+      retry: 2, // Reduced from 3 for faster failure feedback
       retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+      // Prevent unnecessary refetches
       refetchOnWindowFocus: false,
       refetchOnReconnect: true,
+      refetchOnMount: true, // Only refetch on mount if data is stale
+      // Network mode - use cache when offline
+      networkMode: 'online',
     },
     mutations: {
       retry: 1,
+      // Optimistic updates can be configured per mutation
     },
   },
 });

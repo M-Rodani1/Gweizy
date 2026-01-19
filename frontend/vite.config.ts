@@ -22,14 +22,59 @@ export default defineConfig(({ mode }) => {
       build: {
         rollupOptions: {
           output: {
-            manualChunks: {
-              'vendor-react': ['react', 'react-dom', 'react-router-dom'],
-              'vendor-charts': ['recharts'],
-              'vendor-ui': ['lucide-react', 'framer-motion'],
-              'vendor-query': ['@tanstack/react-query', '@tanstack/react-query-devtools'],
-              'vendor-sentry': ['@sentry/react'],
-              'vendor-socket': ['socket.io-client'],
-              'vendor-toast': ['react-hot-toast']
+            manualChunks: (id) => {
+              // Separate node_modules into more granular chunks
+              if (id.includes('node_modules')) {
+                // React core - most critical, load first
+                if (id.includes('react') && !id.includes('react-dom')) {
+                  return 'vendor-react-core';
+                }
+                if (id.includes('react-dom')) {
+                  return 'vendor-react-dom';
+                }
+                // Recharts is heavy - separate it completely
+                if (id.includes('recharts')) {
+                  return 'vendor-charts';
+                }
+                // Router
+                if (id.includes('react-router')) {
+                  return 'vendor-router';
+                }
+                // UI libraries
+                if (id.includes('lucide-react') || id.includes('framer-motion')) {
+                  return 'vendor-ui';
+                }
+                // Query library
+                if (id.includes('@tanstack/react-query')) {
+                  return 'vendor-query';
+                }
+                // Monitoring
+                if (id.includes('@sentry')) {
+                  return 'vendor-sentry';
+                }
+                // WebSocket
+                if (id.includes('socket.io')) {
+                  return 'vendor-socket';
+                }
+                // Toast notifications
+                if (id.includes('react-hot-toast')) {
+                  return 'vendor-toast';
+                }
+                // Farcaster SDK
+                if (id.includes('@farcaster')) {
+                  return 'vendor-farcaster';
+                }
+                // Zustand
+                if (id.includes('zustand')) {
+                  return 'vendor-state';
+                }
+                // Other vendor code
+                return 'vendor-misc';
+              }
+              // Separate large feature components
+              if (id.includes('/components/') && (id.includes('Chart') || id.includes('Graph'))) {
+                return 'chunk-charts';
+              }
             }
           }
         },

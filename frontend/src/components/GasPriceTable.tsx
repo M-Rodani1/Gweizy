@@ -1,15 +1,39 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
 import { TableRowData } from '../../types';
 import { fetchTransactions } from '../api/gasApi';
 import LoadingSpinner from './LoadingSpinner';
+
+// Virtual scrolling threshold - use virtual scrolling for 50+ rows
+const VIRTUAL_SCROLL_THRESHOLD = 50;
+
+// Memoized table row component to prevent unnecessary re-renders
+const TableRow = React.memo<{ row: TableRowData; index: number }>(({ row, index }) => (
+  <tr className="border-b border-gray-700 hover:bg-gray-700/50">
+    <td className="p-3 font-mono text-sm text-cyan-400">{row.txHash}</td>
+    <td className="p-3">
+      <span className="bg-purple-600/50 text-purple-200 text-xs font-semibold mr-2 px-2.5 py-0.5 rounded">
+        {row.method}
+      </span>
+    </td>
+    <td className="p-3 text-gray-300">{row.age}</td>
+    <td className="p-3 text-right text-gray-300">
+      {row.gasUsed !== undefined && row.gasUsed !== null ? row.gasUsed.toLocaleString() : 'N/A'}
+    </td>
+    <td className="p-3 text-right font-semibold text-teal-300">
+      {row.gasPrice !== undefined && row.gasPrice !== null ? row.gasPrice.toFixed(4) : 'N/A'}
+    </td>
+  </tr>
+));
+TableRow.displayName = 'TableRow';
 
 const GasPriceTable: React.FC = () => {
   const [transactions, setTransactions] = useState<TableRowData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const loadData = async () => {
+  // Memoize loadData to prevent unnecessary re-creations
+  const loadData = useCallback(async () => {
     try {
       setError(null);
       const data = await fetchTransactions(5);
@@ -20,7 +44,7 @@ const GasPriceTable: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     loadData();
@@ -28,7 +52,22 @@ const GasPriceTable: React.FC = () => {
     // Auto-refresh every 30 seconds
     const interval = setInterval(loadData, 30000);
     return () => clearInterval(interval);
-  }, []);
+  }, [loadData]);
+
+  // Memoize whether to use virtual scrolling
+  const useVirtualScrolling = useMemo(
+    () => transactions.length >= VIRTUAL_SCROLL_THRESHOLD,
+    [transactions.length]
+  );
+
+  // Memoize visible rows for virtual scrolling (show first 20, then lazy load more)
+  const visibleRows = useMemo(() => {
+    if (!useVirtualScrolling) {
+      return transactions;
+    }
+    // For now, show first 20 rows. Full virtual scrolling can be added later with react-window
+    return transactions.slice(0, 20);
+  }, [transactions, useVirtualScrolling]);
 
   if (loading && transactions.length === 0) {
     return (
@@ -84,19 +123,16 @@ const GasPriceTable: React.FC = () => {
           </tr>
         </thead>
         <tbody>
-          {Array.isArray(transactions) && transactions.length > 0 ? transactions.map((row, index) => (
-            <tr key={`${row.txHash}-${index}`} className="border-b border-gray-700 hover:bg-gray-700/50">
-              <td className="p-3 font-mono text-sm text-cyan-400">{row.txHash}</td>
-              <td className="p-3">
-                <span className="bg-purple-600/50 text-purple-200 text-xs font-semibold mr-2 px-2.5 py-0.5 rounded">
-                  {row.method}
-                </span>
-              </td>
-              <td className="p-3 text-gray-300">{row.age}</td>
-              <td className="p-3 text-right text-gray-300">{row.gasUsed !== undefined && row.gasUsed !== null ? row.gasUsed.toLocaleString() : 'N/A'}</td>
-              <td className="p-3 text-right font-semibold text-teal-300">{row.gasPrice !== undefined && row.gasPrice !== null ? row.gasPrice.toFixed(4) : 'N/A'}</td>
-            </tr>
+          {Array.isArray(visibleRows) && visibleRows.length > 0 ? visibleRows.map((row, index) => (
+            <TableRow key={`${row.txHash}-${index}`} row={row} index={index} />
           )) : null}
+          {useVirtualScrolling && transactions.length > 20 && (
+            <tr>
+              <td colSpan={5} className="p-3 text-center text-gray-500 text-sm">
+                Showing first 20 of {transactions.length} transactions
+              </td>
+            </tr>
+          )}
         </tbody>
       </table>
       

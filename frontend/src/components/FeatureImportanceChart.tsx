@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo, memo } from 'react';
+import React, { useEffect, useState, useMemo, memo, useCallback } from 'react';
 import { Layers, RefreshCw, Info, ChevronDown, ChevronUp } from 'lucide-react';
 import { API_CONFIG, getApiUrl } from '../config/api';
 
@@ -15,7 +15,7 @@ const FeatureImportanceChart: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(false);
 
-  const fetchFeatures = async () => {
+  const fetchFeatures = useCallback(async () => {
     try {
       setLoading(true);
       const response = await fetch(
@@ -51,15 +51,19 @@ const FeatureImportanceChart: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchFeatures();
-  }, []);
+  }, [fetchFeatures]);
 
-  const maxImportance = Math.max(...features.map(f => f.importance), 0.001);
+  // Memoize expensive calculations
+  const maxImportance = useMemo(
+    () => Math.max(...features.map(f => f.importance), 0.001),
+    [features]
+  );
 
-  const formatFeatureName = (name: string): string => {
+  const formatFeatureName = useCallback((name: string): string => {
     return name
       .replace(/_/g, ' ')
       .replace(/\b\w/g, c => c.toUpperCase())
@@ -67,15 +71,18 @@ const FeatureImportanceChart: React.FC = () => {
       .replace(/Gas /g, '')
       .replace(/Rolling /g, 'Roll. ')
       .substring(0, 20);
-  };
+  }, []);
 
-  const getBarColor = (rank: number): string => {
+  const getBarColor = useCallback((rank: number): string => {
     if (rank <= 3) return 'bg-gradient-to-r from-purple-500 to-purple-400';
     if (rank <= 6) return 'bg-gradient-to-r from-cyan-500 to-cyan-400';
     return 'bg-gradient-to-r from-gray-500 to-gray-400';
-  };
+  }, []);
 
-  const displayFeatures = expanded ? features : features.slice(0, 5);
+  const displayFeatures = useMemo(
+    () => expanded ? features : features.slice(0, 5),
+    [expanded, features]
+  );
 
   // Generate screen reader summary
   const featureSummary = useMemo(() => {

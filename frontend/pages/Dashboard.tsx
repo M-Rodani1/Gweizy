@@ -1,4 +1,4 @@
-import React, { useEffect, useState, lazy } from 'react';
+import React, { useEffect, useState, lazy, useMemo, useCallback } from 'react';
 import { Bell, Calendar, BarChart3, Settings2, LayoutDashboard, ChevronRight } from 'lucide-react';
 import StickyHeader from '../src/components/StickyHeader';
 import TransactionPilot from '../src/components/TransactionPilot';
@@ -39,18 +39,60 @@ const Dashboard: React.FC = () => {
   const { ethPrice } = useEthPrice(60000);
   const walletAddress = useWalletAddress();
 
-  const currentGas = multiChainGas[selectedChain.id]?.gasPrice || 0;
+  // Memoize currentGas calculation
+  const currentGas = useMemo(
+    () => multiChainGas[selectedChain.id]?.gasPrice || 0,
+    [multiChainGas, selectedChain.id]
+  );
 
+  // Memoize API health check function
+  const checkAPI = useCallback(async () => {
+    const isHealthy = await checkHealth();
+    setApiStatus(isHealthy ? 'online' : 'offline');
+  }, []);
+
+  // Debounced API health check - only check every 60 seconds
   useEffect(() => {
-    const checkAPI = async () => {
-      const isHealthy = await checkHealth();
-      setApiStatus(isHealthy ? 'online' : 'offline');
-    };
-
     checkAPI();
     const interval = setInterval(checkAPI, 60000);
     return () => clearInterval(interval);
+  }, [checkAPI]);
+
+  // Memoize tab change handlers to prevent unnecessary re-renders
+  const handleTabChange = useCallback((tab: DashboardTab) => {
+    setActiveTab(tab);
   }, []);
+
+  // Memoize tab button props
+  const tabButtonProps = useMemo(() => ({
+    overview: {
+      onClick: () => handleTabChange('overview'),
+      'aria-selected': activeTab === 'overview',
+      className: `flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium btn-press ripple ${
+        activeTab === 'overview'
+          ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 hover-glow'
+          : 'text-gray-400 hover:text-white hover:bg-gray-800/50'
+      }`
+    },
+    analytics: {
+      onClick: () => handleTabChange('analytics'),
+      'aria-selected': activeTab === 'analytics',
+      className: `flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium btn-press ripple ${
+        activeTab === 'analytics'
+          ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30 hover-glow'
+          : 'text-gray-400 hover:text-white hover:bg-gray-800/50'
+      }`
+    },
+    system: {
+      onClick: () => handleTabChange('system'),
+      'aria-selected': activeTab === 'system',
+      className: `flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium btn-press ripple ${
+        activeTab === 'system'
+          ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30 hover-glow'
+          : 'text-gray-400 hover:text-white hover:bg-gray-800/50'
+      }`
+    }
+  }), [activeTab, handleTabChange]);
 
   return (
     <div className="min-h-screen app-shell">
@@ -86,49 +128,31 @@ const Dashboard: React.FC = () => {
             aria-label="Dashboard tabs"
           >
             <button
-              onClick={() => setActiveTab('overview')}
+              {...tabButtonProps.overview}
               role="tab"
-              aria-selected={activeTab === 'overview'}
               aria-controls="panel-overview"
               id="tab-overview"
               tabIndex={activeTab === 'overview' ? 0 : -1}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium btn-press ripple ${
-                activeTab === 'overview'
-                  ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 hover-glow'
-                  : 'text-gray-400 hover:text-white hover:bg-gray-800/50'
-              }`}
             >
               <LayoutDashboard className="w-4 h-4" aria-hidden="true" />
               Overview
             </button>
             <button
-              onClick={() => setActiveTab('analytics')}
+              {...tabButtonProps.analytics}
               role="tab"
-              aria-selected={activeTab === 'analytics'}
               aria-controls="panel-analytics"
               id="tab-analytics"
               tabIndex={activeTab === 'analytics' ? 0 : -1}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium btn-press ripple ${
-                activeTab === 'analytics'
-                  ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30 hover-glow'
-                  : 'text-gray-400 hover:text-white hover:bg-gray-800/50'
-              }`}
             >
               <BarChart3 className="w-4 h-4" aria-hidden="true" />
               Analytics
             </button>
             <button
-              onClick={() => setActiveTab('system')}
+              {...tabButtonProps.system}
               role="tab"
-              aria-selected={activeTab === 'system'}
               aria-controls="panel-system"
               id="tab-system"
               tabIndex={activeTab === 'system' ? 0 : -1}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium btn-press ripple ${
-                activeTab === 'system'
-                  ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30 hover-glow'
-                  : 'text-gray-400 hover:text-white hover:bg-gray-800/50'
-              }`}
             >
               <Settings2 className="w-4 h-4" aria-hidden="true" />
               System
@@ -203,14 +227,14 @@ const Dashboard: React.FC = () => {
               {/* Quick link to other tabs */}
               <div className="flex gap-4 pt-4">
                 <button
-                  onClick={() => setActiveTab('analytics')}
+                  onClick={() => handleTabChange('analytics')}
                   className="flex items-center gap-2 text-sm text-gray-400 hover:text-purple-400 transition-colors"
                   aria-label="Switch to analytics tab"
                 >
                   View detailed analytics <ChevronRight className="w-4 h-4" aria-hidden="true" />
                 </button>
                 <button
-                  onClick={() => setActiveTab('system')}
+                  onClick={() => handleTabChange('system')}
                   className="flex items-center gap-2 text-sm text-gray-400 hover:text-amber-400 transition-colors"
                   aria-label="Switch to system tab"
                 >

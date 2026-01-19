@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, memo } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Area, ComposedChart } from 'recharts';
 import { GraphDataPoint } from '../../types';
 import { fetchPredictions, fetchCurrentGas } from '../api/gasApi';
@@ -203,4 +203,5 @@ const GasPriceGraph: React.FC = () => {
   );
 };
 
-export default GasPriceGraph;
+// Memoize to prevent unnecessary re-renders when parent updates
+export default memo(GasPriceGraph);
