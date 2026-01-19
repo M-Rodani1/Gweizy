@@ -23,6 +23,7 @@ class NotificationService:
         self.from_email = getattr(Config, 'FROM_EMAIL', 'noreply@gweizy.com')
         self.discord_webhook_url = getattr(Config, 'DISCORD_WEBHOOK_URL', None)
         self.telegram_bot_token = getattr(Config, 'TELEGRAM_BOT_TOKEN', None)
+        self._session = requests.Session()
     
     def send_email(self, to_email: str, subject: str, body: str, html_body: Optional[str] = None) -> bool:
         """
@@ -96,7 +97,7 @@ class NotificationService:
             if fields:
                 embed['fields'] = fields
             
-            response = requests.post(
+            response = self._session.post(
                 webhook_url,
                 json={'embeds': [embed]},
                 timeout=10
@@ -132,7 +133,7 @@ class NotificationService:
         try:
             url = f"https://api.telegram.org/bot{self.telegram_bot_token}/sendMessage"
             
-            response = requests.post(
+            response = self._session.post(
                 url,
                 json={
                     'chat_id': chat_id,
@@ -263,4 +264,3 @@ def get_notification_service() -> NotificationService:
     if _notification_service is None:
         _notification_service = NotificationService()
     return _notification_service
-

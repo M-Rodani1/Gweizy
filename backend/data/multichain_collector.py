@@ -76,6 +76,7 @@ class MultiChainGasCollector:
     def __init__(self):
         self.chains = CHAINS
         self._web3_instances = {}
+        self._session = requests.Session()
     
     def _get_web3(self, chain_id: int) -> Optional[Web3]:
         """Get or create Web3 instance for a chain."""
@@ -165,7 +166,7 @@ class MultiChainGasCollector:
             if hasattr(Config, 'OWLRACLE_API_KEY') and Config.OWLRACLE_API_KEY:
                 headers['Authorization'] = Config.OWLRACLE_API_KEY
             
-            response = requests.get(url, headers=headers, timeout=10)
+            response = self._session.get(url, headers=headers, timeout=10)
             response.raise_for_status()
             data = response.json()
             
@@ -233,4 +234,3 @@ if __name__ == "__main__":
             print(f"{data['chain_name']} ({chain_id}): {data['current_gas']} gwei")
         else:
             print(f"{data['chain_name']} ({chain_id}): {data.get('error', 'Unknown error')}")
-

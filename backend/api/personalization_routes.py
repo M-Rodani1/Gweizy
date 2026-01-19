@@ -5,8 +5,10 @@ Provides personalized gas optimization suggestions based on user transaction his
 from flask import Blueprint, request, jsonify
 from services.personalization_service import get_personalization_service
 from utils.logger import logger
+from data.database import DatabaseManager
 
 personalization_bp = Blueprint('personalization', __name__)
+db = DatabaseManager()
 
 
 @personalization_bp.route('/personalization/recommendations/<user_address>', methods=['GET'])
@@ -96,10 +98,7 @@ def get_user_savings(user_address: str):
         Savings statistics and potential savings
     """
     try:
-        from data.database import DatabaseManager
-        
         chain_id = request.args.get('chain_id', 8453, type=int)
-        db = DatabaseManager()
         stats = db.get_user_savings_stats(user_address, chain_id=chain_id)
         
         return jsonify({
@@ -168,4 +167,3 @@ def track_transaction():
             'success': False,
             'error': str(e)
         }), 500
-

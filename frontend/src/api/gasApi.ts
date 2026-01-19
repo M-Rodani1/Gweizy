@@ -1,4 +1,5 @@
 import { API_CONFIG, getApiUrl } from '../config/api';
+import { requestDeduplicator } from '../utils/requestDeduplication';
 
 import {
   CurrentGasData,
@@ -62,57 +63,61 @@ const fetchJsonWithRetry = async <T,>(
   cacheConfig: { key: string; ttlMs: number } | null,
   errorMessage: string
 ): Promise<T> => {
-  let lastError: unknown;
+  const dedupeKey = `${options.method || 'GET'}:${url}`;
 
-  for (let attempt = 0; attempt < API_CONFIG.RETRY_ATTEMPTS; attempt += 1) {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), API_CONFIG.TIMEOUT);
-    try {
-      const response = await fetch(url, { ...options, signal: controller.signal });
-      clearTimeout(timeoutId);
+  return requestDeduplicator.deduplicate(dedupeKey, async () => {
+    let lastError: unknown;
 
-      if (!response.ok) {
-        const apiError = new GasAPIError(`${errorMessage}: ${response.statusText}`, response.status);
-        lastError = apiError;
-        if (attempt < API_CONFIG.RETRY_ATTEMPTS - 1 && response.status >= 500) {
+    for (let attempt = 0; attempt < API_CONFIG.RETRY_ATTEMPTS; attempt += 1) {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), API_CONFIG.TIMEOUT);
+      try {
+        const response = await fetch(url, { ...options, signal: controller.signal });
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+          const apiError = new GasAPIError(`${errorMessage}: ${response.statusText}`, response.status);
+          lastError = apiError;
+          if (attempt < API_CONFIG.RETRY_ATTEMPTS - 1 && response.status >= 500) {
+            await sleep(API_CONFIG.RETRY_DELAY * (attempt + 1));
+            continue;
+          }
+          break;
+        }
+
+        const data = await response.json();
+        if (cacheConfig) {
+          writeCache(cacheConfig.key, data);
+        }
+        return data as T;
+      } catch (err) {
+        clearTimeout(timeoutId);
+        lastError = err;
+        if (attempt < API_CONFIG.RETRY_ATTEMPTS - 1) {
           await sleep(API_CONFIG.RETRY_DELAY * (attempt + 1));
           continue;
         }
-        break;
-      }
-
-      const data = await response.json();
-      if (cacheConfig) {
-        writeCache(cacheConfig.key, data);
-      }
-      return data as T;
-    } catch (err) {
-      clearTimeout(timeoutId);
-      lastError = err;
-      if (attempt < API_CONFIG.RETRY_ATTEMPTS - 1) {
-        await sleep(API_CONFIG.RETRY_DELAY * (attempt + 1));
-        continue;
       }
     }
-  }
 
-  if (cacheConfig) {
-    const cached = readCache<T>(cacheConfig.key, cacheConfig.ttlMs);
-    if (cached) {
-      return cached;
+    if (cacheConfig) {
+      const cached = readCache<T>(cacheConfig.key, cacheConfig.ttlMs);
+      if (cached) {
+        return cached;
+      }
     }
-  }
 
-  if (lastError instanceof GasAPIError) {
-    throw lastError;
-  }
-  const isAbortError =
-    (typeof DOMException !== 'undefined' && lastError instanceof DOMException && lastError.name === 'AbortError') ||
-    (typeof lastError === 'object' && lastError !== null && 'name' in lastError && (lastError as { name?: string }).name === 'AbortError');
-  if (isAbortError) {
-    throw new GasAPIError(`${errorMessage}: request timed out`);
-  }
-  throw new GasAPIError(errorMessage);
+    if (lastError instanceof GasAPIError) {
+      throw lastError;
+    }
+    const isAbortError =
+      (typeof DOMException !== 'undefined' && lastError instanceof DOMException && lastError.name === 'AbortError') ||
+      (typeof lastError === 'object' && lastError !== null && 'name' in lastError && (lastError as { name?: string }).name === 'AbortError');
+    if (isAbortError) {
+      throw new GasAPIError(`${errorMessage}: request timed out`);
+    }
+    throw new GasAPIError(errorMessage);
+  });
 };
 
 /**

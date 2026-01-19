@@ -10,6 +10,7 @@ from utils.logger import logger, capture_exception
 class BaseGasCollector:
     def __init__(self):
         self.w3 = Web3(Web3.HTTPProvider(Config.BASE_RPC_URL))
+        self._session = requests.Session()
 
     def get_current_gas(self):
         """Fetch current Base gas price with circuit breaker protection."""
@@ -60,7 +61,7 @@ class BaseGasCollector:
             if Config.OWLRACLE_API_KEY:
                 headers['Authorization'] = Config.OWLRACLE_API_KEY
 
-            response = requests.get(url, headers=headers, timeout=10)
+            response = self._session.get(url, headers=headers, timeout=10)
             response.raise_for_status()
             data = response.json()
 
@@ -91,4 +92,3 @@ if __name__ == "__main__":
     collector = BaseGasCollector()
     data = collector.get_current_gas()
     print(data)
-

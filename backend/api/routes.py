@@ -5,6 +5,7 @@ All API endpoints for the gas price prediction system
 
 from flask import Blueprint, jsonify, request
 from data.collector import BaseGasCollector
+from data.multichain_collector import MultiChainGasCollector
 from data.database import DatabaseManager
 from models.feature_engineering import GasFeatureEngineer
 from models.model_trainer import GasModelTrainer
@@ -24,6 +25,7 @@ api_bp = Blueprint('api', __name__)
 
 
 collector = BaseGasCollector()
+multichain_collector = MultiChainGasCollector()
 db = DatabaseManager()
 engineer = GasFeatureEngineer()
 scanner = BaseScanner()
@@ -438,18 +440,16 @@ def get_predictions():
         chain_id = request.args.get('chain_id', 8453, type=int)
         
         # Get current gas for the specified chain
-        from data.multichain_collector import MultiChainGasCollector
-        multichain_collector = MultiChainGasCollector()
         current = multichain_collector.get_current_gas(chain_id)
         
         # If we can't get current gas, try to get a fallback value from recent data
         if not current or not current.get('current_gas'):
             logger.warning(f"Could not fetch current gas for chain {chain_id}, using fallback from recent data")
             # Try to get a recent gas price from the database as fallback
-            recent_data = db.get_historical_data(hours=1, chain_id=chain_id)
+            recent_data = db.get_historical_data(hours=1, chain_id=chain_id, limit=1, order='desc')
             if recent_data and len(recent_data) > 0:
                 # Get the most recent entry
-                fallback_gas = recent_data[-1].get('gwei') or recent_data[-1].get('current_gas', 0.01)
+                fallback_gas = recent_data[0].get('gwei') or recent_data[0].get('current_gas', 0.01)
                 current = {
                     'chain_id': chain_id,
                     'current_gas': fallback_gas,

@@ -8,8 +8,14 @@ import os
 
 from utils.logger import logger
 from api.cache import cached
+from data.database import DatabaseManager
+from data.multichain_collector import MultiChainGasCollector
 
 agent_bp = Blueprint('agent', __name__)
+
+# Shared helpers for request handlers
+db = DatabaseManager()
+multichain_collector = MultiChainGasCollector()
 
 # Cache for chain-specific agents
 _chain_agents = {}
@@ -153,18 +159,14 @@ def get_recommendation():
         # Get current gas price for the specified chain
         current_gas = data.get('current_gas')
         if current_gas is None:
-            from data.multichain_collector import MultiChainGasCollector
-            collector = MultiChainGasCollector()
-            gas_data = collector.get_current_gas(chain_id)
+            gas_data = multichain_collector.get_current_gas(chain_id)
             current_gas = gas_data.get('current_gas', 0.001) if gas_data else 0.001
         
         # Get price history for the specified chain
         price_history = data.get('price_history', [])
         if not price_history:
-            from data.database import DatabaseManager
-            db = DatabaseManager()
-            historical = db.get_historical_data(hours=24, chain_id=chain_id)
-            price_history = [h.get('gwei', current_gas) for h in historical[-24:]]
+            historical = db.get_historical_data(hours=24, chain_id=chain_id, limit=24, order='desc')
+            price_history = [h.get('gwei', current_gas) for h in reversed(historical)]
         
         # Try chain-specific DQN agent first
         agent = get_dqn_agent(chain_id=chain_id)

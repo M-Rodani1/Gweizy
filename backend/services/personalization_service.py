@@ -24,7 +24,7 @@ class PersonalizationService:
         Returns:
             Dict with patterns, recommendations, and statistics
         """
-        transactions = self.db.get_user_transactions(user_address, chain_id, limit=500)
+        transactions = self.db.get_user_transactions(user_address, chain_id, limit=500, only_success=True)
         
         if len(transactions) < 5:
             return self._get_default_recommendations()
@@ -39,9 +39,6 @@ class PersonalizationService:
         total_potential_savings = 0
         
         for tx in transactions:
-            if tx.get('status') != 'success':
-                continue
-            
             try:
                 ts = datetime.fromisoformat(tx['timestamp'].replace('Z', '+00:00'))
                 hour = ts.hour
@@ -304,4 +301,3 @@ def get_personalization_service() -> PersonalizationService:
     if _personalization_service is None:
         _personalization_service = PersonalizationService()
     return _personalization_service
-

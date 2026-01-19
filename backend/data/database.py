@@ -1,9 +1,9 @@
-from sqlalchemy import create_engine, Column, Integer, Float, String, DateTime
+from sqlalchemy import create_engine, Column, Integer, Float, String, DateTime, func
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import QueuePool, NullPool
 from datetime import datetime
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Optional
 from config import Config
 from utils.logger import logger
 import threading
@@ -253,16 +253,30 @@ class DatabaseManager:
         finally:
             session.close()
     
-    def get_historical_data(self, hours=720, chain_id=8453):  # 30 days default, Base chain default
-        """Get historical gas prices for a specific chain"""
+    def get_historical_data(self, hours=720, chain_id=8453, limit: Optional[int] = None, order: str = 'asc'):
+        """Get historical gas prices for a specific chain."""
         session = self._get_session()
         try:
             from datetime import timedelta
             cutoff = datetime.now() - timedelta(hours=hours)
-            results = session.query(GasPrice).filter(
+            query = session.query(
+                GasPrice.timestamp,
+                GasPrice.chain_id,
+                GasPrice.current_gas,
+                GasPrice.base_fee,
+                GasPrice.priority_fee
+            ).filter(
                 GasPrice.timestamp >= cutoff,
                 GasPrice.chain_id == chain_id
-            ).all()
+            )
+            if order == 'desc':
+                query = query.order_by(GasPrice.timestamp.desc())
+            else:
+                query = query.order_by(GasPrice.timestamp.asc())
+            if limit:
+                query = query.limit(limit)
+
+            results = query.all()
             # Convert to dict format for JSON serialization
             return [{
                 'timestamp': r.timestamp.isoformat() if hasattr(r.timestamp, 'isoformat') else str(r.timestamp),
@@ -331,14 +345,28 @@ class DatabaseManager:
         finally:
             session.close()
     
-    def get_user_transactions(self, user_address: str, chain_id: int = 8453, limit: int = 100) -> List[Dict]:
+    def get_user_transactions(self, user_address: str, chain_id: int = 8453, limit: int = 100, only_success: bool = False) -> List[Dict]:
         """Get user transaction history"""
         session = self._get_session()
         try:
-            transactions = session.query(UserTransaction).filter(
+            query = session.query(
+                UserTransaction.tx_hash,
+                UserTransaction.block_number,
+                UserTransaction.timestamp,
+                UserTransaction.gas_price_gwei,
+                UserTransaction.gas_used,
+                UserTransaction.gas_cost_eth,
+                UserTransaction.tx_type,
+                UserTransaction.status,
+                UserTransaction.saved_by_waiting,
+                UserTransaction.optimal_time
+            ).filter(
                 UserTransaction.user_address == user_address.lower(),
                 UserTransaction.chain_id == chain_id
-            ).order_by(UserTransaction.timestamp.desc()).limit(limit).all()
+            )
+            if only_success:
+                query = query.filter(UserTransaction.status == 'success')
+            transactions = query.order_by(UserTransaction.timestamp.desc()).limit(limit).all()
             
             return [{
                 'tx_hash': t.tx_hash,
@@ -359,13 +387,23 @@ class DatabaseManager:
         """Get user savings statistics"""
         session = self._get_session()
         try:
-            transactions = session.query(UserTransaction).filter(
+            totals = session.query(
+                func.count(UserTransaction.id),
+                func.coalesce(func.sum(UserTransaction.gas_cost_eth), 0),
+                func.coalesce(func.sum(UserTransaction.saved_by_waiting), 0),
+                func.coalesce(func.avg(UserTransaction.gas_price_gwei), 0)
+            ).filter(
                 UserTransaction.user_address == user_address.lower(),
                 UserTransaction.chain_id == chain_id,
                 UserTransaction.status == 'success'
-            ).all()
-            
-            if not transactions:
+            ).one()
+
+            total_transactions = int(totals[0] or 0)
+            total_gas_paid = float(totals[1] or 0)
+            potential_savings = float(totals[2] or 0)
+            avg_gas_price = float(totals[3] or 0)
+
+            if total_transactions == 0:
                 return {
                     'total_transactions': 0,
                     'total_gas_paid': 0,
@@ -373,13 +411,9 @@ class DatabaseManager:
                     'savings_percentage': 0,
                     'avg_gas_price': 0
                 }
-            
-            total_gas_paid = sum(t.gas_cost_eth for t in transactions)
-            potential_savings = sum(t.saved_by_waiting or 0 for t in transactions)
-            avg_gas_price = sum(t.gas_price_gwei for t in transactions) / len(transactions)
-            
+
             return {
-                'total_transactions': len(transactions),
+                'total_transactions': total_transactions,
                 'total_gas_paid': total_gas_paid,
                 'potential_savings': potential_savings,
                 'savings_percentage': (potential_savings / total_gas_paid * 100) if total_gas_paid > 0 else 0,
@@ -526,4 +560,3 @@ class DatabaseManager:
         health['pool_status'] = self.get_pool_status()
 
         return health
-
