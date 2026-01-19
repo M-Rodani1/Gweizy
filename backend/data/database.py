@@ -255,6 +255,7 @@ class DatabaseManager:
     
     def get_historical_data(self, hours=720, chain_id=8453, limit: Optional[int] = None, order: str = 'asc'):
         """Get historical gas prices for a specific chain."""
+        from sqlalchemy import or_
         session = self._get_session()
         try:
             from datetime import timedelta
@@ -267,7 +268,8 @@ class DatabaseManager:
                 GasPrice.priority_fee
             ).filter(
                 GasPrice.timestamp >= cutoff,
-                GasPrice.chain_id == chain_id
+                # Include records with matching chain_id OR NULL chain_id (legacy Base data)
+                or_(GasPrice.chain_id == chain_id, GasPrice.chain_id.is_(None)) if chain_id == 8453 else GasPrice.chain_id == chain_id
             )
             if order == 'desc':
                 query = query.order_by(GasPrice.timestamp.desc())
@@ -448,6 +450,19 @@ class DatabaseManager:
                     except Exception as e:
                         logger.warning(f"Could not add chain_id to gas_prices (may already exist): {e}")
                         conn.rollback()
+                
+                # Fix NULL chain_id values - set them to Base (8453)
+                try:
+                    result = conn.execute(text("UPDATE gas_prices SET chain_id = 8453 WHERE chain_id IS NULL"))
+                    conn.commit()
+                    if result.rowcount > 0:
+                        logger.info(f"✓ Updated {result.rowcount} gas_prices records with NULL chain_id to 8453 (Base)")
+                except Exception as e:
+                    logger.warning(f"Could not update NULL chain_id values: {e}")
+                    try:
+                        conn.rollback()
+                    except:
+                        pass
             
             # Migrate predictions table
             if 'predictions' in inspector.get_table_names():
@@ -468,6 +483,19 @@ class DatabaseManager:
                     except Exception as e:
                         logger.warning(f"Could not add chain_id to predictions (may already exist): {e}")
                         conn.rollback()
+                
+                # Fix NULL chain_id values in predictions
+                try:
+                    result = conn.execute(text("UPDATE predictions SET chain_id = 8453 WHERE chain_id IS NULL"))
+                    conn.commit()
+                    if result.rowcount > 0:
+                        logger.info(f"✓ Updated {result.rowcount} predictions records with NULL chain_id to 8453 (Base)")
+                except Exception as e:
+                    logger.warning(f"Could not update NULL chain_id values in predictions: {e}")
+                    try:
+                        conn.rollback()
+                    except:
+                        pass
 
     def get_connection(self):
         """Get raw database connection for custom queries"""
