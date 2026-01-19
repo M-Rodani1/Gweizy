@@ -39,48 +39,15 @@ export default defineConfig(({ mode }) => {
       build: {
         rollupOptions: {
           output: {
-            // Simplified chunking strategy to prevent React initialization issues
-            // ALL React-related packages go into ONE chunk to ensure proper initialization order
+            // DISABLE code splitting to prevent React initialization race conditions
+            // Put ALL vendor code in ONE chunk to guarantee correct load order
             manualChunks: (id) => {
               if (id.includes('node_modules')) {
-                // Put ALL React-related packages together in one chunk
-                // This includes React core, React DOM, and all React-dependent libraries
-                // This ensures React is fully initialized before any library uses it
-                if (id.includes('react') || 
-                    id.includes('@tanstack/react') ||
-                    id.includes('@sentry/react') ||
-                    id.includes('framer-motion') ||
-                    id.includes('@farcaster') ||
-                    id.includes('recharts') ||
-                    id.includes('lucide-react')) {
-                  return 'vendor-react';
-                }
-                
-                // Non-React dependencies can be in separate chunks
-                if (id.includes('socket.io')) {
-                  return 'vendor-socket';
-                }
-                if (id.includes('zustand')) {
-                  return 'vendor-state';
-                }
-                
-                // Everything else goes to vendor-misc
-                return 'vendor-misc';
+                // ALL vendor code goes into ONE chunk
+                // This ensures React initializes before anything else
+                return 'vendor';
               }
             }
-          },
-          // Enable tree-shaking optimizations
-          // Note: Preserve side effects for libraries that need them
-          treeshake: {
-            moduleSideEffects: (id) => {
-              // Preserve side effects for lucide-react and other icon libraries
-              if (id.includes('lucide-react') || id.includes('lucide')) {
-                return true;
-              }
-              return false;
-            },
-            propertyReadSideEffects: false,
-            tryCatchDeoptimization: false
           }
         },
         minify: 'terser',
