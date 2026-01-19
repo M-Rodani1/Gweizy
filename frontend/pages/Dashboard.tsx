@@ -54,10 +54,20 @@ const Dashboard: React.FC = () => {
 
   return (
     <div className="min-h-screen app-shell">
+      {/* Skip Navigation Link */}
+      <a href="#main-content" className="skip-nav">
+        Skip to main content
+      </a>
+
       {/* Header */}
       <StickyHeader apiStatus={apiStatus} currentGas={currentGas} />
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-8">
+      <main
+        id="main-content"
+        className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-8"
+        role="main"
+        aria-label="Dashboard content"
+      >
         {/* Drift Alert Banner */}
         <DriftAlertBanner />
 
@@ -69,47 +79,74 @@ const Dashboard: React.FC = () => {
         </div>
 
         {/* Tab Navigation */}
-        <div className="flex items-center gap-2 mb-6 border-b border-gray-800 pb-4" data-tour="tabs">
-          <button
-            onClick={() => setActiveTab('overview')}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium btn-press ripple ${
-              activeTab === 'overview'
-                ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 hover-glow'
-                : 'text-gray-400 hover:text-white hover:bg-gray-800/50'
-            }`}
+        <nav aria-label="Dashboard sections" data-tour="tabs">
+          <div
+            className="flex items-center gap-2 mb-6 border-b border-gray-800 pb-4"
+            role="tablist"
+            aria-label="Dashboard tabs"
           >
-            <LayoutDashboard className="w-4 h-4" />
-            Overview
-          </button>
-          <button
-            onClick={() => setActiveTab('analytics')}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium btn-press ripple ${
-              activeTab === 'analytics'
-                ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30 hover-glow'
-                : 'text-gray-400 hover:text-white hover:bg-gray-800/50'
-            }`}
-          >
-            <BarChart3 className="w-4 h-4" />
-            Analytics
-          </button>
-          <button
-            onClick={() => setActiveTab('system')}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium btn-press ripple ${
-              activeTab === 'system'
-                ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30 hover-glow'
-                : 'text-gray-400 hover:text-white hover:bg-gray-800/50'
-            }`}
-          >
-            <Settings2 className="w-4 h-4" />
-            System
-          </button>
-        </div>
+            <button
+              onClick={() => setActiveTab('overview')}
+              role="tab"
+              aria-selected={activeTab === 'overview'}
+              aria-controls="panel-overview"
+              id="tab-overview"
+              tabIndex={activeTab === 'overview' ? 0 : -1}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium btn-press ripple ${
+                activeTab === 'overview'
+                  ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 hover-glow'
+                  : 'text-gray-400 hover:text-white hover:bg-gray-800/50'
+              }`}
+            >
+              <LayoutDashboard className="w-4 h-4" aria-hidden="true" />
+              Overview
+            </button>
+            <button
+              onClick={() => setActiveTab('analytics')}
+              role="tab"
+              aria-selected={activeTab === 'analytics'}
+              aria-controls="panel-analytics"
+              id="tab-analytics"
+              tabIndex={activeTab === 'analytics' ? 0 : -1}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium btn-press ripple ${
+                activeTab === 'analytics'
+                  ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30 hover-glow'
+                  : 'text-gray-400 hover:text-white hover:bg-gray-800/50'
+              }`}
+            >
+              <BarChart3 className="w-4 h-4" aria-hidden="true" />
+              Analytics
+            </button>
+            <button
+              onClick={() => setActiveTab('system')}
+              role="tab"
+              aria-selected={activeTab === 'system'}
+              aria-controls="panel-system"
+              id="tab-system"
+              tabIndex={activeTab === 'system' ? 0 : -1}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-medium btn-press ripple ${
+                activeTab === 'system'
+                  ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30 hover-glow'
+                  : 'text-gray-400 hover:text-white hover:bg-gray-800/50'
+              }`}
+            >
+              <Settings2 className="w-4 h-4" aria-hidden="true" />
+              System
+            </button>
+          </div>
+        </nav>
 
         {/* Tab Content */}
         <div className="space-y-6">
           {/* OVERVIEW TAB */}
           {activeTab === 'overview' && (
-            <div className="space-y-6 animate-fadeIn">
+            <section
+              id="panel-overview"
+              role="tabpanel"
+              aria-labelledby="tab-overview"
+              className="space-y-6 animate-fadeIn"
+              tabIndex={0}
+            >
               {/* Top row: Forecast + Network */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:min-h-[400px]">
                 <div data-tour="forecast" className="h-full">
@@ -168,22 +205,30 @@ const Dashboard: React.FC = () => {
                 <button
                   onClick={() => setActiveTab('analytics')}
                   className="flex items-center gap-2 text-sm text-gray-400 hover:text-purple-400 transition-colors"
+                  aria-label="Switch to analytics tab"
                 >
-                  View detailed analytics <ChevronRight className="w-4 h-4" />
+                  View detailed analytics <ChevronRight className="w-4 h-4" aria-hidden="true" />
                 </button>
                 <button
                   onClick={() => setActiveTab('system')}
                   className="flex items-center gap-2 text-sm text-gray-400 hover:text-amber-400 transition-colors"
+                  aria-label="Switch to system tab"
                 >
-                  View system status <ChevronRight className="w-4 h-4" />
+                  View system status <ChevronRight className="w-4 h-4" aria-hidden="true" />
                 </button>
               </div>
-            </div>
+            </section>
           )}
 
           {/* ANALYTICS TAB */}
           {activeTab === 'analytics' && (
-            <div className="space-y-6 animate-fadeIn">
+            <section
+              id="panel-analytics"
+              role="tabpanel"
+              aria-labelledby="tab-analytics"
+              className="space-y-6 animate-fadeIn"
+              tabIndex={0}
+            >
               {/* Charts */}
               <SectionErrorBoundary sectionName="Gas Price Chart">
                 <LazySection rootMargin="200px">
@@ -211,12 +256,18 @@ const Dashboard: React.FC = () => {
               <SectionErrorBoundary sectionName="Advanced Analytics">
                 <AdvancedAnalyticsPanel />
               </SectionErrorBoundary>
-            </div>
+            </section>
           )}
 
           {/* SYSTEM TAB */}
           {activeTab === 'system' && (
-            <div className="space-y-6 animate-fadeIn">
+            <section
+              id="panel-system"
+              role="tabpanel"
+              aria-labelledby="tab-system"
+              className="space-y-6 animate-fadeIn"
+              tabIndex={0}
+            >
               {/* Status Cards - 2x2 grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <SectionErrorBoundary sectionName="API Status">
@@ -241,28 +292,29 @@ const Dashboard: React.FC = () => {
               <SectionErrorBoundary sectionName="Accuracy Dashboard">
                 <AccuracyMetricsDashboard />
               </SectionErrorBoundary>
-            </div>
+            </section>
           )}
         </div>
 
         {/* Footer */}
-        <footer className="mt-12 py-6 text-center border-t border-gray-800">
+        <footer className="mt-12 py-6 text-center border-t border-gray-800" role="contentinfo">
           <p className="text-sm text-gray-500">
             Gweizy — AI-Powered Multi-Chain Gas Optimizer
           </p>
           <p className="text-xs text-gray-600 mt-1">
+            <span className="sr-only">Current network: </span>
             {selectedChain.name} • Chain ID: {selectedChain.id} • Powered by DQN Neural Networks
           </p>
           <p className="text-xs text-cyan-500 mt-1">
             v2.0 - AI Pilot Edition (Dec 28, 2025)
           </p>
-          <div className="mt-4 flex justify-center gap-4 text-xs text-gray-500">
+          <nav className="mt-4 flex justify-center gap-4 text-xs text-gray-500" aria-label="Footer navigation">
             <a href="/analytics" className="hover:text-cyan-400 transition-colors">Analytics</a>
-            <a href="/docs" className="hover:text-cyan-400 transition-colors">Docs</a>
-            <a href="/pricing" className="hover:text-cyan-400 transition-colors">API</a>
-          </div>
+            <a href="/docs" className="hover:text-cyan-400 transition-colors">Documentation</a>
+            <a href="/pricing" className="hover:text-cyan-400 transition-colors">API Pricing</a>
+          </nav>
         </footer>
-      </div>
+      </main>
 
       {/* Onboarding Tour */}
       <OnboardingTour />

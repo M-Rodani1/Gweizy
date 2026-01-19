@@ -44,20 +44,27 @@ const PersonalizationPanel: React.FC = () => {
   };
 
   return (
-    <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-5 shadow-xl widget-glow h-full flex flex-col w-full max-w-full overflow-hidden">
+    <div
+      className="bg-gray-900/50 border border-gray-800 rounded-2xl p-5 shadow-xl widget-glow h-full flex flex-col w-full max-w-full overflow-hidden"
+      role="region"
+      aria-labelledby="personalization-heading"
+    >
       <div className="flex items-center gap-2 mb-4">
-        <Sliders className="w-4 h-4 text-cyan-400" />
-        <h3 className="font-semibold text-white text-sm">Profile & Defaults</h3>
+        <Sliders className="w-4 h-4 text-cyan-400" aria-hidden="true" />
+        <h3 id="personalization-heading" className="font-semibold text-white text-sm">Profile & Defaults</h3>
       </div>
 
       {/* Strategy Presets - Compact */}
-      <div className="mb-4">
-        <div className="text-xs text-gray-500 mb-2">Strategy</div>
-        <div className="flex gap-2">
+      <fieldset className="mb-4">
+        <legend className="text-xs text-gray-500 mb-2">Strategy</legend>
+        <div className="flex gap-2" role="radiogroup" aria-label="Transaction strategy">
           {STRATEGY_OPTIONS.map((option) => (
             <button
               key={option.id}
               onClick={() => setStrategy(option.id)}
+              role="radio"
+              aria-checked={preferences.strategy === option.id}
+              aria-label={`${option.label}: ${option.description}`}
               className={`flex-1 rounded-lg border px-2 py-2 text-center btn-press ${
                 preferences.strategy === option.id
                   ? 'border-cyan-500/60 bg-cyan-500/10 text-cyan-200 hover-glow'
@@ -65,15 +72,15 @@ const PersonalizationPanel: React.FC = () => {
               }`}
             >
               <div className="flex items-center justify-center gap-1.5">
-                {option.id === 'saver' && <Target className="w-3.5 h-3.5 text-emerald-400" />}
-                {option.id === 'balanced' && <Sparkles className="w-3.5 h-3.5 text-cyan-400" />}
-                {option.id === 'fast' && <Zap className="w-3.5 h-3.5 text-amber-400" />}
+                {option.id === 'saver' && <Target className="w-3.5 h-3.5 text-emerald-400" aria-hidden="true" />}
+                {option.id === 'balanced' && <Sparkles className="w-3.5 h-3.5 text-cyan-400" aria-hidden="true" />}
+                {option.id === 'fast' && <Zap className="w-3.5 h-3.5 text-amber-400" aria-hidden="true" />}
                 <span className="text-xs font-medium">{option.label}</span>
               </div>
             </button>
           ))}
         </div>
-      </div>
+      </fieldset>
 
       {/* Transaction Type - Compact */}
       <div className="mb-4">
@@ -102,16 +109,18 @@ const PersonalizationPanel: React.FC = () => {
       {/* Urgency Slider - Compact */}
       <div className="mb-4">
         <div className="flex items-center justify-between text-xs mb-1.5">
-          <span className="text-gray-500">Urgency</span>
-          <span className="text-cyan-400 font-mono">{Math.round(preferences.urgency * 100)}%</span>
+          <label htmlFor="urgency-slider" className="text-gray-500">Urgency</label>
+          <span className="text-cyan-400 font-mono" aria-live="polite">{Math.round(preferences.urgency * 100)}%</span>
         </div>
         <input
+          id="urgency-slider"
           type="range"
           min="0"
           max="1"
           step="0.05"
           value={preferences.urgency}
           onChange={(e) => handleUrgencyChange(parseFloat(e.target.value))}
+          aria-valuetext={`${Math.round(preferences.urgency * 100)}% urgency`}
           className="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-cyan-400"
         />
       </div>
@@ -119,15 +128,17 @@ const PersonalizationPanel: React.FC = () => {
       {/* Advanced Settings Toggle */}
       <button
         onClick={() => setShowAdvanced(!showAdvanced)}
+        aria-expanded={showAdvanced}
+        aria-controls="advanced-settings"
         className="flex items-center justify-between w-full text-xs text-gray-500 hover:text-gray-300 transition-colors py-2 border-t border-gray-800"
       >
         <span>Advanced settings</span>
-        {showAdvanced ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+        {showAdvanced ? <ChevronUp className="w-4 h-4" aria-hidden="true" /> : <ChevronDown className="w-4 h-4" aria-hidden="true" />}
       </button>
 
       {/* Advanced Settings - Collapsible */}
       {showAdvanced && (
-        <div className="space-y-3 pt-2 animate-fadeIn">
+        <div id="advanced-settings" className="space-y-3 pt-2 animate-fadeIn" role="group" aria-label="Advanced settings">
           <div className="grid grid-cols-3 gap-2 text-xs">
             <div className="bg-gray-900/60 border border-gray-800 rounded-lg p-2 text-center">
               <div className="text-gray-500">Discount</div>

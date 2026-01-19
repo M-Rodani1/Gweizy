@@ -88,12 +88,16 @@ const CompactForecast: React.FC = () => {
   }
 
   return (
-    <div className="bg-gray-800/50 border border-gray-700 rounded-2xl overflow-hidden h-full flex flex-col shadow-xl widget-glow bg-pattern-dots">
+    <div
+      className="bg-gray-800/50 border border-gray-700 rounded-2xl overflow-hidden h-full flex flex-col shadow-xl widget-glow bg-pattern-dots"
+      role="region"
+      aria-label="Gas price forecast"
+    >
       {/* Header */}
       <div className="px-6 py-4 border-b border-gray-700/50 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Sparkles className="w-4 h-4 text-cyan-400" />
-          <h3 className="font-semibold text-white">Price Forecast</h3>
+          <Sparkles className="w-4 h-4 text-cyan-400" aria-hidden="true" />
+          <h3 className="font-semibold text-white" id="forecast-heading">Price Forecast</h3>
         </div>
         <div className="flex items-center gap-2">
           {lastUpdated && (
@@ -116,14 +120,14 @@ const CompactForecast: React.FC = () => {
       </div>
 
       {/* Predictions */}
-      <div className="divide-y divide-gray-700/30 flex-1">
+      <div className="divide-y divide-gray-700/30 flex-1" role="list" aria-label="Gas price predictions">
           {predictions.map((pred) => (
-            <div key={pred.horizon} className="px-6 py-4 flex items-center justify-between">
+            <div key={pred.horizon} className="px-6 py-4 flex items-center justify-between" role="listitem">
               <div className="flex items-center gap-3">
                 <div className="w-12 text-sm font-medium text-gray-400">
                   {pred.horizon === '1h' ? '1 Hour' : pred.horizon === '4h' ? '4 Hours' : '24 Hours'}
                 </div>
-                {getDirectionIcon(pred.direction)}
+                <span aria-label={`Trend: ${pred.direction}`}>{getDirectionIcon(pred.direction)}</span>
               </div>
 
               <div className="flex items-center gap-4">
@@ -138,8 +142,8 @@ const CompactForecast: React.FC = () => {
                 </div>
 
                 {/* Confidence bar */}
-                <div className="w-16">
-                  <div className="h-1.5 bg-gray-700 rounded-full overflow-hidden">
+                <div className="w-16" role="meter" aria-label="Prediction confidence" aria-valuenow={Math.round(pred.confidence * 100)} aria-valuemin={0} aria-valuemax={100}>
+                  <div className="h-1.5 bg-gray-700 rounded-full overflow-hidden" aria-hidden="true">
                     <div
                       className={`h-full transition-all ${
                         pred.confidence > 0.7 ? 'bg-green-500' :

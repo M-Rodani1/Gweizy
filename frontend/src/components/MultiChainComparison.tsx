@@ -38,12 +38,16 @@ const MultiChainComparison: React.FC<MultiChainComparisonProps> = ({
   }
 
   return (
-    <div className="bg-gray-800/50 border border-gray-700 rounded-2xl overflow-hidden h-full flex flex-col shadow-xl widget-glow w-full max-w-full">
+    <div
+      className="bg-gray-800/50 border border-gray-700 rounded-2xl overflow-hidden h-full flex flex-col shadow-xl widget-glow w-full max-w-full"
+      role="region"
+      aria-labelledby="multichain-heading"
+    >
       {/* Header */}
       <div className="px-6 py-4 border-b border-gray-700/50 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Network className="w-4 h-4 text-cyan-400" />
-          <h3 className="font-semibold text-white">Multi-Chain Gas</h3>
+          <Network className="w-4 h-4 text-cyan-400" aria-hidden="true" />
+          <h3 id="multichain-heading" className="font-semibold text-white">Multi-Chain Gas</h3>
         </div>
         {isLoading && (
           <div className="flex items-center gap-1.5">
@@ -54,7 +58,7 @@ const MultiChainComparison: React.FC<MultiChainComparisonProps> = ({
       </div>
 
       {/* Chain List */}
-      <div className="divide-y divide-gray-700/30 flex-1 overflow-y-auto">
+      <div className="divide-y divide-gray-700/30 flex-1 overflow-y-auto" role="list" aria-label="Blockchain networks by gas cost">
         {chainsWithCost.map(({ chain, gas, costUsd }, index) => {
           const isSelected = chain.id === selectedChainId;
           const isCheapest = index === 0;
@@ -73,6 +77,9 @@ const MultiChainComparison: React.FC<MultiChainComparisonProps> = ({
             <button
               key={chain.id}
               onClick={() => setSelectedChainId(chain.id)}
+              role="listitem"
+              aria-pressed={isSelected}
+              aria-label={`${chain.name}: ${formatUsd(costUsd)} for ${txType}${isCheapest ? ', best price' : ''}`}
               className={`
                 w-full px-6 py-4 flex items-center justify-between min-w-0
                 hover:bg-gray-700/30 transition-all card-interactive
