@@ -34,22 +34,21 @@ registerServiceWorker();
 const root = document.getElementById('root');
 if (root) {
   ReactDOM.createRoot(root).render(
-    <React.StrictMode>
-      <ErrorBoundary>
-        <QueryProvider>
-          <PreferencesProvider>
-            <ChainProvider>
-              <SchedulerProvider>
-                <ToastProvider>
-                  <OfflineIndicator />
-                  <App />
-                </ToastProvider>
-              </SchedulerProvider>
-            </ChainProvider>
-          </PreferencesProvider>
-        </QueryProvider>
-      </ErrorBoundary>
-    </React.StrictMode>
+    // StrictMode disabled to avoid lucide-react compatibility issues
+    <ErrorBoundary>
+      <QueryProvider>
+        <PreferencesProvider>
+          <ChainProvider>
+            <SchedulerProvider>
+              <ToastProvider>
+                <OfflineIndicator />
+                <App />
+              </ToastProvider>
+            </SchedulerProvider>
+          </ChainProvider>
+        </PreferencesProvider>
+      </QueryProvider>
+    </ErrorBoundary>
   );
 }
 // Cache bust Sat Dec 28 14:45:00 CET 2025 - force redeploy

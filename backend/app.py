@@ -4,6 +4,7 @@ Base Gas Price Prediction System - ML-powered gas fee predictions
 """
 
 from flask import Flask, jsonify
+from werkzeug.exceptions import HTTPException
 from flask_cors import CORS
 import sentry_sdk
 from sentry_sdk.integrations.flask import FlaskIntegration
@@ -168,11 +169,13 @@ def create_app():
         from flask import request
 
         # Always add CORS headers (belt and suspenders with flask-cors)
+        # CRITICAL: These must be on ALL responses, including errors
         response.headers['Access-Control-Allow-Origin'] = '*'
         response.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS, PUT, DELETE, PATCH'
         response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, Cache-Control, Pragma, X-Requested-With'
         response.headers['Access-Control-Max-Age'] = '3600'
         response.headers['Access-Control-Allow-Credentials'] = 'false'
+        response.headers['Access-Control-Expose-Headers'] = 'X-Request-ID, X-Response-Time'
 
         # Only cache GET requests
         if request.method == 'GET':
