@@ -25,14 +25,26 @@ class ResilientTrainingService:
     """Service for managing resilient model training with checkpointing"""
     
     def __init__(self, models_dir: str = None):
-        from config import Config
-        self.models_dir = models_dir or Config.MODELS_DIR
+        # Lazy import to avoid circular dependencies
+        if models_dir:
+            self.models_dir = models_dir
+        else:
+            try:
+                from config import Config
+                self.models_dir = Config.MODELS_DIR
+            except Exception as e:
+                logger.warning(f"Could not get MODELS_DIR from Config: {e}, using default")
+                self.models_dir = '/data/models'  # Default for Railway
+        
         self.checkpoint_dir = os.path.join(self.models_dir, '.training_checkpoints')
         self.checkpoint_file = os.path.join(self.checkpoint_dir, 'training_state.json')
         self.lock_file = os.path.join(self.checkpoint_dir, 'training.lock')
         
-        # Ensure checkpoint directory exists
-        os.makedirs(self.checkpoint_dir, exist_ok=True)
+        # Ensure checkpoint directory exists (but don't fail if we can't create it)
+        try:
+            os.makedirs(self.checkpoint_dir, exist_ok=True)
+        except Exception as e:
+            logger.warning(f"Could not create checkpoint directory {self.checkpoint_dir}: {e}")
         
         # Training state
         self._training_process: Optional[subprocess.Popen] = None
@@ -40,8 +52,12 @@ class ResilientTrainingService:
         self._is_training = False
         self._training_lock = threading.Lock()
         
-        # Setup signal handlers for graceful shutdown
-        self._setup_signal_handlers()
+        # Setup signal handlers for graceful shutdown (only in main thread)
+        try:
+            self._setup_signal_handlers()
+        except ValueError:
+            # Signals can only be registered in the main thread
+            logger.debug("Skipping signal handler registration (not in main thread)")
     
     def _setup_signal_handlers(self):
         """Setup signal handlers for graceful shutdown"""
