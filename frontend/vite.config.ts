@@ -42,57 +42,39 @@ export default defineConfig(({ mode }) => {
             manualChunks: (id) => {
               // Separate node_modules into more granular chunks
               if (id.includes('node_modules')) {
-                // Keep React and react-dom together to avoid initialization issues
-                // Be very specific to catch only React core packages
-                if ((id.includes('/react/') || id.includes('\\react\\')) && !id.includes('react-dom') && !id.includes('react-router')) {
-                  // React core only - must come first
+                // ALL React-related packages MUST be in vendor-react-core to ensure React loads first
+                // This prevents "Cannot read properties of undefined (reading 'forwardRef')" errors
+                
+                // Check for ALL React-dependent packages FIRST (before checking react core)
+                // Order matters: check specific packages before general patterns
+                if (id.includes('react-dom') ||
+                    id.includes('react-router') ||
+                    id.includes('react-is') ||
+                    id.includes('react-countup') ||
+                    id.includes('react-hot-toast') ||
+                    id.includes('lucide-react') ||
+                    id.includes('@tanstack/react-query') ||
+                    id.includes('@tanstack/react-virtual') ||
+                    id.includes('@sentry/react') ||
+                    id.includes('framer-motion') ||
+                    id.includes('@farcaster') ||
+                    id.includes('recharts') ||
+                    (id.includes('/react/') && !id.includes('/react-dom/')) ||  // react core (but not react-dom)
+                    (id.includes('\\react\\') && !id.includes('\\react-dom\\'))) {  // Windows paths
                   return 'vendor-react-core';
                 }
-                if ((id.includes('/react-dom/') || id.includes('\\react-dom\\'))) {
-                  // React DOM - bundle with React core
-                  return 'vendor-react-core';
-                }
-                // Include react-router with React since it depends on React
-                if (id.includes('react-router')) {
-                  return 'vendor-react-core';
-                }
-                // Recharts is heavy - separate it completely
-                if (id.includes('recharts')) {
-                  return 'vendor-charts';
-                }
-                // Query library - bundle with React since it depends on React
-                if (id.includes('@tanstack/react-query')) {
-                  return 'vendor-react-core';
-                }
-                // Monitoring - bundle with React since it depends on React
-                if (id.includes('@sentry/react')) {
-                  return 'vendor-react-core';
-                }
-                // React Virtual - bundle with React since it depends on React
-                if (id.includes('@tanstack/react-virtual')) {
-                  return 'vendor-react-core';
-                }
-                // Toast notifications - bundle with React since it depends on React
-                if (id.includes('react-hot-toast')) {
-                  return 'vendor-react-core';
-                }
-                // UI libraries that depend on React
-                if (id.includes('framer-motion')) {
-                  return 'vendor-react-core';
-                }
-                // Farcaster SDK - may depend on React
-                if (id.includes('@farcaster')) {
-                  return 'vendor-react-core';
-                }
+                
                 // WebSocket - no React dependency, can be separate
                 if (id.includes('socket.io')) {
                   return 'vendor-socket';
                 }
-                // Zustand - state management, separate
+                
+                // Zustand - state management, separate (doesn't depend on React directly)
                 if (id.includes('zustand')) {
                   return 'vendor-state';
                 }
-                // Other vendor code
+                
+                // Everything else goes to vendor-misc (only truly non-React dependencies)
                 return 'vendor-misc';
               }
               // Separate large feature components
