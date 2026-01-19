@@ -1,14 +1,16 @@
-import React from 'react';
+import React, { memo } from 'react';
 
-export const CardSkeleton = () => (
+// Memoized skeleton components to prevent unnecessary re-renders
+export const CardSkeleton = memo(() => (
   <div className="bg-gray-800 p-6 rounded-lg shadow-lg border border-gray-700 animate-pulse">
     <div className="h-6 bg-gray-700 rounded w-3/4 mb-4"></div>
     <div className="h-4 bg-gray-700 rounded w-1/2 mb-2"></div>
     <div className="h-4 bg-gray-700 rounded w-2/3"></div>
   </div>
-);
+));
+CardSkeleton.displayName = 'CardSkeleton';
 
-export const GasPriceCardSkeleton = () => (
+export const GasPriceCardSkeleton = memo(() => (
   <div className="bg-gray-800 p-6 rounded-lg shadow-lg border border-gray-700 animate-pulse">
     <div className="flex justify-between items-center mb-4">
       <div className="h-6 bg-gray-700 rounded w-32"></div>
@@ -23,9 +25,10 @@ export const GasPriceCardSkeleton = () => (
       <div className="h-3 bg-gray-700 rounded w-5/6"></div>
     </div>
   </div>
-);
+));
+GasPriceCardSkeleton.displayName = 'GasPriceCardSkeleton';
 
-export const LeaderboardSkeleton = () => (
+export const LeaderboardSkeleton = memo(() => (
   <div className="bg-gray-800 p-6 rounded-lg shadow-lg border border-gray-700 animate-pulse">
     <div className="h-6 bg-gray-700 rounded w-48 mb-4"></div>
     <div className="space-y-3">
@@ -40,14 +43,50 @@ export const LeaderboardSkeleton = () => (
       ))}
     </div>
   </div>
-);
+));
+LeaderboardSkeleton.displayName = 'LeaderboardSkeleton';
 
-export const GraphSkeleton = () => (
+export const GraphSkeleton = memo(() => (
   <div className="bg-gray-800 p-6 rounded-lg shadow-lg border border-gray-700 animate-pulse">
     <div className="h-6 bg-gray-700 rounded w-40 mb-6"></div>
     <div className="h-64 bg-gray-700 rounded w-full"></div>
   </div>
-);
+));
+GraphSkeleton.displayName = 'GraphSkeleton';
+
+// Full Dashboard skeleton for initial page load
+export const DashboardSkeleton = memo(() => (
+  <div className="min-h-screen bg-gray-900 p-4">
+    {/* Header skeleton */}
+    <div className="max-w-7xl mx-auto">
+      <div className="bg-gray-800 rounded-lg p-4 mb-6 animate-pulse">
+        <div className="flex justify-between items-center">
+          <div className="h-8 bg-gray-700 rounded w-32"></div>
+          <div className="h-8 bg-gray-700 rounded w-24"></div>
+        </div>
+      </div>
+      
+      {/* Main content skeleton */}
+      <div className="bg-gray-800 rounded-2xl p-6 mb-6 animate-pulse">
+        <div className="h-8 bg-gray-700 rounded w-48 mb-4"></div>
+        <div className="h-32 bg-gray-700 rounded w-full"></div>
+      </div>
+      
+      {/* Grid skeleton */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="bg-gray-800 rounded-2xl p-6 animate-pulse">
+          <div className="h-6 bg-gray-700 rounded w-40 mb-4"></div>
+          <div className="h-48 bg-gray-700 rounded"></div>
+        </div>
+        <div className="bg-gray-800 rounded-2xl p-6 animate-pulse">
+          <div className="h-6 bg-gray-700 rounded w-40 mb-4"></div>
+          <div className="h-48 bg-gray-700 rounded"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+));
+DashboardSkeleton.displayName = 'DashboardSkeleton';
 
 export const ErrorFallback = ({
   error,
@@ -80,5 +119,6 @@ export default {
   GasPriceCardSkeleton,
   LeaderboardSkeleton,
   GraphSkeleton,
+  DashboardSkeleton,
   ErrorFallback
 };

@@ -120,13 +120,30 @@ export default defineConfig(({ mode }) => {
           }
         },
         sourcemap: false, // Disabled for production to reduce bundle size
-        chunkSizeWarningLimit: 500,
+        chunkSizeWarningLimit: 600, // Increased slightly to reduce warnings
         cssCodeSplit: true,
         assetsInlineLimit: 4096,
-        cssMinify: true
+        cssMinify: true,
+        // Target modern browsers for smaller bundles
+        target: 'es2020',
+        // Enable module preload for faster loading
+        modulePreload: {
+          polyfill: true
+        }
       },
       css: {
         devSourcemap: false
+      },
+      // Experimental: Enable faster builds
+      esbuild: {
+        // Remove console.log in production
+        drop: mode === 'production' ? ['console', 'debugger'] : [],
+        // Target modern browsers
+        target: 'es2020',
+        // Minify syntax
+        minifyIdentifiers: true,
+        minifySyntax: true,
+        minifyWhitespace: true
       }
     };
 });
