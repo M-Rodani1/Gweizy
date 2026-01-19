@@ -6,37 +6,55 @@ import * as Sentry from "@sentry/react";
 // This prevents "Cannot set properties of undefined (setting 'Children')" errors
 // Must be synchronous and happen immediately - BEFORE any component imports
 if (typeof window !== 'undefined') {
-  // Set React on window IMMEDIATELY - before any other code runs
   const win = window as any;
   
-  // Make React available globally FIRST
+  // Make React available globally FIRST - before any imports execute
   win.React = React;
   win.ReactDOM = ReactDOM;
   
-  // Ensure React.createElement is available immediately
-  win.React.createElement = React.createElement;
-  
-  // Ensure React.Children exists and is properly set up
-  // This is critical for lucide-react which tries to set React.Children
-  if (!win.React.Children) {
+  // CRITICAL: Ensure React.Children is available IMMEDIATELY
+  // lucide-react tries to access React.Children, so it must exist
+  if (React.Children) {
     win.React.Children = React.Children;
   }
   
-  // Ensure all React core exports are available
-  Object.keys(React).forEach(key => {
-    if (!win.React[key]) {
-      win.React[key] = (React as any)[key];
-    }
-  });
+  // Ensure React.createElement is available
+  win.React.createElement = React.createElement;
+  win.React.Component = React.Component;
+  win.React.Fragment = React.Fragment;
+  win.React.StrictMode = React.StrictMode;
   
-  // Force React to be fully initialized
-  // Some libraries check for React.Children specifically
-  if (!React.Children || typeof React.Children !== 'object') {
-    console.warn('React.Children is not properly initialized');
+  // Copy all React exports to window.React
+  try {
+    Object.getOwnPropertyNames(React).forEach(name => {
+      if (!win.React[name]) {
+        try {
+          win.React[name] = (React as any)[name];
+        } catch (e) {
+          // Skip non-configurable properties
+        }
+      }
+    });
+  } catch (e) {
+    console.warn('Could not copy all React properties:', e);
   }
   
-  // Mark React as ready for lucide-react
+  // Verify React.Children exists
+  if (!win.React.Children) {
+    console.error('React.Children is not available!');
+  }
+  
+  // Mark React as ready and resolve any pending promises
   win.__REACT_READY__ = true;
+  if (typeof win.__RESOLVE_REACT_READY__ === 'function') {
+    win.__RESOLVE_REACT_READY__();
+    delete win.__RESOLVE_REACT_READY__;
+  }
+  
+  // Force a synchronous check
+  if (typeof win.React.Children === 'undefined') {
+    console.error('CRITICAL: React.Children is still undefined after setup!');
+  }
 }
 
 // Import lucide-react fix utility AFTER React is set up

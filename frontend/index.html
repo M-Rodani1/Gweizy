@@ -121,6 +121,21 @@
       })();
     </script>
 
+    <!-- CRITICAL: Initialize React globally BEFORE any modules load -->
+    <!-- This must run synchronously before main.tsx executes -->
+    <script>
+      (function() {
+        // This script ensures React will be available when lucide-react initializes
+        // It runs before any module code executes
+        window.__REACT_INIT_PENDING__ = true;
+        
+        // Create a promise that will resolve when React is ready
+        window.__REACT_READY_PROMISE__ = new Promise(function(resolve) {
+          window.__RESOLVE_REACT_READY__ = resolve;
+        });
+      })();
+    </script>
+    
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
