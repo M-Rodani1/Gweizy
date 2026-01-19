@@ -15,9 +15,8 @@
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
     
-    <!-- Content Security Policy - Allow unsafe-eval for development/source maps if needed -->
-    <!-- In production, eval should not be needed if build is configured correctly -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://mainnet.base.org; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://basegasfeesml-production.up.railway.app https://mainnet.base.org https://*.sentry.io wss://*.sentry.io; frame-src 'self';" />
+    <!-- Content Security Policy - Allow Google Fonts and necessary resources -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://mainnet.base.org; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://basegasfeesml-production.up.railway.app https://mainnet.base.org https://*.sentry.io wss://*.sentry.io; frame-src 'self';" />
 
     <!-- BASE VERIFICATION TAG -->
     <meta

@@ -4,32 +4,39 @@ import * as Sentry from "@sentry/react";
 
 // CRITICAL: Ensure React is globally available BEFORE any lucide-react imports
 // This prevents "Cannot set properties of undefined (setting 'Children')" errors
-// Must be synchronous and happen immediately
+// Must be synchronous and happen immediately - BEFORE any component imports
 if (typeof window !== 'undefined') {
   // Set React on window IMMEDIATELY - before any other code runs
   const win = window as any;
+  
+  // Make React available globally FIRST
   win.React = React;
   win.ReactDOM = ReactDOM;
   
-  // Ensure React.Children exists immediately
-  if (!React.Children) {
-    Object.defineProperty(React, 'Children', {
-      value: {
-        map: React.Children.map,
-        forEach: React.Children.forEach,
-        count: React.Children.count,
-        toArray: React.Children.toArray,
-        only: React.Children.only
-      },
-      writable: false,
-      configurable: false
-    });
+  // Ensure React.createElement is available immediately
+  win.React.createElement = React.createElement;
+  
+  // Ensure React.Children exists and is properly set up
+  // This is critical for lucide-react which tries to set React.Children
+  if (!win.React.Children) {
+    win.React.Children = React.Children;
   }
   
-  // Ensure React.createElement is available
-  if (!win.React.createElement) {
-    win.React.createElement = React.createElement;
+  // Ensure all React core exports are available
+  Object.keys(React).forEach(key => {
+    if (!win.React[key]) {
+      win.React[key] = (React as any)[key];
+    }
+  });
+  
+  // Force React to be fully initialized
+  // Some libraries check for React.Children specifically
+  if (!React.Children || typeof React.Children !== 'object') {
+    console.warn('React.Children is not properly initialized');
   }
+  
+  // Mark React as ready for lucide-react
+  win.__REACT_READY__ = true;
 }
 
 // Import lucide-react fix utility AFTER React is set up
