@@ -60,37 +60,37 @@ export default defineConfig(({ mode }) => {
                 if (id.includes('recharts')) {
                   return 'vendor-charts';
                 }
-                // UI libraries (except lucide-react)
-                if (id.includes('framer-motion')) {
-                  return 'vendor-ui';
-                }
-                // Query library
+                // Query library - bundle with React since it depends on React
                 if (id.includes('@tanstack/react-query')) {
-                  return 'vendor-query';
+                  return 'vendor-react-core';
                 }
-                // Monitoring
-                if (id.includes('@sentry')) {
-                  return 'vendor-sentry';
+                // Monitoring - bundle with React since it depends on React
+                if (id.includes('@sentry/react')) {
+                  return 'vendor-react-core';
                 }
-                // WebSocket
+                // React Virtual - bundle with React since it depends on React
+                if (id.includes('@tanstack/react-virtual')) {
+                  return 'vendor-react-core';
+                }
+                // Toast notifications - bundle with React since it depends on React
+                if (id.includes('react-hot-toast')) {
+                  return 'vendor-react-core';
+                }
+                // UI libraries that depend on React
+                if (id.includes('framer-motion')) {
+                  return 'vendor-react-core';
+                }
+                // Farcaster SDK - may depend on React
+                if (id.includes('@farcaster')) {
+                  return 'vendor-react-core';
+                }
+                // WebSocket - no React dependency, can be separate
                 if (id.includes('socket.io')) {
                   return 'vendor-socket';
                 }
-                // Toast notifications
-                if (id.includes('react-hot-toast')) {
-                  return 'vendor-toast';
-                }
-                // Farcaster SDK
-                if (id.includes('@farcaster')) {
-                  return 'vendor-farcaster';
-                }
-                // Zustand
+                // Zustand - state management, separate
                 if (id.includes('zustand')) {
                   return 'vendor-state';
-                }
-                // React Virtual
-                if (id.includes('@tanstack/react-virtual')) {
-                  return 'vendor-virtual';
                 }
                 // Other vendor code
                 return 'vendor-misc';
