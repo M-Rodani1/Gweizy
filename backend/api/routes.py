@@ -11,7 +11,8 @@ from models.feature_engineering import GasFeatureEngineer
 from models.model_trainer import GasModelTrainer
 from models.accuracy_tracker import get_tracker
 from utils.base_scanner import BaseScanner
-from utils.logger import logger
+from utils.logger import logger, log_error_with_context
+import sys
 from utils.prediction_validator import PredictionValidator
 from api.cache import cached, clear_cache
 from datetime import datetime, timedelta
@@ -144,14 +145,21 @@ def load_models():
                 'horizons': list(models.keys())
             }
         except Exception as e:
-            logger.warning(f"⚠️  Could not load models: {e}")
-            import traceback
-            logger.warning(traceback.format_exc())
+            log_error_with_context(
+                e,
+                "Model loading operation",
+                context={
+                    'current_dir': os.getcwd(),
+                    'models_cleared': True,
+                    'python_version': sys.version
+                }
+            )
             return {
                 'success': False,
                 'error': str(e),
-                'models_loaded': len(models),
-                'scalers_loaded': len(scalers)
+                'models_loaded': 0,
+                'scalers_loaded': 0,
+                'horizons': []
             }
 
 
@@ -185,17 +193,30 @@ def _lazy_load_models():
     """Load models in background thread to avoid blocking startup"""
     import threading
     def load_in_background():
+        thread_name = threading.current_thread().name
+        logger.info(f"🔄 [Thread: {thread_name}] Starting background model loading...")
         try:
-            logger.info("🔄 Loading models in background thread...")
-            load_models()
-            logger.info("✅ Models loaded successfully")
+            result = load_models()
+            if result.get('success'):
+                logger.info(f"✅ [Thread: {thread_name}] Models loaded successfully: {result.get('models_loaded')} models")
+            else:
+                logger.error(f"❌ [Thread: {thread_name}] Model loading failed: {result.get('error')}")
+                if result.get('failed_horizons'):
+                    logger.error(f"   Failed horizons: {result.get('failed_horizons')}")
         except Exception as e:
-            logger.warning(f"⚠️  Background model loading failed: {e}")
+            log_error_with_context(
+                e,
+                "Background model loading thread",
+                context={
+                    'thread_name': thread_name,
+                    'is_daemon': threading.current_thread().daemon
+                }
+            )
 
     # Start loading in background (don't wait for completion)
     thread = threading.Thread(target=load_in_background, name="ModelLoader", daemon=True)
     thread.start()
-    logger.info("✓ Model loading started in background (non-blocking)")
+    logger.info(f"✓ Model loading started in background thread (non-blocking, thread: {thread.name})")
 
 # Start lazy loading in background
 _lazy_load_models()
@@ -234,40 +255,96 @@ def health():
     try:
         # Quick response - don't block on model loading
         # Just verify the app is running
-        hybrid_models_loaded = False
-        try:
-            from models.hybrid_predictor import hybrid_predictor
-            hybrid_models_loaded = hybrid_predictor.loaded  # Don't call load_models() - just check if already loaded
-        except Exception:
-            pass  # Ignore errors for health check
-
-        # Get cache statistics (non-blocking)
-        cache_stats = {}
-        try:
-            from api.cache import get_cache_stats
-            cache_stats = get_cache_stats()
-        except Exception:
-            pass  # Ignore errors for health check
-
-        return jsonify({
+        health_status = {
             'status': 'ok',
             'timestamp': datetime.now().isoformat(),
-            'models_loaded': len(models) > 0 or hybrid_models_loaded,
-            'hybrid_predictor_loaded': hybrid_models_loaded,
-            'legacy_models_loaded': len(models) > 0,
+            'models_loaded': False,
+            'hybrid_predictor_loaded': False,
+            'legacy_models_loaded': False,
             'database_connected': True,
-            'cache_stats': cache_stats
-        }), 200
+            'cache_stats': {},
+            'warnings': []
+        }
+        
+        # Check hybrid predictor (non-blocking)
+        try:
+            from models.hybrid_predictor import hybrid_predictor
+            health_status['hybrid_predictor_loaded'] = hybrid_predictor.loaded
+        except Exception as hybrid_error:
+            log_error_with_context(
+                hybrid_error,
+                "Health check: Checking hybrid predictor",
+                level='warning'
+            )
+            health_status['warnings'].append(f"Hybrid predictor check failed: {str(hybrid_error)}")
+
+        # Check legacy models (non-blocking, just check if any loaded)
+        try:
+            health_status['legacy_models_loaded'] = len(models) > 0
+            health_status['models_loaded'] = health_status['legacy_models_loaded'] or health_status['hybrid_predictor_loaded']
+        except Exception as models_error:
+            log_error_with_context(
+                models_error,
+                "Health check: Checking legacy models",
+                level='warning'
+            )
+            health_status['warnings'].append(f"Legacy models check failed: {str(models_error)}")
+
+        # Get cache statistics (non-blocking)
+        try:
+            from api.cache import get_cache_stats
+            health_status['cache_stats'] = get_cache_stats()
+        except Exception as cache_error:
+            log_error_with_context(
+                cache_error,
+                "Health check: Getting cache statistics",
+                level='warning'
+            )
+            health_status['warnings'].append(f"Cache stats check failed: {str(cache_error)}")
+
+        # Check database connection (non-blocking)
+        try:
+            from data.database import DatabaseManager
+            db = DatabaseManager()
+            # Just check if we can get a session, don't run a query
+            session = db._get_session()
+            session.close()
+            health_status['database_connected'] = True
+        except Exception as db_error:
+            log_error_with_context(
+                db_error,
+                "Health check: Verifying database connection",
+                level='warning'
+            )
+            health_status['database_connected'] = False
+            health_status['warnings'].append(f"Database check failed: {str(db_error)}")
+
+        # Log warnings if any
+        if health_status['warnings']:
+            logger.warning(f"Health check completed with {len(health_status['warnings'])} warnings")
+            for warning in health_status['warnings']:
+                logger.warning(f"   - {warning}")
+
+        return jsonify(health_status), 200
     except Exception as e:
         # Even if there's an error, return 200 so deployment doesn't fail
         # The app is running even if some components aren't ready
-        logger.warning(f"Health check warning: {e}")
+        log_error_with_context(
+            e,
+            "Health check endpoint",
+            context={
+                'endpoint': '/api/health',
+                'method': 'GET'
+            },
+            level='warning'
+        )
         return jsonify({
             'status': 'ok',
             'timestamp': datetime.now().isoformat(),
             'warning': str(e),
             'models_loaded': False,
-            'database_connected': True
+            'database_connected': False,
+            'error_in_health_check': True
         }), 200
 
 

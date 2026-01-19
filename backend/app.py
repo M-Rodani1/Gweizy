@@ -31,7 +31,7 @@ from api.mempool_routes import mempool_bp
 from api.resilient_training_routes import resilient_training_bp
 from api.middleware import limiter, error_handlers, log_request, setup_request_id
 from config import Config
-from utils.logger import logger
+from utils.logger import logger, log_error_with_context
 
 # Try to import flask-socketio, but don't fail if it's not available
 try:
@@ -378,19 +378,59 @@ if TRAIN_MODELS_ON_STARTUP:
                         else:
                             logger.warning(f"⚠️  Auto-reload had issues: {reload_result.get('error')}")
                     except Exception as e:
-                        logger.warning(f"⚠️  Could not auto-reload models: {e}")
+                        log_error_with_context(
+                            e,
+                            "Auto-reloading models after training",
+                            context={
+                                'training_completed': True,
+                                'script_path': script_path,
+                                'models_dir': current_dir
+                            },
+                            level='warning'
+                        )
                         logger.info("💡 You can manually reload models via POST /api/models/reload or restart the service")
                 else:
                     logger.error(f"❌ Model training failed with return code {returncode}")
                     # Log last 30 lines for debugging
                     error_output = "\n".join(output_lines[-30:])
                     logger.error(f"Last output:\n{error_output}")
+                    
+                    # Log detailed context for debugging
+                    log_error_with_context(
+                        Exception(f"Training script exited with code {returncode}"),
+                        "Model training on startup",
+                        context={
+                            'returncode': returncode,
+                            'script_path': script_path,
+                            'script_exists': os.path.exists(script_path),
+                            'current_dir': current_dir,
+                            'output_lines_count': len(output_lines),
+                            'last_output': error_output
+                        }
+                    )
             else:
                 logger.warning(f"Training script not found: {script_path}")
+                log_error_with_context(
+                    FileNotFoundError(f"Training script not found: {script_path}"),
+                    "Starting model training on startup",
+                    context={
+                        'script_path': script_path,
+                        'current_dir': current_dir,
+                        'scripts_dir': os.path.join(current_dir, "scripts"),
+                        'scripts_dir_exists': os.path.exists(os.path.join(current_dir, "scripts"))
+                    },
+                    level='warning'
+                )
         except Exception as e:
-            logger.error(f"Error during startup training: {e}")
-            import traceback
-            logger.error(traceback.format_exc())
+            log_error_with_context(
+                e,
+                "Startup model training thread",
+                context={
+                    'thread_name': 'StartupModelTraining',
+                    'TRAIN_MODELS': TRAIN_MODELS_ON_STARTUP,
+                    'current_dir': os.path.dirname(os.path.abspath(__file__))
+                }
+            )
     
     # Start training in background thread
     training_thread = threading.Thread(target=train_models_on_startup, name="StartupModelTraining", daemon=True)

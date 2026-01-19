@@ -16,7 +16,7 @@ import platform
 from datetime import datetime
 from pathlib import Path
 from typing import Optional, Dict, Any
-from utils.logger import logger
+from utils.logger import logger, log_error_with_context
 
 # Platform detection for signal handling
 IS_WINDOWS = platform.system() == 'Windows'
@@ -104,7 +104,16 @@ class ResilientTrainingService:
                 os.makedirs(self.checkpoint_dir, exist_ok=True)
                 self._checkpoint_dir_created = True
             except Exception as e:
-                logger.warning(f"Could not create checkpoint directory {self.checkpoint_dir}: {e}")
+                log_error_with_context(
+                    e,
+                    "Creating checkpoint directory",
+                    context={
+                        'checkpoint_dir': self.checkpoint_dir,
+                        'models_dir': self.models_dir,
+                        'current_dir': os.getcwd()
+                    },
+                    level='warning'
+                )
     
     def save_checkpoint(self, step: str, progress: Dict[str, Any]):
         """Save training checkpoint"""
@@ -122,7 +131,17 @@ class ResilientTrainingService:
             
             logger.debug(f"Saved checkpoint: {step}")
         except Exception as e:
-            logger.warning(f"Could not save checkpoint: {e}")
+            log_error_with_context(
+                e,
+                "Saving training checkpoint",
+                context={
+                    'checkpoint_file': self.checkpoint_file,
+                    'step': step,
+                    'checkpoint_dir': self.checkpoint_dir,
+                    'checkpoint_dir_exists': os.path.exists(self.checkpoint_dir)
+                },
+                level='warning'
+            )
     
     def clear_checkpoint(self):
         """Clear training checkpoint"""
@@ -132,7 +151,17 @@ class ResilientTrainingService:
             if os.path.exists(self.lock_file):
                 os.remove(self.lock_file)
         except Exception as e:
-            logger.warning(f"Could not clear checkpoint: {e}")
+            log_error_with_context(
+                e,
+                "Clearing training checkpoint",
+                context={
+                    'checkpoint_file': self.checkpoint_file,
+                    'lock_file': self.lock_file,
+                    'checkpoint_exists': os.path.exists(self.checkpoint_file),
+                    'lock_exists': os.path.exists(self.lock_file)
+                },
+                level='warning'
+            )
     
     def acquire_lock(self) -> bool:
         """Acquire training lock to prevent concurrent training"""
@@ -165,7 +194,16 @@ class ResilientTrainingService:
                 json.dump(lock_info, f)
             return True
         except Exception as e:
-            logger.error(f"Could not acquire lock: {e}")
+            log_error_with_context(
+                e,
+                "Acquiring training lock",
+                context={
+                    'lock_file': self.lock_file,
+                    'lock_exists': os.path.exists(self.lock_file),
+                    'checkpoint_dir': self.checkpoint_dir,
+                    'pid': os.getpid()
+                }
+            )
             return False
     
     def release_lock(self):
@@ -174,7 +212,16 @@ class ResilientTrainingService:
             if os.path.exists(self.lock_file):
                 os.remove(self.lock_file)
         except Exception as e:
-            logger.warning(f"Could not release lock: {e}")
+            log_error_with_context(
+                e,
+                "Releasing training lock",
+                context={
+                    'lock_file': self.lock_file,
+                    'lock_exists': os.path.exists(self.lock_file),
+                    'pid': os.getpid()
+                },
+                level='warning'
+            )
     
     def _is_process_running(self, pid: int) -> bool:
         """Check if process is still running"""

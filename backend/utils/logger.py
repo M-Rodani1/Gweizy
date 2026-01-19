@@ -79,3 +79,89 @@ def capture_exception(error: Exception, extra_context: dict = None):
     except Exception as capture_error:
         logger.debug(f"Failed to capture exception to Sentry: {capture_error}")
 
+
+def log_error_with_context(
+    error: Exception,
+    operation: str,
+    context: dict = None,
+    level: str = 'error',
+    include_traceback: bool = True
+):
+    """
+    Log an error with comprehensive context for easy debugging.
+    
+    This function provides structured error logging with:
+    - Clear operation description
+    - Full stack trace
+    - Relevant context (state, parameters, etc.)
+    - Error type and message
+    - Captures to Sentry if configured
+    
+    Args:
+        error: The exception that occurred
+        operation: Description of what was being attempted (e.g., "Loading model for 1h horizon")
+        context: Optional dict with relevant context (e.g., {'model_path': '/path/to/model.pkl', 'horizon': '1h'})
+        level: Log level ('error', 'warning', 'critical')
+        include_traceback: Whether to include full stack trace (default: True)
+    
+    Example:
+        try:
+            model = joblib.load(model_path)
+        except Exception as e:
+            log_error_with_context(
+                e,
+                "Loading model from disk",
+                context={
+                    'model_path': model_path,
+                    'horizon': horizon,
+                    'file_exists': os.path.exists(model_path),
+                    'file_size': os.path.getsize(model_path) if os.path.exists(model_path) else None
+                }
+            )
+    """
+    import traceback
+    
+    # Build error message header
+    error_header = f"❌ ERROR in {operation}"
+    log_message_parts = [error_header]
+    log_message_parts.append(f"   Error Type: {type(error).__name__}")
+    log_message_parts.append(f"   Error Message: {str(error)}")
+    
+    # Add context if provided
+    if context:
+        log_message_parts.append("   Context:")
+        for key, value in context.items():
+            # Format value for logging (handle long values)
+            if isinstance(value, (str, bytes)) and len(str(value)) > 200:
+                formatted_value = f"{str(value)[:200]}... (truncated, length: {len(str(value))})"
+            else:
+                formatted_value = str(value)
+            log_message_parts.append(f"      {key}: {formatted_value}")
+    
+    # Add stack trace
+    if include_traceback:
+        log_message_parts.append("   Stack Trace:")
+        tb_lines = traceback.format_exc().split('\n')
+        for line in tb_lines:
+            if line.strip():
+                log_message_parts.append(f"      {line}")
+    
+    # Join all parts
+    full_message = '\n'.join(log_message_parts)
+    
+    # Log at appropriate level
+    if level == 'critical':
+        logger.critical(full_message)
+    elif level == 'warning':
+        logger.warning(full_message)
+    else:
+        logger.error(full_message)
+    
+    # Capture to Sentry with context
+    capture_context = {'operation': operation}
+    if context:
+        capture_context.update(context)
+    capture_exception(error, capture_context)
+    
+    return full_message
+
