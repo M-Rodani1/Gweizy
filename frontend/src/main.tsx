@@ -1,12 +1,5 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import * as Sentry from "@sentry/react";
-
-// Ensure React is properly loaded
-if (typeof React === 'undefined' || !React.Children) {
-  throw new Error('React is not properly initialized. Please check your build configuration.');
-}
-
 import App from '../App';
 import ErrorBoundary from './components/ErrorBoundary';
 import { QueryProvider } from './providers/QueryProvider';
@@ -18,23 +11,31 @@ import { OfflineIndicator } from './components/OfflineIndicator';
 import { registerServiceWorker } from './utils/registerSW';
 import './index.css';
 
-// Initialize Sentry for error tracking
+// Initialize Sentry AFTER React is loaded to avoid initialization issues
+let Sentry: any = null;
 const sentryDsn = import.meta.env.VITE_SENTRY_DSN;
 if (sentryDsn) {
-  Sentry.init({
-    dsn: sentryDsn,
-    integrations: [
-      Sentry.browserTracingIntegration(),
-      Sentry.replayIntegration(),
-    ],
-    tracesSampleRate: 0.1,
-    replaysSessionSampleRate: 0.1,
-    replaysOnErrorSampleRate: 1.0,
-    environment: import.meta.env.MODE
+  // Defer Sentry import to avoid blocking React initialization
+  import('@sentry/react').then((sentryModule) => {
+    Sentry = sentryModule;
+    Sentry.init({
+      dsn: sentryDsn,
+      integrations: [
+        Sentry.browserTracingIntegration(),
+        Sentry.replayIntegration(),
+      ],
+      tracesSampleRate: 0.1,
+      replaysSessionSampleRate: 0.1,
+      replaysOnErrorSampleRate: 1.0,
+      environment: import.meta.env.MODE
+    });
+  }).catch(() => {
+    // Sentry failed to load - continue without it
+    console.warn('Sentry initialization failed - continuing without error tracking');
   });
 }
 
-// Register service worker for caching
+// Register service worker for caching (non-blocking)
 registerServiceWorker();
 
 const root = document.getElementById('root');
@@ -42,18 +43,18 @@ if (root) {
   ReactDOM.createRoot(root).render(
     <React.StrictMode>
       <ErrorBoundary>
-      <QueryProvider>
-        <PreferencesProvider>
-          <ChainProvider>
-            <SchedulerProvider>
-              <ToastProvider>
-                <OfflineIndicator />
-                <App />
-              </ToastProvider>
-            </SchedulerProvider>
-          </ChainProvider>
-        </PreferencesProvider>
-      </QueryProvider>
+        <QueryProvider>
+          <PreferencesProvider>
+            <ChainProvider>
+              <SchedulerProvider>
+                <ToastProvider>
+                  <OfflineIndicator />
+                  <App />
+                </ToastProvider>
+              </SchedulerProvider>
+            </ChainProvider>
+          </PreferencesProvider>
+        </QueryProvider>
       </ErrorBoundary>
     </React.StrictMode>
   );

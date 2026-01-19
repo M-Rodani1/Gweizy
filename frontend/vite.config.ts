@@ -39,60 +39,33 @@ export default defineConfig(({ mode }) => {
       build: {
         rollupOptions: {
           output: {
+            // Simplified chunking strategy to prevent React initialization issues
+            // ALL React-related packages go into ONE chunk to ensure proper initialization order
             manualChunks: (id) => {
-              // CRITICAL: React MUST load first, before ANY other code
-              // Put React in main entry bundle to ensure it loads synchronously
-              // Don't split React into vendor chunks to avoid initialization race conditions
-              
-              // Separate node_modules into more granular chunks
               if (id.includes('node_modules')) {
-                // React core MUST be in main bundle (don't split it)
-                // This ensures React is initialized before any vendor chunks load
-                if ((id.includes('/react/') || id.includes('\\react\\')) && 
-                    !id.includes('react-dom') && 
-                    !id.includes('react-router')) {
-                  // React core stays in main bundle - DO NOT split
-                  return undefined;
-                }
-                
-                // React DOM should also be in main bundle to ensure proper initialization
-                if (id.includes('react-dom')) {
-                  // Keep react-dom with main bundle for now
-                  return undefined;
-                }
-                
-                // ALL React-dependent packages MUST be together in vendor-react-core
-                // This ensures they load AFTER React is initialized
-                if (id.includes('react-router') ||
-                    id.includes('react-is') ||
-                    id.includes('react-countup') ||
-                    id.includes('react-hot-toast') ||
-                    id.includes('lucide-react') ||
-                    id.includes('@tanstack/react-query') ||
-                    id.includes('@tanstack/react-virtual') ||
+                // Put ALL React-related packages together in one chunk
+                // This includes React core, React DOM, and all React-dependent libraries
+                // This ensures React is fully initialized before any library uses it
+                if (id.includes('react') || 
+                    id.includes('@tanstack/react') ||
                     id.includes('@sentry/react') ||
                     id.includes('framer-motion') ||
                     id.includes('@farcaster') ||
-                    id.includes('recharts')) {
-                  return 'vendor-react-core';
+                    id.includes('recharts') ||
+                    id.includes('lucide-react')) {
+                  return 'vendor-react';
                 }
                 
-                // WebSocket - no React dependency, can be separate
+                // Non-React dependencies can be in separate chunks
                 if (id.includes('socket.io')) {
                   return 'vendor-socket';
                 }
-                
-                // Zustand - state management, separate (doesn't depend on React directly)
                 if (id.includes('zustand')) {
                   return 'vendor-state';
                 }
                 
-                // Everything else goes to vendor-misc (only truly non-React dependencies)
+                // Everything else goes to vendor-misc
                 return 'vendor-misc';
-              }
-              // Separate large feature components
-              if (id.includes('/components/') && (id.includes('Chart') || id.includes('Graph'))) {
-                return 'chunk-charts';
               }
             }
           },
