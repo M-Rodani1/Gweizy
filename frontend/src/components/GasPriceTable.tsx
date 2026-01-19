@@ -1,11 +1,13 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import { TableRowData } from '../../types';
 import { fetchTransactions } from '../api/gasApi';
 import LoadingSpinner from './LoadingSpinner';
 
 // Virtual scrolling threshold - use virtual scrolling for 50+ rows
 const VIRTUAL_SCROLL_THRESHOLD = 50;
+const ROW_HEIGHT = 60; // Estimated row height in pixels
 
 // Memoized table row component to prevent unnecessary re-renders
 const TableRow = React.memo<{ row: TableRowData; index: number }>(({ row, index }) => (
@@ -31,6 +33,9 @@ const GasPriceTable: React.FC = () => {
   const [transactions, setTransactions] = useState<TableRowData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // Ref for the scrollable container
+  const parentRef = useRef<HTMLDivElement>(null);
 
   // Memoize loadData to prevent unnecessary re-creations
   const loadData = useCallback(async () => {
@@ -60,13 +65,21 @@ const GasPriceTable: React.FC = () => {
     [transactions.length]
   );
 
-  // Memoize visible rows for virtual scrolling (show first 20, then lazy load more)
+  // Virtual scrolling setup
+  const virtualizer = useVirtualizer({
+    count: transactions.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => ROW_HEIGHT,
+    overscan: 5, // Render 5 extra rows above/below visible area for smooth scrolling
+    enabled: useVirtualScrolling,
+  });
+
+  // Memoize visible rows for regular rendering (no virtual scrolling)
   const visibleRows = useMemo(() => {
-    if (!useVirtualScrolling) {
-      return transactions;
+    if (useVirtualScrolling) {
+      return null; // Virtual scrolling will handle rendering
     }
-    // For now, show first 20 rows. Full virtual scrolling can be added later with react-window
-    return transactions.slice(0, 20);
+    return transactions;
   }, [transactions, useVirtualScrolling]);
 
   if (loading && transactions.length === 0) {
@@ -97,9 +110,16 @@ const GasPriceTable: React.FC = () => {
   }
 
   return (
-    <div className="bg-gray-800 p-4 sm:p-6 rounded-lg shadow-lg h-full overflow-x-auto">
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-semibold text-gray-200">Recent Base Transactions</h2>
+    <div className="bg-gray-800 p-4 sm:p-6 rounded-lg shadow-lg h-full flex flex-col">
+      <div className="flex justify-between items-center mb-4 flex-shrink-0">
+        <h2 className="text-xl font-semibold text-gray-200">
+          Recent Base Transactions
+          {useVirtualScrolling && (
+            <span className="ml-2 text-sm text-gray-400 font-normal">
+              ({transactions.length} total)
+            </span>
+          )}
+        </h2>
         <button
           onClick={loadData}
           className="text-sm text-cyan-400 hover:text-cyan-300 transition-colors"
@@ -112,33 +132,71 @@ const GasPriceTable: React.FC = () => {
         </button>
       </div>
       
-      <table className="w-full text-left table-auto">
-        <thead className="border-b-2 border-gray-600">
-          <tr className="text-gray-400">
-            <th className="p-3">Tx Hash</th>
-            <th className="p-3">Method</th>
-            <th className="p-3">Age</th>
-            <th className="p-3 text-right">Gas Used</th>
-            <th className="p-3 text-right">Gas Price (Gwei)</th>
-          </tr>
-        </thead>
-        <tbody>
-          {Array.isArray(visibleRows) && visibleRows.length > 0 ? visibleRows.map((row, index) => (
-            <TableRow key={`${row.txHash}-${index}`} row={row} index={index} />
-          )) : null}
-          {useVirtualScrolling && transactions.length > 20 && (
-            <tr>
-              <td colSpan={5} className="p-3 text-center text-gray-500 text-sm">
-                Showing first 20 of {transactions.length} transactions
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
-      
-      {transactions.length === 0 && !loading && (
+      {transactions.length === 0 && !loading ? (
         <div className="text-center py-8 text-gray-500">
           No recent transactions found
+        </div>
+      ) : (
+        <div className="overflow-x-auto flex-1" ref={parentRef} style={{ maxHeight: '600px', overflowY: 'auto' }}>
+          <table className="w-full text-left table-auto">
+            <thead className="border-b-2 border-gray-600 sticky top-0 bg-gray-800 z-10">
+              <tr className="text-gray-400">
+                <th className="p-3">Tx Hash</th>
+                <th className="p-3">Method</th>
+                <th className="p-3">Age</th>
+                <th className="p-3 text-right">Gas Used</th>
+                <th className="p-3 text-right">Gas Price (Gwei)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {useVirtualScrolling ? (
+                // Virtual scrolling mode
+                <>
+                  {/* Spacer for rows before visible area */}
+                  <tr aria-hidden="true">
+                    <td colSpan={5} style={{ height: `${virtualizer.getVirtualItems()[0]?.start ?? 0}px` }} />
+                  </tr>
+                  {/* Render only visible rows */}
+                  {virtualizer.getVirtualItems().map((virtualRow) => {
+                    const row = transactions[virtualRow.index];
+                    return (
+                      <tr
+                        key={`${row.txHash}-${virtualRow.index}`}
+                        data-index={virtualRow.index}
+                        ref={virtualizer.measureElement}
+                        className="border-b border-gray-700 hover:bg-gray-700/50"
+                      >
+                        <td className="p-3 font-mono text-sm text-cyan-400">{row.txHash}</td>
+                        <td className="p-3">
+                          <span className="bg-purple-600/50 text-purple-200 text-xs font-semibold mr-2 px-2.5 py-0.5 rounded">
+                            {row.method}
+                          </span>
+                        </td>
+                        <td className="p-3 text-gray-300">{row.age}</td>
+                        <td className="p-3 text-right text-gray-300">
+                          {row.gasUsed !== undefined && row.gasUsed !== null ? row.gasUsed.toLocaleString() : 'N/A'}
+                        </td>
+                        <td className="p-3 text-right font-semibold text-teal-300">
+                          {row.gasPrice !== undefined && row.gasPrice !== null ? row.gasPrice.toFixed(4) : 'N/A'}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {/* Spacer for rows after visible area */}
+                  <tr aria-hidden="true">
+                    <td colSpan={5} style={{ 
+                      height: `${virtualizer.getTotalSize() - (virtualizer.getVirtualItems()[virtualizer.getVirtualItems().length - 1]?.end ?? virtualizer.getTotalSize())}px` 
+                    }} />
+                  </tr>
+                </>
+              ) : (
+                // Regular rendering mode (no virtual scrolling)
+                Array.isArray(visibleRows) && visibleRows.length > 0 ? visibleRows.map((row, index) => (
+                  <TableRow key={`${row.txHash}-${index}`} row={row} index={index} />
+                )) : null
+              )}
+            </tbody>
+          </table>
         </div>
       )}
     </div>

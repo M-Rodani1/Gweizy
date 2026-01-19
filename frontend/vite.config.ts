@@ -73,6 +73,10 @@ export default defineConfig(({ mode }) => {
                 if (id.includes('zustand')) {
                   return 'vendor-state';
                 }
+                // React Virtual
+                if (id.includes('@tanstack/react-virtual')) {
+                  return 'vendor-virtual';
+                }
                 // Other vendor code
                 return 'vendor-misc';
               }
