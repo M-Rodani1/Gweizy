@@ -29,6 +29,18 @@ jobs:
       env:
         VITE_API_URL: ${{ secrets.VITE_API_URL || 'https://basegasfeesml-production.up.railway.app/api' }}
 
+    - name: Verify build output
+      run: |
+        if [ ! -d "frontend/dist" ]; then
+          echo "Error: frontend/dist directory does not exist"
+          exit 1
+        fi
+        if [ ! -f "frontend/dist/index.html" ]; then
+          echo "Error: frontend/dist/index.html does not exist"
+          exit 1
+        fi
+        echo "✓ Build output verified"
+
     - name: Ensure no Functions directory exists
       working-directory: ./frontend/dist
       run: |
@@ -44,7 +56,7 @@ jobs:
       with:
         apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        command: pages deploy frontend/dist --project-name=basegasfeesml --compatibility-date=2024-01-01
+        command: pages deploy frontend/dist --project-name=basegasfeesml
 
   deploy-backend:
     runs-on: ubuntu-latest
