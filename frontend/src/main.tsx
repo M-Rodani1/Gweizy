@@ -1,8 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import * as Sentry from "@sentry/react";
-// Pre-import lucide-react to ensure it's available before components use it
-import 'lucide-react';
 import App from '../App';
 import ErrorBoundary from './components/ErrorBoundary';
 import { QueryProvider } from './providers/QueryProvider';
