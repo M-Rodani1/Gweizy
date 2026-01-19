@@ -87,8 +87,15 @@ export default defineConfig(({ mode }) => {
             }
           },
           // Enable tree-shaking optimizations
+          // Note: lucide-react needs side effects enabled
           treeshake: {
-            moduleSideEffects: false,
+            moduleSideEffects: (id) => {
+              // Preserve side effects for lucide-react
+              if (id.includes('lucide-react')) {
+                return true;
+              }
+              return false;
+            },
             propertyReadSideEffects: false,
             tryCatchDeoptimization: false
           }
