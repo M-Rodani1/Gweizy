@@ -4,13 +4,35 @@ import * as Sentry from "@sentry/react";
 
 // CRITICAL: Ensure React is globally available BEFORE any lucide-react imports
 // This prevents "Cannot set properties of undefined (setting 'Children')" errors
+// Must be synchronous and happen immediately
 if (typeof window !== 'undefined') {
-  (window as any).React = React;
-  // Ensure React.createElement and other core methods are available
-  (window as any).ReactDOM = ReactDOM;
+  // Set React on window IMMEDIATELY - before any other code runs
+  const win = window as any;
+  win.React = React;
+  win.ReactDOM = ReactDOM;
+  
+  // Ensure React.Children exists immediately
+  if (!React.Children) {
+    Object.defineProperty(React, 'Children', {
+      value: {
+        map: React.Children.map,
+        forEach: React.Children.forEach,
+        count: React.Children.count,
+        toArray: React.Children.toArray,
+        only: React.Children.only
+      },
+      writable: false,
+      configurable: false
+    });
+  }
+  
+  // Ensure React.createElement is available
+  if (!win.React.createElement) {
+    win.React.createElement = React.createElement;
+  }
 }
 
-// Import lucide-react fix utility
+// Import lucide-react fix utility AFTER React is set up
 import './utils/lucideReactFix';
 
 import App from '../App';

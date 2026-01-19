@@ -115,10 +115,22 @@ export default defineConfig(({ mode }) => {
             drop_console: true,
             drop_debugger: true,
             pure_funcs: ['console.log', 'console.info', 'console.debug', 'console.trace'],
-            passes: 2
+            passes: 2,
+            // Disable eval() to avoid CSP violations
+            unsafe: false,
+            unsafe_comps: false,
+            unsafe_math: false,
+            unsafe_methods: false,
+            unsafe_proto: false,
+            unsafe_regexp: false,
+            unsafe_undefined: false
           },
           mangle: {
             safari10: true
+          },
+          // Disable eval() entirely
+          format: {
+            comments: false
           }
         },
         sourcemap: false,
