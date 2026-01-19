@@ -36,4 +36,4 @@ const ChainBadge: React.FC<ChainBadgeProps> = ({ chain, size = 'md', className =
   );
 };
 
-export default ChainBadge;
+export default React.memo(ChainBadge);

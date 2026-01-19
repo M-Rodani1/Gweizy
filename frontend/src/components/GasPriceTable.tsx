@@ -109,4 +109,4 @@ const GasPriceTable: React.FC = () => {
   );
 };
 
-export default GasPriceTable;
+export default React.memo(GasPriceTable);

@@ -186,5 +186,4 @@ const SavingsLeaderboard: React.FC<SavingsLeaderboardProps> = ({ walletAddress }
   );
 };
 
-export default SavingsLeaderboard;
-
+export default React.memo(SavingsLeaderboard);

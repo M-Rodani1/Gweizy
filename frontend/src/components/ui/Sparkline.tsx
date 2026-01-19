@@ -59,4 +59,4 @@ const Sparkline: React.FC<SparklineProps> = ({
   );
 };
 
-export default Sparkline;
+export default React.memo(Sparkline);

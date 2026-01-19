@@ -29,22 +29,31 @@ AI-powered gas price predictions for Base network. Save up to 40% on transaction
 ## Project Structure
 
 ```
-gasFeesPrediction-main/
-├── frontend/              # React + TypeScript Frontend
-│   ├── components/        # React components
-│   ├── pages/            # Landing & Dashboard pages
-│   ├── src/              # Utilities & API clients
-│   └── public/           # Static assets
-│
+Gweizy-main/
 ├── backend/              # Python Flask ML Backend
 │   ├── api/              # API endpoints
-│   ├── models/           # ML models
-│   └── data/             # Data processing
+│   ├── models/           # ML models and training
+│   ├── services/         # Business logic services
+│   ├── data/             # Data collection and database
+│   └── utils/            # Utility functions
 │
-└── Documentation/        # Project docs
+├── frontend/             # React + TypeScript Frontend
+│   ├── src/              # Source code
+│   ├── pages/            # Page components
+│   └── public/           # Static assets
+│
+├── docs/                 # Documentation
+│   ├── guides/           # How-to guides and tutorials
+│   ├── planning/         # Roadmaps and planning docs
+│   ├── deployment/       # Deployment guides
+│   └── API.md            # API documentation
+│
+└── scripts/              # Utility scripts
 ```
 
-See [PROJECT_STRUCTURE.md](./PROJECT_STRUCTURE.md) for detailed structure information.
+For detailed structure information, see:
+- [Organization Guide](./docs/ORGANIZATION.md) - Complete codebase organization
+- [Project Structure](./docs/guides/PROJECT_STRUCTURE.md) - Detailed structure breakdown
 
 ## Quick Start
 

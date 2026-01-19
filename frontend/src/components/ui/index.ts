@@ -6,6 +6,7 @@ export { default as CollapsibleSection } from './CollapsibleSection';
 export { default as ConfidenceRing } from './ConfidenceRing';
 export { default as Sparkline } from './Sparkline';
 export { default as ThemeToggle } from './ThemeToggle';
+export { default as VirtualizedList } from './VirtualizedList';
 export {
   default as Skeleton,
   SkeletonCard,

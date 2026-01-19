@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Clock } from 'lucide-react';
 import { useScheduler, ScheduledTransaction } from '../contexts/SchedulerContext';
 import { useChain } from '../contexts/ChainContext';
@@ -6,6 +6,7 @@ import { SUPPORTED_CHAINS } from '../config/chains';
 import ChainBadge from './ChainBadge';
 import ScheduleTransactionModal from './ScheduleTransactionModal';
 import ExecuteTransactionModal from './ExecuteTransactionModal';
+import VirtualizedList from './ui/VirtualizedList';
 
 const ScheduledTransactionsList: React.FC = () => {
   const { transactions, removeTransaction, markExecuted, markCancelled, pendingCount, readyCount } = useScheduler();
@@ -13,14 +14,20 @@ const ScheduledTransactionsList: React.FC = () => {
   const [showModal, setShowModal] = useState(false);
   const [executeTx, setExecuteTx] = useState<ScheduledTransaction | null>(null);
   const [filter, setFilter] = useState<'all' | 'pending' | 'ready' | 'completed'>('all');
+  const itemHeight = 176;
+  const maxListHeight = 384;
 
-  const filteredTransactions = transactions.filter(tx => {
-    if (filter === 'all') return true;
-    if (filter === 'pending') return tx.status === 'pending';
-    if (filter === 'ready') return tx.status === 'ready';
-    if (filter === 'completed') return ['executed', 'expired', 'cancelled'].includes(tx.status);
-    return true;
-  }).sort((a, b) => b.createdAt - a.createdAt);
+  const filteredTransactions = useMemo(() => {
+    return transactions
+      .filter(tx => {
+        if (filter === 'all') return true;
+        if (filter === 'pending') return tx.status === 'pending';
+        if (filter === 'ready') return tx.status === 'ready';
+        if (filter === 'completed') return ['executed', 'expired', 'cancelled'].includes(tx.status);
+        return true;
+      })
+      .sort((a, b) => b.createdAt - a.createdAt);
+  }, [filter, transactions]);
 
   const formatTimeRemaining = (expiresAt: number): string => {
     const remaining = expiresAt - Date.now();
@@ -112,8 +119,12 @@ const ScheduledTransactionsList: React.FC = () => {
           </button>
         </div>
       ) : (
-        <div className="divide-y divide-gray-700/30 max-h-96 overflow-y-auto">
-          {filteredTransactions.map(tx => {
+        <VirtualizedList
+          items={filteredTransactions}
+          itemHeight={itemHeight}
+          maxHeight={maxListHeight}
+          getKey={(tx) => tx.id}
+          renderItem={(tx) => {
             const chain = SUPPORTED_CHAINS[tx.chainId];
             const currentGas = multiChainGas[tx.chainId]?.gasPrice || 0;
             const progress = currentGas > 0
@@ -121,7 +132,7 @@ const ScheduledTransactionsList: React.FC = () => {
               : 0;
 
             return (
-              <div key={tx.id} className="p-4 hover:bg-gray-700/20 transition-colors">
+              <div className="h-full border-b border-gray-700/30 p-4 hover:bg-gray-700/20 transition-colors">
                 <div className="flex items-start justify-between mb-2">
                   <div className="flex items-center gap-2">
                     {chain ? (
@@ -200,8 +211,8 @@ const ScheduledTransactionsList: React.FC = () => {
                 </div>
               </div>
             );
-          })}
-        </div>
+          }}
+        />
       )}
 
       {/* Modal */}
@@ -230,4 +241,4 @@ const ScheduledTransactionsList: React.FC = () => {
   );
 };
 
-export default ScheduledTransactionsList;
+export default React.memo(ScheduledTransactionsList);

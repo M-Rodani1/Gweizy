@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { fetchUserHistory } from '../api/gasApi';
 import LoadingSpinner from './LoadingSpinner';
+import VirtualizedList from './ui/VirtualizedList';
 
 interface Transaction {
   hash: string;
@@ -34,6 +35,10 @@ const UserTransactionHistory: React.FC<UserTransactionHistoryProps> = ({ address
   const [data, setData] = useState<UserHistoryData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const rowHeight = 44;
+  const maxVisibleRows = 10;
+  const maxListHeight = rowHeight * maxVisibleRows;
+  const gridCols = 'grid grid-cols-[minmax(160px,1.3fr)_minmax(180px,1.6fr)_minmax(110px,1fr)_minmax(110px,1fr)_minmax(110px,1fr)]';
 
   useEffect(() => {
     const loadData = async () => {
@@ -146,20 +151,27 @@ const UserTransactionHistory: React.FC<UserTransactionHistoryProps> = ({ address
           <p className="text-gray-400 text-sm">No transactions found.</p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-gray-700">
-                  <th className="text-left py-2 text-gray-400">Hash</th>
-                  <th className="text-left py-2 text-gray-400">Time</th>
-                  <th className="text-right py-2 text-gray-400">Gas Price</th>
-                  <th className="text-right py-2 text-gray-400">Gas Used</th>
-                  <th className="text-right py-2 text-gray-400">Cost</th>
-                </tr>
-              </thead>
-              <tbody>
-                {transactions.map((tx) => (
-                  <tr key={tx.hash} className="border-b border-gray-700/50 hover:bg-gray-700/30">
-                    <td className="py-2">
+            <div className="min-w-[720px]" role="table" aria-label="Recent transactions">
+              <div role="rowgroup" className="border-b border-gray-700">
+                <div role="row" className={`${gridCols} text-xs uppercase tracking-wide text-gray-400`}>
+                  <div role="columnheader" className="py-2 text-left">Hash</div>
+                  <div role="columnheader" className="py-2 text-left">Time</div>
+                  <div role="columnheader" className="py-2 text-right">Gas Price</div>
+                  <div role="columnheader" className="py-2 text-right">Gas Used</div>
+                  <div role="columnheader" className="py-2 text-right">Cost</div>
+                </div>
+              </div>
+              <VirtualizedList
+                items={transactions}
+                itemHeight={rowHeight}
+                maxHeight={maxListHeight}
+                getKey={(tx) => tx.hash}
+                renderItem={(tx) => (
+                  <div
+                    role="row"
+                    className={`${gridCols} h-full items-center border-b border-gray-700/50 hover:bg-gray-700/30`}
+                  >
+                    <div role="cell" className="py-2">
                       <a
                         href={`https://basescan.org/tx/${tx.hash}`}
                         target="_blank"
@@ -168,17 +180,23 @@ const UserTransactionHistory: React.FC<UserTransactionHistoryProps> = ({ address
                       >
                         {tx.hash.slice(0, 10)}...{tx.hash.slice(-8)}
                       </a>
-                    </td>
-                    <td className="py-2 text-gray-300">{formatTime(tx.timestamp)}</td>
-                    <td className="py-2 text-right text-gray-300">{formatGasPrice(tx.gasPrice)} gwei</td>
-                    <td className="py-2 text-right text-gray-300">{tx.gasUsed.toLocaleString()}</td>
-                    <td className="py-2 text-right text-gray-300">
+                    </div>
+                    <div role="cell" className="py-2 text-gray-300">
+                      {formatTime(tx.timestamp)}
+                    </div>
+                    <div role="cell" className="py-2 text-right text-gray-300">
+                      {formatGasPrice(tx.gasPrice)} gwei
+                    </div>
+                    <div role="cell" className="py-2 text-right text-gray-300">
+                      {tx.gasUsed.toLocaleString()}
+                    </div>
+                    <div role="cell" className="py-2 text-right text-gray-300">
                       ${formatUSD((tx.gasPrice * tx.gasUsed) / 1e9 * 3000)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                    </div>
+                  </div>
+                )}
+              />
+            </div>
           </div>
         )}
       </div>
@@ -186,5 +204,4 @@ const UserTransactionHistory: React.FC<UserTransactionHistoryProps> = ({ address
   );
 };
 
-export default UserTransactionHistory;
-
+export default React.memo(UserTransactionHistory);

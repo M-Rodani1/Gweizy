@@ -491,4 +491,4 @@ const GasAlertSettings: React.FC<GasAlertSettingsProps> = ({ currentGas, walletA
   );
 };
 
-export default GasAlertSettings;
+export default React.memo(GasAlertSettings);
