@@ -176,6 +176,7 @@ def create_app():
         response.headers['Access-Control-Max-Age'] = '3600'
         response.headers['Access-Control-Allow-Credentials'] = 'false'
         response.headers['Access-Control-Expose-Headers'] = 'X-Request-ID, X-Response-Time'
+        response.headers['Access-Control-Expose-Headers'] = 'X-Request-ID, X-Response-Time'
 
         # Only cache GET requests
         if request.method == 'GET':
