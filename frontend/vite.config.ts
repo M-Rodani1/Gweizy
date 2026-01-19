@@ -33,8 +33,14 @@ export default defineConfig(({ mode }) => {
             manualChunks: (id) => {
               // Separate node_modules into more granular chunks
               if (id.includes('node_modules')) {
-                // React core - most critical, load first
-                if (id.includes('react') && !id.includes('react-dom') && !id.includes('react-router')) {
+                // lucide-react - MUST check FIRST and bundle with React core
+                // This prevents "Cannot set properties of undefined (setting Activity)" errors
+                // By ensuring lucide-react loads with React in the same chunk
+                if (id.includes('lucide-react')) {
+                  return 'vendor-react-core'; // Bundle with React to ensure it loads first
+                }
+                // React core - most critical, load first (but after lucide-react check)
+                if (id.includes('react') && !id.includes('react-dom') && !id.includes('react-router') && !id.includes('lucide-react')) {
                   return 'vendor-react-core';
                 }
                 if (id.includes('react-dom')) {
@@ -43,11 +49,6 @@ export default defineConfig(({ mode }) => {
                 // Router - load with React
                 if (id.includes('react-router')) {
                   return 'vendor-router';
-                }
-                // lucide-react - bundle with React core to ensure proper initialization order
-                // This prevents "Cannot set properties of undefined" errors
-                if (id.includes('lucide-react')) {
-                  return 'vendor-react-core'; // Bundle with React to ensure it loads first
                 }
                 // Recharts is heavy - separate it completely
                 if (id.includes('recharts')) {
