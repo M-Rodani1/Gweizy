@@ -39,13 +39,52 @@ export default defineConfig(({ mode }) => {
       build: {
         rollupOptions: {
           output: {
-            // DISABLE code splitting to prevent React initialization race conditions
-            // Put ALL vendor code in ONE chunk to guarantee correct load order
+            // Code splitting strategy that prevents React initialization errors:
+            // 1. React and ALL React-dependent packages stay in MAIN ENTRY (return undefined)
+            // 2. Only truly independent packages get split into separate chunks
             manualChunks: (id) => {
               if (id.includes('node_modules')) {
-                // ALL vendor code goes into ONE chunk
-                // This ensures React initializes before anything else
-                return 'vendor';
+                // KEEP IN MAIN ENTRY (return undefined) - ensures React loads first
+                // React core and DOM - MUST stay in entry
+                if (id.includes('/react/') || id.includes('/react-dom/')) {
+                  return undefined; // Stays in main entry bundle
+                }
+                
+                // ALL packages that import React - MUST stay in entry
+                if (id.includes('react-router') ||
+                    id.includes('react-is') ||
+                    id.includes('react-countup') ||
+                    id.includes('react-hot-toast') ||
+                    id.includes('lucide-react') ||
+                    id.includes('@tanstack/react-query') ||
+                    id.includes('@tanstack/react-virtual') ||
+                    id.includes('@sentry/react') ||
+                    id.includes('framer-motion') ||
+                    id.includes('@farcaster') ||
+                    id.includes('recharts')) {
+                  return undefined; // Stays in main entry bundle
+                }
+                
+                // SAFE TO SPLIT - packages that DON'T depend on React
+                // These load in parallel but don't need React to initialize
+                if (id.includes('socket.io')) {
+                  return 'vendor-socket';
+                }
+                
+                // D3 and other chart utilities (used by recharts internally but no React dep)
+                if (id.includes('d3-') || id.includes('victory-vendor')) {
+                  return 'vendor-charts';
+                }
+                
+                // Other truly independent utilities
+                if (id.includes('clsx') || 
+                    id.includes('tailwind-merge') ||
+                    id.includes('class-variance-authority')) {
+                  return 'vendor-utils';
+                }
+                
+                // Everything else stays in main entry to be safe
+                return undefined;
               }
             }
           }
