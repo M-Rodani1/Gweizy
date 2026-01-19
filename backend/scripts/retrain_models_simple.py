@@ -43,8 +43,13 @@ CV_FOLDS = 2 if IS_RAILWAY else 3  # Fewer folds on Railway
 N_JOBS_TUNING = 1 if IS_RAILWAY else -1  # Sequential on Railway to save memory
 
 
-def fetch_training_data(hours=2160):
-    """Fetch data from database (default: 90 days = 2160 hours)"""
+def fetch_training_data(hours=2160, max_records=50000):
+    """Fetch data from database (default: 90 days = 2160 hours)
+    
+    Args:
+        hours: Number of hours of historical data to fetch
+        max_records: Maximum records to use for training (for performance)
+    """
     print(f"📊 Fetching {hours} hours of data from database...", flush=True)
 
     from data.database import DatabaseManager
@@ -57,6 +62,24 @@ def fetch_training_data(hours=2160):
         raise ValueError(f"No data available in database")
 
     print(f"✅ Fetched {len(data):,} total records from database", flush=True)
+    
+    # Sample data if too large (for training performance)
+    if len(data) > max_records:
+        print(f"⚠️  Sampling {max_records:,} records from {len(data):,} for faster training", flush=True)
+        # Keep most recent data, sample evenly from the rest
+        import random
+        random.seed(42)  # Reproducible sampling
+        # Sort by timestamp to keep temporal order
+        data_sorted = sorted(data, key=lambda x: x.get('timestamp', ''), reverse=True)
+        # Take most recent 20% + random sample of older data
+        recent_count = max_records // 5  # 20% most recent
+        older_count = max_records - recent_count
+        recent_data = data_sorted[:recent_count]
+        older_data = random.sample(data_sorted[recent_count:], min(older_count, len(data_sorted) - recent_count))
+        data = recent_data + older_data
+        # Re-sort by timestamp for proper time series
+        data = sorted(data, key=lambda x: x.get('timestamp', ''))
+        print(f"   Using {len(data):,} records for training", flush=True)
     
     # Log data range if available
     if data:
