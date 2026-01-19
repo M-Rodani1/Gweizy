@@ -40,15 +40,30 @@ export default defineConfig(({ mode }) => {
         rollupOptions: {
           output: {
             manualChunks: (id) => {
+              // CRITICAL: React MUST load first, before ANY other code
+              // Put React in main entry bundle to ensure it loads synchronously
+              // Don't split React into vendor chunks to avoid initialization race conditions
+              
               // Separate node_modules into more granular chunks
               if (id.includes('node_modules')) {
-                // ALL React-related packages MUST be in vendor-react-core to ensure React loads first
-                // This prevents "Cannot read properties of undefined (reading 'forwardRef')" errors
+                // React core MUST be in main bundle (don't split it)
+                // This ensures React is initialized before any vendor chunks load
+                if ((id.includes('/react/') || id.includes('\\react\\')) && 
+                    !id.includes('react-dom') && 
+                    !id.includes('react-router')) {
+                  // React core stays in main bundle - DO NOT split
+                  return undefined;
+                }
                 
-                // Check for ALL React-dependent packages FIRST (before checking react core)
-                // Order matters: check specific packages before general patterns
-                if (id.includes('react-dom') ||
-                    id.includes('react-router') ||
+                // React DOM should also be in main bundle to ensure proper initialization
+                if (id.includes('react-dom')) {
+                  // Keep react-dom with main bundle for now
+                  return undefined;
+                }
+                
+                // ALL React-dependent packages MUST be together in vendor-react-core
+                // This ensures they load AFTER React is initialized
+                if (id.includes('react-router') ||
                     id.includes('react-is') ||
                     id.includes('react-countup') ||
                     id.includes('react-hot-toast') ||
@@ -58,9 +73,7 @@ export default defineConfig(({ mode }) => {
                     id.includes('@sentry/react') ||
                     id.includes('framer-motion') ||
                     id.includes('@farcaster') ||
-                    id.includes('recharts') ||
-                    (id.includes('/react/') && !id.includes('/react-dom/')) ||  // react core (but not react-dom)
-                    (id.includes('\\react\\') && !id.includes('\\react-dom\\'))) {  // Windows paths
+                    id.includes('recharts')) {
                   return 'vendor-react-core';
                 }
                 
