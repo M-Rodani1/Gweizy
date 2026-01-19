@@ -357,7 +357,7 @@ def trigger_simple_retraining():
                     [sys.executable, script_path],
                     capture_output=True,
                     text=True,
-                    timeout=600,  # 10 minute timeout
+                    timeout=1200,  # 20 minute timeout for large datasets
                     cwd=current_dir
                 )
 
@@ -442,7 +442,7 @@ def trigger_simple_retraining():
                     logger.error(f"Output: {result.stdout[:500]}...")
                     _update_progress(error='Training failed', completed=True)
             except subprocess.TimeoutExpired:
-                logger.error("Retraining timed out after 10 minutes")
+                logger.error("Retraining timed out after 20 minutes")
                 _update_progress(error='Training timed out', completed=True)
             except Exception as e:
                 logger.error(f"Error during training: {e}")

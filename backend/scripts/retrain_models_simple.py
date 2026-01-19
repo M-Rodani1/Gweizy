@@ -36,7 +36,8 @@ RF_PARAM_DISTRIBUTIONS = {
 import os
 IS_RAILWAY = os.environ.get('RAILWAY_ENVIRONMENT') is not None
 
-USE_HYPERPARAMETER_TUNING = True
+# Disable hyperparameter tuning on Railway - too slow with large datasets
+USE_HYPERPARAMETER_TUNING = False if IS_RAILWAY else True
 TUNING_ITERATIONS = 8 if IS_RAILWAY else 15  # Fewer iterations on Railway
 CV_FOLDS = 2 if IS_RAILWAY else 3  # Fewer folds on Railway
 N_JOBS_TUNING = 1 if IS_RAILWAY else -1  # Sequential on Railway to save memory
