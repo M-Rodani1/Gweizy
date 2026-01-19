@@ -317,25 +317,66 @@ class EnsemblePredictor:
         return float(prediction)
 
     def _calculate_weights(self, horizon: str) -> Dict[str, float]:
-        """Calculate model weights based on recent accuracy."""
-
-        weights = dict(self.DEFAULT_WEIGHTS)
-
-        # Try to get recent accuracy from tracker
-        try:
-            from models.accuracy_tracker import get_tracker
-            tracker = get_tracker()
-
-            # This would require tracking accuracy per model, which we don't have yet
-            # For now, use default weights
-            # Future: Store per-model predictions and compare to actuals
-
-        except Exception:
-            pass
-
-        # Normalize weights
+        """
+        Calculate model weights based on recent R² performance.
+        
+        Uses dynamic weighting: models with better recent R² scores get higher weights.
+        Falls back to default weights if no accuracy data is available.
+        """
+        weights = {}
+        
+        # Collect recent R² scores for each model
+        r2_scores = {}
+        for model_name in ['hybrid', 'stacking', 'statistical']:
+            if model_name in self.recent_accuracy:
+                acc_data = self.recent_accuracy[model_name].get(horizon)
+                if acc_data and acc_data.get('r2') is not None:
+                    r2 = acc_data['r2']
+                    # Ensure R² is positive (negative = worse than baseline)
+                    r2_scores[model_name] = max(0.0, r2)
+                else:
+                    r2_scores[model_name] = None
+        
+        # Calculate weights based on R² performance
+        if any(score is not None and score > 0 for score in r2_scores.values()):
+            # Dynamic weighting: weight = recent_r2 / sum(all_recent_r2)
+            # For models without recent data, use small default weight
+            total_r2 = sum(score for score in r2_scores.values() if score is not None and score > 0)
+            
+            if total_r2 > 0:
+                for model_name in ['hybrid', 'stacking', 'statistical']:
+                    if r2_scores.get(model_name) is not None and r2_scores[model_name] > 0:
+                        # Proportional to R², but ensure minimum weight
+                        weight = r2_scores[model_name] / total_r2
+                        weights[model_name] = max(self.MIN_WEIGHT, weight)
+                    else:
+                        # Model without recent data gets minimum weight
+                        weights[model_name] = self.MIN_WEIGHT
+                
+                # Normalize to sum to 1.0
+                total_weight = sum(weights.values())
+                if total_weight > 0:
+                    weights = {k: v / total_weight for k, v in weights.items()}
+                else:
+                    weights = dict(self.DEFAULT_WEIGHTS)
+            else:
+                # All R² scores are 0 or negative, use default weights
+                weights = dict(self.DEFAULT_WEIGHTS)
+        else:
+            # No recent accuracy data available, use default weights
+            weights = dict(self.DEFAULT_WEIGHTS)
+        
+        # Ensure all models have weights
+        for model_name in ['hybrid', 'stacking', 'statistical']:
+            if model_name not in weights:
+                weights[model_name] = self.DEFAULT_WEIGHTS.get(model_name, self.MIN_WEIGHT)
+        
+        # Final normalization
         total = sum(weights.values())
-        return {k: v / total for k, v in weights.items()}
+        if total > 0:
+            weights = {k: v / total for k, v in weights.items()}
+        
+        return weights
 
     def _weighted_average(
         self,

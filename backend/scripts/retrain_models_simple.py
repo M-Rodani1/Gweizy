@@ -249,16 +249,20 @@ def train_model(X, y_tuple, horizon, min_samples=100, feature_meta=None, use_fea
     
     print_flush(f"   ✅ Sufficient data: {len(X_clean):,} valid samples (minimum: {min_samples:,})")
 
-    # Apply SHAP feature selection to reduce features
+    # Apply enhanced feature selection with multiple methods
     feature_selector = None
     if use_feature_selection and X_clean.shape[1] > 40:
         try:
             from models.feature_selector import SHAPFeatureSelector
             n_features = 30 if not IS_RAILWAY else 25  # Fewer features on Railway
-            feature_selector = SHAPFeatureSelector(n_features=n_features)
+            # Use multiple selection methods for better feature selection
+            feature_selector = SHAPFeatureSelector(
+                n_features=n_features, 
+                use_multiple_methods=True  # Enable multi-method feature selection
+            )
             feature_selector.fit(X_clean, y_pct_change_clean, verbose=True)
             X_clean = feature_selector.transform(X_clean)
-            print_flush(f"   ✅ Reduced to {X_clean.shape[1]} features using SHAP selection")
+            print_flush(f"   ✅ Reduced to {X_clean.shape[1]} features using multi-method selection")
             
             # Save feature selector to persistent storage
             try:
@@ -313,7 +317,10 @@ def train_model(X, y_tuple, horizon, min_samples=100, feature_meta=None, use_fea
     elif abs(median_shift_pct) > 5:
         print_flush(f"      ⚠️  Note: Moderate distribution shift detected (5-10%)")
 
-    # Train Random Forest model on percentage change targets
+    # Train multiple models on percentage change targets
+    models_trained = {}
+    
+    # 1. Train Random Forest model on percentage change targets
     search = None
     if USE_HYPERPARAMETER_TUNING and len(X_train) >= 1000:
         print_flush(f"📊 Training Random Forest with hyperparameter tuning...")
@@ -442,25 +449,148 @@ def train_model(X, y_tuple, horizon, min_samples=100, feature_meta=None, use_fea
             idx = indices[i]
             print_flush(f"      - {feature_names[idx]}: {importances[idx]:.6f}")
 
-    # Store best hyperparameters if tuning was used
-    best_params = search.best_params_ if USE_HYPERPARAMETER_TUNING and len(X_train) >= 1000 else None
-
-    return {
+    # Store Random Forest model
+    models_trained['RandomForest'] = {
         'model': model,
         'scaler': scaler,
-        'feature_selector': feature_selector,  # SHAP-based feature selector
-        'feature_names': list(X_clean.columns),
-        'uses_log_scale': False,  # No longer using log scale
-        'predicts_percentage_change': True,  # IMPORTANT: Model predicts percentage change
-        'best_params': best_params,
-        'feature_importances': dict(zip(feature_names, importances.tolist())),
-        'feature_pipeline': feature_meta or {},
-        'sample_rate_minutes': (feature_meta or {}).get('sample_rate_minutes'),
-        'steps_per_hour': (feature_meta or {}).get('steps_per_hour'),
         'metrics': {
             'mae': mae,
             'rmse': rmse,
             'r2': r2,
+            'mape': mape,
+            'directional_accuracy': directional_accuracy,
+            'r2_pct': r2_pct
+        },
+        'best_params': search.best_params_ if search else None
+    }
+    
+    # 2. Train LightGBM (if available)
+    try:
+        import lightgbm as lgb
+        print_flush(f"\n📊 Training LightGBM...")
+        lgbm = lgb.LGBMRegressor(
+            n_estimators=200,
+            max_depth=10,
+            learning_rate=0.05,
+            num_leaves=31,
+            min_child_samples=20,
+            subsample=0.8,
+            colsample_bytree=0.8,
+            reg_alpha=0.1,
+            reg_lambda=0.1,
+            random_state=42,
+            n_jobs=-1,
+            verbose=-1,
+            objective='regression',
+            metric='rmse'
+        )
+        lgbm.fit(X_train_scaled, y_pct_change_train)
+        
+        # Evaluate
+        y_pct_change_pred_lgbm = lgbm.predict(X_test_scaled)
+        y_pred_original_lgbm = current_prices_test.values * (1 + y_pct_change_pred_lgbm / 100)
+        
+        mae_lgbm = mean_absolute_error(y_original_test, y_pred_original_lgbm)
+        rmse_lgbm = np.sqrt(mean_squared_error(y_original_test, y_pred_original_lgbm))
+        r2_lgbm = r2_score(y_original_test, y_pred_original_lgbm)
+        r2_pct_lgbm = r2_score(y_pct_change_test, y_pct_change_pred_lgbm)
+        
+        models_trained['LightGBM'] = {
+            'model': lgbm,
+            'scaler': scaler,
+            'metrics': {
+                'mae': mae_lgbm,
+                'rmse': rmse_lgbm,
+                'r2': r2_lgbm,
+                'r2_pct': r2_pct_lgbm
+            }
+        }
+        print_flush(f"   ✅ LightGBM R²: {r2_lgbm:.4f} (better than RF: {r2_lgbm > r2})")
+    except ImportError:
+        print_flush(f"   ⚠️ LightGBM not available - skipping")
+    except Exception as e:
+        print_flush(f"   ⚠️ LightGBM training failed: {e}")
+    
+    # 3. Train XGBoost (if available)
+    try:
+        import xgboost as xgb
+        print_flush(f"\n📊 Training XGBoost...")
+        xgb_model = xgb.XGBRegressor(
+            n_estimators=200,
+            max_depth=10,
+            learning_rate=0.05,
+            min_child_weight=3,
+            subsample=0.8,
+            colsample_bytree=0.8,
+            reg_alpha=0.1,
+            reg_lambda=1.0,
+            gamma=0.1,
+            random_state=42,
+            n_jobs=-1,
+            objective='reg:squarederror',
+            eval_metric='rmse'
+        )
+        xgb_model.fit(X_train_scaled, y_pct_change_train)
+        
+        # Evaluate
+        y_pct_change_pred_xgb = xgb_model.predict(X_test_scaled)
+        y_pred_original_xgb = current_prices_test.values * (1 + y_pct_change_pred_xgb / 100)
+        
+        mae_xgb = mean_absolute_error(y_original_test, y_pred_original_xgb)
+        rmse_xgb = np.sqrt(mean_squared_error(y_original_test, y_pred_original_xgb))
+        r2_xgb = r2_score(y_original_test, y_pred_original_xgb)
+        r2_pct_xgb = r2_score(y_pct_change_test, y_pct_change_pred_xgb)
+        
+        models_trained['XGBoost'] = {
+            'model': xgb_model,
+            'scaler': scaler,
+            'metrics': {
+                'mae': mae_xgb,
+                'rmse': rmse_xgb,
+                'r2': r2_xgb,
+                'r2_pct': r2_pct_xgb
+            }
+        }
+        print_flush(f"   ✅ XGBoost R²: {r2_xgb:.4f} (better than RF: {r2_xgb > r2})")
+    except ImportError:
+        print_flush(f"   ⚠️ XGBoost not available - skipping")
+    except Exception as e:
+        print_flush(f"   ⚠️ XGBoost training failed: {e}")
+    
+    # Select best model based on R² score
+    best_model_name = 'RandomForest'
+    best_r2 = r2
+    for model_name, model_data in models_trained.items():
+        if model_data['metrics']['r2'] > best_r2:
+            best_r2 = model_data['metrics']['r2']
+            best_model_name = model_name
+    
+    print_flush(f"\n🏆 Best model: {best_model_name} (R²: {best_r2:.4f})")
+    
+    # Use best model for return
+    best_model_data = models_trained[best_model_name]
+    model = best_model_data['model']
+    scaler = best_model_data['scaler']
+    best_params = best_model_data.get('best_params')
+
+    return {
+        'model': model,
+        'model_name': best_model_name,
+        'all_models': models_trained,  # Include all trained models
+        'scaler': scaler,
+        'feature_selector': feature_selector,  # Enhanced multi-method feature selector
+        'feature_names': list(X_clean.columns),
+        'uses_log_scale': False,  # No longer using log scale
+        'predicts_percentage_change': True,  # IMPORTANT: Model predicts percentage change
+        'best_params': best_params,
+        'feature_importances': dict(zip(feature_names, model.feature_importances_ if hasattr(model, 'feature_importances_') else {})),
+        'feature_pipeline': feature_meta or {},
+        'sample_rate_minutes': (feature_meta or {}).get('sample_rate_minutes'),
+        'steps_per_hour': (feature_meta or {}).get('steps_per_hour'),
+        'metrics': {
+            'mae': best_model_data['metrics']['mae'],
+            'rmse': best_model_data['metrics']['rmse'],
+            'r2': best_model_data['metrics']['r2'],
             'mape': mape,
             'directional_accuracy': directional_accuracy,
             'median_actual': median_actual,
