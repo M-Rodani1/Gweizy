@@ -1,0 +1,6 @@
+# Ignore Worker configuration files - this is a static Pages site
+wrangler.toml
+cloudflare-worker/
+*.toml
+functions/
+_functions/

@@ -29,12 +29,22 @@ jobs:
       env:
         VITE_API_URL: ${{ secrets.VITE_API_URL || 'https://basegasfeesml-production.up.railway.app/api' }}
 
+    - name: Ensure no Functions directory exists
+      working-directory: ./frontend/dist
+      run: |
+        # Remove any functions directories to prevent Cloudflare from trying to deploy Functions
+        rm -rf functions _functions 2>/dev/null || true
+        # Ensure .cloudflareignore is present
+        echo "wrangler.toml" > .cloudflareignore || true
+        echo "cloudflare-worker/" >> .cloudflareignore || true
+        echo "*.toml" >> .cloudflareignore || true
+
     - name: Deploy to Cloudflare Pages
       uses: cloudflare/wrangler-action@v3
       with:
         apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        command: pages deploy frontend/dist --project-name=basegasfeesml
+        command: pages deploy frontend/dist --project-name=basegasfeesml --compatibility-date=2024-01-01
 
   deploy-backend:
     runs-on: ubuntu-latest
