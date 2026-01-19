@@ -25,7 +25,7 @@ export default defineConfig(({ mode }) => {
         }
       },
       optimizeDeps: {
-        include: ['lucide-react'], // Force pre-bundling of lucide-react to avoid initialization issues
+        include: ['lucide-react', 'react', 'react-dom'], // Force pre-bundling to avoid initialization issues
       },
       build: {
         rollupOptions: {
@@ -33,12 +33,9 @@ export default defineConfig(({ mode }) => {
             manualChunks: (id) => {
               // Separate node_modules into more granular chunks
               if (id.includes('node_modules')) {
-                // React core - most critical, load first
-                if (id.includes('react') && !id.includes('react-dom') && !id.includes('react-router')) {
-                  return 'vendor-react-core';
-                }
-                if (id.includes('react-dom')) {
-                  return 'vendor-react-dom';
+                // Keep React and react-dom together to avoid initialization issues
+                if (id.includes('react') || id.includes('react-dom')) {
+                  return 'vendor-react';
                 }
                 // Router - load with React
                 if (id.includes('react-router')) {
