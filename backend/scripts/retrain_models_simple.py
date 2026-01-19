@@ -13,6 +13,26 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
+import time
+
+# =============================================================================
+# VERBOSE LOGGING HELPER
+# =============================================================================
+_start_time = time.time()
+
+def log(msg, level="INFO"):
+    """Print timestamped log message with elapsed time"""
+    elapsed = time.time() - _start_time
+    timestamp = datetime.now().strftime("%H:%M:%S")
+    print(f"[{timestamp}] [{elapsed:6.1f}s] [{level}] {msg}", flush=True)
+
+def log_progress(step, total, desc=""):
+    """Log progress percentage"""
+    pct = (step / total * 100) if total > 0 else 0
+    log(f"Progress: {step}/{total} ({pct:.1f}%) {desc}")
+
+# =============================================================================
+
 from models.feature_pipeline import build_feature_matrix, build_horizon_targets, normalize_gas_dataframe
 from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
 from sklearn.preprocessing import RobustScaler
@@ -42,44 +62,59 @@ TUNING_ITERATIONS = 8 if IS_RAILWAY else 15  # Fewer iterations on Railway
 CV_FOLDS = 2 if IS_RAILWAY else 3  # Fewer folds on Railway
 N_JOBS_TUNING = 1 if IS_RAILWAY else -1  # Sequential on Railway to save memory
 
+# Reduce max records for faster training on Railway
+MAX_TRAINING_RECORDS = 20000 if IS_RAILWAY else 50000
 
-def fetch_training_data(hours=2160, max_records=50000):
+
+def fetch_training_data(hours=2160, max_records=None):
     """Fetch data from database (default: 90 days = 2160 hours)
     
     Args:
         hours: Number of hours of historical data to fetch
         max_records: Maximum records to use for training (for performance)
     """
-    print(f"📊 Fetching {hours} hours of data from database...", flush=True)
+    if max_records is None:
+        max_records = MAX_TRAINING_RECORDS
+    
+    log(f"📊 STEP: Fetching {hours} hours of data from database...")
+    log(f"   Max records limit: {max_records:,}")
 
     from data.database import DatabaseManager
+    log("   Creating DatabaseManager...")
     db = DatabaseManager()
 
     # Get historical data
+    log("   Querying historical data...")
     data = db.get_historical_data(hours=hours)
 
     if not data:
         raise ValueError(f"No data available in database")
 
-    print(f"✅ Fetched {len(data):,} total records from database", flush=True)
+    log(f"✅ Fetched {len(data):,} total records from database")
     
     # Sample data if too large (for training performance)
     if len(data) > max_records:
-        print(f"⚠️  Sampling {max_records:,} records from {len(data):,} for faster training", flush=True)
+        log(f"⚠️  SAMPLING: {len(data):,} records → {max_records:,} for faster training")
         # Keep most recent data, sample evenly from the rest
         import random
         random.seed(42)  # Reproducible sampling
-        # Sort by timestamp to keep temporal order
+        
+        log("   Sorting by timestamp...")
         data_sorted = sorted(data, key=lambda x: x.get('timestamp', ''), reverse=True)
+        
         # Take most recent 20% + random sample of older data
         recent_count = max_records // 5  # 20% most recent
         older_count = max_records - recent_count
+        log(f"   Taking {recent_count:,} recent + {older_count:,} sampled older records")
+        
         recent_data = data_sorted[:recent_count]
         older_data = random.sample(data_sorted[recent_count:], min(older_count, len(data_sorted) - recent_count))
         data = recent_data + older_data
+        
         # Re-sort by timestamp for proper time series
+        log("   Re-sorting for time series order...")
         data = sorted(data, key=lambda x: x.get('timestamp', ''))
-        print(f"   Using {len(data):,} records for training", flush=True)
+        log(f"✅ Using {len(data):,} records for training")
     
     # Log data range if available
     if data:
@@ -93,7 +128,6 @@ def fetch_training_data(hours=2160, max_records=50000):
                         timestamps.append(parser.parse(ts))
                     except:
                         try:
-                            from datetime import datetime
                             timestamps.append(datetime.fromisoformat(ts.replace('Z', '+00:00')))
                         except:
                             pass
@@ -103,30 +137,29 @@ def fetch_training_data(hours=2160, max_records=50000):
             if timestamps:
                 timestamps.sort()
                 days_span = (timestamps[-1] - timestamps[0]).total_seconds() / 86400
-                print(f"   📅 Date range: {timestamps[0].strftime('%Y-%m-%d')} to {timestamps[-1].strftime('%Y-%m-%d')} ({days_span:.1f} days)", flush=True)
+                log(f"📅 Date range: {timestamps[0].strftime('%Y-%m-%d')} to {timestamps[-1].strftime('%Y-%m-%d')} ({days_span:.1f} days)")
         except Exception as e:
-            print(f"   ⚠️  Could not determine date range: {e}", flush=True)
+            log(f"⚠️  Could not determine date range: {e}", "WARN")
     
     return data
 
 
 def prepare_features(data):
     """Prepare features using the same pipeline as production"""
-    def print_flush(*args, **kwargs):
-        kwargs.setdefault('flush', True)
-        print(*args, **kwargs)
-    
-    print_flush("\n📊 Creating features (same as production)...")
-    print_flush(f"   Input records: {len(data):,}")
+    log("=" * 60)
+    log("📊 STEP: FEATURE ENGINEERING")
+    log("=" * 60)
+    log(f"   Input records: {len(data):,}")
 
+    log("   Normalizing gas dataframe...")
     df = normalize_gas_dataframe(data)
     
-    print_flush(f"   After normalization: {len(df):,} records")
-    print_flush(f"   Data range: {df['timestamp'].min()} to {df['timestamp'].max()}")
-    print_flush(f"   Gas price range: {df['gas_price'].min():.6f} to {df['gas_price'].max():.6f} gwei")
+    log(f"✅ After normalization: {len(df):,} records")
+    log(f"   Data range: {df['timestamp'].min()} to {df['timestamp'].max()}")
+    log(f"   Gas price range: {df['gas_price'].min():.6f} to {df['gas_price'].max():.6f} gwei")
 
     # IMPROVEMENT 1: Outlier Detection and Filtering
-    # Use IQR method to identify extreme outliers
+    log("   Detecting outliers using IQR method...")
     Q1 = df['gas_price'].quantile(0.25)
     Q3 = df['gas_price'].quantile(0.75)
     IQR = Q3 - Q1
@@ -139,70 +172,64 @@ def prepare_features(data):
     outlier_count = outliers.sum()
 
     if outlier_count > 0:
-        print_flush(f"   ⚠️  Outlier Analysis:")
-        print_flush(f"      Total outliers: {outlier_count:,} ({outlier_count/len(df)*100:.1f}%)")
+        log(f"⚠️  Outlier Analysis:", "WARN")
+        log(f"   Total outliers: {outlier_count:,} ({outlier_count/len(df)*100:.1f}%)")
         below_count = (df['gas_price'] < lower_bound).sum()
         above_count = (df['gas_price'] > upper_bound).sum()
-        print_flush(f"      Below {lower_bound:.6f}: {below_count:,}")
-        print_flush(f"      Above {upper_bound:.6f}: {above_count:,}")
-        print_flush(f"      Max outlier: {df['gas_price'].max():.6f} gwei")
-        print_flush(f"      Min outlier: {df['gas_price'].min():.6f} gwei")
-        print_flush(f"      Median: {df['gas_price'].median():.6f}, Q1: {Q1:.6f}, Q3: {Q3:.6f}")
+        log(f"   Below {lower_bound:.6f}: {below_count:,}")
+        log(f"   Above {upper_bound:.6f}: {above_count:,}")
 
         # Cap outliers instead of removing them (preserve time series continuity)
         df.loc[df['gas_price'] > upper_bound, 'gas_price'] = upper_bound
         df.loc[df['gas_price'] < lower_bound, 'gas_price'] = lower_bound
-
-        print_flush(f"      Capped extreme outliers to bounds: [{lower_bound:.6f}, {upper_bound:.6f}]")
+        log(f"   Capped outliers to bounds: [{lower_bound:.6f}, {upper_bound:.6f}]")
+    else:
+        log("✅ No extreme outliers detected")
 
     # Build features using shared pipeline
+    log("   Building feature matrix (this may take a while)...")
+    log("   ⏳ Feature engineering in progress...")
     X, feature_meta, df = build_feature_matrix(df, include_external_features=True)
     
-    print_flush(f"   After feature engineering: {len(X):,} samples, {X.shape[1]} features")
+    log(f"✅ Feature matrix built: {len(X):,} samples, {X.shape[1]} features")
     
     # Check for NaN values before processing
+    log("   Checking for NaN values...")
     nan_counts = X.isna().sum()
     nan_rows = X.isna().any(axis=1).sum()
     if nan_rows > 0:
-        print_flush(f"   ⚠️  Found {nan_rows:,} rows with NaN values ({nan_rows/len(X)*100:.1f}%)")
-        nan_features = nan_counts[nan_counts > 0]
-        if len(nan_features) > 0:
-            print_flush(f"   ⚠️  Features with NaN: {len(nan_features)} features")
-            top_nan = nan_features.nlargest(5)
-            for feat, count in top_nan.items():
-                print_flush(f"      - {feat}: {count:,} NaN ({count/len(X)*100:.1f}%)")
+        log(f"⚠️  Found {nan_rows:,} rows with NaN values ({nan_rows/len(X)*100:.1f}%)", "WARN")
+    else:
+        log("✅ No NaN values in feature matrix")
 
-    # IMPROVEMENT: Remove log transformation - use original gas_price directly
-    # This avoids amplifying errors on very small values (0.001-0.01 gwei)
-    print_flush(f"✅ Created {X.shape[1]} features from {len(df):,} records")
     if feature_meta.get('sample_rate_minutes'):
-        print_flush(f"   Detected sample rate: {feature_meta['sample_rate_minutes']:.2f} minutes")
+        log(f"   Detected sample rate: {feature_meta['sample_rate_minutes']:.2f} minutes")
 
     steps_per_hour = feature_meta.get('steps_per_hour', 12)
 
-    # IMPROVEMENT: Predict percentage change instead of absolute price
-    # Calculate percentage change: (future_price - current_price) / current_price * 100
+    # Build horizon targets
+    log("   Building horizon targets (1h, 4h, 24h)...")
     gas_price = df['gas_price']
     targets_original = build_horizon_targets(gas_price, steps_per_hour)
     
     # Calculate percentage change targets
+    log("   Calculating percentage change targets...")
     targets_pct_change = {}
     for horizon in ['1h', '4h', '24h']:
         future_price = targets_original[horizon]
         current_price = gas_price
-        # Percentage change: (future - current) / current * 100
         pct_change = ((future_price - current_price) / (current_price + 1e-8)) * 100
         targets_pct_change[horizon] = pct_change
     
     # Log target quality
+    log("   Target quality summary:")
     for horizon in ['1h', '4h', '24h']:
         target_orig = targets_original[horizon]
         target_pct = targets_pct_change[horizon]
         valid_targets = (~target_orig.isna() & ~target_pct.isna()).sum()
         if valid_targets > 0:
             pct_stats = target_pct.dropna()
-            print_flush(f"   {horizon} horizon: {valid_targets:,} valid targets ({valid_targets/len(target_orig)*100:.1f}%)")
-            print_flush(f"      Pct change range: {pct_stats.min():.2f}% to {pct_stats.max():.2f}% (median: {pct_stats.median():.2f}%)")
+            log(f"   {horizon}: {valid_targets:,} valid targets, pct range: {pct_stats.min():.1f}% to {pct_stats.max():.1f}%")
 
     # Store current prices for later use in evaluation
     # This ensures we can convert percentage change predictions back to absolute prices
@@ -218,15 +245,6 @@ def prepare_features(data):
 
 
 def train_model(X, y_tuple, horizon, min_samples=100, feature_meta=None, use_feature_selection=True):
-    import sys
-    # Force immediate output flushing for Railway logs
-    sys.stdout.flush()
-    sys.stderr.flush()
-    
-    # Helper function for flushed printing
-    def print_flush(*args, **kwargs):
-        kwargs.setdefault('flush', True)
-        print(*args, **kwargs)
     """
     Train a single model for given horizon
 
@@ -237,24 +255,23 @@ def train_model(X, y_tuple, horizon, min_samples=100, feature_meta=None, use_fea
         min_samples: Minimum samples required
         use_feature_selection: Whether to use SHAP feature selection
     """
-    print_flush(f"\n{'='*60}")
-    print_flush(f"🎯 Training model for {horizon} horizon")
-    print_flush(f"{'='*60}")
+    log("=" * 60)
+    log(f"🎯 TRAINING MODEL FOR {horizon.upper()} HORIZON")
+    log("=" * 60)
 
     y_pct_change, y_original, current_prices = y_tuple
 
     # Log initial counts
-    print_flush(f"\n   📊 Data Quality Check:")
-    print_flush(f"      Input samples: {len(X):,}")
-    print_flush(f"      Features: {X.shape[1]}")
+    log(f"📊 Data Quality Check:")
+    log(f"   Input samples: {len(X):,}, Features: {X.shape[1]}")
     
     # Check NaN distribution
     feature_nan_count = X.isna().any(axis=1).sum()
     target_nan_count = (y_pct_change.isna() | y_original.isna()).sum()
-    print_flush(f"      Rows with NaN in features: {feature_nan_count:,} ({feature_nan_count/len(X)*100:.1f}%)")
-    print_flush(f"      Rows with NaN in targets: {target_nan_count:,} ({target_nan_count/len(y_pct_change)*100:.1f}%)")
+    log(f"   NaN in features: {feature_nan_count:,}, NaN in targets: {target_nan_count:,}")
 
     # Remove NaN values
+    log("   Cleaning data (removing NaN rows)...")
     valid_idx = ~(X.isna().any(axis=1) | y_pct_change.isna() | y_original.isna())
     X_clean = X[valid_idx]
     y_pct_change_clean = y_pct_change[valid_idx]
@@ -262,43 +279,38 @@ def train_model(X, y_tuple, horizon, min_samples=100, feature_meta=None, use_fea
     current_prices_clean = current_prices[valid_idx]
     
     removed_count = len(X) - len(X_clean)
-    print_flush(f"      ✅ Valid samples after cleaning: {len(X_clean):,}")
-    if removed_count > 0:
-        print_flush(f"      ⚠️  Removed {removed_count:,} invalid samples ({removed_count/len(X)*100:.1f}%)")
+    log(f"✅ Valid samples: {len(X_clean):,} (removed {removed_count:,})")
 
     if len(X_clean) < min_samples:
-        print_flush(f"\n❌ INSUFFICIENT DATA: {len(X_clean):,} valid samples < {min_samples:,} minimum required")
-        print_flush(f"   Need {min_samples - len(X_clean):,} more valid samples to train")
+        log(f"❌ INSUFFICIENT DATA: {len(X_clean):,} < {min_samples:,} minimum required", "ERROR")
         return None
-    
-    print_flush(f"   ✅ Sufficient data: {len(X_clean):,} valid samples (minimum: {min_samples:,})")
 
     # Apply enhanced feature selection with multiple methods
     feature_selector = None
     if use_feature_selection and X_clean.shape[1] > 40:
         try:
+            log("   Running SHAP feature selection...")
             from models.feature_selector import SHAPFeatureSelector
             n_features = 30 if not IS_RAILWAY else 25  # Fewer features on Railway
-            # Use multiple selection methods for better feature selection
             feature_selector = SHAPFeatureSelector(
                 n_features=n_features, 
-                use_multiple_methods=True  # Enable multi-method feature selection
+                use_multiple_methods=True
             )
             feature_selector.fit(X_clean, y_pct_change_clean, verbose=True)
             X_clean = feature_selector.transform(X_clean)
-            print_flush(f"   ✅ Reduced to {X_clean.shape[1]} features using multi-method selection")
+            log(f"✅ Reduced to {X_clean.shape[1]} features")
             
-            # Save feature selector to persistent storage
             try:
-                feature_selector.save()  # Uses Config.MODELS_DIR
-                print_flush(f"   ✅ Saved feature selector to persistent storage")
+                feature_selector.save()
+                log(f"✅ Saved feature selector")
             except Exception as save_err:
-                print_flush(f"   ⚠️ Could not save feature selector: {save_err}")
+                log(f"⚠️ Could not save feature selector: {save_err}", "WARN")
         except Exception as e:
-            print_flush(f"   ⚠️ Feature selection failed: {e}, using all features")
+            log(f"⚠️ Feature selection failed: {e}, using all features", "WARN")
             feature_selector = None
 
     # Split: 80% train, 20% test (maintain temporal order)
+    log("   Splitting data (80% train, 20% test)...")
     split_idx = int(len(X_clean) * 0.8)
     X_train = X_clean.iloc[:split_idx]
     X_test = X_clean.iloc[split_idx:]
@@ -307,21 +319,10 @@ def train_model(X, y_tuple, horizon, min_samples=100, feature_meta=None, use_fea
     y_original_test = y_original_clean.iloc[split_idx:]
     current_prices_test = current_prices_clean.iloc[split_idx:]
 
-    print_flush(f"\n   📊 Train/Test Split:")
-    print_flush(f"      Training set: {len(X_train):,} samples ({len(X_train)/len(X_clean)*100:.1f}%)")
-    print_flush(f"      Test set: {len(X_test):,} samples ({len(X_test)/len(X_clean)*100:.1f}%)")
-    print_flush(f"      Total used: {len(X_clean):,} samples")
+    log(f"✅ Train: {len(X_train):,} samples, Test: {len(X_test):,} samples")
     
     # Log target statistics
     y_original_train = y_original_clean.iloc[:split_idx]
-    y_pct_change_train_stats = y_pct_change_train.dropna()
-    y_pct_change_test_stats = y_pct_change_test.dropna()
-    print_flush(f"\n   📈 Target Statistics (percentage change):")
-    print_flush(f"      Train - Min: {y_pct_change_train_stats.min():.2f}%, Max: {y_pct_change_train_stats.max():.2f}%, Median: {y_pct_change_train_stats.median():.2f}%")
-    print_flush(f"      Test  - Min: {y_pct_change_test_stats.min():.2f}%, Max: {y_pct_change_test_stats.max():.2f}%, Median: {y_pct_change_test_stats.median():.2f}%")
-    print_flush(f"\n   📈 Target Statistics (original scale for reference):")
-    print_flush(f"      Train - Min: {y_original_train.min():.6f}, Max: {y_original_train.max():.6f}, Median: {y_original_train.median():.6f} gwei")
-    print_flush(f"      Test  - Min: {y_original_test.min():.6f}, Max: {y_original_test.max():.6f}, Median: {y_original_test.median():.6f} gwei")
     
     # Distribution shift detection
     train_median = y_original_train.median()
@@ -331,15 +332,12 @@ def train_model(X, y_tuple, horizon, min_samples=100, feature_meta=None, use_fea
     median_shift_pct = ((test_median - train_median) / train_median * 100) if train_median > 0 else 0
     std_shift_pct = ((test_std - train_std) / train_std * 100) if train_std > 0 else 0
     
-    print_flush(f"\n   📊 Distribution Shift Check:")
-    print_flush(f"      Train median: {train_median:.6f}, std: {train_std:.6f}")
-    print_flush(f"      Test median: {test_median:.6f}, std: {test_std:.6f}")
-    print_flush(f"      Median shift: {median_shift_pct:+.1f}%")
-    print_flush(f"      Std shift: {std_shift_pct:+.1f}%")
     if abs(median_shift_pct) > 10:
-        print_flush(f"      ⚠️  WARNING: Significant distribution shift detected (>10%)")
+        log(f"⚠️  Distribution shift: {median_shift_pct:+.1f}% (significant)", "WARN")
     elif abs(median_shift_pct) > 5:
-        print_flush(f"      ⚠️  Note: Moderate distribution shift detected (5-10%)")
+        log(f"⚠️  Distribution shift: {median_shift_pct:+.1f}% (moderate)", "WARN")
+    else:
+        log(f"✅ Distribution shift: {median_shift_pct:+.1f}% (acceptable)")
 
     # Train multiple models on percentage change targets
     models_trained = {}
@@ -347,13 +345,10 @@ def train_model(X, y_tuple, horizon, min_samples=100, feature_meta=None, use_fea
     # 1. Train Random Forest model on percentage change targets
     search = None
     if USE_HYPERPARAMETER_TUNING and len(X_train) >= 1000:
-        print_flush(f"📊 Training Random Forest with hyperparameter tuning...")
-        print_flush(f"   Testing {TUNING_ITERATIONS} parameter combinations with {CV_FOLDS}-fold CV")
-        print_flush(f"   Target: Percentage change (not log-scale)")
+        log(f"🌲 Training RandomForest with hyperparameter tuning...")
+        log(f"   {TUNING_ITERATIONS} param combos, {CV_FOLDS}-fold CV")
 
-        # Use TimeSeriesSplit for proper time series cross-validation
         tscv = TimeSeriesSplit(n_splits=CV_FOLDS)
-
         base_model = RandomForestRegressor(random_state=42, n_jobs=-1)
         pipeline = Pipeline([
             ('scaler', RobustScaler()),
@@ -367,7 +362,7 @@ def train_model(X, y_tuple, horizon, min_samples=100, feature_meta=None, use_fea
             cv=tscv,
             scoring='neg_mean_absolute_error',
             random_state=42,
-            n_jobs=N_JOBS_TUNING,  # Use 1 on Railway to avoid OOM
+            n_jobs=N_JOBS_TUNING,
             verbose=0
         )
 
@@ -376,12 +371,10 @@ def train_model(X, y_tuple, horizon, min_samples=100, feature_meta=None, use_fea
         scaler = best_pipeline.named_steps['scaler']
         model = best_pipeline.named_steps['model']
 
-        print_flush(f"   Best parameters found:")
-        for param, value in search.best_params_.items():
-            print_flush(f"     {param}: {value}")
-        print_flush(f"   Best CV MAE: {-search.best_score_:.4f}%")
+        log(f"✅ Best CV MAE: {-search.best_score_:.4f}%")
     else:
-        print_flush(f"📊 Training Random Forest (percentage change target)...")
+        log(f"🌲 Training RandomForest (no hyperparameter tuning)...")
+        log(f"   n_estimators=100, max_depth=15")
         pipeline = Pipeline([
             ('scaler', RobustScaler()),
             ('model', RandomForestRegressor(
@@ -393,34 +386,31 @@ def train_model(X, y_tuple, horizon, min_samples=100, feature_meta=None, use_fea
                 n_jobs=-1
             ))
         ])
+        log("   ⏳ Fitting model...")
         pipeline.fit(X_train, y_pct_change_train)
         scaler = pipeline.named_steps['scaler']
         model = pipeline.named_steps['model']
+        log("✅ RandomForest trained")
 
     # Evaluate on percentage change
+    log("   Evaluating model performance...")
     X_test_scaled = scaler.transform(X_test)
     y_pct_change_pred = model.predict(X_test_scaled)
 
-    # Convert percentage change predictions back to absolute price for evaluation
-    # current_prices_test contains the current prices at the time of prediction
-    # (before the shift to future prices)
+    # Convert percentage change predictions back to absolute price
     y_pred_original = current_prices_test.values * (1 + y_pct_change_pred / 100)
 
-    # Calculate metrics on both percentage change and original scale
-    # Percentage change metrics
+    # Calculate metrics
     mae_pct = mean_absolute_error(y_pct_change_test, y_pct_change_pred)
     rmse_pct = np.sqrt(mean_squared_error(y_pct_change_test, y_pct_change_pred))
     r2_pct = r2_score(y_pct_change_test, y_pct_change_pred)
 
-    # Original scale metrics (converted from percentage change)
     mae = mean_absolute_error(y_original_test, y_pred_original)
     rmse = np.sqrt(mean_squared_error(y_original_test, y_pred_original))
     r2 = r2_score(y_original_test, y_pred_original)
 
-    # MAPE (Mean Absolute Percentage Error) - better for relative errors
     mape = np.mean(np.abs((y_original_test - y_pred_original) / (y_original_test + 1e-8))) * 100
 
-    # Directional accuracy (on original scale)
     if len(y_original_test) > 1:
         y_diff_actual = np.diff(y_original_test.values)
         y_diff_pred = np.diff(y_pred_original)
@@ -428,50 +418,39 @@ def train_model(X, y_tuple, horizon, min_samples=100, feature_meta=None, use_fea
     else:
         directional_accuracy = 0.0
 
-    print_flush(f"\n✅ Model Performance (percentage change target):")
-    print_flush(f"   MAE: {mae_pct:.4f}%")
-    print_flush(f"   RMSE: {rmse_pct:.4f}%")
-    print_flush(f"   R²: {r2_pct:.4f}")
-    print_flush(f"\n✅ Model Performance (converted to original scale):")
-    print_flush(f"   MAE: {mae:.6f} gwei")
-    print_flush(f"   RMSE: {rmse:.6f} gwei")
-    print_flush(f"   R²: {r2:.4f}")
-    print_flush(f"   MAPE: {mape:.2f}%")
-    print_flush(f"   Directional Accuracy: {directional_accuracy*100:.1f}%")
+    log(f"✅ RF Performance: R²={r2:.4f}, MAE={mae:.6f} gwei, MAPE={mape:.2f}%")
+    log(f"   Directional accuracy: {directional_accuracy*100:.1f}%")
 
-    # Additional insight: show median prediction vs actual
     median_actual = np.median(y_original_test)
     median_pred = np.median(y_pred_original)
-    print_flush(f"   Median Actual: {median_actual:.6f} gwei")
-    print_flush(f"   Median Predicted: {median_pred:.6f} gwei")
 
     # Feature importance analysis (enhanced logging)
     feature_names = list(X_clean.columns)
     importances = model.feature_importances_
     indices = np.argsort(importances)[::-1]
 
-    print_flush(f"\n📈 Model Feature Importance Analysis:")
-    print_flush(f"   Total features used: {len(feature_names)}")
-    print_flush(f"   Top 10 Most Important Features:")
+    log(f"\n📈 Model Feature Importance Analysis:")
+    log(f"   Total features used: {len(feature_names)}")
+    log(f"   Top 10 Most Important Features:")
     for i in range(min(10, len(feature_names))):
         idx = indices[i]
         importance_pct = (importances[idx] / importances.sum() * 100) if importances.sum() > 0 else 0
-        print_flush(f"      {i+1}. {feature_names[idx]}: {importances[idx]:.6f} ({importance_pct:.1f}% of total)")
+        log(f"      {i+1}. {feature_names[idx]}: {importances[idx]:.6f} ({importance_pct:.1f}% of total)")
     
     # Log cumulative importance
     top_10_importance = importances[indices[:10]].sum()
     top_10_pct = (top_10_importance / importances.sum() * 100) if importances.sum() > 0 else 0
-    print_flush(f"   Top 10 features account for {top_10_pct:.1f}% of total importance")
+    log(f"   Top 10 features account for {top_10_pct:.1f}% of total importance")
     
     # Log least important features (potential candidates for removal)
     if len(feature_names) > 10:
         bottom_5_importance = importances[indices[-5:]].sum()
         bottom_5_pct = (bottom_5_importance / importances.sum() * 100) if importances.sum() > 0 else 0
-        print_flush(f"   Bottom 5 features account for {bottom_5_pct:.1f}% of total importance")
-        print_flush(f"   Least important features:")
+        log(f"   Bottom 5 features account for {bottom_5_pct:.1f}% of total importance")
+        log(f"   Least important features:")
         for i in range(max(0, len(feature_names) - 5), len(feature_names)):
             idx = indices[i]
-            print_flush(f"      - {feature_names[idx]}: {importances[idx]:.6f}")
+            log(f"      - {feature_names[idx]}: {importances[idx]:.6f}")
 
     # Store Random Forest model
     models_trained['RandomForest'] = {
@@ -491,7 +470,7 @@ def train_model(X, y_tuple, horizon, min_samples=100, feature_meta=None, use_fea
     # 2. Train LightGBM (if available)
     try:
         import lightgbm as lgb
-        print_flush(f"\n📊 Training LightGBM...")
+        log(f"\n📊 Training LightGBM...")
         lgbm = lgb.LGBMRegressor(
             n_estimators=200,
             max_depth=10,
@@ -529,16 +508,16 @@ def train_model(X, y_tuple, horizon, min_samples=100, feature_meta=None, use_fea
                 'r2_pct': r2_pct_lgbm
             }
         }
-        print_flush(f"   ✅ LightGBM R²: {r2_lgbm:.4f} (better than RF: {r2_lgbm > r2})")
+        log(f"   ✅ LightGBM R²: {r2_lgbm:.4f} (better than RF: {r2_lgbm > r2})")
     except ImportError:
-        print_flush(f"   ⚠️ LightGBM not available - skipping")
+        log(f"   ⚠️ LightGBM not available - skipping")
     except Exception as e:
-        print_flush(f"   ⚠️ LightGBM training failed: {e}")
+        log(f"   ⚠️ LightGBM training failed: {e}")
     
     # 3. Train XGBoost (if available)
     try:
         import xgboost as xgb
-        print_flush(f"\n📊 Training XGBoost...")
+        log(f"\n📊 Training XGBoost...")
         xgb_model = xgb.XGBRegressor(
             n_estimators=200,
             max_depth=10,
@@ -575,11 +554,11 @@ def train_model(X, y_tuple, horizon, min_samples=100, feature_meta=None, use_fea
                 'r2_pct': r2_pct_xgb
             }
         }
-        print_flush(f"   ✅ XGBoost R²: {r2_xgb:.4f} (better than RF: {r2_xgb > r2})")
+        log(f"   ✅ XGBoost R²: {r2_xgb:.4f} (better than RF: {r2_xgb > r2})")
     except ImportError:
-        print_flush(f"   ⚠️ XGBoost not available - skipping")
+        log(f"   ⚠️ XGBoost not available - skipping")
     except Exception as e:
-        print_flush(f"   ⚠️ XGBoost training failed: {e}")
+        log(f"   ⚠️ XGBoost training failed: {e}")
     
     # Select best model based on R² score
     best_model_name = 'RandomForest'
@@ -589,7 +568,7 @@ def train_model(X, y_tuple, horizon, min_samples=100, feature_meta=None, use_fea
             best_r2 = model_data['metrics']['r2']
             best_model_name = model_name
     
-    print_flush(f"\n🏆 Best model: {best_model_name} (R²: {best_r2:.4f})")
+    log(f"\n🏆 Best model: {best_model_name} (R²: {best_r2:.4f})")
     
     # Use best model for return
     best_model_data = models_trained[best_model_name]
@@ -660,19 +639,19 @@ def save_model(model_data, horizon, output_dir=None, training_samples=None):
         'shap_feature_selection_used': model_data.get('feature_selector') is not None
     }
     joblib.dump(save_data, filepath)
-    print(f"💾 Saved model to {filepath}", flush=True)
+    log(f"💾 Saved model to {filepath}")
 
     # Save scaler separately
     scaler_path = os.path.join(output_dir, f'scaler_{horizon}.pkl')
     joblib.dump(model_data['scaler'], scaler_path)
-    print(f"💾 Saved scaler to {scaler_path}", flush=True)
+    log(f"💾 Saved scaler to {scaler_path}")
 
     # Save feature names separately for reference
     feature_names_path = os.path.join(output_dir, f'feature_names_{horizon}.txt')
     with open(feature_names_path, 'w') as f:
         for feat in model_data['feature_names']:
             f.write(f"{feat}\n")
-    print(f"💾 Saved feature names to {feature_names_path}", flush=True)
+    log(f"💾 Saved feature names")
 
     # Register model with ModelRegistry
     try:
@@ -693,106 +672,82 @@ def save_model(model_data, horizon, output_dir=None, training_samples=None):
                 'feature_selector_path': os.path.join(output_dir, 'feature_selector.pkl') if model_data.get('feature_selector') else None
             }
         )
-        print(f"✅ Registered model version for {horizon}", flush=True)
+        log(f"✅ Registered model version for {horizon}")
     except Exception as e:
-        print(f"⚠️ Failed to register model version: {e}", flush=True)
+        log(f"⚠️ Failed to register model version: {e}", "WARN")
 
-    return filepath  # Return the model path instead of True
+    return filepath
 
 
 def main():
-    import sys
-    # Force unbuffered output for Railway logs
-    sys.stdout.reconfigure(line_buffering=True)
-    sys.stderr.reconfigure(line_buffering=True)
+    global _start_time
+    _start_time = time.time()  # Reset start time
     
-    print("="*70, flush=True)
-    print("🎯 Simple Model Retraining", flush=True)
-    print("="*70, flush=True)
+    log("=" * 70)
+    log("🎯 SIMPLE MODEL RETRAINING SCRIPT STARTED")
+    log("=" * 70)
+    log(f"   Max training records: {MAX_TRAINING_RECORDS:,}")
+    log(f"   Hyperparameter tuning: {'ENABLED' if USE_HYPERPARAMETER_TUNING else 'DISABLED'}")
 
     if IS_RAILWAY:
-        print("🚂 Railway environment detected - using memory-efficient settings")
-        print(f"   Tuning iterations: {TUNING_ITERATIONS}, CV folds: {CV_FOLDS}, Jobs: {N_JOBS_TUNING}")
+        log("🚂 Railway environment detected - memory-efficient mode")
 
     try:
         # Step 1: Fetch data
-        print(f"\n{'='*70}", flush=True)
-        print(f"🎯 SIMPLE MODEL RETRAINING - DATA PIPELINE", flush=True)
-        print(f"{'='*70}", flush=True)
-        data = fetch_training_data(hours=2160)  # 90 days (increased from 30 days)
+        log("=" * 60)
+        log("PHASE 1: DATA FETCHING")
+        log("=" * 60)
+        data = fetch_training_data(hours=2160)
 
         # Step 2: Prepare features
-        print(f"\n{'='*70}", flush=True)
-        print(f"🔧 FEATURE ENGINEERING", flush=True)
-        print(f"{'='*70}", flush=True)
+        log("=" * 60)
+        log("PHASE 2: FEATURE ENGINEERING")
+        log("=" * 60)
         X, y_1h, y_4h, y_24h, feature_meta = prepare_features(data)
         
-        print(f"\n✅ Feature engineering complete:", flush=True)
-        print(f"   Total samples: {len(X):,}", flush=True)
-        print(f"   Total features: {X.shape[1]}", flush=True)
+        log(f"✅ Feature engineering complete: {len(X):,} samples, {X.shape[1]} features")
 
         # Step 3: Train models for each horizon
+        log("=" * 60)
+        log("PHASE 3: MODEL TRAINING")
+        log("=" * 60)
+        
         results = {}
         registry = None
         try:
             from models.model_registry import get_registry
             registry = get_registry()
         except Exception as e:
-            print(f"⚠️ Model registry not available: {e}", flush=True)
+            log(f"⚠️ Model registry not available: {e}", "WARN")
         
         for horizon, y in [('1h', y_1h), ('4h', y_4h), ('24h', y_24h)]:
-            print(f"\n{'='*70}", flush=True)
-            print(f"🚀 Starting training for {horizon} horizon", flush=True)
-            print(f"{'='*70}\n", flush=True)
             model_data = train_model(X, y, horizon, feature_meta=feature_meta)
             if model_data:
                 results[horizon] = model_data
                 model_path = save_model(model_data, horizon, training_samples=len(X))
-                # Model registration is now handled inside save_model()
 
         if not results:
-            print("\n❌ No models were trained successfully")
+            log("❌ No models were trained successfully", "ERROR")
             return False
 
         # Step 4: Summary
-        print("\n" + "="*70)
-        print("✅ Retraining Complete!")
-        print("="*70)
+        log("=" * 60)
+        log("🎉 TRAINING COMPLETE!")
+        log("=" * 60)
 
-        if USE_HYPERPARAMETER_TUNING:
-            print("\n🔧 Hyperparameter tuning was ENABLED")
-            print(f"   Tested {TUNING_ITERATIONS} combinations with {CV_FOLDS}-fold TimeSeriesSplit CV")
-        else:
-            print("\n🔧 Hyperparameter tuning was DISABLED (using defaults)")
-
-        print("\n📊 Model Performance Summary:")
+        log("📊 Final Model Performance Summary:")
         for horizon, model_data in results.items():
             metrics = model_data['metrics']
-            print(f"\n{horizon}:")
-            print(f"  MAE: {metrics['mae']:.6f} gwei")
-            print(f"  RMSE: {metrics['rmse']:.6f} gwei")
-            print(f"  R²: {metrics['r2']:.4f}")
-            print(f"  MAPE: {metrics['mape']:.2f}%")
-            print(f"  Directional Accuracy: {metrics['directional_accuracy']*100:.1f}%")
-            print(f"  Features: {len(model_data['feature_names'])}")
-            print(f"  Median Actual: {metrics['median_actual']:.6f} gwei")
-            print(f"  Median Predicted: {metrics['median_pred']:.6f} gwei")
-            if model_data.get('best_params'):
-                print(f"  Best n_estimators: {model_data['best_params'].get('n_estimators')}")
-                print(f"  Best max_depth: {model_data['best_params'].get('max_depth')}")
+            log(f"   {horizon}: R²={metrics['r2']:.4f}, MAE={metrics['mae']:.6f} gwei, MAPE={metrics['mape']:.2f}%")
 
-        print("\n" + "="*70)
-        print("📋 Next Steps:")
-        print("="*70)
-        print("1. The new models are saved in backend/models/saved_models/")
-        print("2. Commit and push to Railway to deploy the new models")
-        print("3. The prediction endpoint will now use these retrained models")
-        print("4. Monitor performance and retrain again as more data is collected")
+        elapsed_total = time.time() - _start_time
+        log(f"⏱️  Total training time: {elapsed_total/60:.1f} minutes")
+        log("✅ Models saved and ready for use!")
 
         return True
 
     except Exception as e:
-        print(f"\n❌ Error: {e}")
+        log(f"❌ Error: {e}", "ERROR")
         import traceback
         traceback.print_exc()
         return False
@@ -803,5 +758,5 @@ if __name__ == '__main__':
         success = main()
         sys.exit(0 if success else 1)
     except KeyboardInterrupt:
-        print("\n\n⚠️  Training interrupted by user")
+        log("⚠️ Training interrupted by user", "WARN")
         sys.exit(1)
