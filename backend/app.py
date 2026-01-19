@@ -93,19 +93,20 @@ def create_app():
     app.config.from_object(Config)
     
     # CORS configuration - Allow all origins for all routes
+    # Explicitly allow the frontend domain and all origins
     CORS(app,
          resources={
              r"/*": {
-                 "origins": "*",
+                 "origins": ["*", "https://basegasfeesml.pages.dev", "http://localhost:3000", "http://localhost:5173"],
                  "methods": ["GET", "POST", "OPTIONS", "PUT", "DELETE", "PATCH"],
                  "allow_headers": ["Content-Type", "Authorization", "Cache-Control", "Pragma", "X-Requested-With", "X-Request-ID"],
                  "expose_headers": ["Content-Type", "Cache-Control", "X-Request-ID", "X-Response-Time"],
                  "supports_credentials": False,
-                 "max_age": 3600,
-                 "send_wildcard": True
+                 "max_age": 3600
              }
          },
-         automatic_options=True)
+         automatic_options=True,
+         supports_credentials=False)
     
     # Rate limiting
     limiter.init_app(app)
