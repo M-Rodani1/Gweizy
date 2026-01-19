@@ -13,6 +13,11 @@ export default defineConfig(({ mode }) => {
         react({
           // Enable automatic JSX runtime
           jsxRuntime: 'automatic',
+          babel: {
+            plugins: [
+              // Ensure React is properly transformed
+            ],
+          },
         })
       ],
       define: {
@@ -22,10 +27,14 @@ export default defineConfig(({ mode }) => {
       resolve: {
         alias: {
           '@': path.resolve(__dirname, '.'),
-        }
+        },
+        dedupe: ['react', 'react-dom', 'react-router', 'react-router-dom'], // Ensure single instance of React and router
       },
       optimizeDeps: {
-        include: ['lucide-react', 'react', 'react-dom'], // Force pre-bundling to avoid initialization issues
+        include: ['lucide-react', 'react', 'react-dom', 'react-router-dom'], // Force pre-bundling to avoid initialization issues
+        esbuildOptions: {
+          target: 'es2020',
+        },
       },
       build: {
         rollupOptions: {
@@ -34,12 +43,18 @@ export default defineConfig(({ mode }) => {
               // Separate node_modules into more granular chunks
               if (id.includes('node_modules')) {
                 // Keep React and react-dom together to avoid initialization issues
-                if (id.includes('react') || id.includes('react-dom')) {
-                  return 'vendor-react';
+                // Be very specific to catch only React core packages
+                if ((id.includes('/react/') || id.includes('\\react\\')) && !id.includes('react-dom') && !id.includes('react-router')) {
+                  // React core only - must come first
+                  return 'vendor-react-core';
                 }
-                // Router - load with React
+                if ((id.includes('/react-dom/') || id.includes('\\react-dom\\'))) {
+                  // React DOM - bundle with React core
+                  return 'vendor-react-core';
+                }
+                // Include react-router with React since it depends on React
                 if (id.includes('react-router')) {
-                  return 'vendor-router';
+                  return 'vendor-react-core';
                 }
                 // Recharts is heavy - separate it completely
                 if (id.includes('recharts')) {
@@ -114,17 +129,23 @@ export default defineConfig(({ mode }) => {
             unsafe_methods: false,
             unsafe_proto: false,
             unsafe_regexp: false,
-            unsafe_undefined: false
+            unsafe_undefined: false,
+            // Preserve React's internal structure
+            keep_classnames: false,
+            keep_fnames: false,
           },
           mangle: {
-            safari10: true
+            safari10: true,
+            // Don't mangle React internals
+            reserved: ['React', 'ReactDOM']
           },
           // Disable eval() entirely
           format: {
-            comments: false
+            comments: false,
+            preserve_annotations: false
           }
         },
-        sourcemap: false,
+        sourcemap: 'inline', // Temporary: Enable for debugging
         chunkSizeWarningLimit: 500,
         cssCodeSplit: true,
         assetsInlineLimit: 4096,

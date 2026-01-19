@@ -2,6 +2,11 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import * as Sentry from "@sentry/react";
 
+// Ensure React is properly loaded
+if (typeof React === 'undefined' || !React.Children) {
+  throw new Error('React is not properly initialized. Please check your build configuration.');
+}
+
 import App from '../App';
 import ErrorBoundary from './components/ErrorBoundary';
 import { QueryProvider } from './providers/QueryProvider';
