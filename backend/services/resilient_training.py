@@ -41,10 +41,8 @@ class ResilientTrainingService:
         self.lock_file = os.path.join(self.checkpoint_dir, 'training.lock')
         
         # Ensure checkpoint directory exists (but don't fail if we can't create it)
-        try:
-            os.makedirs(self.checkpoint_dir, exist_ok=True)
-        except Exception as e:
-            logger.warning(f"Could not create checkpoint directory {self.checkpoint_dir}: {e}")
+        # Use lazy creation - don't block startup
+        self._checkpoint_dir_created = False
         
         # Training state
         self._training_process: Optional[subprocess.Popen] = None
@@ -99,9 +97,19 @@ class ResilientTrainingService:
         
         return status
     
+    def _ensure_checkpoint_dir(self):
+        """Lazy-create checkpoint directory only when needed"""
+        if not self._checkpoint_dir_created:
+            try:
+                os.makedirs(self.checkpoint_dir, exist_ok=True)
+                self._checkpoint_dir_created = True
+            except Exception as e:
+                logger.warning(f"Could not create checkpoint directory {self.checkpoint_dir}: {e}")
+    
     def save_checkpoint(self, step: str, progress: Dict[str, Any]):
         """Save training checkpoint"""
         try:
+            self._ensure_checkpoint_dir()  # Lazy create directory
             checkpoint = {
                 'step': step,
                 'progress': progress,
@@ -128,6 +136,7 @@ class ResilientTrainingService:
     
     def acquire_lock(self) -> bool:
         """Acquire training lock to prevent concurrent training"""
+        self._ensure_checkpoint_dir()  # Lazy create directory
         if os.path.exists(self.lock_file):
             # Check if process is still running
             try:
