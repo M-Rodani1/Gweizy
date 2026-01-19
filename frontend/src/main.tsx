@@ -1,6 +1,18 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import * as Sentry from "@sentry/react";
+
+// CRITICAL: Ensure React is globally available BEFORE any lucide-react imports
+// This prevents "Cannot set properties of undefined (setting 'Children')" errors
+if (typeof window !== 'undefined') {
+  (window as any).React = React;
+  // Ensure React.createElement and other core methods are available
+  (window as any).ReactDOM = ReactDOM;
+}
+
+// Import lucide-react fix utility
+import './utils/lucideReactFix';
+
 import App from '../App';
 import ErrorBoundary from './components/ErrorBoundary';
 import { QueryProvider } from './providers/QueryProvider';
