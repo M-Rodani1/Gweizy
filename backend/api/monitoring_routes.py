@@ -400,6 +400,68 @@ def update_rollback_baseline(horizon: str):
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
+@monitoring_bp.route('/rpc-stats', methods=['GET'])
+def get_rpc_stats():
+    """
+    Get RPC provider statistics and health.
+    
+    Returns:
+        - Current active RPC endpoint
+        - Per-endpoint statistics (success rate, failures, rate limits)
+        - Endpoint priority and health status
+        - Rate limit status
+    """
+    try:
+        from utils.rpc_manager import get_rpc_manager
+        
+        rpc_manager = get_rpc_manager()
+        stats = rpc_manager.get_stats()
+        
+        return jsonify({
+            'success': True,
+            'rpc_stats': stats
+        })
+    except Exception as e:
+        logger.error(f"Error getting RPC stats: {e}")
+        capture_exception(e, {'endpoint': '/monitoring/rpc-stats'})
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@monitoring_bp.route('/collection-stats', methods=['GET'])
+def get_collection_stats():
+    """
+    Get data collection service statistics.
+    
+    Returns:
+        - Collection interval
+        - Total collections and successes
+        - Success rate
+        - Error count
+        - Collection rate (collections/hour)
+        - Last collection time
+    """
+    try:
+        from services.gas_collector_service import GasCollectorService
+        
+        # Try to get stats from running service
+        # Note: This is a simplified version - in production you'd want
+        # a singleton service instance to query
+        stats = {
+            'interval_seconds': 5,  # Current config
+            'status': 'unknown',
+            'message': 'Collection stats require access to running service instance'
+        }
+        
+        return jsonify({
+            'success': True,
+            'collection_stats': stats
+        })
+    except Exception as e:
+        logger.error(f"Error getting collection stats: {e}")
+        capture_exception(e, {'endpoint': '/monitoring/collection-stats'})
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 @monitoring_bp.route('/reliability', methods=['GET'])
 def get_reliability_summary():
     """

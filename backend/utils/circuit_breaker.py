@@ -349,23 +349,24 @@ def circuit_breaker(
 
 
 # Pre-configured circuit breakers for common services
+# Optimized for 5-second collection interval (higher failure tolerance)
 rpc_circuit = CircuitBreaker(
     name='rpc_provider',
-    failure_threshold=5,
+    failure_threshold=10,  # Increased from 5 to 10 (allows more failures before opening)
     recovery_timeout=30,
-    half_open_max_calls=2
+    half_open_max_calls=3  # Increased from 2 to 3 for faster recovery testing
 )
 
 owlracle_circuit = CircuitBreaker(
     name='owlracle_api',
-    failure_threshold=3,
+    failure_threshold=5,  # Increased from 3 to 5
     recovery_timeout=60,
-    half_open_max_calls=1
+    half_open_max_calls=2  # Increased from 1 to 2
 )
 
 database_circuit = CircuitBreaker(
     name='database',
-    failure_threshold=3,
+    failure_threshold=5,  # Increased from 3 to 5
     recovery_timeout=15,
-    half_open_max_calls=2
+    half_open_max_calls=3  # Increased from 2 to 3
 )

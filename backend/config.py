@@ -124,12 +124,14 @@ class Config:
                           else 'backend/models/saved_models')
     
     # Data Collection
-    COLLECTION_INTERVAL = 5  # 5 seconds (3x faster data collection)
-    # Rationale: Base gas prices can spike rapidly. 5-second sampling provides:
-    # - 3x more training data compared to 15s intervals
+    COLLECTION_INTERVAL = 5  # 5 seconds
+    # Rationale: High-frequency collection for optimal data granularity and spike detection
+    # - 720 records/hour (17,280/day, 518,400/month)
     # - Excellent spike detection and pattern recognition
-    # - Fast model convergence while staying well within API rate limits (17% daily usage)
-    # Expected impact: 14 days of data in just 5 days, production-ready models faster
+    # - Fast model convergence with maximum training data
+    # - Requires dedicated RPC provider (Alchemy/Infura) for reliable rate limits
+    # - Database: PostgreSQL recommended for production (SQLite OK for dev)
+    # Expected impact: Maximum data quality for production-ready predictions
     
     # Model
     MODEL_PATH = 'models/gas_predictor.pkl'

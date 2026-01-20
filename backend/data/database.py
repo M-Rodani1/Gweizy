@@ -12,11 +12,12 @@ import os
 
 
 # Connection pool configuration for production reliability
+# Optimized for 5-second collection interval (720 requests/hour)
 POOL_CONFIG = {
     # Number of connections to keep open
-    'pool_size': int(os.getenv('DB_POOL_SIZE', '5')),
+    'pool_size': int(os.getenv('DB_POOL_SIZE', '10')),  # Increased from 5 to 10
     # Max additional connections when pool is exhausted
-    'max_overflow': int(os.getenv('DB_MAX_OVERFLOW', '10')),
+    'max_overflow': int(os.getenv('DB_MAX_OVERFLOW', '20')),  # Increased from 10 to 20
     # Seconds to wait for a connection from pool before timeout
     'pool_timeout': int(os.getenv('DB_POOL_TIMEOUT', '30')),
     # Seconds before recycling a connection (prevents stale connections)
@@ -244,7 +245,12 @@ class DatabaseManager:
                 from dateutil import parser
                 data['timestamp'] = parser.parse(data['timestamp'])
             
-            gas_price = GasPrice(**data)
+            # Filter to only include fields that exist in GasPrice model
+            # This prevents errors from extra fields like 'rpc_source'
+            allowed_fields = {'timestamp', 'chain_id', 'current_gas', 'base_fee', 'priority_fee', 'block_number'}
+            filtered_data = {k: v for k, v in data.items() if k in allowed_fields}
+            
+            gas_price = GasPrice(**filtered_data)
             session.add(gas_price)
             session.commit()
         except Exception as e:

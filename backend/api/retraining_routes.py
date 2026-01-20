@@ -581,6 +581,7 @@ def get_models_status():
         for horizon in ['1h', '4h', '24h']:
             model_path = os.path.join(models_dir, f'model_{horizon}.pkl')
             fallback_path = f'models/saved_models/model_{horizon}.pkl'
+            backend_fallback_path = f'backend/models/saved_models/model_{horizon}.pkl'
 
             if os.path.exists(model_path):
                 status['prediction_models'][horizon] = {
@@ -591,6 +592,11 @@ def get_models_status():
                 status['prediction_models'][horizon] = {
                     'available': True,
                     'path': fallback_path
+                }
+            elif os.path.exists(backend_fallback_path):
+                status['prediction_models'][horizon] = {
+                    'available': True,
+                    'path': backend_fallback_path
                 }
             else:
                 status['prediction_models'][horizon] = {
@@ -603,6 +609,7 @@ def get_models_status():
         for horizon in ['1h', '4h', '24h']:
             spike_path = os.path.join(models_dir, f'spike_detector_{horizon}.pkl')
             fallback_path = f'models/saved_models/spike_detector_{horizon}.pkl'
+            backend_fallback_path = f'backend/models/saved_models/spike_detector_{horizon}.pkl'
 
             if os.path.exists(spike_path):
                 status['spike_detectors'][horizon] = {
@@ -613,6 +620,11 @@ def get_models_status():
                 status['spike_detectors'][horizon] = {
                     'available': True,
                     'path': fallback_path
+                }
+            elif os.path.exists(backend_fallback_path):
+                status['spike_detectors'][horizon] = {
+                    'available': True,
+                    'path': backend_fallback_path
                 }
             else:
                 status['spike_detectors'][horizon] = {

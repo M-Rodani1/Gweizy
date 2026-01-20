@@ -19,7 +19,11 @@ CREATE TABLE IF NOT EXISTS predictions (
 );
 
 -- Indexes for better query performance
+-- Optimized for 5-second collection interval (720 records/hour)
 CREATE INDEX IF NOT EXISTS idx_gas_prices_timestamp ON gas_prices(timestamp);
+CREATE INDEX IF NOT EXISTS idx_gas_prices_timestamp_desc ON gas_prices(timestamp DESC);
+CREATE INDEX IF NOT EXISTS idx_gas_prices_chain_timestamp ON gas_prices(chain_id, timestamp DESC);
+CREATE INDEX IF NOT EXISTS idx_gas_prices_block_number ON gas_prices(block_number);
 CREATE INDEX IF NOT EXISTS idx_predictions_timestamp ON predictions(timestamp);
 CREATE INDEX IF NOT EXISTS idx_predictions_horizon ON predictions(horizon);
 

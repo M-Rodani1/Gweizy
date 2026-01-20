@@ -48,6 +48,32 @@ class GasCollectorService:
         self.collection_count = 0
         self.error_count = 0
         self.socketio = socketio
+        self.start_time = None
+        self.last_collection_time = None
+        self.successful_collections = 0
+    
+    def collect_gas_prices(self):
+        """
+        Collect gas prices and save to database.
+        Can be called manually or by worker.
+        
+        Returns:
+            dict: Gas price data or None if failed
+        """
+        try:
+            data = self.collector.get_current_gas()
+            if data:
+                self.db.save_gas_price(data)
+                self.collection_count += 1
+                self.successful_collections += 1
+                self.last_collection_time = time.time()
+            return data
+        except Exception as e:
+            self.error_count += 1
+            logger.error(f"Error in collect_gas_prices: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
+            return None
 
         # Register signal handlers for graceful shutdown (only in main thread)
         if register_signals:
@@ -71,6 +97,7 @@ class GasCollectorService:
         logger.info("="*60)
 
         self.running = True
+        self.start_time = time.time()
 
         while self.running:
             try:
@@ -82,6 +109,8 @@ class GasCollectorService:
                     # Save to database
                     self.db.save_gas_price(data)
                     self.collection_count += 1
+                    self.successful_collections += 1
+                    self.last_collection_time = time.time()
 
                     elapsed = time.time() - start_time
                     logger.info(
@@ -95,8 +124,10 @@ class GasCollectorService:
                     if self.socketio:
                         self._emit_realtime_updates(data)
 
-                    # Log stats every 12 collections (1 hour)
-                    if self.collection_count % 12 == 0:
+                    # Log stats every 144 collections (12 minutes for 5s interval, ~1 hour for 15s)
+                    # Adjusted for higher frequency collection
+                    log_interval = 144 if self.interval <= 5 else 12
+                    if self.collection_count % log_interval == 0:
                         self._log_stats()
                 else:
                     self.error_count += 1
@@ -125,16 +156,48 @@ class GasCollectorService:
         self._log_stats()
         logger.info("Service stopped gracefully")
 
+    def get_collection_stats(self) -> dict:
+        """Get collection service statistics."""
+        uptime = time.time() - self.start_time if self.start_time else 0
+        success_rate = (
+            (self.successful_collections / self.collection_count * 100)
+            if self.collection_count > 0 else 0
+        )
+        
+        # Calculate expected vs actual collections
+        expected_collections = int(uptime / self.interval) if self.interval > 0 else 0
+        collection_rate = (self.collection_count / (uptime / 3600)) if uptime > 0 else 0  # per hour
+        
+        return {
+            'interval_seconds': self.interval,
+            'running': self.running,
+            'uptime_seconds': int(uptime),
+            'total_collections': self.collection_count,
+            'successful_collections': self.successful_collections,
+            'error_count': self.error_count,
+            'success_rate_percent': round(success_rate, 2),
+            'expected_collections': expected_collections,
+            'collection_rate_per_hour': round(collection_rate, 2),
+            'last_collection_time': self.last_collection_time,
+            'last_collection_ago_seconds': int(time.time() - self.last_collection_time) if self.last_collection_time else None
+        }
+    
     def _log_stats(self):
         """Log collection statistics"""
         try:
+            # Get collection stats
+            stats = self.get_collection_stats()
+            logger.info(f"Collection Stats: {stats['total_collections']} total, "
+                       f"{stats['success_rate_percent']:.1f}% success rate, "
+                       f"{stats['collection_rate_per_hour']:.1f} collections/hour")
+            
             # Get recent data from database
             recent = self.db.get_historical_data(hours=24)
 
             if recent:
                 gas_prices = [d.get('current_gas', 0) for d in recent]
 
-                stats = {
+                db_stats = {
                     'count_24h': len(gas_prices),
                     'min': min(gas_prices),
                     'max': max(gas_prices),
@@ -144,9 +207,11 @@ class GasCollectorService:
                 logger.info("="*60)
                 logger.info("24-Hour Statistics:")
                 logger.info(f"  Total collections: {self.collection_count}")
-                logger.info(f"  Last 24h records: {stats['count_24h']}")
-                logger.info(f"  Gas price range: {stats['min']:.6f} - {stats['max']:.6f} Gwei")
-                logger.info(f"  Average: {stats['avg']:.6f} Gwei")
+                logger.info(f"  Success rate: {stats['success_rate_percent']:.1f}%")
+                logger.info(f"  Collection rate: {stats['collection_rate_per_hour']:.1f}/hour")
+                logger.info(f"  Last 24h records: {db_stats['count_24h']}")
+                logger.info(f"  Gas price range: {db_stats['min']:.6f} - {db_stats['max']:.6f} Gwei")
+                logger.info(f"  Average: {db_stats['avg']:.6f} Gwei")
                 logger.info(f"  Error count: {self.error_count}")
                 logger.info("="*60)
         except Exception as e:
