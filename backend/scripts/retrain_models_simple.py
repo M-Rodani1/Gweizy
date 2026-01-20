@@ -62,8 +62,10 @@ TUNING_ITERATIONS = 8 if IS_RAILWAY else 15  # Fewer iterations on Railway
 CV_FOLDS = 2 if IS_RAILWAY else 3  # Fewer folds on Railway
 N_JOBS_TUNING = 1 if IS_RAILWAY else -1  # Sequential on Railway to save memory
 
-# Reduce max records for faster training on Railway
-MAX_TRAINING_RECORDS = 10000 if IS_RAILWAY else 50000
+# Max records for training - Railway can handle more with 234k records available
+# Use up to 100k records on Railway for better model quality
+# With 234k records available, we can afford to use more for training
+MAX_TRAINING_RECORDS = 100000 if IS_RAILWAY else 50000
 
 
 def fetch_training_data(hours=2160, max_records=None):
