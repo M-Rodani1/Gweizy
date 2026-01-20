@@ -1904,6 +1904,82 @@ def get_pattern_analysis():
         return jsonify({'error': str(e)}), 500
 
 
+@api_bp.route('/database/info', methods=['GET'])
+def database_info():
+    """
+    Get information about the database contents.
+    
+    Returns:
+        JSON with database statistics including record counts, date ranges, etc.
+    """
+    try:
+        from sqlalchemy import func, text
+        from data.database import GasPrice
+        from datetime import datetime
+        
+        session = db._get_session()
+        
+        # Get total record count
+        total_records = session.query(func.count(GasPrice.id)).scalar() or 0
+        
+        # Get date range
+        min_date = session.query(func.min(GasPrice.timestamp)).scalar()
+        max_date = session.query(func.max(GasPrice.timestamp)).scalar()
+        
+        # Get recent records (last 24 hours)
+        from datetime import timedelta
+        twenty_four_hours_ago = datetime.now() - timedelta(hours=24)
+        recent_count = session.query(func.count(GasPrice.id)).filter(
+            GasPrice.timestamp >= twenty_four_hours_ago
+        ).scalar() or 0
+        
+        # Get average gas price
+        avg_gas = session.query(func.avg(GasPrice.current_gas)).scalar()
+        
+        # Get database file info
+        db_path = None
+        file_size_mb = None
+        if Config.DATABASE_URL.startswith('sqlite'):
+            db_path = Config.DATABASE_URL.replace('sqlite:///', '')
+            if db_path.startswith('/'):
+                if os.path.exists(db_path):
+                    file_size_mb = os.path.getsize(db_path) / (1024 * 1024)
+            else:
+                # Relative path
+                full_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), db_path)
+                if os.path.exists(full_path):
+                    file_size_mb = os.path.getsize(full_path) / (1024 * 1024)
+                    db_path = full_path
+        
+        session.close()
+        
+        return jsonify({
+            'success': True,
+            'database': {
+                'total_records': total_records,
+                'recent_records_24h': recent_count,
+                'date_range': {
+                    'earliest': min_date.isoformat() if min_date else None,
+                    'latest': max_date.isoformat() if max_date else None
+                },
+                'average_gas_price_gwei': round(avg_gas, 6) if avg_gas else None,
+                'file_info': {
+                    'path': db_path,
+                    'size_mb': round(file_size_mb, 2) if file_size_mb else None,
+                    'exists': os.path.exists(db_path) if db_path else False
+                },
+                'database_url': Config.DATABASE_URL,
+                'has_data': total_records > 0,
+                'ready_for_training': total_records >= 1000,
+                'timestamp': datetime.now().isoformat()
+            }
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error getting database info: {traceback.format_exc()}")
+        return jsonify({'error': f'Failed to get database info: {str(e)}'}), 500
+
+
 @api_bp.route('/database/download', methods=['GET'])
 def download_database():
     """
