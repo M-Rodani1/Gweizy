@@ -63,7 +63,7 @@ CV_FOLDS = 2 if IS_RAILWAY else 3  # Fewer folds on Railway
 N_JOBS_TUNING = 1 if IS_RAILWAY else -1  # Sequential on Railway to save memory
 
 # Reduce max records for faster training on Railway
-MAX_TRAINING_RECORDS = 20000 if IS_RAILWAY else 50000
+MAX_TRAINING_RECORDS = 10000 if IS_RAILWAY else 50000
 
 
 def fetch_training_data(hours=2160, max_records=None):
@@ -187,9 +187,11 @@ def prepare_features(data):
         log("✅ No extreme outliers detected")
 
     # Build features using shared pipeline
-    log("   Building feature matrix (this may take a while)...")
+    # Disable external features on Railway - they make slow web3 API calls
+    include_external = not IS_RAILWAY
+    log(f"   Building feature matrix (external features: {include_external})...")
     log("   ⏳ Feature engineering in progress...")
-    X, feature_meta, df = build_feature_matrix(df, include_external_features=True)
+    X, feature_meta, df = build_feature_matrix(df, include_external_features=include_external)
     
     log(f"✅ Feature matrix built: {len(X):,} samples, {X.shape[1]} features")
     
