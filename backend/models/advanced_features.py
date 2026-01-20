@@ -221,19 +221,27 @@ def create_advanced_features(df):
     # 9. AUTOCORRELATION FEATURES (How much current price predicts future)
     # ===================================================================
     
-    # Autocorrelation at different lags
-    for lag in [1, 6, 12, 24]:
-        def calc_autocorr(x, lag_val):
-            if len(x) < lag_val + 1:
-                return 0
-            try:
-                return pd.Series(x).autocorr(lag=lag_val) if not pd.isna(pd.Series(x).autocorr(lag=lag_val)) else 0
-            except:
-                return 0
-        
-        df[f'autocorr_{lag}'] = df['gas_price'].rolling(window=50, min_periods=lag+1).apply(
-            lambda x: calc_autocorr(x, lag), raw=False
-        )
+    # Autocorrelation features are VERY expensive with large datasets (100k+ records)
+    # Skip them for large datasets to avoid timeouts
+    # They add minimal value compared to lag features which are already included
+    if len(df) < 50000:  # Only compute for smaller datasets
+        for lag in [1, 6, 12, 24]:
+            def calc_autocorr(x, lag_val):
+                if len(x) < lag_val + 1:
+                    return 0
+                try:
+                    return pd.Series(x).autocorr(lag=lag_val) if not pd.isna(pd.Series(x).autocorr(lag=lag_val)) else 0
+                except:
+                    return 0
+            
+            df[f'autocorr_{lag}'] = df['gas_price'].rolling(window=50, min_periods=lag+1).apply(
+                lambda x: calc_autocorr(x, lag), raw=False
+            )
+    else:
+        # For large datasets, skip autocorrelation (lag features provide similar info)
+        # Add placeholder columns with 0 to maintain feature count consistency
+        for lag in [1, 6, 12, 24]:
+            df[f'autocorr_{lag}'] = 0
     
     # ===================================================================
     # CLEAN UP
