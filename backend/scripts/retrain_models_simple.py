@@ -95,8 +95,10 @@ def fetch_training_data(hours=2160, max_records=None):
     log(f"✅ Fetched {len(data):,} total records from database")
     
     # Sample data if too large (for training performance)
+    # Use intelligent sampling: keep recent data + evenly sample older data
     if len(data) > max_records:
-        log(f"⚠️  SAMPLING: {len(data):,} records → {max_records:,} for faster training")
+        log(f"⚠️  SAMPLING: {len(data):,} records → {max_records:,} for training")
+        log(f"   This balances model quality with training time")
         # Keep most recent data, sample evenly from the rest
         import random
         random.seed(42)  # Reproducible sampling
@@ -104,10 +106,11 @@ def fetch_training_data(hours=2160, max_records=None):
         log("   Sorting by timestamp...")
         data_sorted = sorted(data, key=lambda x: x.get('timestamp', ''), reverse=True)
         
-        # Take most recent 20% + random sample of older data
-        recent_count = max_records // 5  # 20% most recent
+        # Take most recent 30% + random sample of older data (increased from 20%)
+        # This ensures we have good recent patterns while still using historical data
+        recent_count = int(max_records * 0.3)  # 30% most recent
         older_count = max_records - recent_count
-        log(f"   Taking {recent_count:,} recent + {older_count:,} sampled older records")
+        log(f"   Strategy: {recent_count:,} recent (30%) + {older_count:,} sampled older (70%)")
         
         recent_data = data_sorted[:recent_count]
         older_data = random.sample(data_sorted[recent_count:], min(older_count, len(data_sorted) - recent_count))

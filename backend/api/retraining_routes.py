@@ -313,7 +313,12 @@ def trigger_simple_retraining():
     Trigger simple model retraining using the retrain_models_simple.py script
 
     This runs in a background thread to avoid HTTP timeouts.
-    Training typically takes 3-10 minutes.
+    Training time varies by dataset size:
+    - 10k records: ~3-5 minutes
+    - 50k records: ~10-15 minutes  
+    - 100k records: ~20-30 minutes
+    
+    The endpoint returns immediately. Use /retraining/training-progress to monitor.
 
     Returns:
         Immediate response with training status
@@ -367,17 +372,27 @@ def trigger_simple_retraining():
                 
                 # Stream output to logger in real-time
                 start_time = time.time()
-                timeout_seconds = 1200  # 20 minutes
+                # Increased timeout for large datasets (100k records can take 30-45 min)
+                # Railway allows long-running background processes
+                timeout_seconds = 3600  # 60 minutes - enough for 100k records
                 
                 while True:
                     # Check timeout
-                    if time.time() - start_time > timeout_seconds:
+                    elapsed = time.time() - start_time
+                    if elapsed > timeout_seconds:
+                        logger.error(f"Training timeout after {elapsed/60:.1f} minutes (limit: {timeout_seconds/60:.1f} min)")
                         process.kill()
-                        raise subprocess.TimeoutExpired(cmd=script_path, timeout=timeout_seconds)
+                        _update_progress(step=0, status='failed', 
+                                       message=f'Training timed out after {elapsed/60:.1f} minutes')
+                        _update_progress(error=f'Training timeout: exceeded {timeout_seconds/60:.0f} minute limit', completed=True)
+                        return
                     
                     line = process.stdout.readline()
                     if line:
                         logger.info(f"[TRAIN] {line.rstrip()}")
+                        # Log progress every minute
+                        if int(elapsed) % 60 == 0 and int(elapsed) > 0:
+                            logger.info(f"[TRAIN] Still running... {elapsed/60:.1f} minutes elapsed")
                     elif process.poll() is not None:
                         # Process finished
                         break
@@ -404,7 +419,7 @@ def trigger_simple_retraining():
                         [sys.executable, spike_script_path],
                         capture_output=True,
                         text=True,
-                        timeout=300,  # 5 minute timeout for spike detectors
+                        timeout=1800,  # 30 minute timeout for spike detectors (increased)
                         cwd=current_dir
                     )
 
