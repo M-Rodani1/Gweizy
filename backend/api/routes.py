@@ -3,7 +3,7 @@ API Routes
 All API endpoints for the gas price prediction system
 """
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, send_file, abort
 from data.collector import BaseGasCollector
 from data.multichain_collector import MultiChainGasCollector
 from data.database import DatabaseManager
@@ -1902,3 +1902,65 @@ def get_pattern_analysis():
     except Exception as e:
         logger.error(f"Error in pattern analysis: {traceback.format_exc()}")
         return jsonify({'error': str(e)}), 500
+
+
+@api_bp.route('/database/download', methods=['GET'])
+def download_database():
+    """
+    Download the gas_data.db database file.
+    
+    This endpoint allows downloading the database for training models on Colab.
+    The database is located at /data/gas_data.db on Railway or gas_data.db locally.
+    
+    Query Parameters:
+        token (optional): Simple token for basic security (set via DB_DOWNLOAD_TOKEN env var)
+    
+    Returns:
+        Database file as download, or error message
+    """
+    try:
+        # Optional token-based security
+        download_token = os.getenv('DB_DOWNLOAD_TOKEN', '')
+        if download_token:
+            provided_token = request.args.get('token', '')
+            if provided_token != download_token:
+                logger.warning(f"Unauthorized database download attempt from {request.remote_addr}")
+                return jsonify({'error': 'Unauthorized. Token required.'}), 401
+        
+        # Determine database path (same logic as config.py)
+        if os.path.exists('/data'):
+            db_path = '/data/gas_data.db'
+        else:
+            # Try local path
+            db_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'gas_data.db')
+            if not os.path.exists(db_path):
+                # Try current directory
+                db_path = 'gas_data.db'
+        
+        # Check if database exists
+        if not os.path.exists(db_path):
+            logger.error(f"Database not found at {db_path}")
+            return jsonify({
+                'error': 'Database file not found',
+                'searched_paths': [
+                    '/data/gas_data.db' if os.path.exists('/data') else None,
+                    os.path.join(os.path.dirname(os.path.dirname(__file__)), 'gas_data.db'),
+                    'gas_data.db'
+                ]
+            }), 404
+        
+        # Get file size for logging
+        file_size_mb = os.path.getsize(db_path) / (1024 * 1024)
+        logger.info(f"Database download requested: {db_path} ({file_size_mb:.2f} MB) from {request.remote_addr}")
+        
+        # Send file as download
+        return send_file(
+            db_path,
+            mimetype='application/octet-stream',
+            as_attachment=True,
+            download_name='gas_data.db'
+        )
+        
+    except Exception as e:
+        logger.error(f"Error downloading database: {traceback.format_exc()}")
+        return jsonify({'error': f'Failed to download database: {str(e)}'}), 500
