@@ -360,60 +360,6 @@ def trigger_simple_retraining():
             ]
         }), 400
 
-        def run_training():
-            """Training now done via Colab notebook"""
-            pass
-
-                if result.returncode == 0:
-                    # Auto-reload models after successful training
-                    try:
-                        logger.info("🔄 Auto-reloading models after training...")
-                        from api.routes import reload_models
-                        reload_result = reload_models()
-                        if reload_result['success']:
-                            logger.info(f"✅ Models auto-reloaded: {reload_result['models_loaded']} models loaded")
-                        else:
-                            logger.warning(f"⚠️  Auto-reload had issues: {reload_result.get('error')}")
-                    except Exception as e:
-                        logger.warning(f"⚠️  Could not auto-reload models: {e}")
-                        logger.info("💡 You can manually reload models via POST /api/models/reload")
-                    logger.info("Retraining completed successfully")
-                    logger.info(f"Output: {result.stdout[:500]}...")  # Log first 500 chars
-                    _update_progress(completed=True)
-                else:
-                    logger.error(f"Retraining failed: {result.stderr}")
-                    logger.error(f"Output: {result.stdout[:500]}...")
-                    _update_progress(error='Training failed', completed=True)
-            except subprocess.TimeoutExpired:
-                logger.error("Retraining timed out after 20 minutes")
-                _update_progress(error='Training timed out', completed=True)
-            except Exception as e:
-                logger.error(f"Error during training: {e}")
-                import traceback
-                logger.error(traceback.format_exc())
-                _update_progress(error=str(e), completed=True)
-            finally:
-                # Mark training as complete
-                trigger_simple_retraining._training_in_progress = False
-                logger.info("Training thread completed")
-
-        # Start training in background thread
-        training_thread = threading.Thread(target=run_training, name="ModelTraining", daemon=True)
-        training_thread.start()
-
-        # Return immediately
-        return jsonify({
-            'status': 'started',
-            'message': 'Model training started in background. This may take 5-15 minutes.',
-            'steps': [
-                '1/3: Training RandomForest prediction models',
-                '2/3: Training spike detector classifiers',
-                '3/3: Training DQN reinforcement learning agent'
-            ],
-            'timestamp': datetime.now().isoformat(),
-            'note': 'Check logs or /api/retraining/status for progress'
-        }), 200
-
     except Exception as e:
         logger.error(f"Error starting training: {e}")
         import traceback
