@@ -1383,8 +1383,21 @@ for horizon in ['1h', '4h', '24h']:
     
     # Calculate class weights for balancing
     from sklearn.utils.class_weight import compute_class_weight
-    class_weights = compute_class_weight('balanced', classes=np.unique(y_train_spike), y=y_train_spike)
-    class_weight_dict = dict(zip(np.unique(y_train_spike), class_weights))
+    unique_classes = np.unique(y_train_spike)
+    # Ensure we have all expected classes (0, 1, 2) even if some are missing
+    expected_classes = np.array([0, 1, 2])
+    if len(unique_classes) < 3:
+        log(f"   ⚠️  Only {len(unique_classes)} classes found: {unique_classes}. Some classes are missing.")
+        # Use balanced weights for existing classes
+        class_weights = compute_class_weight('balanced', classes=unique_classes, y=y_train_spike)
+        class_weight_dict = dict(zip(unique_classes, class_weights))
+        # Add missing classes with weight 1.0
+        for cls in expected_classes:
+            if cls not in class_weight_dict:
+                class_weight_dict[cls] = 1.0
+    else:
+        class_weights = compute_class_weight('balanced', classes=unique_classes, y=y_train_spike)
+        class_weight_dict = dict(zip(unique_classes, class_weights))
     log(f"   Class weights: {class_weight_dict}")
     
     # Train XGBoost or GradientBoosting classifier with class balancing
