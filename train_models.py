@@ -1367,6 +1367,13 @@ for horizon in ['1h', '4h', '24h']:
         pct = count / len(y_clean) * 100
         log(f"      {class_names[cls]}: {count:,} ({pct:.1f}%)")
     
+    # Check if we have at least 2 classes (required for classification)
+    unique_classes = np.unique(y_clean)
+    if len(unique_classes) < 2:
+        log(f"   ⚠️  Skipping {horizon} - only {len(unique_classes)} class(es) found: {unique_classes}")
+        log(f"      Need at least 2 classes for spike detection. All prices are classified as the same category.")
+        continue
+    
     # Train/val/test split (60/20/20, temporal)
     n_total = len(X_clean)
     train_end = int(n_total * 0.6)
@@ -1383,22 +1390,32 @@ for horizon in ['1h', '4h', '24h']:
     
     # Calculate class weights for balancing
     from sklearn.utils.class_weight import compute_class_weight
-    unique_classes = np.unique(y_train_spike)
+    unique_classes_train = np.unique(y_train_spike)
     # Ensure we have all expected classes (0, 1, 2) even if some are missing
     expected_classes = np.array([0, 1, 2])
-    if len(unique_classes) < 3:
-        log(f"   ⚠️  Only {len(unique_classes)} classes found: {unique_classes}. Some classes are missing.")
+    if len(unique_classes_train) < 3:
+        log(f"   ⚠️  Only {len(unique_classes_train)} classes in training data: {unique_classes_train}")
         # Use balanced weights for existing classes
-        class_weights = compute_class_weight('balanced', classes=unique_classes, y=y_train_spike)
-        class_weight_dict = dict(zip(unique_classes, class_weights))
+        class_weights = compute_class_weight('balanced', classes=unique_classes_train, y=y_train_spike)
+        class_weight_dict = dict(zip(unique_classes_train, class_weights))
         # Add missing classes with weight 1.0
         for cls in expected_classes:
             if cls not in class_weight_dict:
                 class_weight_dict[cls] = 1.0
     else:
-        class_weights = compute_class_weight('balanced', classes=unique_classes, y=y_train_spike)
-        class_weight_dict = dict(zip(unique_classes, class_weights))
+        class_weights = compute_class_weight('balanced', classes=unique_classes_train, y=y_train_spike)
+        class_weight_dict = dict(zip(unique_classes_train, class_weights))
     log(f"   Class weights: {class_weight_dict}")
+    
+    # Remap classes to start from 0 for XGBoost compatibility
+    # XGBoost requires classes to be [0, 1, 2, ...] but we might have [2] or [1, 2]
+    class_mapping = {old_cls: new_cls for new_cls, old_cls in enumerate(sorted(unique_classes_train))}
+    y_train_spike_remapped = y_train_spike.map(class_mapping)
+    y_val_spike_remapped = y_val_spike.map(class_mapping)
+    y_test_spike_remapped = y_test_spike.map(class_mapping)
+    
+    # Update class_weight_dict to use remapped classes
+    class_weight_dict_remapped = {class_mapping[old_cls]: weight for old_cls, weight in class_weight_dict.items() if old_cls in class_mapping}
     
     # Train XGBoost or GradientBoosting classifier with class balancing
     if XGBOOST_AVAILABLE:
@@ -1429,25 +1446,31 @@ for horizon in ['1h', '4h', '24h']:
             random_state=42,
             verbose=0
         )
-        # Use sample weights for class balancing
-        sample_weights = np.array([class_weight_dict[y] for y in y_train_spike])
-        model_spike.fit(X_train_spike, y_train_spike, sample_weight=sample_weights)
+        # Use sample weights for class balancing (use remapped classes)
+        sample_weights = np.array([class_weight_dict_remapped[y] for y in y_train_spike_remapped])
+        model_spike.fit(X_train_spike, y_train_spike_remapped, sample_weight=sample_weights)
     
     # Calibrate the classifier for better probability estimates
     log(f"   Calibrating classifier for better probability estimates...")
     calibrated_model = CalibratedClassifierCV(model_spike, method='isotonic', cv=3)
-    calibrated_model.fit(X_train_spike, y_train_spike, sample_weight=sample_weights)
+    calibrated_model.fit(X_train_spike, y_train_spike_remapped, sample_weight=sample_weights)
     
-    # Evaluate on validation and test sets
-    y_pred_val = calibrated_model.predict(X_val_spike)
-    y_pred_test = calibrated_model.predict(X_test_spike)
+    # Evaluate on validation and test sets (use remapped classes)
+    y_pred_val_remapped = calibrated_model.predict(X_val_spike)
+    y_pred_test_remapped = calibrated_model.predict(X_test_spike)
     y_proba_val = calibrated_model.predict_proba(X_val_spike)
     y_proba_test = calibrated_model.predict_proba(X_test_spike)
     
+    # Remap predictions back to original class labels
+    reverse_mapping = {new_cls: old_cls for old_cls, new_cls in class_mapping.items()}
+    y_pred_val = np.array([reverse_mapping.get(pred, pred) for pred in y_pred_val_remapped])
+    y_pred_test = np.array([reverse_mapping.get(pred, pred) for pred in y_pred_test_remapped])
+    
+    # Use original (non-remapped) labels for evaluation
     accuracy_val = accuracy_score(y_val_spike, y_pred_val)
     accuracy_test = accuracy_score(y_test_spike, y_pred_test)
-    f1_val = f1_score(y_val_spike, y_pred_val, average='weighted')
-    f1_test = f1_score(y_test_spike, y_pred_test, average='weighted')
+    f1_val = f1_score(y_val_spike, y_pred_val, average='weighted', zero_division=0)
+    f1_test = f1_score(y_test_spike, y_pred_test, average='weighted', zero_division=0)
     
     log(f"\n   ✅ Model Performance:")
     log(f"      Val Accuracy: {accuracy_val:.4f} ({accuracy_val*100:.1f}%)")
