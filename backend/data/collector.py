@@ -15,8 +15,10 @@ class BaseGasCollector:
         self.w3 = Web3(Web3.HTTPProvider(self.rpc_manager.get_current_rpc()))
         self._session = requests.Session()
 
-    def get_current_gas(self):
+    def get_current_gas(self, block_number: int = None):
         """Fetch current Base gas price with circuit breaker protection and RPC rotation."""
+        from web3.exceptions import BlockNotFound
+        
         max_retries = 3
         last_exception = None
         
@@ -29,10 +31,26 @@ class BaseGasCollector:
                     self.w3 = Web3(Web3.HTTPProvider(current_rpc))
                     logger.debug(f"Updated Web3 provider to: {current_rpc}")
                 
-                result = self._fetch_from_rpc(current_rpc)
+                result = self._fetch_from_rpc(current_rpc, block_number=block_number)
                 # Record success
                 self.rpc_manager.record_success(current_rpc)
                 return result
+            except BlockNotFound:
+                # Block not found - log and retry with latest
+                if attempt < max_retries - 1:
+                    logger.debug(f"Block {block_number} not found, retrying with latest block")
+                    last_exception = BlockNotFound(f"Block {block_number} not found")
+                    continue
+                else:
+                    # Last attempt - use latest block
+                    logger.warning(f"Block {block_number} not found after {max_retries} attempts, using latest")
+                    try:
+                        result = self._fetch_from_rpc(current_rpc, block_number=None)
+                        self.rpc_manager.record_success(current_rpc)
+                        return result
+                    except Exception as e:
+                        last_exception = e
+                        continue
                 
             except CircuitOpenError:
                 logger.warning(f"RPC circuit open for {current_rpc}, trying Owlracle fallback")
@@ -65,35 +83,57 @@ class BaseGasCollector:
         logger.warning("All RPC attempts failed, trying Owlracle fallback")
         return self._fetch_from_owlracle()
 
-    def _fetch_from_rpc(self, rpc_url: str):
+    def _fetch_from_rpc(self, rpc_url: str, block_number: int = None):
         """Fetch gas data from RPC with circuit breaker protection."""
         def rpc_call():
-            # Use requests timeout for better control
-            latest_block = self.w3.eth.get_block('latest')
-            base_fee = latest_block.get('baseFeePerGas', 0)
+            from web3.exceptions import BlockNotFound
+            
+            try:
+                # Get specific block if provided, otherwise get latest
+                if block_number is not None:
+                    try:
+                        block = self.w3.eth.get_block(block_number, full_transactions=True)
+                    except BlockNotFound:
+                        # Block not available yet, try latest
+                        logger.debug(f"Block {block_number} not found, using latest")
+                        block = self.w3.eth.get_block('latest', full_transactions=True)
+                else:
+                    block = self.w3.eth.get_block('latest', full_transactions=True)
+                
+                base_fee = block.get('baseFeePerGas', 0)
+                
+                # Extract supply-side features
+                gas_used = block.get('gasUsed', 0)
+                gas_limit = block.get('gasLimit', 1)
+                utilization = (gas_used / gas_limit) * 100 if gas_limit > 0 else 0
 
-            # Get recent transactions to estimate priority fee
-            # Reduce transaction sampling for faster requests
-            block = self.w3.eth.get_block('latest', full_transactions=True)
-            transactions = block.transactions[:10]  # Sample
+                # Get recent transactions to estimate priority fee
+                # Reduce transaction sampling for faster requests
+                transactions = block.transactions[:10]  # Sample
 
-            priority_fees = []
-            for tx in transactions:
-                if hasattr(tx, 'maxPriorityFeePerGas'):
-                    priority_fees.append(tx.maxPriorityFeePerGas)
+                priority_fees = []
+                for tx in transactions:
+                    if hasattr(tx, 'maxPriorityFeePerGas'):
+                        priority_fees.append(tx.maxPriorityFeePerGas)
 
-            avg_priority_fee = sum(priority_fees) / len(priority_fees) if priority_fees else 0
+                avg_priority_fee = sum(priority_fees) / len(priority_fees) if priority_fees else 0
 
-            total_gas = (base_fee + avg_priority_fee) / 1e9  # Convert to Gwei
+                total_gas = (base_fee + avg_priority_fee) / 1e9  # Convert to Gwei
 
-            return {
-                'timestamp': datetime.now().isoformat(),
-                'current_gas': round(total_gas, 6),
-                'base_fee': round(base_fee / 1e9, 6),
-                'priority_fee': round(avg_priority_fee / 1e9, 6),
-                'block_number': block.number,
-                'rpc_source': rpc_url  # Track which RPC was used
-            }
+                return {
+                    'timestamp': datetime.now().isoformat(),
+                    'current_gas': round(total_gas, 6),
+                    'base_fee': round(base_fee / 1e9, 6),
+                    'priority_fee': round(avg_priority_fee / 1e9, 6),
+                    'block_number': block.number,
+                    'gas_used': gas_used,
+                    'gas_limit': gas_limit,
+                    'utilization': round(utilization, 2),
+                    'rpc_source': rpc_url  # Track which RPC was used
+                }
+            except BlockNotFound as e:
+                logger.warning(f"Block not found: {e}")
+                raise
 
         return rpc_circuit.call(rpc_call)
     

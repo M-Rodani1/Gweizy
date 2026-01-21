@@ -52,16 +52,19 @@ class GasCollectorService:
         self.last_collection_time = None
         self.successful_collections = 0
     
-    def collect_gas_prices(self):
+    def collect_gas_prices(self, block_number: int = None):
         """
         Collect gas prices and save to database.
         Can be called manually or by worker.
+        
+        Args:
+            block_number: Optional specific block number to collect (for block-based polling)
         
         Returns:
             dict: Gas price data or None if failed
         """
         try:
-            data = self.collector.get_current_gas()
+            data = self.collector.get_current_gas(block_number=block_number)
             if data:
                 self.db.save_gas_price(data)
                 self.collection_count += 1
@@ -113,9 +116,13 @@ class GasCollectorService:
                     self.last_collection_time = time.time()
 
                     elapsed = time.time() - start_time
+                    utilization = data.get('utilization', 0)
+                    block_num = data.get('block_number', '?')
                     logger.info(
                         f"✓ Collection #{self.collection_count}: "
-                        f"{data['current_gas']:.6f} Gwei "
+                        f"[Block {block_num}] "
+                        f"Gas: {data['current_gas']:.6f} gwei | "
+                        f"Util: {utilization:.1f}% | "
                         f"(base: {data['base_fee']:.6f}, priority: {data['priority_fee']:.6f}) "
                         f"[{elapsed:.2f}s]"
                     )
