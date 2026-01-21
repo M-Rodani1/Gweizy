@@ -74,17 +74,33 @@ df['timestamp'] = pd.to_datetime(df['timestamp'])
 df = df.sort_values('timestamp').set_index('timestamp')
 raw_len = len(df)
 
-# Spike-aware aggregation
-resampled = df.resample('1T').agg({
-    'gas_price': 'max',          # keep spikes
-    'gas_price_mean': ('gas_price', 'mean'),
-    'utilization': 'mean',
+# Spike-aware aggregation - only aggregate columns that exist
+agg_dict = {
+    'gas_price': ['max', 'mean'],  # keep spikes and mean
     'gas_used': 'sum',
     'gas_limit': 'mean',
     'base_fee': 'mean',
     'priority_fee': 'mean',
     'block_number': 'max',
-})
+}
+
+# Only include columns that exist in the dataframe
+agg_dict = {k: v for k, v in agg_dict.items() if k in df.columns}
+if 'utilization' in df.columns:
+    agg_dict['utilization'] = 'mean'
+
+resampled = df.resample('1T').agg(agg_dict)
+
+# Flatten column names from MultiIndex
+resampled.columns = ['_'.join(col).strip('_') if isinstance(col, tuple) else col for col in resampled.columns.values]
+# Rename to have both max and mean for gas_price
+if 'gas_price_max' in resampled.columns:
+    resampled = resampled.rename(columns={'gas_price_max': 'gas_price'})
+if 'gas_price_mean' not in resampled.columns and 'gas_price_mean' in resampled.columns:
+    pass  # Already exists
+elif 'gas_price_mean' not in resampled.columns:
+    # Create mean if it doesn't exist
+    resampled['gas_price_mean'] = resampled['gas_price']
 
 # Forward-fill to close tiny gaps after resampling
 resampled = resampled.ffill()
@@ -159,10 +175,25 @@ df['day_cos'] = np.cos(2 * np.pi * df['day_of_week'] / 7)
 # EIP-1559 pressure features (utilization-aware)
 log("   Adding EIP-1559 pressure features...")
 # Utilization is stored as percent; convert to fraction
-df['utilization_frac'] = df['utilization'] / 100.0
-df['pressure_index'] = df['utilization_frac'] - 0.50  # Positive => upward pressure
-for window in [10, 30, 60]:
-    df[f'pressure_cum_{window}m'] = df['pressure_index'].rolling(window=window, min_periods=1).sum()
+# Handle missing utilization column (for older data)
+if 'utilization' in df.columns:
+    df['utilization_frac'] = df['utilization'] / 100.0
+    df['pressure_index'] = df['utilization_frac'] - 0.50  # Positive => upward pressure
+    for window in [10, 30, 60]:
+        df[f'pressure_cum_{window}m'] = df['pressure_index'].rolling(window=window, min_periods=1).sum()
+else:
+    log("   ⚠️  Utilization column not found - using base_fee as proxy")
+    # Use base_fee changes as proxy for utilization
+    if 'base_fee' in df.columns:
+        df['base_fee_pct_change'] = df['base_fee'].pct_change().fillna(0)
+        df['pressure_index'] = df['base_fee_pct_change']  # Positive change = upward pressure
+        for window in [10, 30, 60]:
+            df[f'pressure_cum_{window}m'] = df['pressure_index'].rolling(window=window, min_periods=1).sum()
+    else:
+        log("   ⚠️  No utilization or base_fee available - skipping pressure features")
+        df['pressure_index'] = 0
+        for window in [10, 30, 60]:
+            df[f'pressure_cum_{window}m'] = 0
 
 # Lag features
 log("   Adding lag features...")
@@ -397,21 +428,37 @@ for window in [24, 48]:
     df[f'price_z_normal_{window}'] = ((z_score >= -1) & (z_score <= 1)).astype(int)
     df[f'price_z_high_{window}'] = (z_score > 1).astype(int)
 
-# Drop NaN rows
+# Drop NaN rows but be more selective - only drop rows where critical features are NaN
 initial_len = len(df)
-df = df.dropna()
+# Only drop rows where gas_price is NaN (critical feature)
+df = df.dropna(subset=['gas_price'])
+# Fill remaining NaN values with 0 for numeric columns (except gas_price which we already handled)
+numeric_cols = df.select_dtypes(include=[np.number]).columns
+df[numeric_cols] = df[numeric_cols].fillna(0)
 log(f"✅ Features created: {len(df):,} samples, {len(df.columns)} features")
+if initial_len > len(df):
+    log(f"   ⚠️  Dropped {initial_len - len(df):,} rows with missing gas_price")
 print(f"\n📊 Feature columns: {list(df.columns)}")
 
 log("🎯 Creating prediction targets...")
 
 # Estimate steps per hour from data
 time_diffs = df['timestamp'].diff().dropna()
-median_interval_seconds = time_diffs.median().total_seconds()
-median_interval_minutes = median_interval_seconds / 60
-steps_per_hour = max(1, int(3600 / median_interval_seconds))  # seconds in hour / interval
-log(f"   Detected interval: {median_interval_seconds:.1f} seconds ({median_interval_minutes:.2f} minutes)")
-log(f"   Steps per hour: {steps_per_hour}")
+if len(time_diffs) > 0:
+    median_interval_seconds = time_diffs.median().total_seconds()
+    if pd.isna(median_interval_seconds) or median_interval_seconds == 0:
+        # Default to 1-minute intervals (60 steps per hour)
+        median_interval_seconds = 60
+        steps_per_hour = 60
+    else:
+        median_interval_minutes = median_interval_seconds / 60
+        steps_per_hour = max(1, int(3600 / median_interval_seconds))  # seconds in hour / interval
+    log(f"   Detected interval: {median_interval_seconds:.1f} seconds ({median_interval_seconds/60:.2f} minutes)")
+    log(f"   Steps per hour: {steps_per_hour}")
+else:
+    # Default to 1-minute intervals
+    steps_per_hour = 60
+    log(f"   ⚠️  Could not detect interval, defaulting to 60 steps/hour (1-minute intervals)")
 
 # Future price targets - use actual time differences instead of fixed steps
 # This is more robust when data intervals vary
@@ -888,7 +935,10 @@ for horizon in horizons_to_train:
     
     # Calculate improvement over baseline
     test_r2_improvement = test_r2 - baseline_test_r2
-    test_mae_improvement_pct = ((baseline_test_mae - test_mae) / baseline_test_mae) * 100
+    if baseline_test_mae > 0:
+        test_mae_improvement_pct = ((baseline_test_mae - test_mae) / baseline_test_mae) * 100
+    else:
+        test_mae_improvement_pct = 0.0 if test_mae == 0 else float('inf')
     
     if test_r2_improvement > 0:
         log(f"      ✅ Model improves over baseline: R² +{test_r2_improvement:.4f}, MAE -{test_mae_improvement_pct:.2f}%")
