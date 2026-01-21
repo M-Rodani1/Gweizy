@@ -149,6 +149,16 @@ def create_app():
         logger.warning(f"Failed to register autonomous pipeline routes: {e}")
     app.register_blueprint(base_config_bp)  # No prefix - serves at root for /config.json
     
+    # Run database migrations on startup
+    try:
+        from scripts.migrate_add_utilization_fields import migrate_database
+        logger.info("Running database migration on startup...")
+        migrate_database()
+        logger.info("Database migration check completed")
+    except Exception as e:
+        logger.warning(f"Could not run database migration on startup: {e}")
+        # Don't fail startup if migration fails - it can be run manually via endpoint
+    
     # Handle OPTIONS preflight requests explicitly
     @app.before_request
     def handle_preflight():

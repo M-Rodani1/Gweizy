@@ -307,6 +307,43 @@ def check_training_data():
         return jsonify({'error': str(e)}), 500
 
 
+@retraining_bp.route('/retraining/migrate-db', methods=['POST'])
+def run_database_migration():
+    """
+    Run database migration to add gas_used, gas_limit, and utilization columns.
+    
+    This endpoint runs the migration script to add the new columns to the gas_prices table.
+    Safe to run multiple times - it checks if columns already exist.
+    """
+    try:
+        from scripts.migrate_add_utilization_fields import migrate_database
+        
+        logger.info("Running database migration: Add utilization fields...")
+        success = migrate_database()
+        
+        if success:
+            return jsonify({
+                'success': True,
+                'message': 'Database migration completed successfully',
+                'columns_added': ['gas_used', 'gas_limit', 'utilization']
+            }), 200
+        else:
+            return jsonify({
+                'success': False,
+                'message': 'Database migration failed. Check logs for details.'
+            }), 500
+            
+    except Exception as e:
+        logger.error(f"Error running database migration: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'message': 'Failed to run database migration'
+        }), 500
+
+
 @retraining_bp.route('/retraining/simple', methods=['POST'])
 def trigger_simple_retraining():
     """
