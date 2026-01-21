@@ -362,14 +362,15 @@ class AutonomousPipeline:
                 'timestamp': datetime.now().isoformat()
             }
             
-            # Step 1: Train ML models
+            # Step 1: Train ML models (disabled - now done via Colab)
             current_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
             script_path = os.path.join(current_dir, "scripts", "retrain_models_simple.py")
             
-            if not os.path.exists(script_path):
-                raise FileNotFoundError(f"Training script not found: {script_path}")
+            logger.warning("Automated training is disabled. Please use notebooks/train_models_colab.ipynb")
+            raise NotImplementedError("Training must be done via Google Colab notebook: notebooks/train_models_colab.ipynb")
             
-            logger.info(f"Running ML training script: {script_path}")
+            if False:  # Disabled
+                logger.info(f"Running ML training script: {script_path}")
             
             # Run ML training in subprocess
             ml_result = subprocess.run(
@@ -389,11 +390,11 @@ class AutonomousPipeline:
                     'duration_minutes': ml_duration
                 }
 
-                # Step 1b: Train spike detector models
+                # Step 1b: Train spike detector models (disabled - now in Colab)
                 logger.info("🎯 Training spike detector classifiers...")
                 spike_script_path = os.path.join(current_dir, "scripts", "train_spike_detectors.py")
 
-                if os.path.exists(spike_script_path):
+                if False:  # Disabled - training now done via Colab
                     spike_start = datetime.now()
                     spike_result = subprocess.run(
                         [sys.executable, spike_script_path],
@@ -527,14 +528,11 @@ class AutonomousPipeline:
         try:
             current_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
             
-            # Check if training script exists
+            # DQN training now done via Colab notebook
+            logger.warning("DQN training must be done via Google Colab notebook: notebooks/train_models_colab.ipynb")
             agent_script = os.path.join(current_dir, "scripts", "train_dqn_pipeline.py")
-            if not os.path.exists(agent_script):
-                # Try direct training module
-                logger.info("Agent pipeline script not found, using direct training module")
-                return self._train_dqn_direct(data_quality)
-            
-            logger.info(f"Running agent training script: {agent_script}")
+            if False:  # Disabled - training now done via Colab
+                logger.info(f"Running agent training script: {agent_script}")
             
             # Determine episodes based on data size
             episodes = 500  # Default

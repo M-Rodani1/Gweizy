@@ -87,7 +87,7 @@ class AgentService:
                     break
 
             if model_path is None:
-                self.load_error = "No trained agent found. Train with: python scripts/train_dqn_pipeline.py"
+                self.load_error = "No trained agent found. Train using notebooks/train_models_colab.ipynb"
                 logger.warning(f"RL Agent not loaded: {self.load_error}")
                 return False
 

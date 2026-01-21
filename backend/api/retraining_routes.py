@@ -310,7 +310,9 @@ def check_training_data():
 @retraining_bp.route('/retraining/simple', methods=['POST'])
 def trigger_simple_retraining():
     """
-    Trigger simple model retraining using the retrain_models_simple.py script
+    Trigger model retraining. 
+    NOTE: All model training is now done via Google Colab notebook.
+    See: notebooks/train_models_colab.ipynb
 
     This runs in a background thread to avoid HTTP timeouts.
     Training time varies by dataset size:
@@ -339,125 +341,28 @@ def trigger_simple_retraining():
 
         logger.info("Starting simple model retraining in background thread...")
 
-        # Get absolute path to the script
-        current_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        script_path = os.path.join(current_dir, "scripts", "retrain_models_simple.py")
-
-        logger.info(f"Script path: {script_path}")
-        logger.info(f"Script exists: {os.path.exists(script_path)}")
-
-        # Mark training as in progress
-        trigger_simple_retraining._training_in_progress = True
-        _update_progress(is_training=True)
+        # All training is now done via Google Colab notebook
+        logger.warning("Automated training is disabled. Please use Google Colab notebook for training.")
+        logger.info("Training notebook: notebooks/train_models_colab.ipynb")
+        
+        _update_progress(is_training=False)
+        
+        return jsonify({
+            'success': False,
+            'message': 'Automated training is disabled. All model training must be done via Google Colab notebook.',
+            'notebook_path': 'notebooks/train_models_colab.ipynb',
+            'instructions': [
+                '1. Upload your gas_data.db to Google Colab',
+                '2. Run all cells in notebooks/train_models_colab.ipynb',
+                '3. Download the trained models zip',
+                '4. Copy models to backend/models/saved_models/',
+                '5. Commit and push to deploy'
+            ]
+        }), 400
 
         def run_training():
-            """Run training in background thread with progress tracking"""
-            try:
-                logger.info("Background training thread started")
-
-                # Step 1: Train main RandomForest models
-                _update_progress(step=0, status='running', message='Training prediction models...')
-                logger.info("Step 1/3: Training RandomForest percentage change models...")
-
-                # Use Popen for real-time log streaming
-                import select
-                process = subprocess.Popen(
-                    [sys.executable, '-u', script_path],  # -u for unbuffered output
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.STDOUT,  # Merge stderr into stdout
-                    text=True,
-                    cwd=current_dir,
-                    bufsize=1  # Line buffered
-                )
-                
-                # Stream output to logger in real-time
-                start_time = time.time()
-                # Increased timeout for large datasets (100k records can take 30-45 min)
-                # Railway allows long-running background processes
-                timeout_seconds = 3600  # 60 minutes - enough for 100k records
-                
-                while True:
-                    # Check timeout
-                    elapsed = time.time() - start_time
-                    if elapsed > timeout_seconds:
-                        logger.error(f"Training timeout after {elapsed/60:.1f} minutes (limit: {timeout_seconds/60:.1f} min)")
-                        process.kill()
-                        _update_progress(step=0, status='failed', 
-                                       message=f'Training timed out after {elapsed/60:.1f} minutes')
-                        _update_progress(error=f'Training timeout: exceeded {timeout_seconds/60:.0f} minute limit', completed=True)
-                        return
-                    
-                    line = process.stdout.readline()
-                    if line:
-                        logger.info(f"[TRAIN] {line.rstrip()}")
-                        # Log progress every minute
-                        if int(elapsed) % 60 == 0 and int(elapsed) > 0:
-                            logger.info(f"[TRAIN] Still running... {elapsed/60:.1f} minutes elapsed")
-                    elif process.poll() is not None:
-                        # Process finished
-                        break
-                
-                # Get return code
-                returncode = process.returncode
-
-                if returncode != 0:
-                    _update_progress(step=0, status='failed', message='Training script failed')
-                    logger.error(f"Main model training failed with code {returncode}")
-                    _update_progress(error='RandomForest training failed', completed=True)
-                    return
-
-                _update_progress(step=0, status='completed', message='Models trained successfully')
-                logger.info("Main model training completed successfully")
-
-                # Step 2: Train spike detector models
-                _update_progress(step=1, status='running', message='Training spike classifiers...')
-                logger.info("Step 2/3: Training spike detector classifiers...")
-                spike_script_path = os.path.join(current_dir, "scripts", "train_spike_detectors.py")
-
-                if os.path.exists(spike_script_path):
-                    spike_result = subprocess.run(
-                        [sys.executable, spike_script_path],
-                        capture_output=True,
-                        text=True,
-                        timeout=1800,  # 30 minute timeout for spike detectors (increased)
-                        cwd=current_dir
-                    )
-
-                    if spike_result.returncode == 0:
-                        _update_progress(step=1, status='completed', message='Spike detectors trained')
-                        logger.info("Spike detector training completed successfully")
-                    else:
-                        _update_progress(step=1, status='failed', message='Training failed, using fallback')
-                        logger.warning(f"Spike detector training failed: {spike_result.stderr}")
-                        logger.warning("Continuing without spike detectors...")
-                else:
-                    _update_progress(step=1, status='skipped', message='Script not found')
-                    logger.warning(f"Spike detector script not found at {spike_script_path}")
-
-                # Step 3: Train DQN agent (if enough data)
-                _update_progress(step=2, status='running', message='Training RL agent (500 episodes)...')
-                logger.info("Step 3/3: Training DQN reinforcement learning agent...")
-                dqn_script_path = os.path.join(current_dir, "scripts", "train_dqn_pipeline.py")
-
-                if os.path.exists(dqn_script_path):
-                    dqn_result = subprocess.run(
-                        [sys.executable, dqn_script_path, "--episodes", "500", "--no-evaluate", "--quiet"],
-                        capture_output=True,
-                        text=True,
-                        timeout=900,  # 15 minute timeout for DQN
-                        cwd=current_dir
-                    )
-
-                    if dqn_result.returncode == 0:
-                        _update_progress(step=2, status='completed', message='DQN agent trained')
-                        logger.info("DQN agent training completed successfully")
-                    else:
-                        _update_progress(step=2, status='failed', message='Needs more data, using heuristic')
-                        logger.warning(f"DQN training failed (may need more data): {dqn_result.stderr[:200]}")
-                        logger.warning("Continuing with heuristic fallback for agent recommendations...")
-                else:
-                    _update_progress(step=2, status='skipped', message='Script not found')
-                    logger.warning(f"DQN training script not found at {dqn_script_path}")
+            """Training now done via Colab notebook"""
+            pass
 
                 if result.returncode == 0:
                     # Auto-reload models after successful training

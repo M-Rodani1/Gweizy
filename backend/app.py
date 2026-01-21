@@ -311,11 +311,12 @@ if TRAIN_MODELS_ON_STARTUP:
             # Wait a bit for database to be ready
             time.sleep(10)
             
-            logger.info("Starting model training...")
+            logger.info("Model training is now done via Google Colab notebook.")
+            logger.info("Please use notebooks/train_models_colab.ipynb for training.")
             current_dir = os.path.dirname(os.path.abspath(__file__))
             script_path = os.path.join(current_dir, "scripts", "retrain_models_simple.py")
             
-            if os.path.exists(script_path):
+            if False:  # Disabled - training now done via Colab
                 logger.info(f"Running training script: {script_path}")
                 logger.info("Training will take 3-10 minutes. Progress will be logged...")
                 
@@ -347,9 +348,9 @@ if TRAIN_MODELS_ON_STARTUP:
                     summary = "\n".join(output_lines[-20:])
                     logger.info(f"Training summary:\n{summary}")
 
-                    # Step 2: Train spike detectors
+                    # Step 2: Train spike detectors (disabled - now in Colab)
                     spike_script_path = os.path.join(current_dir, "scripts", "train_spike_detectors.py")
-                    if os.path.exists(spike_script_path):
+                    if False:  # Disabled - training now done via Colab
                         logger.info("🎯 Training spike detectors...")
                         spike_process = subprocess.Popen(
                             [sys.executable, spike_script_path],
@@ -595,11 +596,12 @@ if not use_worker_process:
                         missing.append(horizon)
 
                 if missing:
-                    logger.info(f"🎯 Spike detectors missing for {missing} - starting training...")
+                    logger.info(f"⚠️ Spike detectors missing for {missing}")
+                    logger.info("Please train models using notebooks/train_models_colab.ipynb")
                     current_dir = os.path.dirname(os.path.abspath(__file__))
                     spike_script = os.path.join(current_dir, "scripts", "train_spike_detectors.py")
 
-                    if os.path.exists(spike_script):
+                    if False:  # Disabled - training now done via Colab
                         import subprocess
                         process = subprocess.Popen(
                             [sys.executable, spike_script],
