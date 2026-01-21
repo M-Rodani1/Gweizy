@@ -37,6 +37,9 @@ class GasPrice(Base):
     base_fee = Column(Float)
     priority_fee = Column(Float)
     block_number = Column(Integer, index=True)
+    gas_used = Column(Integer, nullable=True)  # Gas actually consumed by block
+    gas_limit = Column(Integer, nullable=True)  # Block's gas capacity
+    utilization = Column(Float, nullable=True)  # Utilization percentage (gas_used / gas_limit * 100)
 
 
 class Prediction(Base):
@@ -247,7 +250,10 @@ class DatabaseManager:
             
             # Filter to only include fields that exist in GasPrice model
             # This prevents errors from extra fields like 'rpc_source'
-            allowed_fields = {'timestamp', 'chain_id', 'current_gas', 'base_fee', 'priority_fee', 'block_number'}
+            allowed_fields = {
+                'timestamp', 'chain_id', 'current_gas', 'base_fee', 'priority_fee', 
+                'block_number', 'gas_used', 'gas_limit', 'utilization'
+            }
             filtered_data = {k: v for k, v in data.items() if k in allowed_fields}
             
             gas_price = GasPrice(**filtered_data)
