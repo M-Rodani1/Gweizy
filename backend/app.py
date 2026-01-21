@@ -48,6 +48,7 @@ import sys
 import threading
 from services.gas_collector_service import GasCollectorService
 from services.onchain_collector_service import OnChainCollectorService
+from services.hybrid_predictor import HybridPredictor
 
 # Initialize Sentry for error tracking
 sentry_dsn = os.getenv('SENTRY_DSN')
@@ -225,6 +226,7 @@ def create_app():
                 'health': '/api/health',
                 'current': '/api/current',
                 'predictions': '/api/predictions',
+                'predictions_hybrid': '/api/predictions/hybrid',
                 'historical': '/api/historical',
                 'transactions': '/api/transactions',
                 'accuracy': '/api/accuracy',
@@ -294,6 +296,26 @@ def create_app():
                 }
             }
         })
+    
+    # Initialize Hybrid Predictor service (load models once on startup)
+    try:
+        hybrid_predictor = HybridPredictor()
+        logger.info("✅ Hybrid Predictor service initialized")
+    except Exception as e:
+        logger.warning(f"⚠️  Failed to initialize Hybrid Predictor: {e}")
+        hybrid_predictor = None
+    
+    @app.route('/api/predictions/hybrid', methods=['GET'])
+    def get_hybrid_prediction():
+        """Get hybrid stacking model prediction (4h trend + 1h action)"""
+        try:
+            if hybrid_predictor is None:
+                return jsonify({"error": "Hybrid predictor not available"}), 503
+            result = hybrid_predictor.predict()
+            return jsonify(result)
+        except Exception as e:
+            logger.error(f"Error in hybrid prediction: {e}", exc_info=True)
+            return jsonify({"error": str(e)}), 500
     
     logger.info("Base Gas Optimizer API started")
     logger.info(f"Debug mode: {Config.DEBUG}")

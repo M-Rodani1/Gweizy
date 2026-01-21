@@ -8,6 +8,7 @@ setuptools>=65.5.1
 
 # Database
 sqlalchemy>=2.0.0
+psycopg2-binary>=2.9.0  # PostgreSQL adapter for Railway deployment
 
 # Data Science - Updated for Python 3.13 compatibility
 pandas>=2.1.0
