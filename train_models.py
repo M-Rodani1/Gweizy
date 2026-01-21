@@ -1,0 +1,1811 @@
+#!/usr/bin/env python3
+"""
+Gweizy Model Training Script
+
+Standalone version of train_models_colab.ipynb
+Trains prediction models and spike detectors for gas price prediction.
+
+Usage:
+    python3 train_models.py
+"""
+
+import os
+import sys
+import pandas as pd
+import numpy as np
+from sqlalchemy import create_engine
+from datetime import datetime, timedelta
+import time
+import warnings
+import json
+warnings.filterwarnings('ignore')
+
+# Database path configuration
+DB_PATH = 'backend/gas_data.db'
+if not os.path.exists(DB_PATH):
+    DB_PATH = 'gas_data.db'
+if not os.path.exists(DB_PATH):
+    print(f"❌ Error: Database file not found. Please provide gas_data.db")
+    print(f"   Expected locations: backend/gas_data.db or ./gas_data.db")
+    sys.exit(1)
+print(f"✅ Using database: {DB_PATH}")
+
+
+import pandas as pd
+import numpy as np
+from sqlalchemy import create_engine
+from datetime import datetime, timedelta
+import time
+import warnings
+warnings.filterwarnings('ignore')
+
+start_time = time.time()
+def log(msg):
+    elapsed = time.time() - start_time
+    print(f"[{elapsed:6.1f}s] {msg}")
+
+    elapsed = time.time() - start_time
+    print(f"[{elapsed:6.1f}s] {msg}")
+
+# Connect to database
+engine = create_engine(f'sqlite:///{DB_PATH}')
+
+# Load data (note: database uses 'current_gas' column, we'll rename to 'gas_price')
+query = """
+SELECT timestamp, current_gas, block_number, base_fee, priority_fee,
+       gas_used, gas_limit, utilization
+FROM gas_prices
+ORDER BY timestamp DESC
+"""
+
+df = pd.read_sql(query, engine)
+# Rename current_gas to gas_price for consistency with feature engineering code
+df.rename(columns={'current_gas': 'gas_price'}, inplace=True)
+
+log(f"📊 Loaded {len(df):,} raw records (≈2s cadence)")
+log(f"📅 Raw date range: {df['timestamp'].min()} to {df['timestamp'].max()}")
+log(f"⛽ Raw gas price range: {df['gas_price'].min():.6f} to {df['gas_price'].max():.6f} gwei")
+
+# -------------------------------------------
+# Resample to 1-minute intervals (reduce noise)
+# -------------------------------------------
+log("\n⏱️  Resampling to 1-minute intervals (spike-aware)")
+df['timestamp'] = pd.to_datetime(df['timestamp'])
+df = df.sort_values('timestamp').set_index('timestamp')
+raw_len = len(df)
+
+# Spike-aware aggregation
+resampled = df.resample('1T').agg({
+    'gas_price': 'max',          # keep spikes
+    'gas_price_mean': ('gas_price', 'mean'),
+    'utilization': 'mean',
+    'gas_used': 'sum',
+    'gas_limit': 'mean',
+    'base_fee': 'mean',
+    'priority_fee': 'mean',
+    'block_number': 'max',
+})
+
+# Forward-fill to close tiny gaps after resampling
+resampled = resampled.ffill()
+resampled = resampled.reset_index()
+
+log(f"   Raw samples: {raw_len:,} → Resampled: {len(resampled):,} rows (~1/min)")
+log(f"   Resampled date range: {resampled['timestamp'].min()} to {resampled['timestamp'].max()}")
+
+# Work with the resampled frame going forward
+df = resampled
+
+# Data quality checks
+log("\n🔍 Data Quality Checks:")
+# Check for missing values
+missing_count = df['gas_price'].isna().sum()
+if missing_count > 0:
+    log(f"   ⚠️  Missing gas_price values: {missing_count} ({missing_count/len(df)*100:.1f}%)")
+
+# Check for duplicates
+duplicates = df.duplicated(subset=['timestamp']).sum()
+if duplicates > 0:
+    log(f"   ⚠️  Duplicate timestamps: {duplicates}")
+
+# Check for temporal gaps
+df['timestamp'] = pd.to_datetime(df['timestamp'])
+df['time_diff'] = df['timestamp'].diff()
+
+log("🔧 Starting feature engineering...")
+
+# Sort by timestamp
+df['timestamp'] = pd.to_datetime(df['timestamp'])
+df = df.sort_values('timestamp').reset_index(drop=True)
+
+# Sample if too large (use all data on Colab - we have resources!)
+MAX_RECORDS = 100000  # Can handle more on Colab
+if len(df) > MAX_RECORDS:
+    log(f"⚠️ Sampling {MAX_RECORDS:,} from {len(df):,} records")
+    recent = df.tail(MAX_RECORDS // 5)
+    older = df.head(len(df) - MAX_RECORDS // 5).sample(MAX_RECORDS - len(recent), random_state=42)
+    df = pd.concat([older, recent]).sort_values('timestamp').reset_index(drop=True)
+    log(f"✅ Using {len(df):,} records")
+
+# Enhanced outlier handling using Winsorization (cap extreme values instead of removing)
+Q1, Q3 = df['gas_price'].quantile([0.25, 0.75])
+IQR = Q3 - Q1
+lower, upper = Q1 - 3*IQR, Q3 + 3*IQR
+outliers_before = ((df['gas_price'] < lower) | (df['gas_price'] > upper)).sum()
+
+if outliers_before > 0:
+    log(f"   🔧 Applying Winsorization (capping {outliers_before:,} outliers)")
+    log(f"      Lower bound: {lower:.6f} gwei, Upper bound: {upper:.6f} gwei")
+    # Cap outliers but keep them (Winsorization)
+    df['gas_price'] = df['gas_price'].clip(lower, upper)
+    
+    # Verify
+    outliers_after = ((df['gas_price'] < lower) | (df['gas_price'] > upper)).sum()
+    if outliers_after == 0:
+        log(f"      ✅ All outliers successfully capped")
+else:
+    log(f"   ✅ No outliers detected using 3*IQR method")
+
+# Time features
+log("   Adding time features...")
+df['hour'] = df['timestamp'].dt.hour
+df['day_of_week'] = df['timestamp'].dt.dayofweek
+df['is_weekend'] = (df['day_of_week'] >= 5).astype(int)
+df['hour_sin'] = np.sin(2 * np.pi * df['hour'] / 24)
+df['hour_cos'] = np.cos(2 * np.pi * df['hour'] / 24)
+df['day_sin'] = np.sin(2 * np.pi * df['day_of_week'] / 7)
+df['day_cos'] = np.cos(2 * np.pi * df['day_of_week'] / 7)
+
+# EIP-1559 pressure features (utilization-aware)
+log("   Adding EIP-1559 pressure features...")
+# Utilization is stored as percent; convert to fraction
+df['utilization_frac'] = df['utilization'] / 100.0
+df['pressure_index'] = df['utilization_frac'] - 0.50  # Positive => upward pressure
+for window in [10, 30, 60]:
+    df[f'pressure_cum_{window}m'] = df['pressure_index'].rolling(window=window, min_periods=1).sum()
+
+# Lag features
+log("   Adding lag features...")
+for lag in [1, 2, 3, 6, 12, 24]:
+    df[f'gas_lag_{lag}'] = df['gas_price'].shift(lag)
+
+# Rolling statistics
+log("   Adding rolling statistics...")
+for window in [6, 12, 24, 48]:
+    df[f'gas_ma_{window}'] = df['gas_price'].rolling(window).mean()
+    df[f'gas_std_{window}'] = df['gas_price'].rolling(window).std()
+    df[f'gas_min_{window}'] = df['gas_price'].rolling(window).min()
+    df[f'gas_max_{window}'] = df['gas_price'].rolling(window).max()
+
+# Price change features
+log("   Adding price change features...")
+df['gas_pct_change_1'] = df['gas_price'].pct_change(1) * 100
+df['gas_pct_change_6'] = df['gas_price'].pct_change(6) * 100
+df['gas_pct_change_12'] = df['gas_price'].pct_change(12) * 100
+df['gas_pct_change_24'] = df['gas_price'].pct_change(24) * 100
+
+# Volatility
+df['volatility_6h'] = df['gas_price'].rolling(6).std() / df['gas_price'].rolling(6).mean()
+df['volatility_24h'] = df['gas_price'].rolling(24).std() / df['gas_price'].rolling(24).mean()
+
+# Momentum
+df['momentum_6'] = df['gas_price'] - df['gas_price'].shift(6)
+df['momentum_12'] = df['gas_price'] - df['gas_price'].shift(12)
+df['momentum_24'] = df['gas_price'] - df['gas_price'].shift(24)
+
+# EMA
+df['ema_6'] = df['gas_price'].ewm(span=6).mean()
+df['ema_12'] = df['gas_price'].ewm(span=12).mean()
+df['ema_24'] = df['gas_price'].ewm(span=24).mean()
+
+# Enhanced: Volatility-normalized features (robust to extreme values)
+for window in [6, 12, 24]:
+    rolling_std = df['gas_price'].rolling(window=window, min_periods=1).std()
+    rolling_mean = df['gas_price'].rolling(window=window, min_periods=1).mean()
+    # Price normalized by volatility (Z-score relative to rolling window)
+    df[f'price_zscore_{window}'] = (df['gas_price'] - rolling_mean) / (rolling_std + 1e-8)
+    # Price normalized by mean (percentage of mean)
+    df[f'price_rel_mean_{window}'] = df['gas_price'] / (rolling_mean + 1e-8)
+    # Distance from mean in terms of std
+    df[f'distance_std_{window}'] = (df['gas_price'] - rolling_mean).abs() / (rolling_std + 1e-8)
+
+# Enhanced: Regime indicators (low/medium/high volatility periods)
+for window in [12, 24]:
+    rolling_std = df['gas_price'].rolling(window=window, min_periods=1).std()
+    median_std = rolling_std.rolling(window*2, min_periods=1).median()
+    df[f'regime_low_vol_{window}'] = (rolling_std < median_std * 0.5).astype(int)
+    df[f'regime_high_vol_{window}'] = (rolling_std > median_std * 1.5).astype(int)
+    df[f'regime_extreme_vol_{window}'] = (rolling_std > rolling_std.rolling(window*2, min_periods=1).quantile(0.9)).astype(int)
+
+# Enhanced: Momentum features relative to volatility
+for window in [6, 12, 24]:
+    rolling_std = df['gas_price'].rolling(window=window, min_periods=1).std()
+    momentum = df['gas_price'] - df['gas_price'].shift(window)
+    df[f'momentum_vol_adj_{window}'] = momentum / (rolling_std + 1e-8)  # Momentum in std units
+
+# Enhanced: Spike detection features
+spike_threshold = df['gas_price'].quantile(0.9)
+for window in [6, 12, 24]:
+    max_price = df['gas_price'].rolling(window=window, min_periods=1).max()
+    df[f'is_spike_{window}'] = (df['gas_price'] > spike_threshold).astype(int)
+    df[f'near_spike_{window}'] = (max_price > spike_threshold).astype(int)
+
+# Enhanced: Time-to-peak features (time since last spike)
+for window in [6, 12, 24]:
+    spike_mask = df['gas_price'] > spike_threshold
+    # Calculate time since last spike (in periods)
+    time_since_spike = np.zeros(len(df))
+    last_spike_idx = -np.inf
+    for i in range(len(df)):
+        if spike_mask.iloc[i]:
+            last_spike_idx = i
+        if i - last_spike_idx < 1000:  # Cap at 1000 periods
+            time_since_spike[i] = i - last_spike_idx
+        else:
+            time_since_spike[i] = 1000  # Cap
+    df[f'time_since_spike_{window}'] = time_since_spike
+
+# Enhanced: Volatility regime change detection
+for window in [12, 24]:
+    rolling_std = df['gas_price'].rolling(window=window, min_periods=1).std()
+    # Detect regime changes (large changes in volatility)
+    vol_change = rolling_std.pct_change().abs()
+    df[f'vol_regime_change_{window}'] = (vol_change > vol_change.rolling(window*2, min_periods=1).quantile(0.75)).astype(int)
+    # Volatility trend (increasing/decreasing)
+    vol_trend = rolling_std.rolling(6, min_periods=1).mean() - rolling_std.rolling(12, min_periods=1).mean()
+    df[f'vol_trend_{window}'] = np.sign(vol_trend)  # -1, 0, or 1
+
+# Enhanced: Mean reversion features
+for window in [12, 24, 48]:
+    rolling_mean = df['gas_price'].rolling(window=window, min_periods=1).mean()
+    # Distance from mean (normalized)
+    df[f'distance_from_mean_{window}'] = (df['gas_price'] - rolling_mean) / (rolling_mean + 1e-8)
+    # Mean reversion indicator (price above mean tends to revert down)
+    df[f'mean_reversion_{window}'] = -np.sign(df[f'distance_from_mean_{window}']) * df[f'distance_from_mean_{window}'].abs()
+    
+    # Price relative to recent mean (short vs long term)
+    short_mean = df['gas_price'].rolling(window//2, min_periods=1).mean()
+    long_mean = rolling_mean
+    df[f'short_long_ratio_{window}'] = short_mean / (long_mean + 1e-8)
+
+# NEW: Supply/Demand Proxy Feature (Critical for stationarity)
+# Base Fee increases when blocks are >50% full, providing a utilization proxy
+# We can infer demand pressure from base_fee changes
+if 'base_fee' in df.columns:
+    log("   Adding supply/demand proxy features from base_fee...")
+    # Base fee change rate (proxy for network utilization)
+    df['base_fee_change'] = df['base_fee'].pct_change().fillna(0)
+    df['base_fee_momentum'] = df['base_fee'].diff().fillna(0)
+    
+    # Rolling base fee changes (persistent demand)
+    for window in [6, 12, 24]:
+        df[f'base_fee_change_{window}'] = df['base_fee'].pct_change(window).fillna(0)
+        df[f'base_fee_ma_{window}'] = df['base_fee'].rolling(window=window, min_periods=1).mean()
+    
+    # Pseudo-utilization: base_fee relative to its recent mean (high = high demand)
+    base_fee_ma_24h = df['base_fee'].rolling(window=24, min_periods=1).mean()
+    df['pseudo_utilization'] = df['base_fee'] / (base_fee_ma_24h + 1e-8)
+    
+    # Base fee acceleration (second derivative) - captures demand changes
+    df['base_fee_acceleration'] = df['base_fee'].diff().diff().fillna(0)
+
+# NEW: Ratio Features (More stationary than absolutes)
+# Focus on ratios which are more invariant to price levels
+log("   Adding ratio features (more stationary)...")
+if 'base_fee' in df.columns and 'priority_fee' in df.columns:
+    # Priority fee to base fee ratio (competition indicator)
+    df['priority_base_ratio'] = df['priority_fee'] / (df['base_fee'] + 1e-8)
+    
+    # Gas price to base fee ratio
+    df['gas_base_ratio'] = df['gas_price'] / (df['base_fee'] + 1e-8)
+
+# Price-to-moving-average ratios (normalized price levels)
+for window in [6, 12, 24, 48]:
+    ma = df['gas_price'].rolling(window=window, min_periods=1).mean()
+    df[f'price_ma_ratio_{window}'] = df['gas_price'] / (ma + 1e-8)
+
+# Enhanced: Volatility × Momentum interactions (already exists but ensure they're prominent)
+# These capture regime-specific behavior
+for window in [6, 12, 24]:
+    vol = df['gas_price'].rolling(window=window, min_periods=1).std()
+    mom = df['gas_price'] - df['gas_price'].shift(window)
+    if f'vol_momentum_interact_{window}' not in df.columns:
+        df[f'vol_momentum_interact_{window}'] = vol * mom.abs()
+
+# Advanced: Fourier features for periodic patterns (daily, weekly cycles)
+from scipy.fft import fft
+import math
+
+# Daily cycles (24-hour patterns)
+for period in [24, 12, 8, 6]:  # Different frequencies
+    cycles_per_day = 24 / period
+    df[f'hour_sin_{period}h'] = np.sin(2 * np.pi * df['hour'] / period)
+    df[f'hour_cos_{period}h'] = np.cos(2 * np.pi * df['hour'] / period)
+
+# Weekly cycles (7-day patterns)
+for period in [7, 3.5, 2.33]:  # Weekly, bi-weekly, tri-weekly
+    df[f'day_sin_{period}d'] = np.sin(2 * np.pi * df['day_of_week'] / period)
+    df[f'day_cos_{period}d'] = np.cos(2 * np.pi * df['day_of_week'] / period)
+
+# Advanced: Autocorrelation features (lag correlations)
+for lag in [1, 2, 3, 6, 12, 24]:
+    df[f'autocorr_{lag}'] = df['gas_price'].shift(lag)
+    # Correlation with shifted version
+    rolling_corr = df['gas_price'].rolling(window=min(48, len(df)//10), min_periods=1).corr(df['gas_price'].shift(lag))
+    df[f'autocorr_coef_{lag}'] = rolling_corr.fillna(0)
+
+# Advanced: Interaction features (products/ratios of key features)
+for window in [6, 12, 24]:
+    # Volatility × momentum
+    vol = df['gas_price'].rolling(window=window, min_periods=1).std()
+    mom = df['gas_price'] - df['gas_price'].shift(window)
+    df[f'vol_momentum_interact_{window}'] = vol * mom.abs()
+    
+    # Price level × volatility
+    price_level = df['gas_price'] / (df['gas_price'].rolling(window=window*2, min_periods=1).mean() + 1e-8)
+    df[f'price_vol_interact_{window}'] = price_level * vol
+    
+    # Mean reversion × momentum (only if mean_reversion feature exists for this window)
+    if f'mean_reversion_{window}' in df.columns:
+        mean_rev = df[f'mean_reversion_{window}']
+        df[f'mean_rev_momentum_{window}'] = mean_rev * mom
+
+# Advanced: Rolling correlations between key features
+for window in [12, 24]:
+    vol = df['gas_price'].rolling(window=window, min_periods=1).std()
+    price = df['gas_price']
+    # Correlation between price and volatility
+    rolling_corr_price_vol = price.rolling(window=window*2, min_periods=1).corr(vol)
+    df[f'corr_price_vol_{window}'] = rolling_corr_price_vol.fillna(0)
+    
+    # Correlation between price and momentum
+    mom = df['gas_price'] - df['gas_price'].shift(window)
+    rolling_corr_price_mom = price.rolling(window=window*2, min_periods=1).corr(mom)
+    df[f'corr_price_mom_{window}'] = rolling_corr_price_mom.fillna(0)
+
+# Advanced: Trend decomposition features
+for window in [12, 24, 48]:
+    price = df['gas_price']
+    # Simple moving average (trend)
+    trend = price.rolling(window=window, min_periods=1).mean()
+    df[f'trend_{window}'] = trend
+    
+    # Detrended price (residual)
+    df[f'detrended_{window}'] = price - trend
+    
+    # Trend strength (how much price follows trend)
+    df[f'trend_strength_{window}'] = 1 - (df[f'detrended_{window}'].abs() / (price.abs() + 1e-8))
+    
+    # Trend direction (up/down/sideways)
+    trend_diff = trend.diff()
+    df[f'trend_direction_{window}'] = np.sign(trend_diff).fillna(0)
+
+# Advanced: Price level indicators (categorical bands)
+for window in [24, 48]:
+    price = df['gas_price']
+    rolling_mean = price.rolling(window=window, min_periods=1).mean()
+    rolling_std = price.rolling(window=window, min_periods=1).std()
+    
+    # Price bands: low (below mean - 0.5*std), medium (within ±0.5*std), high (above mean + 0.5*std)
+    df[f'price_band_low_{window}'] = (price < (rolling_mean - 0.5 * rolling_std)).astype(int)
+    df[f'price_band_medium_{window}'] = ((price >= (rolling_mean - 0.5 * rolling_std)) & (price <= (rolling_mean + 0.5 * rolling_std))).astype(int)
+    df[f'price_band_high_{window}'] = (price > (rolling_mean + 0.5 * rolling_std)).astype(int)
+    
+    # Z-score bands (normalized)
+    z_score = (price - rolling_mean) / (rolling_std + 1e-8)
+    df[f'price_z_low_{window}'] = (z_score < -1).astype(int)
+    df[f'price_z_normal_{window}'] = ((z_score >= -1) & (z_score <= 1)).astype(int)
+    df[f'price_z_high_{window}'] = (z_score > 1).astype(int)
+
+# Drop NaN rows
+initial_len = len(df)
+df = df.dropna()
+log(f"✅ Features created: {len(df):,} samples, {len(df.columns)} features")
+print(f"\n📊 Feature columns: {list(df.columns)}")
+
+log("🎯 Creating prediction targets...")
+
+# Estimate steps per hour from data
+time_diffs = df['timestamp'].diff().dropna()
+median_interval_seconds = time_diffs.median().total_seconds()
+median_interval_minutes = median_interval_seconds / 60
+steps_per_hour = max(1, int(3600 / median_interval_seconds))  # seconds in hour / interval
+log(f"   Detected interval: {median_interval_seconds:.1f} seconds ({median_interval_minutes:.2f} minutes)")
+log(f"   Steps per hour: {steps_per_hour}")
+
+# Future price targets - use actual time differences instead of fixed steps
+# This is more robust when data intervals vary
+targets = {}
+total_samples = len(df)
+
+# Horizons now based on 1-minute cadence
+horizon_steps = {
+    '1h': 60,    # 60 minutes ahead
+    '4h': 240,   # 240 minutes ahead
+    '24h': 1440  # keep 24h if data is long enough
+}
+
+for name, steps in horizon_steps.items():
+    # Shift by steps (minutes) on the resampled data
+    future_price = df['gas_price'].shift(-steps)
+    current_price = df['gas_price'].copy()
+    
+    # Log-returns (stationary target)
+    log_current = np.log(current_price + 1e-8)
+    log_future = np.log(future_price + 1e-8)
+    target_log_return = log_future - log_current
+    
+    targets[name] = {
+        'target_log_return': target_log_return,
+        'target_price': future_price,
+        'current_price': current_price,
+        'original': future_price
+    }
+    valid = (~future_price.isna() & ~target_log_return.isna()).sum()
+    log(f"   {name} ({steps} min): {valid:,} valid targets out of {total_samples:,} total")
+
+# Check if we have enough data for each horizon
+min_samples_needed = 100  # Minimum samples needed for training
+available_horizons = []
+for name, target_data in targets.items():
+    valid_count = (~target_data['target_price'].isna()).sum()
+    if valid_count >= min_samples_needed:
+        available_horizons.append(name)
+        log(f"   ✅ {name}: Sufficient data ({valid_count:,} samples)")
+    else:
+        log(f"   ⚠️  {name}: Insufficient data ({valid_count:,} samples, need {min_samples_needed})")
+
+if not available_horizons:
+    raise ValueError(f"Not enough data for any horizon! Minimum {min_samples_needed} samples needed.")
+
+# Select feature columns
+exclude_cols = ['timestamp', 'block_number', 'time_diff']  # Exclude time_diff to prevent dtype errors
+feature_cols = [c for c in df.columns if c not in exclude_cols]
+X = df[feature_cols].copy()
+log(f"📊 Feature matrix: {X.shape[0]:,} samples, {X.shape[1]} features")
+
+# Store original feature count for later reference
+original_feature_count = X.shape[1]
+
+from sklearn.feature_selection import mutual_info_regression, SelectKBest, f_regression, RFE
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.linear_model import Ridge
+from sklearn.inspection import permutation_importance
+from scipy import stats
+from scipy.stats import boxcox, yeojohnson
+from sklearn.preprocessing import QuantileTransformer
+from sklearn.inspection import permutation_importance
+
+def select_features(X, y, n_samples, verbose=True):
+    """
+    Enhanced feature selection based on dataset size to prevent overfitting.
+    Uses multiple methods (mutual info, correlation, F-regression, RFE, model importance).
+    Dynamic feature count: min(20, samples/25) to prevent overfitting.
+    """
+    # Dynamic feature count based on dataset size
+    target_features = min(20, max(10, int(n_samples / 25)))
+    
+    if X.shape[1] <= target_features:
+        if verbose:
+            log(f"   ✅ Already have {X.shape[1]} features (≤ target {target_features})")
+        return X, list(X.columns)
+    
+    if verbose:
+        log(f"   🔍 Feature selection: {X.shape[1]} → {target_features} features")
+        log(f"   📊 Dataset size: {n_samples:,} samples → target {target_features} features")
+    
+    # Exclude non-numeric columns (time_diff, etc.) to prevent dtype errors
+    numeric_cols = X.select_dtypes(include=[np.number]).columns
+    X_numeric = X[numeric_cols].copy()
+    
+    # If we lost columns, log it
+    if X_numeric.shape[1] < X.shape[1]:
+        dropped_cols = set(X.columns) - set(X_numeric.columns)
+        if verbose:
+            log(f"   ⚠️  Excluded {len(dropped_cols)} non-numeric columns: {', '.join(dropped_cols)}")
+        X = X_numeric
+    
+    X_clean = X.fillna(0).replace([np.inf, -np.inf], 0)
+    y_clean = y.fillna(y.median())
+    
+    # Ensure we have enough samples for feature selection
+    if len(X_clean) < 50:
+        if verbose:
+            log(f"   ⚠️  Too few samples for feature selection, using all features")
+        return X, list(X.columns)
+    
+    scores_dict = {}
+    
+    # 1. Mutual Information (captures non-linear relationships)
+    try:
+        n_neighbors = min(3, max(1, len(X_clean) // 20))
+        mi_scores = mutual_info_regression(X_clean, y_clean, random_state=42, n_neighbors=n_neighbors)
+        mi_scores = pd.Series(mi_scores, index=X.columns)
+        if mi_scores.max() > 0:
+            mi_scores = mi_scores / mi_scores.max()
+        scores_dict['MI'] = mi_scores
+    except Exception as e:
+        if verbose:
+            log(f"   ⚠️  Mutual info failed: {e}")
+        mi_scores = pd.Series(0, index=X.columns)
+        scores_dict['MI'] = mi_scores
+    
+    # 2. Correlation (linear relationships)
+    try:
+        corr_scores = X_clean.corrwith(y_clean).abs().fillna(0)
+        if corr_scores.max() > 0:
+            corr_scores = corr_scores / corr_scores.max()
+        scores_dict['Corr'] = corr_scores
+    except Exception as e:
+        if verbose:
+            log(f"   ⚠️  Correlation failed: {e}")
+        corr_scores = pd.Series(0, index=X.columns)
+        scores_dict['Corr'] = corr_scores
+    
+    # 3. F-regression (statistical significance)
+    try:
+        f_selector = SelectKBest(f_regression, k=min(target_features * 2, X.shape[1]))
+        f_selector.fit(X_clean, y_clean)
+        f_scores = pd.Series(f_selector.scores_, index=X.columns).fillna(0)
+        if f_scores.max() > 0:
+            f_scores = f_scores / f_scores.max()
+        scores_dict['F'] = f_scores
+    except Exception as e:
+        if verbose:
+            log(f"   ⚠️  F-regression failed: {e}")
+        f_scores = pd.Series(0, index=X.columns)
+        scores_dict['F'] = f_scores
+    
+    # 4. RFE with Ridge (recursive feature elimination)
+    try:
+        if len(X_clean) >= 100:  # RFE needs more data
+            rfe_estimator = Ridge(alpha=1.0)
+            rfe = RFE(estimator=rfe_estimator, n_features_to_select=target_features, step=max(1, X.shape[1] // 50))
+            rfe.fit(X_clean, y_clean)
+            # Convert ranking to scores (lower rank = higher score)
+            rfe_scores = pd.Series(1.0 / (rfe.ranking_ + 1), index=X.columns)
+            if rfe_scores.max() > 0:
+                rfe_scores = rfe_scores / rfe_scores.max()
+            scores_dict['RFE'] = rfe_scores
+    except Exception as e:
+        if verbose:
+            log(f"   ⚠️  RFE failed: {e}")
+    
+    # 5. Model-based importance (RandomForest)
+    try:
+        if len(X_clean) >= 50:
+            rf_temp = RandomForestRegressor(
+                n_estimators=min(50, len(X_clean) // 10),
+                max_depth=min(10, int(np.log2(len(X_clean)))),
+                min_samples_split=max(2, len(X_clean) // 50),
+                random_state=42,
+                n_jobs=-1
+            )
+            rf_temp.fit(X_clean, y_clean)
+            rf_scores = pd.Series(rf_temp.feature_importances_, index=X.columns)
+            if rf_scores.max() > 0:
+                rf_scores = rf_scores / rf_scores.max()
+            scores_dict['RF'] = rf_scores
+    except Exception as e:
+        if verbose:
+            log(f"   ⚠️  Model importance failed: {e}")
+    
+    # Combine scores with weights (SHAP/MI gets highest weight)
+    weights = {
+        'MI': 0.30,
+        'Corr': 0.25,
+        'F': 0.20,
+        'RFE': 0.15,
+        'RF': 0.10
+    }
+    
+    combined_scores = pd.Series(0.0, index=X.columns)
+    total_weight = 0.0
+    
+    for method, weight in weights.items():
+        if method in scores_dict:
+            combined_scores += scores_dict[method] * weight
+            total_weight += weight
+    
+    if total_weight > 0:
+        combined_scores = combined_scores / total_weight
+    
+    # Select top features
+    selected_features = combined_scores.nlargest(target_features).index.tolist()
+    
+    if verbose:
+        log(f"   ✅ Selected {len(selected_features)} features")
+        log(f"   📊 Top 10 features:")
+        for i, feat in enumerate(selected_features[:10], 1):
+            score = combined_scores[feat]
+            log(f"      {i}. {feat}: {score:.4f}")
+    
+    return X[selected_features], selected_features
+
+print("✅ Enhanced feature selection function defined")
+
+from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
+from sklearn.linear_model import Ridge, ElasticNet, SGDRegressor
+from sklearn.preprocessing import RobustScaler
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score, confusion_matrix
+from sklearn.model_selection import RandomizedSearchCV, TimeSeriesSplit
+from sklearn.base import clone
+import joblib
+
+# Try importing LightGBM
+try:
+    import lightgbm as lgb
+    LIGHTGBM_AVAILABLE = True
+except ImportError:
+    LIGHTGBM_AVAILABLE = False
+    log("   ⚠️  LightGBM not available, skipping LightGBM models")
+
+# Create output directory
+os.makedirs('trained_models', exist_ok=True)
+
+results = {}
+
+# Only train models for horizons with sufficient data
+horizons_to_train = available_horizons if 'available_horizons' in locals() else ['1h', '4h', '24h']
+
+for horizon in horizons_to_train:
+    log(f"\n{'='*60}")
+    log(f"🎯 Training models for {horizon} horizon")
+    log(f"{'='*60}")
+    
+    # NEW: Use log-returns as target (stationary)
+    y_target_log_return = targets[horizon]['target_log_return']
+    y_target_price = targets[horizon]['target_price']  # For reconstruction
+    y_orig = targets[horizon]['original']
+    current_prices = targets[horizon]['current_price']  # Needed for reconstruction
+    
+    # Remove NaN
+    valid_idx = ~(X.isna().any(axis=1) | y_target_log_return.isna() | y_target_price.isna())
+    X_clean = X[valid_idx]
+    y_target_clean = y_target_log_return[valid_idx]  # Log-return is our target
+    y_orig_clean = y_target_price[valid_idx]  # Actual future price for evaluation
+    current_clean = current_prices[valid_idx]  # Current price for reconstruction
+    
+    log(f"   Valid samples: {len(X_clean):,}")
+    
+    # Check if we have enough data
+    if len(X_clean) < 50:
+        log(f"   ⚠️  Skipping {horizon} - insufficient data ({len(X_clean)} samples, need at least 50)")
+        continue
+    
+    # Feature selection (reduce features to prevent overfitting)
+    log(f"   🔍 Feature selection for {horizon}...")
+    X_selected, selected_features = select_features(X_clean, y_target_clean, len(X_clean), verbose=True)
+    X_clean = X_selected
+    if 'selected_features_per_horizon' not in locals():
+        selected_features_per_horizon = {}
+    selected_features_per_horizon[horizon] = selected_features
+    
+    # NEW: Use TimeSeriesSplit for validation (5 splits, mimics production better)
+    # This is better for small datasets as it uses more data for training
+    from sklearn.model_selection import TimeSeriesSplit
+    n_total = len(X_clean)
+    
+    # Use 80/20 split for final hold-out test set
+    # The remaining 80% will be used with TimeSeriesSplit for training/validation
+    test_start = int(n_total * 0.8)
+    X_train_val = X_clean.iloc[:test_start]
+    X_test = X_clean.iloc[test_start:]
+    y_train_val = y_target_clean.iloc[:test_start]  # Log-returns
+    y_test_log_return = y_target_clean.iloc[test_start:]
+    y_orig_test = y_orig_clean.iloc[test_start:]  # Actual prices for evaluation
+    current_test = current_clean.iloc[test_start:]
+    
+    # Create TimeSeriesSplit for cross-validation (5 splits)
+    # Gap prevents leakage between folds
+    gap_size = max(50, int(len(X_train_val) * 0.02))  # 2% gap
+    tscv = TimeSeriesSplit(n_splits=5, gap=gap_size)
+    
+    # For model training, use the last 80% of train_val as validation
+    # This gives us a fixed validation set while using TimeSeriesSplit for hyperparameter tuning
+    val_start = int(len(X_train_val) * 0.8)
+    X_train = X_train_val.iloc[:val_start]
+    X_val = X_train_val.iloc[val_start:]
+    y_train = y_train_val.iloc[:val_start]
+    y_val = y_train_val.iloc[val_start:]
+    y_orig_train = y_orig_clean.iloc[:val_start]
+    y_orig_val = y_orig_clean.iloc[val_start:test_start]
+    current_train = current_clean.iloc[:val_start]
+    current_val = current_clean.iloc[val_start:test_start]
+    
+    log(f"   Train: {len(X_train):,}, Val: {len(X_val):,}, Test: {len(X_test):,}")
+    log(f"   Using TimeSeriesSplit (5 splits) for hyperparameter tuning")
+    
+    log(f"   Train: {len(X_train):,}, Val: {len(X_val):,}, Test: {len(X_test):,}")
+    
+    # Double-check we have training data
+    if len(X_train) == 0:
+        log(f"   ⚠️  Skipping {horizon} - no training data")
+        continue
+    
+    # Adaptive model selection based on dataset size
+    n_train_samples = len(X_train)
+    log(f"   📊 Dataset size: {n_train_samples:,} training samples")
+    if n_train_samples < 500:
+        use_simple_models = True
+        log(f"   ⚡ Small dataset - using simpler models with regularization")
+        use_hyperparameter_tuning = False  # Skip tuning for very small datasets
+    elif n_train_samples >= 2000:
+        use_simple_models = False
+        log(f"   🚀 Large dataset - using full ensemble with hyperparameter tuning")
+        use_hyperparameter_tuning = True
+    else:
+        use_simple_models = False
+        log(f"   📈 Medium dataset - using standard models with hyperparameter tuning")
+        use_hyperparameter_tuning = True
+    
+    # Scale features
+    scaler = RobustScaler()
+    X_train_scaled = scaler.fit_transform(X_train)
+    X_val_scaled = scaler.transform(X_val)
+    X_test_scaled = scaler.transform(X_test)
+    
+    # SIMPLIFIED: Train only a single robust model (LightGBM or GradientBoosting)
+    # Complex ensembles overfit on small datasets - single model is better here
+    log(f"   🎯 Using simplified single-model approach for small dataset")
+    log(f"   📊 Target: Log-returns (stationary) - model predicts log(future/current)")
+    
+    # TimeSeriesSplit is already created above (5 splits with gap)
+    # Use it for hyperparameter tuning
+    
+    # Try LightGBM first (faster, better for small data), fallback to GradientBoosting
+    model_trained = None
+    model_name = None
+    
+    if LIGHTGBM_AVAILABLE:
+        log(f"   💡 Training LightGBM (optimized for small datasets)...")
+        try:
+            if n_train_samples >= 500 and use_hyperparameter_tuning:
+                log(f"      🔍 Hyperparameter tuning with TimeSeriesSplit...")
+                lgbm_param_dist = {
+            'n_estimators': [100, 200, 300],
+                    'max_depth': [3, 5, 7],
+                    'learning_rate': [0.01, 0.02],
+                    'num_leaves': [10, 15, 31],
+                    'min_child_samples': [20, 30, 50],
+                    'subsample': [0.8, 0.9, 1.0],
+                    'reg_alpha': [0.1, 0.5, 1.0],
+                    'reg_lambda': [0.1, 0.5, 1.0]
+                }
+                lgbm_base = lgb.LGBMRegressor(random_state=42, n_jobs=-1, verbose=-1)
+                lgbm_search = RandomizedSearchCV(
+                    lgbm_base, lgbm_param_dist, n_iter=20, cv=tscv,
+                    scoring='r2', n_jobs=-1, random_state=42, verbose=0
+                )
+                lgbm_search.fit(X_train_scaled, y_train)
+                model_trained = lgbm_search.best_estimator_
+                model_name = 'LightGBM'
+                log(f"      ✅ Best params: {lgbm_search.best_params_}")
+            else:
+                # Default parameters with strong regularization for small datasets
+                model_trained = lgb.LGBMRegressor(
+                    n_estimators=200,
+                    max_depth=3,
+                    learning_rate=0.01,
+                    num_leaves=15,
+                    min_child_samples=20,
+                    subsample=0.9,
+                    reg_alpha=0.1,
+                    reg_lambda=0.1,
+                    random_state=42,
+                    n_jobs=-1,
+                    verbose=-1
+                )
+                # Use early stopping to prevent overfitting
+                model_trained.fit(
+                    X_train_scaled, y_train,
+                    eval_set=[(X_val_scaled, y_val)],
+                    callbacks=[lgb.early_stopping(stopping_rounds=50, verbose=False)]
+                )
+                model_name = 'LightGBM'
+        except Exception as e:
+            log(f"      ⚠️  LightGBM training failed: {str(e)}, falling back to GradientBoosting")
+            model_trained = None
+    
+    # Fallback to GradientBoosting if LightGBM failed or not available
+    if model_trained is None:
+        log(f"   🌳 Training GradientBoosting (robust fallback)...")
+        try:
+            if n_train_samples >= 500 and use_hyperparameter_tuning:
+                log(f"      🔍 Hyperparameter tuning with TimeSeriesSplit...")
+                gb_param_dist = {
+                    'n_estimators': [100, 200, 300],
+                    'max_depth': [2, 3, 4],
+                    'learning_rate': [0.01, 0.02, 0.05],
+                    'min_samples_split': [10, 20, 30],
+                    'min_samples_leaf': [4, 8, 12],
+                    'subsample': [0.8, 0.9, 1.0]
+                }
+                gb_base = GradientBoostingRegressor(random_state=42)
+                gb_search = RandomizedSearchCV(
+                    gb_base, gb_param_dist, n_iter=20, cv=tscv,
+                    scoring='r2', n_jobs=-1, random_state=42, verbose=0
+                )
+                gb_search.fit(X_train_scaled, y_train)
+                model_trained = gb_search.best_estimator_
+                model_name = 'GradientBoosting'
+                log(f"      ✅ Best params: {gb_search.best_params_}")
+            else:
+                # Default parameters with strong regularization
+                model_trained = GradientBoostingRegressor(
+                    n_estimators=200,
+                    max_depth=3,
+                    learning_rate=0.01,
+                    min_samples_split=20,
+                    min_samples_leaf=10,
+                    subsample=0.9,
+                    random_state=42
+                )
+                model_trained.fit(X_train_scaled, y_train)
+                model_name = 'GradientBoosting'
+        except Exception as e:
+            log(f"      ❌ GradientBoosting training failed: {str(e)}")
+            raise RuntimeError(f"Both LightGBM and GradientBoosting failed for {horizon} horizon")
+    
+    if model_trained is None:
+        log(f"   ❌ No model trained! Cannot proceed with {horizon} horizon")
+        continue
+    
+    # CRITICAL: Reconstruct prices from log-returns
+    # Model predicts log_return = log(future/current)
+    # To get predicted price: pred_price = current_price * exp(pred_log_return)
+    y_pred_val_log_return = model_trained.predict(X_val_scaled)
+    y_pred_test_log_return = model_trained.predict(X_test_scaled)
+    
+    # Reconstruct prices: pred_price = current_price * exp(log_return)
+    y_pred_val_price = current_val.values * np.exp(y_pred_val_log_return)
+    y_pred_test_price = current_test.values * np.exp(y_pred_test_log_return)
+    
+    # Calculate metrics on reconstructed prices
+    val_r2 = r2_score(y_orig_val.values, y_pred_val_price)
+    test_r2 = r2_score(y_orig_test.values, y_pred_test_price)
+    val_mae = mean_absolute_error(y_orig_val.values, y_pred_val_price)
+    test_mae = mean_absolute_error(y_orig_test.values, y_pred_test_price)
+    val_rmse = np.sqrt(mean_squared_error(y_orig_val.values, y_pred_val_price))
+    test_rmse = np.sqrt(mean_squared_error(y_orig_test.values, y_pred_test_price))
+    
+    log(f"      ✅ {model_name} - Val R²: {val_r2:.4f}, Test R²: {test_r2:.4f}")
+    log(f"      ✅ {model_name} - Val MAE: {val_mae:.6f}, Test MAE: {test_mae:.6f} gwei")
+    
+    # BASELINE COMPARISON: Compare against "Last Value" predictor (predicts 0 change)
+    # Baseline: predict no change, so pred_price = current_price (i.e., log_return = 0)
+    baseline_val_price = current_val.values  # Predict no change
+    baseline_test_price = current_test.values  # Predict no change
+    
+    baseline_val_r2 = r2_score(y_orig_val.values, baseline_val_price)
+    baseline_test_r2 = r2_score(y_orig_test.values, baseline_test_price)
+    baseline_val_mae = mean_absolute_error(y_orig_val.values, baseline_val_price)
+    baseline_test_mae = mean_absolute_error(y_orig_test.values, baseline_test_price)
+    
+    log(f"\n   📊 Baseline Comparison (Last Value = No Change):")
+    log(f"      Baseline Val R²: {baseline_val_r2:.4f}, Test R²: {baseline_test_r2:.4f}")
+    log(f"      Baseline Val MAE: {baseline_val_mae:.6f}, Test MAE: {baseline_test_mae:.6f} gwei")
+    
+    # Calculate improvement over baseline
+    test_r2_improvement = test_r2 - baseline_test_r2
+    test_mae_improvement_pct = ((baseline_test_mae - test_mae) / baseline_test_mae) * 100
+    
+    if test_r2_improvement > 0:
+        log(f"      ✅ Model improves over baseline: R² +{test_r2_improvement:.4f}, MAE -{test_mae_improvement_pct:.2f}%")
+    else:
+        log(f"      ⚠️  Model underperforms baseline: R² {test_r2_improvement:.4f}, MAE {test_mae_improvement_pct:.2f}%")
+    
+    # Final predictions for saving (already computed above)
+    y_pred_final = y_pred_test_price  # Reconstructed prices from log-returns
+    best_model = model_trained
+    best_model_name = model_name
+    
+    # Calculate final metrics on reconstructed prices
+    mae = test_mae
+    rmse = test_rmse
+    r2 = test_r2
+    mape = np.mean(np.abs((y_orig_test.values - y_pred_final) / (y_orig_test.values + 1e-8))) * 100
+    
+    # Directional accuracy
+    y_diff_actual = np.diff(y_orig_test.values)
+    y_diff_pred = np.diff(y_pred_final)
+    dir_acc = np.mean(np.sign(y_diff_actual) == np.sign(y_diff_pred))
+    
+    # Confidence intervals using bootstrap
+    n_bootstrap = min(1000, len(y_orig_test))
+    bootstrap_r2 = []
+    bootstrap_mae = []
+    for _ in range(n_bootstrap):
+        indices = np.random.choice(len(y_orig_test), len(y_orig_test), replace=True)
+        bootstrap_r2.append(r2_score(y_orig_test.values[indices], y_pred_final[indices]))
+        bootstrap_mae.append(mean_absolute_error(y_orig_test.values[indices], y_pred_final[indices]))
+    r2_ci_lower = np.percentile(bootstrap_r2, 2.5)
+    r2_ci_upper = np.percentile(bootstrap_r2, 97.5)
+    mae_ci_lower = np.percentile(bootstrap_mae, 2.5)
+    mae_ci_upper = np.percentile(bootstrap_mae, 97.5)
+    
+    # Overfitting check: compare train vs test performance
+    # Reconstruct training predictions from log-returns
+    y_pred_train_log_return = model_trained.predict(X_train_scaled)
+    y_pred_train_price = current_train.values * np.exp(y_pred_train_log_return)
+    
+    r2_train = r2_score(y_orig_train.values, y_pred_train_price)
+    mae_train = mean_absolute_error(y_orig_train.values, y_pred_train_price)
+    overfitting_gap = r2_train - r2
+    
+    # Error distribution analysis
+    from scipy import stats
+    errors = y_orig_test.values - y_pred_final
+    error_mean = np.mean(errors)
+    error_std = np.std(errors)
+    error_skew = stats.skew(errors)
+    error_kurtosis = stats.kurtosis(errors)
+    
+    log(f"\n   📊 Final Metrics ({best_model_name}):")
+    log(f"      ✅ Test R²: {r2:.4f} (95% CI: [{r2_ci_lower:.4f}, {r2_ci_upper:.4f}])")
+    log(f"      ✅ Test MAE: {mae:.6f} gwei (95% CI: [{mae_ci_lower:.6f}, {mae_ci_upper:.6f}])")
+    log(f"      ✅ Test RMSE: {rmse:.6f} gwei")
+    log(f"      ✅ Test MAPE: {mape:.2f}%")
+    log(f"      ✅ Directional Accuracy: {dir_acc*100:.1f}%")
+    log(f"\n   🔍 Overfitting Check:")
+    log(f"      Train R²: {r2_train:.4f}, Test R²: {r2:.4f}")
+    log(f"      Train MAE: {mae_train:.6f}, Test MAE: {mae:.6f}")
+    log(f"      R² Gap: {overfitting_gap:.4f} {'⚠️ OVERFITTING' if overfitting_gap > 0.2 else '✅ OK'}")
+    log(f"\n   📈 Error Distribution:")
+    log(f"      Mean: {error_mean:.6f}, Std: {error_std:.6f}")
+    log(f"      Skewness: {error_skew:.3f}, Kurtosis: {error_kurtosis:.3f}")
+    
+    # Feature importance from best model (if tree-based)
+    top_features = []
+    feature_importances_dict = {}
+    if hasattr(best_model, 'feature_importances_'):
+            importances = best_model.feature_importances_
+            feature_importances_dict = dict(zip(selected_features, importances))
+            top_features = sorted(feature_importances_dict.items(), key=lambda x: x[1], reverse=True)[:10]
+            log(f"      Top 10 features:")
+            for i, (feat, imp) in enumerate(top_features, 1):
+                log(f"         {i}. {feat}: {imp:.4f}")
+    
+    # REMOVED: Quantile regression and prediction intervals (simplified approach)
+    
+    # Add model versioning - compare with previous version if exists
+    version_info = {'version': 1, 'timestamp': datetime.now().isoformat()}
+    previous_metrics = None
+    
+    try:
+        previous_metrics_path = f'trained_models/metrics_{horizon}.json'
+        if os.path.exists(previous_metrics_path):
+            with open(previous_metrics_path, 'r') as f:
+                previous_metrics = json.load(f)
+            version_info['version'] = previous_metrics.get('version', 0) + 1
+            log(f"   📋 Model version: {version_info['version']} (previous: {previous_metrics.get('version', 0)})")
+            
+            # Compare with previous version
+            prev_test_r2 = previous_metrics.get('test_metrics', {}).get('r2', 0)
+            improvement = r2 - prev_test_r2
+            if improvement > 0.001:
+                log(f"   ✅ Improved: Test R² {prev_test_r2:.4f} → {r2:.4f} (+{improvement:.4f})")
+            elif improvement < -0.001:
+                log(f"   ⚠️  Degraded: Test R² {prev_test_r2:.4f} → {r2:.4f} ({improvement:.4f})")
+            else:
+                log(f"   📊 Similar: Test R² {prev_test_r2:.4f} → {r2:.4f} (change: {improvement:.4f})")
+    except Exception as e:
+        log(f"   ⚠️  Could not load previous metrics: {str(e)}")
+    
+    # Save best model with log-return metadata
+    model_data = {
+        'model': best_model,
+        'model_name': f'{best_model_name}_LogReturn',
+        'version': version_info['version'],
+        'timestamp': version_info['timestamp'],
+        'feature_scaler': scaler,
+        'feature_names': selected_features,
+        'original_feature_count': original_feature_count,
+        'selected_feature_count': len(selected_features),
+        'predicts_log_returns': True,  # CRITICAL: Model predicts log-returns, not absolute prices
+        'target_formula': 'log_return = log(future_price) - log(current_price)',
+        'reconstruction_formula': 'pred_price = current_price * exp(pred_log_return)',
+        'uses_time_series_split': True,  # Using TimeSeriesSplit for validation
+        'metrics': {
+            'mae': float(mae),
+            'mae_val': float(val_mae),
+            'rmse': float(rmse),
+            'rmse_val': float(val_rmse),
+            'r2': float(r2),
+            'r2_val': float(val_r2),
+            'r2_train': float(r2_train),
+            'mape': float(mape),
+            'directional_accuracy': float(dir_acc),
+            'overfitting_gap': float(overfitting_gap),
+            'r2_ci_lower': float(r2_ci_lower),
+            'r2_ci_upper': float(r2_ci_upper),
+            'mae_ci_lower': float(mae_ci_lower),
+            'mae_ci_upper': float(mae_ci_upper),
+            'error_mean': float(error_mean),
+            'error_std': float(error_std),
+            'error_skew': float(error_skew),
+            'error_kurtosis': float(error_kurtosis),
+            'baseline_r2': float(baseline_test_r2),
+            'baseline_mae': float(baseline_test_mae),
+            'r2_improvement_over_baseline': float(test_r2_improvement),
+            'mae_improvement_pct': float(test_mae_improvement_pct)
+        },
+        'trained_at': datetime.now().isoformat(),
+        'training_samples': int(len(X_train)),
+        'validation_samples': int(len(X_val)),
+        'test_samples': int(len(X_test)),
+        'best_model_type': best_model_name
+    }
+    
+    # Add feature importances if available
+    if feature_importances_dict:
+        model_data['feature_importances'] = feature_importances_dict
+    
+    # Save model with version in filename
+    model_path = f'trained_models/model_{horizon}_v{version_info["version"]}.pkl'
+    model_path_latest = f'trained_models/model_{horizon}.pkl'
+    joblib.dump(model_data, model_path)
+    joblib.dump(model_data, model_path_latest)
+    log(f"   💾 Saved best model to {model_path} (also saved as {model_path_latest})")
+    log(f"   ⚠️  NOTE: Model predicts log-returns - use current_price * exp(pred_log_return) to get price")
+    
+    scaler_path = f'trained_models/scaler_{horizon}.pkl'
+    joblib.dump(scaler, scaler_path)
+    
+    # Save training metrics to JSON
+    metrics_path = f'trained_models/metrics_{horizon}.json'
+    metrics_summary = {
+        'horizon': horizon,
+        'timestamp': datetime.now().isoformat(),
+        'best_model': best_model_name,
+        'version': version_info['version'],
+        'previous_version_r2': previous_metrics.get('test_metrics', {}).get('r2', None) if previous_metrics else None,
+        'r2_improvement': float(r2 - previous_metrics['test_metrics']['r2']) if previous_metrics and 'test_metrics' in previous_metrics else None,
+        'predicts_log_returns': True,  # Indicate this model uses log-returns
+        'test_metrics': {
+            'r2': float(r2),
+            'r2_ci_lower': float(r2_ci_lower),
+            'r2_ci_upper': float(r2_ci_upper),
+            'mae': float(mae),
+            'mae_ci_lower': float(mae_ci_lower),
+            'mae_ci_upper': float(mae_ci_upper),
+            'rmse': float(rmse),
+            'mape': float(mape),
+            'directional_accuracy': float(dir_acc)
+        },
+        'train_metrics': {
+            'r2': float(r2_train),
+            'mae': float(mae_train)
+        },
+        'baseline_comparison': {
+            'baseline_r2': float(baseline_test_r2),
+            'baseline_mae': float(baseline_test_mae),
+            'r2_improvement': float(test_r2_improvement),
+            'mae_improvement_pct': float(test_mae_improvement_pct)
+        },
+        'overfitting': {
+            'r2_gap': float(overfitting_gap),
+            'mae_gap': float(mae_train - mae),
+            'status': 'OK' if overfitting_gap < 0.1 else ('MODERATE' if overfitting_gap < 0.2 else 'HIGH')
+        },
+        'error_distribution': {
+            'mean': float(error_mean),
+            'std': float(error_std),
+            'skewness': float(error_skew),
+            'kurtosis': float(error_kurtosis)
+        },
+        'data_info': {
+            'training_samples': int(len(X_train)),
+            'validation_samples': int(len(X_val)),
+            'test_samples': int(len(X_test)),
+            'selected_features': int(len(selected_features)),
+            'original_features': int(original_feature_count)
+        }
+    }
+    
+    with open(metrics_path, 'w') as f:
+        json.dump(metrics_summary, f, indent=2)
+    log(f"   💾 Saved training metrics to {metrics_path}")
+    
+    results[horizon] = model_data['metrics']
+    results[horizon]['best_model'] = best_model_name
+
+log(f"\n{'='*60}")
+log("🎉 TRAINING COMPLETE!")
+log(f"{'='*60}\n")
+
+# Print training summary across all horizons
+if results:
+    log("📊 Training Summary:")
+    for h in ['1h', '4h', '24h']:
+        if h in results:
+            r = results[h]
+            log(f"\n   {h} Horizon:")
+            log(f"      Best Model: {r.get('best_model', 'Unknown')}")
+            log(f"      Test R²: {r.get('r2', 0):.4f}")
+            log(f"      Test MAE: {r.get('mae', 0):.6f} gwei")
+            overfitting_gap = r.get('overfitting_gap', 1)
+            status = '✅' if overfitting_gap < 0.1 else ('⚠️' if overfitting_gap < 0.2 else '❌')
+            log(f"      Overfitting Gap: {overfitting_gap:.4f} {status}")
+    
+    log(f"\n{'='*60}\n")
+
+from sklearn.ensemble import GradientBoostingClassifier
+from sklearn.metrics import classification_report, accuracy_score, f1_score
+from sklearn.calibration import CalibratedClassifierCV
+
+# Try importing XGBoost for spike detection
+try:
+    import xgboost as xgb
+    XGBOOST_AVAILABLE = True
+except ImportError:
+    XGBOOST_AVAILABLE = False
+    log("   ⚠️  XGBoost not available for spike detectors, using GradientBoosting")
+
+# Spike detection thresholds (must match HybridPredictor)
+NORMAL_THRESHOLD = 0.01   # < 0.01 gwei = Normal
+ELEVATED_THRESHOLD = 0.05  # 0.01-0.05 gwei = Elevated
+# > 0.05 gwei = Spike
+
+def create_spike_features(df):
+    """Create enhanced features for spike detection with volatility clustering, acceleration, and regime indicators"""
+    df = df.copy()
+    df = df.sort_values('timestamp')
+    
+    # Time-based features
+    df['hour'] = df['timestamp'].dt.hour
+    df['day_of_week'] = df['timestamp'].dt.dayofweek
+    df['is_weekend'] = (df['day_of_week'] >= 5).astype(int)
+    df['is_business_hours'] = ((df['hour'] >= 9) & (df['hour'] <= 17)).astype(int)
+    
+    # Recent volatility
+    for window in [6, 12, 24, 48]:
+        df[f'volatility_{window}'] = df['gas_price'].rolling(window=window, min_periods=1).std()
+        df[f'range_{window}'] = (
+            df['gas_price'].rolling(window=window, min_periods=1).max() -
+            df['gas_price'].rolling(window=window, min_periods=1).min()
+        )
+        df[f'mean_{window}'] = df['gas_price'].rolling(window=window, min_periods=1).mean()
+        df[f'is_rising_{window}'] = (df['gas_price'] > df[f'mean_{window}']).astype(int)
+    
+    # Rate of change
+    for lag in [1, 2, 3, 6, 12]:
+        df[f'pct_change_{lag}'] = df['gas_price'].pct_change(lag).fillna(0)
+        df[f'diff_{lag}'] = df['gas_price'].diff(lag).fillna(0)
+    
+    # Enhanced: Volatility clustering indicators
+    # Volatility clustering: high volatility tends to be followed by high volatility
+    for window in [6, 12, 24]:
+        vol = df['gas_price'].rolling(window=window, min_periods=1).std()
+        vol_lag = vol.shift(1)
+        df[f'volatility_clustering_{window}'] = (vol > vol.quantile(0.75)) & (vol_lag > vol_lag.quantile(0.75))
+        df[f'volatility_clustering_{window}'] = df[f'volatility_clustering_{window}'].astype(int)
+        # Volatility persistence: how long has volatility been high?
+        vol_high = (vol > vol.rolling(window*2, min_periods=1).quantile(0.75)).astype(int)
+        vol_persistence = vol_high.groupby((vol_high != vol_high.shift()).cumsum()).cumsum()
+        df[f'volatility_persistence_{window}'] = vol_persistence
+    
+    # Enhanced: Rate of change acceleration (second derivative)
+    # First derivative (velocity)
+    df['velocity_1'] = df['gas_price'].diff(1)
+    df['velocity_6'] = df['gas_price'].diff(6)
+    df['velocity_12'] = df['gas_price'].diff(12)
+    # Second derivative (acceleration)
+    df['acceleration_1'] = df['velocity_1'].diff(1)
+    df['acceleration_6'] = df['velocity_6'].diff(1)
+    # Acceleration magnitude
+    df['acceleration_magnitude'] = df['acceleration_1'].abs()
+    # Is acceleration increasing?
+    df['acceleration_increasing'] = (df['acceleration_1'] > df['acceleration_1'].shift(1)).astype(int)
+    
+    # Enhanced: Market regime indicators
+    # Quiet vs active periods based on volatility
+    for window in [12, 24, 48]:
+        vol = df['gas_price'].rolling(window=window, min_periods=1).std()
+        vol_median = vol.rolling(window*2, min_periods=1).median()
+        df[f'regime_quiet_{window}'] = (vol < vol_median * 0.5).astype(int)
+        df[f'regime_active_{window}'] = (vol > vol_median * 1.5).astype(int)
+        df[f'regime_extreme_{window}'] = (vol > vol.rolling(window*2, min_periods=1).quantile(0.9)).astype(int)
+    
+    # Regime transition indicators
+    df['regime_transition'] = (
+        (df['regime_quiet_24'] != df['regime_quiet_24'].shift(1)) |
+        (df['regime_active_24'] != df['regime_active_24'].shift(1))
+    ).astype(int)
+    
+    # Cross-horizon features: 4h spike affects 1h predictions
+    for window in [6, 12, 24]:
+        spike_4h = (df['gas_price'].rolling(window=window*4, min_periods=1).max() > ELEVATED_THRESHOLD).astype(int)
+        df[f'spike_4h_indicator_{window}'] = spike_4h
+        spike_24h = (df['gas_price'].rolling(window=window*24, min_periods=1).max() > ELEVATED_THRESHOLD).astype(int)
+        df[f'spike_24h_indicator_{window}'] = spike_24h
+    
+    # Recent spike indicator
+    df['recent_spike'] = (
+        df['gas_price'].rolling(window=24, min_periods=1).max() > ELEVATED_THRESHOLD
+    ).astype(int)
+    
+    # Replace inf/-inf with 0
+    df = df.replace([np.inf, -np.inf], 0).fillna(0)
+    return df
+
+def classify_price(price):
+    """Classify gas price into Normal(0)/Elevated(1)/Spike(2)"""
+    if pd.isna(price):
+        return np.nan
+    if price < NORMAL_THRESHOLD:
+        return 0  # Normal
+    elif price < ELEVATED_THRESHOLD:
+        return 1  # Elevated
+    else:
+        return 2  # Spike
+
+# Create spike features
+log("\n🔍 Creating spike detection features...")
+df_spike = create_spike_features(df)
+
+# Feature names for spike detection (including enhanced features)
+spike_feature_names = [
+    'hour', 'day_of_week', 'is_weekend', 'is_business_hours'
+]
+for window in [6, 12, 24, 48]:
+    spike_feature_names.extend([
+        f'volatility_{window}', f'range_{window}', f'mean_{window}', f'is_rising_{window}'
+    ])
+for lag in [1, 2, 3, 6, 12]:
+    spike_feature_names.extend([f'pct_change_{lag}', f'diff_{lag}'])
+# Enhanced features
+for window in [6, 12, 24]:
+    spike_feature_names.extend([
+        f'volatility_clustering_{window}', f'volatility_persistence_{window}'
+    ])
+spike_feature_names.extend([
+    'velocity_1', 'velocity_6', 'velocity_12',
+    'acceleration_1', 'acceleration_6', 'acceleration_magnitude', 'acceleration_increasing'
+])
+for window in [12, 24, 48]:
+    spike_feature_names.extend([
+        f'regime_quiet_{window}', f'regime_active_{window}', f'regime_extreme_{window}'
+    ])
+spike_feature_names.extend(['regime_transition'])
+for window in [6, 12, 24]:
+    spike_feature_names.extend([
+        f'spike_4h_indicator_{window}', f'spike_24h_indicator_{window}'
+    ])
+spike_feature_names.append('recent_spike')
+
+# Ensure all features exist
+spike_feature_names = [f for f in spike_feature_names if f in df_spike.columns]
+X_spike = df_spike[spike_feature_names]
+
+log(f"   Spike features: {len(spike_feature_names)}")
+log(f"   Samples: {len(X_spike):,}")
+
+# Create spike detection targets
+spike_targets = {}
+for horizon, hours in [('1h', 1), ('4h', 4), ('24h', 24)]:
+    steps = hours * steps_per_hour
+    future_price = df_spike['gas_price'].shift(-steps)
+    spike_targets[horizon] = future_price.apply(classify_price)
+
+spike_results = {}
+
+# Train spike detectors for each horizon
+for horizon in ['1h', '4h', '24h']:
+    log(f"\n{'='*60}")
+    log(f"🎯 Training Spike Detector for {horizon}")
+    log(f"{'='*60}")
+    
+    y_spike = spike_targets[horizon]
+    
+    # Remove NaN targets
+    valid_idx = ~y_spike.isna()
+    X_clean = X_spike[valid_idx]
+    y_clean = y_spike[valid_idx].astype(int)
+    
+    log(f"   Valid samples: {len(X_clean):,}")
+    
+    if len(X_clean) < 100:
+        log(f"   ⚠️  Skipping {horizon} - insufficient data ({len(X_clean)} samples, need at least 100)")
+        continue
+    
+    # Class distribution
+    class_counts = y_clean.value_counts().sort_index()
+    class_names = ['Normal', 'Elevated', 'Spike']
+    log(f"   Class Distribution:")
+    for cls, count in class_counts.items():
+        pct = count / len(y_clean) * 100
+        log(f"      {class_names[cls]}: {count:,} ({pct:.1f}%)")
+    
+    # Train/val/test split (60/20/20, temporal)
+    n_total = len(X_clean)
+    train_end = int(n_total * 0.6)
+    val_end = int(n_total * 0.8)
+    
+    X_train_spike = X_clean.iloc[:train_end]
+    X_val_spike = X_clean.iloc[train_end:val_end]
+    X_test_spike = X_clean.iloc[val_end:]
+    y_train_spike = y_clean.iloc[:train_end]
+    y_val_spike = y_clean.iloc[train_end:val_end]
+    y_test_spike = y_clean.iloc[val_end:]
+    
+    log(f"   Train: {len(X_train_spike):,}, Val: {len(X_val_spike):,}, Test: {len(X_test_spike):,}")
+    
+    # Calculate class weights for balancing
+    from sklearn.utils.class_weight import compute_class_weight
+    class_weights = compute_class_weight('balanced', classes=np.unique(y_train_spike), y=y_train_spike)
+    class_weight_dict = dict(zip(np.unique(y_train_spike), class_weights))
+    log(f"   Class weights: {class_weight_dict}")
+    
+    # Train XGBoost or GradientBoosting classifier with class balancing
+    if XGBOOST_AVAILABLE:
+        log(f"   Training XGBoost classifier with class balancing...")
+        model_spike = xgb.XGBClassifier(
+            n_estimators=200,
+            max_depth=5,
+            min_child_weight=3,
+            learning_rate=0.1,
+            subsample=0.8,
+            colsample_bytree=0.8,
+            scale_pos_weight=1,  # Will use sample_weight instead
+            random_state=42,
+            eval_metric='mlogloss',
+            use_label_encoder=False
+        )
+        # Use sample weights for class balancing
+        sample_weights = np.array([class_weight_dict[y] for y in y_train_spike])
+        model_spike.fit(X_train_spike, y_train_spike, sample_weight=sample_weights)
+    else:
+        log(f"   Training GradientBoosting classifier with class balancing...")
+        model_spike = GradientBoostingClassifier(
+            n_estimators=200,
+            max_depth=5,
+            min_samples_split=10,
+            min_samples_leaf=5,
+            learning_rate=0.1,
+            random_state=42,
+            verbose=0
+        )
+        # Use sample weights for class balancing
+        sample_weights = np.array([class_weight_dict[y] for y in y_train_spike])
+        model_spike.fit(X_train_spike, y_train_spike, sample_weight=sample_weights)
+    
+    # Calibrate the classifier for better probability estimates
+    log(f"   Calibrating classifier for better probability estimates...")
+    calibrated_model = CalibratedClassifierCV(model_spike, method='isotonic', cv=3)
+    calibrated_model.fit(X_train_spike, y_train_spike, sample_weight=sample_weights)
+    
+    # Evaluate on validation and test sets
+    y_pred_val = calibrated_model.predict(X_val_spike)
+    y_pred_test = calibrated_model.predict(X_test_spike)
+    y_proba_val = calibrated_model.predict_proba(X_val_spike)
+    y_proba_test = calibrated_model.predict_proba(X_test_spike)
+    
+    accuracy_val = accuracy_score(y_val_spike, y_pred_val)
+    accuracy_test = accuracy_score(y_test_spike, y_pred_test)
+    f1_val = f1_score(y_val_spike, y_pred_val, average='weighted')
+    f1_test = f1_score(y_test_spike, y_pred_test, average='weighted')
+    
+    log(f"\n   ✅ Model Performance:")
+    log(f"      Val Accuracy: {accuracy_val:.4f} ({accuracy_val*100:.1f}%)")
+    log(f"      Test Accuracy: {accuracy_test:.4f} ({accuracy_test*100:.1f}%)")
+    log(f"      Val F1 Score (weighted): {f1_val:.4f}")
+    log(f"      Test F1 Score (weighted): {f1_test:.4f}")
+    
+    # Classification report on test set
+    report = classification_report(y_test_spike, y_pred_test, target_names=class_names, zero_division=0, output_dict=True)
+    log(f"   Test Set Detailed Report:")
+    for cls_name in class_names:
+        if cls_name.lower() in report:
+            log(f"      {cls_name}: precision={report[cls_name.lower()]['precision']:.3f}, recall={report[cls_name.lower()]['recall']:.3f}, f1={report[cls_name.lower()]['f1-score']:.3f}")
+    
+    # Confusion matrix
+    cm = confusion_matrix(y_test_spike, y_pred_test)
+    log(f"   Confusion Matrix (Test):")
+    log(f"      {cm}")
+    
+    # Class-specific metrics
+    log(f"   Class-specific Performance (Test):")
+    for i, cls_name in enumerate(class_names):
+        if i < len(cm):
+            tp = cm[i, i]
+            fp = cm[:, i].sum() - tp
+            fn = cm[i, :].sum() - tp
+            precision = tp / (tp + fp) if (tp + fp) > 0 else 0
+            recall = tp / (tp + fn) if (tp + fn) > 0 else 0
+            log(f"      {cls_name}: Precision={precision:.3f}, Recall={recall:.3f}")
+    
+    # Save spike detector with enhanced metrics
+    spike_detector_data = {
+        'model': calibrated_model,  # Save calibrated model
+        'base_model': model_spike,  # Also save base model for reference
+        'feature_names': spike_feature_names,
+        'metrics': {
+            'accuracy_val': accuracy_val,
+            'accuracy_test': accuracy_test,
+            'f1_score_val': f1_val,
+            'f1_score_test': f1_test,
+            'confusion_matrix': cm.tolist()
+        },
+        'class_distribution': class_counts.to_dict(),
+        'class_weights': class_weight_dict,
+        'is_calibrated': True,
+        'model_type': 'XGBoost' if XGBOOST_AVAILABLE else 'GradientBoosting',
+        'trained_at': datetime.now().isoformat()
+    }
+    
+    spike_path = f'trained_models/spike_detector_{horizon}.pkl'
+    joblib.dump(spike_detector_data, spike_path)
+    log(f"   💾 Saved calibrated spike detector to {spike_path}")
+    
+    spike_results[horizon] = {
+        'accuracy_val': accuracy_val,
+        'accuracy_test': accuracy_test,
+        'f1_score_val': f1_val,
+        'f1_score_test': f1_test
+    }
+
+log(f"\n{'='*60}")
+log("✅ Spike Detector Training Complete!")
+log(f"{'='*60}")
+
+log(f"\n{'='*60}")
+log("🎉 TRAINING COMPLETE!")
+log(f"{'='*60}\n")
+
+# Print training summary across all horizons
+if results:
+    log("📊 Training Summary:")
+    for h in ['1h', '4h', '24h']:
+        if h in results:
+            r = results[h]
+            log(f"\n   {h} Horizon:")
+            log(f"      Best Model: {r.get('best_model', 'Unknown')}")
+            log(f"      Test R²: {r.get('r2', 0):.4f}")
+            log(f"      Test MAE: {r.get('mae', 0):.6f} gwei")
+            overfitting_gap = r.get('overfitting_gap', 1)
+            status = '✅' if overfitting_gap < 0.1 else ('⚠️' if overfitting_gap < 0.2 else '❌')
+            log(f"      Overfitting Gap: {overfitting_gap:.4f} {status}")
+    
+    log(f"\n{'='*60}\n")
+
+log(f"\n{'='*60}")
+log("🎉 TRAINING COMPLETE!")
+log(f"{'='*60}\n")
+
+# Print training summary across all horizons
+if results:
+    log("📊 Training Summary:")
+    for h in ['1h', '4h', '24h']:
+        if h in results:
+            r = results[h]
+            log(f"\n   {h} Horizon:")
+            log(f"      Best Model: {r.get('best_model', 'Unknown')}")
+            log(f"      Test R²: {r.get('r2', 0):.4f}")
+            log(f"      Test MAE: {r.get('mae', 0):.6f} gwei")
+            overfitting_gap = r.get('overfitting_gap', 1)
+            status = '✅' if overfitting_gap < 0.1 else ('⚠️' if overfitting_gap < 0.2 else '❌')
+            log(f"      Overfitting Gap: {overfitting_gap:.4f} {status}")
+    
+    log(f"\n{'='*60}\n")
+
+from sklearn.ensemble import GradientBoostingClassifier
+from sklearn.metrics import classification_report, accuracy_score, f1_score
+from sklearn.calibration import CalibratedClassifierCV
+
+# Try importing XGBoost for spike detection
+try:
+    import xgboost as xgb
+    XGBOOST_AVAILABLE = True
+except ImportError:
+    XGBOOST_AVAILABLE = False
+    log("   ⚠️  XGBoost not available for spike detectors, using GradientBoosting")
+
+# Spike detection continues here...
+
+# Spike detection thresholds (must match HybridPredictor)
+NORMAL_THRESHOLD = 0.01   # < 0.01 gwei = Normal
+ELEVATED_THRESHOLD = 0.05  # 0.01-0.05 gwei = Elevated
+# > 0.05 gwei = Spike
+
+def create_spike_features(df):
+    """Create enhanced features for spike detection with volatility clustering, acceleration, and regime indicators"""
+    df = df.copy()
+    df = df.sort_values('timestamp')
+    
+    # Time-based features
+    df['hour'] = df['timestamp'].dt.hour
+    df['day_of_week'] = df['timestamp'].dt.dayofweek
+    df['is_weekend'] = (df['day_of_week'] >= 5).astype(int)
+    df['is_business_hours'] = ((df['hour'] >= 9) & (df['hour'] <= 17)).astype(int)
+    
+    # Recent volatility
+    for window in [6, 12, 24, 48]:
+        df[f'volatility_{window}'] = df['gas_price'].rolling(window=window, min_periods=1).std()
+        df[f'range_{window}'] = (
+            df['gas_price'].rolling(window=window, min_periods=1).max() -
+            df['gas_price'].rolling(window=window, min_periods=1).min()
+        )
+        df[f'mean_{window}'] = df['gas_price'].rolling(window=window, min_periods=1).mean()
+        df[f'is_rising_{window}'] = (df['gas_price'] > df[f'mean_{window}']).astype(int)
+    
+    # Rate of change
+    for lag in [1, 2, 3, 6, 12]:
+        df[f'pct_change_{lag}'] = df['gas_price'].pct_change(lag).fillna(0)
+        df[f'diff_{lag}'] = df['gas_price'].diff(lag).fillna(0)
+    
+    # Enhanced: Volatility clustering indicators
+    # Volatility clustering: high volatility tends to be followed by high volatility
+    for window in [6, 12, 24]:
+        vol = df['gas_price'].rolling(window=window, min_periods=1).std()
+        vol_lag = vol.shift(1)
+        df[f'volatility_clustering_{window}'] = (vol > vol.quantile(0.75)) & (vol_lag > vol_lag.quantile(0.75))
+        df[f'volatility_clustering_{window}'] = df[f'volatility_clustering_{window}'].astype(int)
+        # Volatility persistence: how long has volatility been high?
+        vol_high = (vol > vol.rolling(window*2, min_periods=1).quantile(0.75)).astype(int)
+        vol_persistence = vol_high.groupby((vol_high != vol_high.shift()).cumsum()).cumsum()
+        df[f'volatility_persistence_{window}'] = vol_persistence
+    
+    # Enhanced: Rate of change acceleration (second derivative)
+    # First derivative (velocity)
+    df['velocity_1'] = df['gas_price'].diff(1)
+    df['velocity_6'] = df['gas_price'].diff(6)
+    df['velocity_12'] = df['gas_price'].diff(12)
+    # Second derivative (acceleration)
+    df['acceleration_1'] = df['velocity_1'].diff(1)
+    df['acceleration_6'] = df['velocity_6'].diff(1)
+    # Acceleration magnitude
+    df['acceleration_magnitude'] = df['acceleration_1'].abs()
+    # Is acceleration increasing?
+    df['acceleration_increasing'] = (df['acceleration_1'] > df['acceleration_1'].shift(1)).astype(int)
+    
+    # Enhanced: Market regime indicators
+    # Quiet vs active periods based on volatility
+    for window in [12, 24, 48]:
+        vol = df['gas_price'].rolling(window=window, min_periods=1).std()
+        vol_median = vol.rolling(window*2, min_periods=1).median()
+        df[f'regime_quiet_{window}'] = (vol < vol_median * 0.5).astype(int)
+        df[f'regime_active_{window}'] = (vol > vol_median * 1.5).astype(int)
+        df[f'regime_extreme_{window}'] = (vol > vol.rolling(window*2, min_periods=1).quantile(0.9)).astype(int)
+    
+    # Regime transition indicators
+    df['regime_transition'] = (
+        (df['regime_quiet_24'] != df['regime_quiet_24'].shift(1)) |
+        (df['regime_active_24'] != df['regime_active_24'].shift(1))
+    ).astype(int)
+    
+    # Cross-horizon features: 4h spike affects 1h predictions
+    for window in [6, 12, 24]:
+        spike_4h = (df['gas_price'].rolling(window=window*4, min_periods=1).max() > ELEVATED_THRESHOLD).astype(int)
+        df[f'spike_4h_indicator_{window}'] = spike_4h
+        spike_24h = (df['gas_price'].rolling(window=window*24, min_periods=1).max() > ELEVATED_THRESHOLD).astype(int)
+        df[f'spike_24h_indicator_{window}'] = spike_24h
+    
+    # Recent spike indicator
+    df['recent_spike'] = (
+        df['gas_price'].rolling(window=24, min_periods=1).max() > ELEVATED_THRESHOLD
+    ).astype(int)
+    
+    # Replace inf/-inf with 0
+    df = df.replace([np.inf, -np.inf], 0).fillna(0)
+    return df
+
+def classify_price(price):
+    """Classify gas price into Normal(0)/Elevated(1)/Spike(2)"""
+    if pd.isna(price):
+        return np.nan
+    if price < NORMAL_THRESHOLD:
+        return 0  # Normal
+    elif price < ELEVATED_THRESHOLD:
+        return 1  # Elevated
+    else:
+        return 2  # Spike
+
+# Create spike features
+log("\n🔍 Creating spike detection features...")
+df_spike = create_spike_features(df)
+
+# Feature names for spike detection (including enhanced features)
+spike_feature_names = [
+    'hour', 'day_of_week', 'is_weekend', 'is_business_hours'
+]
+for window in [6, 12, 24, 48]:
+    spike_feature_names.extend([
+        f'volatility_{window}', f'range_{window}', f'mean_{window}', f'is_rising_{window}'
+    ])
+for lag in [1, 2, 3, 6, 12]:
+    spike_feature_names.extend([f'pct_change_{lag}', f'diff_{lag}'])
+# Enhanced features
+for window in [6, 12, 24]:
+    spike_feature_names.extend([
+        f'volatility_clustering_{window}', f'volatility_persistence_{window}'
+    ])
+spike_feature_names.extend([
+    'velocity_1', 'velocity_6', 'velocity_12',
+    'acceleration_1', 'acceleration_6', 'acceleration_magnitude', 'acceleration_increasing'
+])
+for window in [12, 24, 48]:
+    spike_feature_names.extend([
+        f'regime_quiet_{window}', f'regime_active_{window}', f'regime_extreme_{window}'
+    ])
+spike_feature_names.extend(['regime_transition'])
+for window in [6, 12, 24]:
+    spike_feature_names.extend([
+        f'spike_4h_indicator_{window}', f'spike_24h_indicator_{window}'
+    ])
+spike_feature_names.append('recent_spike')
+
+# Ensure all features exist
+spike_feature_names = [f for f in spike_feature_names if f in df_spike.columns]
+X_spike = df_spike[spike_feature_names]
+
+log(f"   Spike features: {len(spike_feature_names)}")
+log(f"   Samples: {len(X_spike):,}")
+
+# Create spike detection targets
+spike_targets = {}
+for horizon, hours in [('1h', 1), ('4h', 4), ('24h', 24)]:
+    steps = hours * steps_per_hour
+    future_price = df_spike['gas_price'].shift(-steps)
+    spike_targets[horizon] = future_price.apply(classify_price)
+
+spike_results = {}
+
+# Train spike detectors for each horizon
+for horizon in ['1h', '4h', '24h']:
+    log(f"\n{'='*60}")
+    log(f"🎯 Training Spike Detector for {horizon}")
+    log(f"{'='*60}")
+    
+    y_spike = spike_targets[horizon]
+    
+    # Remove NaN targets
+    valid_idx = ~y_spike.isna()
+    X_clean = X_spike[valid_idx]
+    y_clean = y_spike[valid_idx].astype(int)
+    
+    log(f"   Valid samples: {len(X_clean):,}")
+    
+    if len(X_clean) < 100:
+        log(f"   ⚠️  Skipping {horizon} - insufficient data ({len(X_clean)} samples, need at least 100)")
+        continue
+    
+    # Class distribution
+    class_counts = y_clean.value_counts().sort_index()
+    class_names = ['Normal', 'Elevated', 'Spike']
+    log(f"   Class Distribution:")
+    for cls, count in class_counts.items():
+        pct = count / len(y_clean) * 100
+        log(f"      {class_names[cls]}: {count:,} ({pct:.1f}%)")
+    
+    # Train/val/test split (60/20/20, temporal)
+    n_total = len(X_clean)
+    train_end = int(n_total * 0.6)
+    val_end = int(n_total * 0.8)
+    
+    X_train_spike = X_clean.iloc[:train_end]
+    X_val_spike = X_clean.iloc[train_end:val_end]
+    X_test_spike = X_clean.iloc[val_end:]
+    y_train_spike = y_clean.iloc[:train_end]
+    y_val_spike = y_clean.iloc[train_end:val_end]
+    y_test_spike = y_clean.iloc[val_end:]
+    
+    log(f"   Train: {len(X_train_spike):,}, Val: {len(X_val_spike):,}, Test: {len(X_test_spike):,}")
+    
+    # Calculate class weights for balancing
+    from sklearn.utils.class_weight import compute_class_weight
+    class_weights = compute_class_weight('balanced', classes=np.unique(y_train_spike), y=y_train_spike)
+    class_weight_dict = dict(zip(np.unique(y_train_spike), class_weights))
+    log(f"   Class weights: {class_weight_dict}")
+    
+    # Train XGBoost or GradientBoosting classifier with class balancing
+    if XGBOOST_AVAILABLE:
+        log(f"   Training XGBoost classifier with class balancing...")
+        model_spike = xgb.XGBClassifier(
+            n_estimators=200,
+            max_depth=5,
+            min_child_weight=3,
+            learning_rate=0.1,
+            subsample=0.8,
+            colsample_bytree=0.8,
+            scale_pos_weight=1,  # Will use sample_weight instead
+            random_state=42,
+            eval_metric='mlogloss',
+            use_label_encoder=False
+        )
+        # Use sample weights for class balancing
+        sample_weights = np.array([class_weight_dict[y] for y in y_train_spike])
+        model_spike.fit(X_train_spike, y_train_spike, sample_weight=sample_weights)
+    else:
+        log(f"   Training GradientBoosting classifier with class balancing...")
+        model_spike = GradientBoostingClassifier(
+            n_estimators=200,
+            max_depth=5,
+            min_samples_split=10,
+            min_samples_leaf=5,
+            learning_rate=0.1,
+            random_state=42,
+            verbose=0
+        )
+        # Use sample weights for class balancing
+        sample_weights = np.array([class_weight_dict[y] for y in y_train_spike])
+        model_spike.fit(X_train_spike, y_train_spike, sample_weight=sample_weights)
+    
+    # Calibrate the classifier for better probability estimates
+    log(f"   Calibrating classifier for better probability estimates...")
+    calibrated_model = CalibratedClassifierCV(model_spike, method='isotonic', cv=3)
+    calibrated_model.fit(X_train_spike, y_train_spike, sample_weight=sample_weights)
+    
+    # Evaluate on validation and test sets
+    y_pred_val = calibrated_model.predict(X_val_spike)
+    y_pred_test = calibrated_model.predict(X_test_spike)
+    y_proba_val = calibrated_model.predict_proba(X_val_spike)
+    y_proba_test = calibrated_model.predict_proba(X_test_spike)
+    
+    accuracy_val = accuracy_score(y_val_spike, y_pred_val)
+    accuracy_test = accuracy_score(y_test_spike, y_pred_test)
+    f1_val = f1_score(y_val_spike, y_pred_val, average='weighted')
+    f1_test = f1_score(y_test_spike, y_pred_test, average='weighted')
+    
+    log(f"\n   ✅ Model Performance:")
+    log(f"      Val Accuracy: {accuracy_val:.4f} ({accuracy_val*100:.1f}%)")
+    log(f"      Test Accuracy: {accuracy_test:.4f} ({accuracy_test*100:.1f}%)")
+    log(f"      Val F1 Score (weighted): {f1_val:.4f}")
+    log(f"      Test F1 Score (weighted): {f1_test:.4f}")
+    
+    # Classification report on test set
+    report = classification_report(y_test_spike, y_pred_test, target_names=class_names, zero_division=0, output_dict=True)
+    log(f"   Test Set Detailed Report:")
+    for cls_name in class_names:
+        if cls_name.lower() in report:
+            log(f"      {cls_name}: precision={report[cls_name.lower()]['precision']:.3f}, recall={report[cls_name.lower()]['recall']:.3f}, f1={report[cls_name.lower()]['f1-score']:.3f}")
+    
+    # Confusion matrix
+    cm = confusion_matrix(y_test_spike, y_pred_test)
+    log(f"   Confusion Matrix (Test):")
+    log(f"      {cm}")
+    
+    # Class-specific metrics
+    log(f"   Class-specific Performance (Test):")
+    for i, cls_name in enumerate(class_names):
+        if i < len(cm):
+            tp = cm[i, i]
+            fp = cm[:, i].sum() - tp
+            fn = cm[i, :].sum() - tp
+            precision = tp / (tp + fp) if (tp + fp) > 0 else 0
+            recall = tp / (tp + fn) if (tp + fn) > 0 else 0
+            log(f"      {cls_name}: Precision={precision:.3f}, Recall={recall:.3f}")
+    
+    # Save spike detector with enhanced metrics
+    spike_detector_data = {
+        'model': calibrated_model,  # Save calibrated model
+        'base_model': model_spike,  # Also save base model for reference
+        'feature_names': spike_feature_names,
+        'metrics': {
+            'accuracy_val': accuracy_val,
+            'accuracy_test': accuracy_test,
+            'f1_score_val': f1_val,
+            'f1_score_test': f1_test,
+            'confusion_matrix': cm.tolist()
+        },
+        'class_distribution': class_counts.to_dict(),
+        'class_weights': class_weight_dict,
+        'is_calibrated': True,
+        'model_type': 'XGBoost' if XGBOOST_AVAILABLE else 'GradientBoosting',
+        'trained_at': datetime.now().isoformat()
+    }
+    
+    spike_path = f'trained_models/spike_detector_{horizon}.pkl'
+    joblib.dump(spike_detector_data, spike_path)
+    log(f"   💾 Saved calibrated spike detector to {spike_path}")
+    
+    spike_results[horizon] = {
+        'accuracy_val': accuracy_val,
+        'accuracy_test': accuracy_test,
+        'f1_score_val': f1_val,
+        'f1_score_test': f1_test
+    }
+
+log(f"\n{'='*60}")
+log("✅ Spike Detector Training Complete!")
+log(f"{'='*60}")
