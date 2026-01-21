@@ -1432,9 +1432,9 @@ for horizon in ['1h', '4h', '24h']:
             eval_metric='mlogloss',
             use_label_encoder=False
         )
-        # Use sample weights for class balancing
-        sample_weights = np.array([class_weight_dict[y] for y in y_train_spike])
-        model_spike.fit(X_train_spike, y_train_spike, sample_weight=sample_weights)
+        # Use sample weights for class balancing (use remapped classes)
+        sample_weights = np.array([class_weight_dict_remapped[y] for y in y_train_spike_remapped])
+        model_spike.fit(X_train_spike, y_train_spike_remapped, sample_weight=sample_weights)
     else:
         log(f"   Training GradientBoosting classifier with class balancing...")
         model_spike = GradientBoostingClassifier(
