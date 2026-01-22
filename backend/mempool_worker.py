@@ -21,11 +21,19 @@ import logging
 from datetime import datetime
 from typing import Optional
 import os
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 logger = logging.getLogger(__name__)
 
-# Alchemy WebSocket URL (hardcoded as requested)
-ALCHEMY_WS_URL = "wss://base-mainnet.g.alchemy.com/v2/Rt-_YiDduM0YxHOSJJ_Yg"
+# Alchemy WebSocket URL - loaded from environment variable
+ALCHEMY_WS_URL = os.getenv("BASE_RPC_WSS")
+
+# Safety check: ensure the environment variable is set
+if not ALCHEMY_WS_URL:
+    raise ValueError("❌ Error: BASE_RPC_WSS is not set. Please check your .env file.")
 
 # Database path - prefer root gas_data.db, fallback to backend/gas_data.db
 DB_PATH = 'gas_data.db'
