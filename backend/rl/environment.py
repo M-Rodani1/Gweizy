@@ -111,13 +111,22 @@ class GasOptimizationEnv:
             }
             deadline_penalty = 0.0
         
+        # Get current volatility for reward shaping
+        current_volatility = 0.0
+        if self._current_step > 0:
+            price_history = [d['gas_price'] for d in self._episode_data[max(0, self._current_step-6):self._current_step+1]]
+            if len(price_history) >= 2:
+                current_volatility = np.std(price_history) / (np.mean(price_history) + 1e-8)
+                current_volatility = min(current_volatility, 1.0)  # Cap at 1.0
+        
         # Calculate reward using relative savings (benchmark_price - execution_price)
         reward = self.reward_calculator.calculate_reward(
             action=action,
             current_price=current_price,
             urgency=self._urgency,
             time_waiting=self._time_waiting,
-            done=False
+            done=False,
+            volatility=current_volatility
         )
         
         # Apply deadline penalty if forced execution
@@ -138,7 +147,8 @@ class GasOptimizationEnv:
                 self._done = True
                 # Force execution with penalty
                 final_price = self._episode_data[-1]['gas_price']
-                reward += self.reward_calculator.calculate_reward(1, final_price, self._urgency, self._time_waiting, done=True)
+                final_volatility = current_volatility  # Use current volatility
+                reward += self.reward_calculator.calculate_reward(1, final_price, self._urgency, self._time_waiting, done=True, volatility=final_volatility)
                 reward += -100.0  # Deadline penalty
                 info['forced_execution'] = True
                 info['execution_price'] = final_price

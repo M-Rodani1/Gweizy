@@ -1,5 +1,6 @@
 """
 Deep Q-Network (DQN) agent for gas price optimization.
+Enhanced with Prioritized Experience Replay, Double DQN, and Dueling Architecture.
 """
 import numpy as np
 import pickle
@@ -9,17 +10,148 @@ from collections import deque
 import random
 
 
+class SumTree:
+    """SumTree for efficient prioritized experience replay sampling."""
+    
+    def __init__(self, capacity: int):
+        self.capacity = capacity
+        self.tree = np.zeros(2 * capacity - 1)
+        self.data = np.zeros(capacity, dtype=object)
+        self.write = 0
+        self.n_entries = 0
+    
+    def _propagate(self, idx: int, change: float):
+        """Update tree nodes from leaf to root."""
+        parent = (idx - 1) // 2
+        self.tree[parent] += change
+        if parent != 0:
+            self._propagate(parent, change)
+    
+    def _retrieve(self, idx: int, s: float) -> int:
+        """Find leaf node with given sum."""
+        left = 2 * idx + 1
+        right = left + 1
+        
+        if left >= len(self.tree):
+            return idx
+        
+        if s <= self.tree[left]:
+            return self._retrieve(left, s)
+        else:
+            return self._retrieve(right, s - self.tree[left])
+    
+    def total(self) -> float:
+        """Get total priority sum."""
+        return self.tree[0]
+    
+    def add(self, priority: float, data: Tuple):
+        """Add data with priority."""
+        idx = self.write + self.capacity - 1
+        self.data[self.write] = data
+        self.update(idx, priority)
+        self.write += 1
+        if self.write >= self.capacity:
+            self.write = 0
+        if self.n_entries < self.capacity:
+            self.n_entries += 1
+    
+    def update(self, idx: int, priority: float):
+        """Update priority at index."""
+        change = priority - self.tree[idx]
+        self.tree[idx] = priority
+        self._propagate(idx, change)
+    
+    def get(self, s: float) -> Tuple[int, Tuple, float]:
+        """Get sample with given sum value."""
+        idx = self._retrieve(0, s)
+        data_idx = idx - self.capacity + 1
+        return idx, self.data[data_idx], self.tree[idx]
+
+
+class PrioritizedReplayBuffer:
+    """Prioritized Experience Replay buffer using SumTree."""
+    
+    def __init__(self, capacity: int = 10000, alpha: float = 0.6, beta: float = 0.4, beta_increment: float = 0.001):
+        """
+        Args:
+            capacity: Maximum buffer size
+            alpha: Priority exponent (0 = uniform, 1 = full prioritization)
+            beta: Importance sampling exponent (starts at beta, goes to 1.0)
+            beta_increment: How much to increment beta per sample
+        """
+        self.tree = SumTree(capacity)
+        self.capacity = capacity
+        self.alpha = alpha
+        self.beta = beta
+        self.beta_increment = beta_increment
+        self.max_priority = 1.0
+        self.min_priority = 1e-6
+    
+    def push(self, state, action, reward, next_state, done, td_error: float = None):
+        """Add transition with priority based on TD error."""
+        if td_error is None:
+            priority = self.max_priority
+        else:
+            priority = (abs(td_error) + self.min_priority) ** self.alpha
+        
+        self.tree.add(priority, (state, action, reward, next_state, done))
+        self.max_priority = max(self.max_priority, priority)
+    
+    def sample(self, batch_size: int) -> Tuple[List[Tuple], np.ndarray, np.ndarray]:
+        """
+        Sample batch with priorities.
+        Returns: (batch, indices, importance_weights)
+        """
+        batch = []
+        indices = []
+        priorities = []
+        segment = self.tree.total() / batch_size
+        
+        self.beta = min(1.0, self.beta + self.beta_increment)
+        
+        for i in range(batch_size):
+            a = segment * i
+            b = segment * (i + 1)
+            s = random.uniform(a, b)
+            idx, data, priority = self.tree.get(s)
+            batch.append(data)
+            indices.append(idx)
+            priorities.append(priority)
+        
+        # Calculate importance sampling weights
+        sampling_probabilities = np.array(priorities) / self.tree.total()
+        is_weights = np.power(self.tree.n_entries * sampling_probabilities, -self.beta)
+        is_weights /= is_weights.max()  # Normalize
+        
+        return batch, np.array(indices), is_weights
+    
+    def update_priorities(self, indices: np.ndarray, td_errors: np.ndarray):
+        """Update priorities for sampled transitions."""
+        for idx, td_error in zip(indices, td_errors):
+            priority = (abs(td_error) + self.min_priority) ** self.alpha
+            self.tree.update(idx, priority)
+            self.max_priority = max(self.max_priority, priority)
+    
+    def __len__(self):
+        return self.tree.n_entries
+
+
 class ReplayBuffer:
-    """Experience replay buffer for DQN training."""
+    """Standard experience replay buffer for DQN training (fallback)."""
     
     def __init__(self, capacity: int = 10000):
         self.buffer = deque(maxlen=capacity)
     
-    def push(self, state, action, reward, next_state, done):
+    def push(self, state, action, reward, next_state, done, td_error: float = None):
         self.buffer.append((state, action, reward, next_state, done))
     
-    def sample(self, batch_size: int) -> List[Tuple]:
-        return random.sample(self.buffer, min(batch_size, len(self.buffer)))
+    def sample(self, batch_size: int) -> Tuple[List[Tuple], np.ndarray, np.ndarray]:
+        batch = random.sample(self.buffer, min(batch_size, len(self.buffer)))
+        # Return dummy indices and weights for compatibility
+        return batch, np.array([]), np.ones(len(batch))
+    
+    def update_priorities(self, indices: np.ndarray, td_errors: np.ndarray):
+        pass  # No-op for standard buffer
     
     def __len__(self):
         return len(self.buffer)
@@ -28,48 +160,128 @@ class ReplayBuffer:
 class QNetwork:
     """Simple neural network for Q-value approximation using numpy."""
     
-    def __init__(self, state_dim: int, action_dim: int, hidden_dims: List[int] = [64, 64]):
+    def __init__(self, state_dim: int, action_dim: int, hidden_dims: List[int] = [64, 64], dueling: bool = False):
         self.state_dim = state_dim
         self.action_dim = action_dim
         self.hidden_dims = hidden_dims
+        self.dueling = dueling
         
         # Initialize weights
         self.weights = []
         self.biases = []
         
-        dims = [state_dim] + hidden_dims + [action_dim]
-        for i in range(len(dims) - 1):
-            # Xavier initialization
-            w = np.random.randn(dims[i], dims[i+1]) * np.sqrt(2.0 / dims[i])
-            b = np.zeros(dims[i+1])
-            self.weights.append(w)
-            self.biases.append(b)
+        if dueling:
+            # Dueling architecture: shared layers + value stream + advantage stream
+            # Shared layers
+            dims_shared = [state_dim] + hidden_dims[:-1]  # All but last hidden layer
+            for i in range(len(dims_shared) - 1):
+                w = np.random.randn(dims_shared[i], dims_shared[i+1]) * np.sqrt(2.0 / dims_shared[i])
+                b = np.zeros(dims_shared[i+1])
+                self.weights.append(w)
+                self.biases.append(b)
+            
+            # Value stream: state value V(s)
+            last_shared_dim = dims_shared[-1] if dims_shared else state_dim
+            self.value_weights = []
+            self.value_biases = []
+            value_dims = [last_shared_dim] + [hidden_dims[-1] if hidden_dims else 64] + [1]
+            for i in range(len(value_dims) - 1):
+                w = np.random.randn(value_dims[i], value_dims[i+1]) * np.sqrt(2.0 / value_dims[i])
+                b = np.zeros(value_dims[i+1])
+                self.value_weights.append(w)
+                self.value_biases.append(b)
+            
+            # Advantage stream: action advantage A(s, a)
+            self.advantage_weights = []
+            self.advantage_biases = []
+            advantage_dims = [last_shared_dim] + [hidden_dims[-1] if hidden_dims else 64] + [action_dim]
+            for i in range(len(advantage_dims) - 1):
+                w = np.random.randn(advantage_dims[i], advantage_dims[i+1]) * np.sqrt(2.0 / advantage_dims[i])
+                b = np.zeros(advantage_dims[i+1])
+                self.advantage_weights.append(w)
+                self.advantage_biases.append(b)
+        else:
+            # Standard architecture
+            dims = [state_dim] + hidden_dims + [action_dim]
+            for i in range(len(dims) - 1):
+                # Xavier initialization
+                w = np.random.randn(dims[i], dims[i+1]) * np.sqrt(2.0 / dims[i])
+                b = np.zeros(dims[i+1])
+                self.weights.append(w)
+                self.biases.append(b)
     
     def forward(self, x: np.ndarray) -> np.ndarray:
         """Forward pass through network."""
         if x.ndim == 1:
             x = x.reshape(1, -1)
         
-        for i in range(len(self.weights) - 1):
-            x = np.dot(x, self.weights[i]) + self.biases[i]
-            x = np.maximum(0, x)  # ReLU
-        
-        # Output layer (no activation)
-        x = np.dot(x, self.weights[-1]) + self.biases[-1]
-        return x
+        if self.dueling:
+            # Shared layers
+            shared = x
+            for i in range(len(self.weights)):
+                shared = np.dot(shared, self.weights[i]) + self.biases[i]
+                shared = np.maximum(0, shared)  # ReLU
+            
+            # Value stream: V(s)
+            value = shared
+            for i in range(len(self.value_weights) - 1):
+                value = np.dot(value, self.value_weights[i]) + self.value_biases[i]
+                value = np.maximum(0, value)  # ReLU
+            value = np.dot(value, self.value_weights[-1]) + self.value_biases[-1]
+            
+            # Advantage stream: A(s, a)
+            advantage = shared
+            for i in range(len(self.advantage_weights) - 1):
+                advantage = np.dot(advantage, self.advantage_weights[i]) + self.advantage_biases[i]
+                advantage = np.maximum(0, advantage)  # ReLU
+            advantage = np.dot(advantage, self.advantage_weights[-1]) + self.advantage_biases[-1]
+            
+            # Combine: Q(s, a) = V(s) + (A(s, a) - mean(A(s, a)))
+            # This ensures identifiability and stability
+            q_values = value + (advantage - np.mean(advantage, axis=-1, keepdims=True))
+            return q_values
+        else:
+            # Standard forward pass
+            for i in range(len(self.weights) - 1):
+                x = np.dot(x, self.weights[i]) + self.biases[i]
+                x = np.maximum(0, x)  # ReLU
+            
+            # Output layer (no activation)
+            x = np.dot(x, self.weights[-1]) + self.biases[-1]
+            return x
     
     def copy_from(self, other: 'QNetwork'):
         """Copy weights from another network."""
-        for i in range(len(self.weights)):
-            self.weights[i] = other.weights[i].copy()
-            self.biases[i] = other.biases[i].copy()
+        if self.dueling and other.dueling:
+            # Copy shared layers
+            for i in range(len(self.weights)):
+                self.weights[i] = other.weights[i].copy()
+                self.biases[i] = other.biases[i].copy()
+            # Copy value stream
+            for i in range(len(self.value_weights)):
+                self.value_weights[i] = other.value_weights[i].copy()
+                self.value_biases[i] = other.value_biases[i].copy()
+            # Copy advantage stream
+            for i in range(len(self.advantage_weights)):
+                self.advantage_weights[i] = other.advantage_weights[i].copy()
+                self.advantage_biases[i] = other.advantage_biases[i].copy()
+        elif not self.dueling and not other.dueling:
+            # Standard copy
+            for i in range(len(self.weights)):
+                self.weights[i] = other.weights[i].copy()
+                self.biases[i] = other.biases[i].copy()
+        else:
+            raise ValueError("Cannot copy between dueling and non-dueling networks")
 
 
 class DQNAgent:
     """
-    DQN Agent for learning optimal gas transaction timing.
+    Enhanced DQN Agent for learning optimal gas transaction timing.
     
-    Uses experience replay and target network for stable learning.
+    Features:
+    - Prioritized Experience Replay (PER)
+    - Double DQN (DDQN) to reduce overestimation bias
+    - Dueling Network Architecture for better value estimation
     """
     
     def __init__(
@@ -87,7 +299,12 @@ class DQNAgent:
         target_update_freq: int = 100,
         lr_decay: float = 0.9995,  # Learning rate decay factor
         lr_min: float = 0.00001,   # Minimum learning rate
-        gradient_clip: float = 10.0  # Gradient clipping threshold
+        gradient_clip: float = 10.0,  # Gradient clipping threshold
+        use_per: bool = True,  # Use Prioritized Experience Replay
+        per_alpha: float = 0.6,  # PER priority exponent
+        per_beta: float = 0.4,  # PER importance sampling exponent
+        use_double_dqn: bool = True,  # Use Double DQN
+        use_dueling: bool = True  # Use Dueling architecture
     ):
         self.state_dim = state_dim
         self.action_dim = action_dim
@@ -102,18 +319,27 @@ class DQNAgent:
         self.batch_size = batch_size
         self.target_update_freq = target_update_freq
         self.gradient_clip = gradient_clip
+        self.use_double_dqn = use_double_dqn
         
-        # Networks
-        self.q_network = QNetwork(state_dim, action_dim, hidden_dims)
-        self.target_network = QNetwork(state_dim, action_dim, hidden_dims)
+        # Networks with optional dueling architecture
+        self.q_network = QNetwork(state_dim, action_dim, hidden_dims, dueling=use_dueling)
+        self.target_network = QNetwork(state_dim, action_dim, hidden_dims, dueling=use_dueling)
         self.target_network.copy_from(self.q_network)
         
-        # Replay buffer
-        self.replay_buffer = ReplayBuffer(buffer_size)
+        # Replay buffer (PER or standard)
+        if use_per:
+            self.replay_buffer = PrioritizedReplayBuffer(
+                capacity=buffer_size,
+                alpha=per_alpha,
+                beta=per_beta
+            )
+        else:
+            self.replay_buffer = ReplayBuffer(buffer_size)
         
         # Training stats
         self.training_steps = 0
         self.episode_rewards = []
+        self.last_td_errors = None  # Store TD errors for PER priority updates
 
     def select_action(self, state: np.ndarray, training: bool = True) -> int:
         """Select action using epsilon-greedy policy."""
@@ -123,36 +349,63 @@ class DQNAgent:
         q_values = self.q_network.forward(state)
         return int(np.argmax(q_values))
 
-    def store_transition(self, state, action, reward, next_state, done):
-        """Store transition in replay buffer."""
-        self.replay_buffer.push(state, action, reward, next_state, done)
+    def store_transition(self, state, action, reward, next_state, done, td_error: float = None):
+        """Store transition in replay buffer with optional TD error for PER."""
+        self.replay_buffer.push(state, action, reward, next_state, done, td_error=td_error)
 
     def train_step(self) -> Optional[float]:
-        """Perform one training step."""
+        """Perform one training step with Double DQN and PER support."""
         if len(self.replay_buffer) < self.batch_size:
             return None
         
-        # Sample batch
-        batch = self.replay_buffer.sample(self.batch_size)
+        # Sample batch (with priorities and importance weights if using PER)
+        batch, indices, is_weights = self.replay_buffer.sample(self.batch_size)
         states = np.array([t[0] for t in batch])
         actions = np.array([t[1] for t in batch])
         rewards = np.array([t[2] for t in batch])
         next_states = np.array([t[3] for t in batch])
         dones = np.array([t[4] for t in batch])
         
-        # Compute targets
+        # Compute current Q-values
         current_q = self.q_network.forward(states)
-        next_q = self.target_network.forward(next_states)
         
+        # Double DQN: Use online network to select action, target network to evaluate
+        if self.use_double_dqn:
+            # Select best action using online network
+            next_q_online = self.q_network.forward(next_states)
+            next_actions = np.argmax(next_q_online, axis=1)
+            
+            # Evaluate using target network
+            next_q_target = self.target_network.forward(next_states)
+            next_q_values = next_q_target[np.arange(self.batch_size), next_actions]
+        else:
+            # Standard DQN: use target network for both selection and evaluation
+            next_q_target = self.target_network.forward(next_states)
+            next_q_values = np.max(next_q_target, axis=1)
+        
+        # Compute targets
         targets = current_q.copy()
+        td_errors = []
         for i in range(self.batch_size):
             if dones[i]:
-                targets[i, actions[i]] = rewards[i]
+                target = rewards[i]
             else:
-                targets[i, actions[i]] = rewards[i] + self.gamma * np.max(next_q[i])
+                target = rewards[i] + self.gamma * next_q_values[i]
+            targets[i, actions[i]] = target
+            
+            # Calculate TD error for PER priority updates
+            td_error = abs(target - current_q[i, actions[i]])
+            td_errors.append(td_error)
         
-        # Compute gradients and update (simplified SGD)
-        loss = self._update_network(states, targets)
+        # Update priorities in PER buffer
+        if isinstance(self.replay_buffer, PrioritizedReplayBuffer):
+            self.replay_buffer.update_priorities(indices, np.array(td_errors))
+        
+        # Compute gradients and update (with importance sampling weights for PER)
+        loss = self._update_network(states, targets, is_weights=is_weights)
+        
+        # Store TD errors for next transition storage
+        self.last_td_errors = np.array(td_errors)
         
         # Update target network periodically
         self.training_steps += 1
@@ -167,52 +420,169 @@ class DQNAgent:
         
         return loss
 
-    def _update_network(self, states: np.ndarray, targets: np.ndarray) -> float:
-        """Update network weights using gradient descent."""
+    def _update_network(self, states: np.ndarray, targets: np.ndarray, is_weights: np.ndarray = None) -> float:
+        """Update network weights using gradient descent with optional importance sampling weights."""
+        if is_weights is None:
+            is_weights = np.ones(self.batch_size)
+        
         # Forward pass
         activations = [states]
         x = states
         
-        for i in range(len(self.q_network.weights) - 1):
-            z = np.dot(x, self.q_network.weights[i]) + self.q_network.biases[i]
-            x = np.maximum(0, z)  # ReLU
-            activations.append(x)
-        
-        output = np.dot(x, self.q_network.weights[-1]) + self.q_network.biases[-1]
-        
-        # Loss
-        loss = np.mean((output - targets) ** 2)
-        
-        # Backward pass
-        delta = 2 * (output - targets) / self.batch_size
-        
-        for i in range(len(self.q_network.weights) - 1, -1, -1):
-            # Gradient for weights and biases
-            dW = np.dot(activations[i].T, delta)
-            db = np.sum(delta, axis=0)
+        if self.q_network.dueling:
+            # Dueling architecture forward pass
+            # Shared layers
+            for i in range(len(self.q_network.weights)):
+                z = np.dot(x, self.q_network.weights[i]) + self.q_network.biases[i]
+                x = np.maximum(0, z)  # ReLU
+                activations.append(x)
             
-            # Gradient clipping: prevent exploding gradients
-            dW_norm = np.linalg.norm(dW)
-            if dW_norm > self.gradient_clip:
-                dW = dW * (self.gradient_clip / dW_norm)
+            shared = x
             
-            db_norm = np.linalg.norm(db)
-            if db_norm > self.gradient_clip:
-                db = db * (self.gradient_clip / db_norm)
+            # Value stream
+            value = shared
+            value_activations = [shared]
+            for i in range(len(self.q_network.value_weights) - 1):
+                z = np.dot(value, self.q_network.value_weights[i]) + self.q_network.value_biases[i]
+                value = np.maximum(0, z)
+                value_activations.append(value)
+            value = np.dot(value, self.q_network.value_weights[-1]) + self.q_network.value_biases[-1]
             
-            # Update weights
-            self.q_network.weights[i] -= self.learning_rate * dW
-            self.q_network.biases[i] -= self.learning_rate * db
+            # Advantage stream
+            advantage = shared
+            advantage_activations = [shared]
+            for i in range(len(self.q_network.advantage_weights) - 1):
+                z = np.dot(advantage, self.q_network.advantage_weights[i]) + self.q_network.advantage_biases[i]
+                advantage = np.maximum(0, z)
+                advantage_activations.append(advantage)
+            advantage = np.dot(advantage, self.q_network.advantage_weights[-1]) + self.q_network.advantage_biases[-1]
             
-            if i > 0:
-                # Backprop through ReLU
-                delta = np.dot(delta, self.q_network.weights[i].T)
-                delta = delta * (activations[i] > 0)
+            # Combine: Q(s, a) = V(s) + (A(s, a) - mean(A(s, a)))
+            advantage_mean = np.mean(advantage, axis=-1, keepdims=True)
+            output = value + (advantage - advantage_mean)
+            
+            # Loss with importance sampling weights
+            errors = (output - targets) ** 2
+            loss = np.mean(errors * is_weights.reshape(-1, 1))
+            
+            # Backward pass for dueling architecture
+            # Q = V + (A - mean(A)), so:
+            # dQ/dV = 1 (for all actions)
+            # dQ/dA_i = 1 - 1/n (for action i)
+            # dQ/dA_j = -1/n (for other actions j != i)
+            delta = 2 * (output - targets) * is_weights.reshape(-1, 1) / self.batch_size
+            
+            # Backprop through advantage stream
+            # The gradient w.r.t. advantage needs to account for mean subtraction:
+            # For each sample, delta_advantage = delta - mean(delta) across actions
+            # This correctly implements: dL/dA_i = dL/dQ_i * (1 - 1/n) - sum_j(dL/dQ_j * 1/n)
+            # Since we only have non-zero delta for the taken action, this simplifies to:
+            # delta_advantage_i = delta_i * (1 - 1/n) for taken action
+            # delta_advantage_j = delta_i * (-1/n) for other actions
+            delta_advantage = delta - np.mean(delta, axis=1, keepdims=True)
+            for i in range(len(self.q_network.advantage_weights) - 1, -1, -1):
+                dW = np.dot(advantage_activations[i].T, delta_advantage)
+                db = np.sum(delta_advantage, axis=0)
                 
-                # Clip delta to prevent gradient explosion
-                delta_norm = np.linalg.norm(delta)
-                if delta_norm > self.gradient_clip:
-                    delta = delta * (self.gradient_clip / delta_norm)
+                # Gradient clipping
+                dW_norm = np.linalg.norm(dW)
+                if dW_norm > self.gradient_clip:
+                    dW = dW * (self.gradient_clip / dW_norm)
+                db_norm = np.linalg.norm(db)
+                if db_norm > self.gradient_clip:
+                    db = db * (self.gradient_clip / db_norm)
+                
+                self.q_network.advantage_weights[i] -= self.learning_rate * dW
+                self.q_network.advantage_biases[i] -= self.learning_rate * db
+                
+                if i > 0:
+                    delta_advantage = np.dot(delta_advantage, self.q_network.advantage_weights[i].T)
+                    delta_advantage = delta_advantage * (advantage_activations[i] > 0)
+            
+            # Backprop through value stream
+            delta_value = delta
+            for i in range(len(self.q_network.value_weights) - 1, -1, -1):
+                dW = np.dot(value_activations[i].T, delta_value)
+                db = np.sum(delta_value, axis=0)
+                
+                # Gradient clipping
+                dW_norm = np.linalg.norm(dW)
+                if dW_norm > self.gradient_clip:
+                    dW = dW * (self.gradient_clip / dW_norm)
+                db_norm = np.linalg.norm(db)
+                if db_norm > self.gradient_clip:
+                    db = db * (self.gradient_clip / db_norm)
+                
+                self.q_network.value_weights[i] -= self.learning_rate * dW
+                self.q_network.value_biases[i] -= self.learning_rate * db
+                
+                if i > 0:
+                    delta_value = np.dot(delta_value, self.q_network.value_weights[i].T)
+                    delta_value = delta_value * (value_activations[i] > 0)
+            
+            # Backprop through shared layers (combine gradients from both streams)
+            delta_shared = delta_advantage + delta_value
+            for i in range(len(self.q_network.weights) - 1, -1, -1):
+                dW = np.dot(activations[i].T, delta_shared)
+                db = np.sum(delta_shared, axis=0)
+                
+                # Gradient clipping
+                dW_norm = np.linalg.norm(dW)
+                if dW_norm > self.gradient_clip:
+                    dW = dW * (self.gradient_clip / dW_norm)
+                db_norm = np.linalg.norm(db)
+                if db_norm > self.gradient_clip:
+                    db = db * (self.gradient_clip / db_norm)
+                
+                self.q_network.weights[i] -= self.learning_rate * dW
+                self.q_network.biases[i] -= self.learning_rate * db
+                
+                if i > 0:
+                    delta_shared = np.dot(delta_shared, self.q_network.weights[i].T)
+                    delta_shared = delta_shared * (activations[i] > 0)
+        else:
+            # Standard architecture
+            for i in range(len(self.q_network.weights) - 1):
+                z = np.dot(x, self.q_network.weights[i]) + self.q_network.biases[i]
+                x = np.maximum(0, z)  # ReLU
+                activations.append(x)
+            
+            output = np.dot(x, self.q_network.weights[-1]) + self.q_network.biases[-1]
+            
+            # Loss with importance sampling weights
+            errors = (output - targets) ** 2
+            loss = np.mean(errors * is_weights.reshape(-1, 1))
+            
+            # Backward pass
+            delta = 2 * (output - targets) * is_weights.reshape(-1, 1) / self.batch_size
+            
+            for i in range(len(self.q_network.weights) - 1, -1, -1):
+                # Gradient for weights and biases
+                dW = np.dot(activations[i].T, delta)
+                db = np.sum(delta, axis=0)
+                
+                # Gradient clipping: prevent exploding gradients
+                dW_norm = np.linalg.norm(dW)
+                if dW_norm > self.gradient_clip:
+                    dW = dW * (self.gradient_clip / dW_norm)
+                
+                db_norm = np.linalg.norm(db)
+                if db_norm > self.gradient_clip:
+                    db = db * (self.gradient_clip / db_norm)
+                
+                # Update weights
+                self.q_network.weights[i] -= self.learning_rate * dW
+                self.q_network.biases[i] -= self.learning_rate * db
+                
+                if i > 0:
+                    # Backprop through ReLU
+                    delta = np.dot(delta, self.q_network.weights[i].T)
+                    delta = delta * (activations[i] > 0)
+                    
+                    # Clip delta to prevent gradient explosion
+                    delta_norm = np.linalg.norm(delta)
+                    if delta_norm > self.gradient_clip:
+                        delta = delta * (self.gradient_clip / delta_norm)
         
         return loss
 

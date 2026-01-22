@@ -12,7 +12,7 @@ from datetime import datetime
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from rl.environment import GasOptimizationEnv
-from rl.agents.dqn import DQNAgent
+from rl.agents.dqn import DQNAgent, PrioritizedReplayBuffer
 from rl.data_loader import GasDataLoader
 
 
@@ -91,7 +91,12 @@ def train_dqn(
         target_update_freq=100,  # Update target network less frequently
         lr_decay=0.9995,  # Learning rate decay (per training step)
         lr_min=0.00001,  # Minimum learning rate
-        gradient_clip=10.0  # Gradient clipping threshold
+        gradient_clip=10.0,  # Gradient clipping threshold
+        use_per=True,  # Enable Prioritized Experience Replay
+        per_alpha=0.6,  # PER priority exponent
+        per_beta=0.4,  # PER importance sampling (starts at 0.4, goes to 1.0)
+        use_double_dqn=True,  # Enable Double DQN
+        use_dueling=True  # Enable Dueling architecture
     )
     
     # Training metrics
@@ -117,20 +122,44 @@ def train_dqn(
     from data.multichain_collector import CHAINS
     chain_name = CHAINS.get(chain_id, {}).get('name', f'Chain {chain_id}')
     
-    print(f"Starting DQN training for {chain_name} (Chain ID: {chain_id})")
+    print(f"Starting Enhanced DQN training for {chain_name} (Chain ID: {chain_id})")
     print(f"Episodes: {num_episodes}")
     print(f"State dim: {agent.state_dim}, Action dim: {agent.action_dim}")
-    print(f"Network: {agent.q_network.hidden_dims}")
+    print(f"Network: {agent.q_network.hidden_dims} (Dueling: {agent.q_network.dueling})")
     print(f"Learning rate: {agent.learning_rate}, Gamma: {agent.gamma}")
+    print(f"Features: PER={isinstance(agent.replay_buffer, PrioritizedReplayBuffer)}, "
+          f"Double DQN={agent.use_double_dqn}, Dueling={agent.q_network.dueling}")
+    print(f"Curriculum Learning: Enabled (episode length increases over time)")
     print("-" * 50)
     
     start_time = datetime.now()
     
+    # Curriculum Learning: Start with shorter episodes, gradually increase
+    curriculum_episode_lengths = [
+        (0, int(num_episodes * 0.2), episode_length // 2),  # First 20%: half length
+        (int(num_episodes * 0.2), int(num_episodes * 0.5), int(episode_length * 0.75)),  # Next 30%: 75% length
+        (int(num_episodes * 0.5), num_episodes, episode_length)  # Last 50%: full length
+    ]
+    
+    def get_curriculum_length(episode_num: int) -> int:
+        """Get episode length based on curriculum learning schedule."""
+        for start, end, length in curriculum_episode_lengths:
+            if start <= episode_num < end:
+                return length
+        return episode_length
+    
     for episode in range(num_episodes):
+        # Curriculum learning: adjust episode length
+        current_episode_length = get_curriculum_length(episode)
+        if current_episode_length != episode_length:
+            # Temporarily adjust environment episode length
+            original_length = env.episode_length
+            env.episode_length = current_episode_length
+        
         # Use pre-generated episode if available
         if training_episodes and episode < len(training_episodes):
             # Inject episode data into environment
-            env._episode_data = training_episodes[episode]
+            env._episode_data = training_episodes[episode][:current_episode_length] if len(training_episodes[episode]) > current_episode_length else training_episodes[episode]
             state = env.reset()
         else:
             state = env.reset()
@@ -138,6 +167,7 @@ def train_dqn(
         total_reward = 0
         step = 0
         episode_losses = []
+        last_td_error = None  # Track TD error for PER
         
         while True:
             # Select action
@@ -146,14 +176,18 @@ def train_dqn(
             # Take step
             next_state, reward, done, info = env.step(action)
             
-            # Store transition
-            agent.store_transition(state, action, reward, next_state, done)
+            # Store transition with TD error for PER (if available from previous step)
+            agent.store_transition(state, action, reward, next_state, done, td_error=last_td_error)
             
             # Train (only if buffer has enough samples)
             if len(agent.replay_buffer) >= agent.batch_size:
                 loss = agent.train_step()
                 if loss is not None:
                     episode_losses.append(loss)
+                    # Store TD error for next transition (PER)
+                    if agent.last_td_errors is not None and len(agent.last_td_errors) > 0:
+                        # Use mean TD error as estimate for this transition
+                        last_td_error = float(np.mean(agent.last_td_errors))
             
             total_reward += reward
             step += 1
@@ -161,6 +195,10 @@ def train_dqn(
             
             if done:
                 break
+        
+        # Restore original episode length
+        if current_episode_length != episode_length:
+            env.episode_length = original_length
         
         episode_rewards.append(total_reward)
         episode_lengths.append(step)

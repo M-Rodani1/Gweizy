@@ -61,11 +61,15 @@ class RewardCalculator:
             return np.clip(np.tanh(normalized), -1.0, 1.0)
 
     def calculate_reward(self, action: int, current_price: float, 
-                        urgency: float, time_waiting: int, done: bool = False) -> float:
+                        urgency: float, time_waiting: int, done: bool = False,
+                        volatility: float = 0.0) -> float:
         """
-        Calculate reward using RELATIVE SAVINGS approach.
+        Calculate reward using RELATIVE SAVINGS approach with volatility-scaled waiting penalty.
         Reward = Benchmark_Price - Execution_Price
         Where Benchmark_Price = initial price at episode start (Step 0).
+        
+        Args:
+            volatility: Current market volatility (0-1 scale) for reward shaping
         """
         if self.initial_price is None:
             self.initial_price = current_price
@@ -91,8 +95,13 @@ class RewardCalculator:
             if urgency > 0.5:
                 reward -= time_waiting * self.config.time_penalty * urgency * self.config.urgency_multiplier
         else:  # Wait
-            # Small negative reward for waiting (encourages eventual execution)
-            reward = -self.config.time_penalty * (1 + urgency * self.config.urgency_multiplier)
+            # Volatility-scaled waiting penalty: more penalty during calm periods
+            # This discourages passive behavior when market is stable
+            base_wait_penalty = self.config.time_penalty * (1 + urgency * self.config.urgency_multiplier)
+            # During low volatility (calm market), increase penalty to encourage action
+            # During high volatility, reduce penalty to allow strategic waiting
+            volatility_factor = 1.0 - (volatility * 0.5)  # Scale: 0.5 to 1.0
+            reward = -base_wait_penalty * volatility_factor
             
             # If episode ends without execution, apply missed opportunity penalty
             if done:
