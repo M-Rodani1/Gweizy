@@ -35,6 +35,20 @@ class GasDataLoader:
                 print(f"Warning: Could not initialize database: {e}")
                 self.use_database = False
 
+    def set_cache(self, data: List[Dict]):
+        """Override cached data (used for train/val splits)."""
+        self._cache = list(data)
+        self._stats = None
+
+    def split_data(self, train_ratio: float = 0.8) -> Tuple[List[Dict], List[Dict]]:
+        """Split cached data into train/eval segments (time-ordered)."""
+        if not self._cache:
+            self.load_data()
+        split_idx = int(len(self._cache) * train_ratio)
+        train_data = self._cache[:split_idx]
+        eval_data = self._cache[split_idx:]
+        return train_data, eval_data
+
     def load_data(self, hours: int = 720, min_records: int = 100, chain_id: int = 8453) -> List[Dict]:
         """
         Load historical gas prices from database for a specific chain.
@@ -147,13 +161,31 @@ class GasDataLoader:
         if not self._cache:
             self.load_data()
         
-        prices = np.array([d['gas_price'] for d in self._cache])
-        
+        self._stats = self.get_statistics_for_data(self._cache)
+        return self._stats
+
+    def get_statistics_for_data(self, data: List[Dict]) -> Dict:
+        """Compute statistics for a specific dataset segment."""
+        prices = np.array([d['gas_price'] for d in data])
+        if len(prices) == 0:
+            return {
+                'mean': 0.0,
+                'std': 0.0,
+                'min': 0.0,
+                'max': 0.0,
+                'median': 0.0,
+                'iqr': 0.0,
+                'q25': 0.0,
+                'q75': 0.0,
+                'typical_volatility': 0.0,
+                'percentile_rank': 0.5
+            }
+
         # Calculate IQR (Interquartile Range) for robust scaling
         q25 = np.percentile(prices, 25)
         q75 = np.percentile(prices, 75)
         iqr = q75 - q25
-        
+
         # Calculate typical volatility (median of rolling volatilities)
         if len(prices) > 24:
             volatilities = []
@@ -164,8 +196,8 @@ class GasDataLoader:
             typical_volatility = np.median(volatilities) if volatilities else np.std(prices) / (np.mean(prices) + 1e-8)
         else:
             typical_volatility = np.std(prices) / (np.mean(prices) + 1e-8)
-        
-        self._stats = {
+
+        return {
             'mean': float(np.mean(prices)),
             'std': float(np.std(prices)),
             'min': float(np.min(prices)),
@@ -176,7 +208,6 @@ class GasDataLoader:
             'q75': float(q75),
             'typical_volatility': float(typical_volatility)
         }
-        return self._stats
 
     def get_episodes(self, episode_length: int = 48, num_episodes: int = 100, 
                      augment: bool = True) -> List[List[Dict]]:
@@ -194,29 +225,41 @@ class GasDataLoader:
         """
         if not self._cache:
             self.load_data(hours=720)  # Load more data for better episodes
-        
+
+        return self.get_episodes_from_data(
+            self._cache,
+            episode_length=episode_length,
+            num_episodes=num_episodes,
+            augment=augment
+        )
+
+    def get_episodes_from_data(
+        self,
+        data: List[Dict],
+        episode_length: int = 48,
+        num_episodes: int = 100,
+        augment: bool = True
+    ) -> List[List[Dict]]:
+        """Generate episodes from a provided data slice (train/val separation)."""
         episodes = []
-        data_len = len(self._cache)
-        
+        data_len = len(data)
+
         if data_len < episode_length:
             raise ValueError(
                 f"Insufficient real data: {data_len} records < {episode_length} required. "
                 f"Please collect more data before training."
             )
-        
-        # Generate episodes with augmentation
+
         for _ in range(num_episodes):
-            # Random start point
             max_start = max(0, data_len - episode_length)
             start_idx = np.random.randint(0, max_start + 1)
-            episode = self._cache[start_idx:start_idx + episode_length].copy()
-            
+            episode = [p.copy() for p in data[start_idx:start_idx + episode_length]]
+
             if len(episode) == episode_length:
-                # Apply augmentation if enabled
                 if augment:
                     episode = self._augment_episode(episode)
                 episodes.append(episode)
-        
+
         return episodes
     
     def _augment_episode(self, episode: List[Dict]) -> List[Dict]:

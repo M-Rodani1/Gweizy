@@ -26,7 +26,8 @@ class GasOptimizationEnv:
         data_loader: Optional[GasDataLoader] = None,
         episode_length: int = 48,
         urgency_range: Tuple[float, float] = (0.1, 0.9),
-        max_wait_steps: int = 100
+        max_wait_steps: int = 100,
+        reward_config: Optional[RewardConfig] = None
     ):
         self.data_loader = data_loader or GasDataLoader()
         self.episode_length = episode_length
@@ -34,7 +35,7 @@ class GasOptimizationEnv:
         self.max_wait_steps = max_wait_steps
         
         self.state_builder = StateBuilder(history_length=24)
-        self.reward_calculator = RewardCalculator()
+        self.reward_calculator = RewardCalculator(config=reward_config)
         
         self.action_space_n = 2  # Wait or Execute
         self.observation_space_shape = (self.state_builder.get_state_dim(),)
@@ -47,15 +48,19 @@ class GasOptimizationEnv:
         self._done = False
         self._episode_data = None
 
-    def reset(self, urgency: Optional[float] = None) -> np.ndarray:
+    def reset(self, urgency: Optional[float] = None, episode_data: Optional[List[Dict]] = None) -> np.ndarray:
         """Reset environment for new episode. REQUIRES REAL DATA."""
         # Load episode data (will raise if no real data available)
-        episodes = self.data_loader.get_episodes(self.episode_length, num_episodes=1)
-        if not episodes:
-            raise ValueError("No real data available. Cannot create episode.")
-        self._episode_data = episodes[0]
-        
-        self._price_stats = self.data_loader.get_statistics()
+        if episode_data is not None:
+            self._episode_data = episode_data
+        else:
+            episodes = self.data_loader.get_episodes(self.episode_length, num_episodes=1)
+            if not episodes:
+                raise ValueError("No real data available. Cannot create episode.")
+            self._episode_data = episodes[0]
+
+        # Use episode-local stats to avoid leakage from future data
+        self._price_stats = self.data_loader.get_statistics_for_data(self._episode_data)
         self._current_step = 0
         self._time_waiting = 0
         self._done = False
@@ -164,10 +169,14 @@ class GasOptimizationEnv:
             return np.zeros(self.observation_space_shape, dtype=np.float32)
         
         current = self._episode_data[self._current_step]
-        
-        # Get price history
+
+        # Get price history (no future leakage)
         history_start = max(0, self._current_step - 24)
         price_history = [d['gas_price'] for d in self._episode_data[history_start:self._current_step]]
+
+        # Compute stats from history + current only
+        stats_data = [{'gas_price': p} for p in price_history + [current['gas_price']]]
+        price_stats = self.data_loader.get_statistics_for_data(stats_data)
         
         # Calculate volatility and momentum
         if len(price_history) >= 2:
@@ -187,8 +196,8 @@ class GasOptimizationEnv:
             urgency=self._urgency,
             time_waiting=self._time_waiting
         )
-        
-        return self.state_builder.build_state(gas_state, self._price_stats)
+
+        return self.state_builder.build_state(gas_state, price_stats)
 
     def render(self):
         """Print current state."""

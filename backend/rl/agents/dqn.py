@@ -307,7 +307,9 @@ class DQNAgent:
         per_alpha: float = 0.6,  # PER priority exponent
         per_beta: float = 0.4,  # PER importance sampling exponent
         use_double_dqn: bool = True,  # Use Double DQN
-        use_dueling: bool = True  # Use Dueling architecture
+        use_dueling: bool = True,  # Use Dueling architecture
+        target_update_tau: float = 0.01,  # Soft target update factor
+        use_soft_target: bool = True  # Use soft updates each step
     ):
         self.state_dim = state_dim
         self.action_dim = action_dim
@@ -323,6 +325,8 @@ class DQNAgent:
         self.target_update_freq = target_update_freq
         self.gradient_clip = gradient_clip
         self.use_double_dqn = use_double_dqn
+        self.target_update_tau = target_update_tau
+        self.use_soft_target = use_soft_target
         
         # Networks with optional dueling architecture
         self.q_network = QNetwork(state_dim, action_dim, hidden_dims, dueling=use_dueling)
@@ -412,7 +416,9 @@ class DQNAgent:
         
         # Update target network periodically
         self.training_steps += 1
-        if self.training_steps % self.target_update_freq == 0:
+        if self.use_soft_target and self.target_update_tau > 0:
+            self._soft_update_target(self.target_update_tau)
+        elif self.training_steps % self.target_update_freq == 0:
             self.target_network.copy_from(self.q_network)
         
         # Decay epsilon
@@ -422,6 +428,28 @@ class DQNAgent:
         self.learning_rate = max(self.lr_min, self.learning_rate * self.lr_decay)
         
         return loss
+
+    def _soft_update_target(self, tau: float):
+        """Soft update target network parameters."""
+        for i in range(len(self.q_network.weights)):
+            self.target_network.weights[i] = (1 - tau) * self.target_network.weights[i] + tau * self.q_network.weights[i]
+            self.target_network.biases[i] = (1 - tau) * self.target_network.biases[i] + tau * self.q_network.biases[i]
+
+        if self.q_network.dueling and self.target_network.dueling:
+            for i in range(len(self.q_network.value_weights)):
+                self.target_network.value_weights[i] = (
+                    (1 - tau) * self.target_network.value_weights[i] + tau * self.q_network.value_weights[i]
+                )
+                self.target_network.value_biases[i] = (
+                    (1 - tau) * self.target_network.value_biases[i] + tau * self.q_network.value_biases[i]
+                )
+            for i in range(len(self.q_network.advantage_weights)):
+                self.target_network.advantage_weights[i] = (
+                    (1 - tau) * self.target_network.advantage_weights[i] + tau * self.q_network.advantage_weights[i]
+                )
+                self.target_network.advantage_biases[i] = (
+                    (1 - tau) * self.target_network.advantage_biases[i] + tau * self.q_network.advantage_biases[i]
+                )
 
     def _update_network(self, states: np.ndarray, targets: np.ndarray, is_weights: np.ndarray = None) -> float:
         """Update network weights using gradient descent with optional importance sampling weights."""
@@ -483,7 +511,7 @@ class DQNAgent:
             # delta_advantage_i = delta_i * (1 - 1/n) for taken action
             # delta_advantage_j = delta_i * (-1/n) for other actions
             delta_advantage = delta - np.mean(delta, axis=1, keepdims=True)
-            for i in range(len(self.q_network.advantage_weights) - 1, -1, -1):
+            for i in range(len(self.q_network.advantage_weights) - 1, 0, -1):
                 dW = np.dot(advantage_activations[i].T, delta_advantage)
                 db = np.sum(delta_advantage, axis=0)
                 
@@ -498,13 +526,27 @@ class DQNAgent:
                 self.q_network.advantage_weights[i] -= self.learning_rate * dW
                 self.q_network.advantage_biases[i] -= self.learning_rate * db
                 
-                if i > 0:
-                    delta_advantage = np.dot(delta_advantage, self.q_network.advantage_weights[i].T)
-                    delta_advantage = delta_advantage * (advantage_activations[i] > 0)
+                delta_advantage = np.dot(delta_advantage, self.q_network.advantage_weights[i].T)
+                delta_advantage = delta_advantage * (advantage_activations[i] > 0)
+
+            # Backprop to shared from first advantage layer
+            dW = np.dot(advantage_activations[0].T, delta_advantage)
+            db = np.sum(delta_advantage, axis=0)
+            dW_norm = np.linalg.norm(dW)
+            if dW_norm > self.gradient_clip:
+                dW = dW * (self.gradient_clip / dW_norm)
+            db_norm = np.linalg.norm(db)
+            if db_norm > self.gradient_clip:
+                db = db * (self.gradient_clip / db_norm)
+            self.q_network.advantage_weights[0] -= self.learning_rate * dW
+            self.q_network.advantage_biases[0] -= self.learning_rate * db
+            delta_advantage = np.dot(delta_advantage, self.q_network.advantage_weights[0].T)
+            delta_advantage = delta_advantage * (advantage_activations[0] > 0)
             
             # Backprop through value stream
-            delta_value = delta
-            for i in range(len(self.q_network.value_weights) - 1, -1, -1):
+            # V(s) contributes to all actions equally, so sum gradients over actions
+            delta_value = np.sum(delta, axis=1, keepdims=True)
+            for i in range(len(self.q_network.value_weights) - 1, 0, -1):
                 dW = np.dot(value_activations[i].T, delta_value)
                 db = np.sum(delta_value, axis=0)
                 
@@ -519,9 +561,22 @@ class DQNAgent:
                 self.q_network.value_weights[i] -= self.learning_rate * dW
                 self.q_network.value_biases[i] -= self.learning_rate * db
                 
-                if i > 0:
-                    delta_value = np.dot(delta_value, self.q_network.value_weights[i].T)
-                    delta_value = delta_value * (value_activations[i] > 0)
+                delta_value = np.dot(delta_value, self.q_network.value_weights[i].T)
+                delta_value = delta_value * (value_activations[i] > 0)
+
+            # Backprop to shared from first value layer
+            dW = np.dot(value_activations[0].T, delta_value)
+            db = np.sum(delta_value, axis=0)
+            dW_norm = np.linalg.norm(dW)
+            if dW_norm > self.gradient_clip:
+                dW = dW * (self.gradient_clip / dW_norm)
+            db_norm = np.linalg.norm(db)
+            if db_norm > self.gradient_clip:
+                db = db * (self.gradient_clip / db_norm)
+            self.q_network.value_weights[0] -= self.learning_rate * dW
+            self.q_network.value_biases[0] -= self.learning_rate * db
+            delta_value = np.dot(delta_value, self.q_network.value_weights[0].T)
+            delta_value = delta_value * (value_activations[0] > 0)
             
             # Backprop through shared layers (combine gradients from both streams)
             delta_shared = delta_advantage + delta_value
@@ -664,6 +719,33 @@ class DQNAgent:
             self.q_network.value_biases = data['value_biases']
             self.q_network.advantage_weights = data['advantage_weights']
             self.q_network.advantage_biases = data['advantage_biases']
+
+        # Validate loaded shapes to avoid runtime matmul errors
+        if self.q_network.dueling:
+            shared_out_dim = self.q_network.weights[-1].shape[1] if self.q_network.weights else self.state_dim
+            if (
+                self.q_network.value_weights[0].shape[0] != shared_out_dim
+                or self.q_network.advantage_weights[0].shape[0] != shared_out_dim
+                or self.q_network.value_weights[-1].shape[1] != 1
+                or self.q_network.advantage_weights[-1].shape[1] != self.action_dim
+            ):
+                raise ValueError(
+                    "Dueling model weights are incompatible with shared layers "
+                    f"(shared_out_dim={shared_out_dim}, "
+                    f"value_in={self.q_network.value_weights[0].shape[0]}, "
+                    f"adv_in={self.q_network.advantage_weights[0].shape[0]}, "
+                    f"adv_out={self.q_network.advantage_weights[-1].shape[1]})."
+                )
+        else:
+            if (
+                not self.q_network.weights
+                or self.q_network.weights[0].shape[0] != self.state_dim
+                or self.q_network.weights[-1].shape[1] != self.action_dim
+            ):
+                raise ValueError(
+                    "Non-dueling model weights are incompatible with declared dimensions "
+                    f"(state_dim={self.state_dim}, action_dim={self.action_dim})."
+                )
 
         self.target_network.copy_from(self.q_network)
         self.epsilon = data.get('epsilon', 0.01)

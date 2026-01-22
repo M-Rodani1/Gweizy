@@ -7,6 +7,7 @@ import sys
 import numpy as np
 import json
 from datetime import datetime
+from typing import Optional, List
 
 # Add parent to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -24,7 +25,11 @@ def train_dqn(
     checkpoint_freq: int = 100,
     verbose: bool = True,
     use_diverse_episodes: bool = True,
-    chain_id: int = 8453
+    chain_id: int = 8453,
+    use_dueling: bool = True,
+    hidden_dims: Optional[List[int]] = None,
+    eval_every: int = 200,
+    eval_episodes: int = 30
 ):
     """
     Train DQN agent on historical gas data for a specific chain.
@@ -38,6 +43,10 @@ def train_dqn(
         verbose: Print training progress
         use_diverse_episodes: Use diverse episode sampling for better coverage
         chain_id: Chain ID (8453=Base, 1=Ethereum, etc.)
+        use_dueling: Whether to use dueling architecture
+        hidden_dims: Hidden layer sizes
+        eval_every: Evaluate on holdout every N episodes
+        eval_episodes: Number of holdout episodes to evaluate
     """
     # Create chain-specific save paths
     # Use persistent storage on Railway, fallback to local
@@ -75,28 +84,40 @@ def train_dqn(
         print("   Please collect real data before training DQN agent.")
         raise
     
-    env = GasOptimizationEnv(data_loader, episode_length=episode_length)
+    # Split data to avoid leakage: train on early segment, evaluate on holdout
+    train_data, eval_data = data_loader.split_data(train_ratio=0.8)
+    train_loader = GasDataLoader(use_database=False)
+    train_loader.set_cache(train_data)
+    eval_loader = GasDataLoader(use_database=False)
+    eval_loader.set_cache(eval_data)
+
+    env = GasOptimizationEnv(train_loader, episode_length=episode_length)
+
+    if hidden_dims is None:
+        hidden_dims = [128, 64]
     
     agent = DQNAgent(
         state_dim=env.observation_space_shape[0],
         action_dim=env.action_space_n,
-        hidden_dims=[128, 128, 64],  # Deeper network
-        learning_rate=0.0003,  # Lower learning rate for stability
+        hidden_dims=hidden_dims,
+        learning_rate=0.0002,  # Lower learning rate for stability
         gamma=0.98,  # Higher discount for longer-term planning
         epsilon_start=1.0,
-        epsilon_end=0.02,  # Lower final epsilon
-        epsilon_decay=0.998,  # Slower decay
+        epsilon_end=0.05,
+        epsilon_decay=0.9995,  # Slower decay
         buffer_size=50000,  # Larger replay buffer
-        batch_size=128,  # Larger batch size
-        target_update_freq=100,  # Update target network less frequently
-        lr_decay=0.9995,  # Learning rate decay (per training step)
-        lr_min=0.00001,  # Minimum learning rate
+        batch_size=32,  # Start small; ramp later
+        target_update_freq=200,  # Update target network less frequently
+        lr_decay=0.9997,  # Learning rate decay (per training step)
+        lr_min=0.00005,  # Minimum learning rate
         gradient_clip=10.0,  # Gradient clipping threshold
         use_per=True,  # Enable Prioritized Experience Replay
-        per_alpha=0.6,  # PER priority exponent
-        per_beta=0.4,  # PER importance sampling (starts at 0.4, goes to 1.0)
+        per_alpha=0.4,  # Lower prioritization to reduce noise chasing
+        per_beta=0.6,  # Stronger IS correction
         use_double_dqn=True,  # Enable Double DQN
-        use_dueling=True  # Enable Dueling architecture
+        use_dueling=use_dueling,
+        target_update_tau=0.01,
+        use_soft_target=True
     )
     
     # Training metrics
@@ -106,11 +127,13 @@ def train_dqn(
     losses = []
     best_avg_reward = float('-inf')
     best_avg_savings = float('-inf')
+    best_eval_savings = float('-inf')
+    last_eval_metrics = None
     
     # Pre-generate diverse episodes for better training
     if use_diverse_episodes:
         print("Generating diverse training episodes...")
-        training_episodes = data_loader.get_diverse_episodes(
+        training_episodes = train_loader.get_diverse_episodes(
             episode_length=episode_length,
             num_episodes=min(num_episodes * 2, 500)  # Generate more episodes than needed
         )
@@ -147,6 +170,15 @@ def train_dqn(
             if start <= episode_num < end:
                 return length
         return episode_length
+
+    # Batch size schedule (ramp up as replay buffer grows)
+    batch_schedule = [
+        (0.0, 32),
+        (0.35, 64),
+        (0.7, 96)
+    ]
+    next_batch_idx = 1
+    loss_spike_threshold = 5.0
     
     for episode in range(num_episodes):
         # Curriculum learning: adjust episode length
@@ -158,9 +190,10 @@ def train_dqn(
         
         # Use pre-generated episode if available
         if training_episodes and episode < len(training_episodes):
-            # Inject episode data into environment
-            env._episode_data = training_episodes[episode][:current_episode_length] if len(training_episodes[episode]) > current_episode_length else training_episodes[episode]
-            state = env.reset()
+            episode_data = training_episodes[episode]
+            if len(episode_data) > current_episode_length:
+                episode_data = episode_data[:current_episode_length]
+            state = env.reset(episode_data=episode_data)
         else:
             state = env.reset()
         
@@ -208,6 +241,12 @@ def train_dqn(
         
         if episode_losses:
             losses.append(np.mean(episode_losses))
+
+        # Gradually increase batch size as buffer grows
+        progress = (episode + 1) / max(1, num_episodes)
+        if next_batch_idx < len(batch_schedule) and progress >= batch_schedule[next_batch_idx][0]:
+            agent.batch_size = batch_schedule[next_batch_idx][1]
+            next_batch_idx += 1
         
         # Checkpointing
         if (episode + 1) % checkpoint_freq == 0:
@@ -221,29 +260,52 @@ def train_dqn(
             metrics_path = os.path.join(checkpoint_dir, 'training_metrics.json')
             metrics = {
                 'episode': episode + 1,
-                'avg_reward_last_100': float(np.mean(episode_rewards[-100:])),
-                'avg_savings_last_100': float(np.mean(avg_savings[-100:])),
+                'avg_reward_last_50': float(np.mean(episode_rewards[-50:])),
+                'avg_savings_last_50': float(np.mean(avg_savings[-50:])),
+                'avg_loss_last_50': float(np.mean(losses[-50:]) if losses else 0),
                 'epsilon': float(agent.epsilon),
                 'training_steps': agent.training_steps,
                 'timestamp': datetime.now().isoformat()
             }
+            if last_eval_metrics:
+                metrics['eval_metrics'] = last_eval_metrics
             with open(metrics_path, 'w') as f:
                 json.dump(metrics, f, indent=2)
         
-        # Track best performance
+        # Track best performance (by savings)
         if len(episode_rewards) >= 100:
             recent_avg_reward = np.mean(episode_rewards[-100:])
             recent_avg_savings = np.mean(avg_savings[-100:])
-            
-            if recent_avg_reward > best_avg_reward:
+
+            if recent_avg_savings > best_avg_savings:
+                best_avg_savings = recent_avg_savings
                 best_avg_reward = recent_avg_reward
                 best_path = os.path.join(checkpoint_dir, 'dqn_best.pkl')
                 agent.save(best_path)
                 if verbose:
-                    print(f"✓ New best model saved for {chain_name} (avg reward: {best_avg_reward:.3f})")
-            
-            if recent_avg_savings > best_avg_savings:
-                best_avg_savings = recent_avg_savings
+                    print(
+                        f"✓ New best model saved for {chain_name} "
+                        f"(avg savings: {best_avg_savings*100:.2f}%)"
+                    )
+
+        # Periodic evaluation on holdout set
+        if eval_every and (episode + 1) % eval_every == 0:
+            last_eval_metrics = evaluate_agent(
+                agent,
+                num_episodes=eval_episodes,
+                verbose=False,
+                data_loader=eval_loader,
+                episode_length=episode_length
+            )
+            if last_eval_metrics['avg_savings'] > best_eval_savings:
+                best_eval_savings = last_eval_metrics['avg_savings']
+                best_path = os.path.join(checkpoint_dir, 'dqn_best.pkl')
+                agent.save(best_path)
+                if verbose:
+                    print(
+                        f"✓ New best model saved for {chain_name} "
+                        f"(eval avg savings: {best_eval_savings*100:.2f}%)"
+                    )
         
         # Logging
         if verbose:
@@ -264,8 +326,17 @@ def train_dqn(
                 print(f"  Avg Savings: {avg_save:.2f}%")
                 print(f"  Avg Loss: {avg_loss:.4f}")
                 print(f"  Epsilon: {agent.epsilon:.3f}")
-                print(f"  Buffer Size: {len(agent.replay_buffer)}/{agent.replay_buffer.buffer.maxlen}")
+                buffer_capacity = getattr(agent.replay_buffer, "capacity", None)
+                if buffer_capacity is None and hasattr(agent.replay_buffer, "tree"):
+                    buffer_capacity = getattr(agent.replay_buffer.tree, "capacity", None)
+                buffer_capacity = buffer_capacity if buffer_capacity is not None else "?"
+                print(f"  Buffer Size: {len(agent.replay_buffer)}/{buffer_capacity}")
                 print(f"  ETA: {eta_minutes:.1f} minutes")
+
+                # Reduce learning rate if loss spikes
+                if avg_loss > loss_spike_threshold and agent.learning_rate > agent.lr_min:
+                    agent.learning_rate = max(agent.lr_min, agent.learning_rate * 0.5)
+                    print(f"  ↓ LR reduced to {agent.learning_rate:.6f} due to loss spike")
                 
                 if len(episode_rewards) >= 100:
                     print(f"  Best Avg Reward (last 100): {best_avg_reward:.3f}")
@@ -288,6 +359,8 @@ def train_dqn(
         'final_avg_savings_last_100': float(np.mean(avg_savings[-100:])),
         'best_avg_reward': float(best_avg_reward),
         'best_avg_savings': float(best_avg_savings),
+        'best_eval_savings': float(best_eval_savings),
+        'eval_metrics': last_eval_metrics,
         'total_training_steps': agent.training_steps,
         'final_epsilon': float(agent.epsilon),
         'final_buffer_size': len(agent.replay_buffer),
@@ -319,7 +392,13 @@ def train_dqn(
     return agent
 
 
-def evaluate_agent(agent: DQNAgent, num_episodes: int = 100, verbose: bool = True):
+def evaluate_agent(
+    agent: DQNAgent,
+    num_episodes: int = 100,
+    verbose: bool = True,
+    data_loader: Optional[GasDataLoader] = None,
+    episode_length: int = 48
+):
     """
     Evaluate trained agent with comprehensive metrics.
     
@@ -328,8 +407,8 @@ def evaluate_agent(agent: DQNAgent, num_episodes: int = 100, verbose: bool = Tru
         num_episodes: Number of evaluation episodes
         verbose: Print detailed results
     """
-    data_loader = GasDataLoader()
-    env = GasOptimizationEnv(data_loader, episode_length=48)
+    data_loader = data_loader or GasDataLoader()
+    env = GasOptimizationEnv(data_loader, episode_length=episode_length)
     
     total_rewards = []
     savings_list = []
@@ -375,6 +454,7 @@ def evaluate_agent(agent: DQNAgent, num_episodes: int = 100, verbose: bool = Tru
     avg_wait = np.mean(wait_times)
     positive_savings_pct = sum(1 for s in savings_list if s > 0) / len(savings_list) * 100
     avg_confidence = np.mean(confidence_scores)
+    total_actions = action_distribution['wait'] + action_distribution['execute']
     
     # Calculate savings statistics
     savings_array = np.array(savings_list)
@@ -404,8 +484,8 @@ def evaluate_agent(agent: DQNAgent, num_episodes: int = 100, verbose: bool = Tru
         print(f"\nBehavior Metrics:")
         print(f"  Avg Wait Time: {avg_wait:.1f} steps")
         print(f"  Action Distribution:")
-        print(f"    Wait: {action_distribution['wait']} ({action_distribution['wait']/num_episodes*100:.1f}%)")
-        print(f"    Execute: {action_distribution['execute']} ({action_distribution['execute']/num_episodes*100:.1f}%)")
+        print(f"    Wait: {action_distribution['wait']} ({(action_distribution['wait']/max(1, total_actions))*100:.1f}%)")
+        print(f"    Execute: {action_distribution['execute']} ({(action_distribution['execute']/max(1, total_actions))*100:.1f}%)")
         print(f"  Avg Confidence: {avg_confidence:.3f}")
         print(f"\nSavings Distribution:")
         print(f"  Min: {np.min(savings_array)*100:.2f}%")
@@ -421,7 +501,8 @@ def evaluate_agent(agent: DQNAgent, num_episodes: int = 100, verbose: bool = Tru
         'avg_wait_time': float(avg_wait),
         'action_distribution': action_distribution,
         'avg_confidence': float(avg_confidence),
-        'price_improvement': float(avg_price_improvement)
+        'price_improvement': float(avg_price_improvement),
+        'net_savings': float(avg_savings)
     }
 
 
@@ -431,9 +512,30 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Train DQN gas optimization agent')
     parser.add_argument('--episodes', type=int, default=10000, help='Number of episodes (default: 10000)')
     parser.add_argument('--evaluate', action='store_true', help='Evaluate after training')
+    parser.add_argument('--dueling', action='store_true', help='Force enable dueling architecture')
+    parser.add_argument('--no-dueling', action='store_true', help='Disable dueling architecture')
+    parser.add_argument('--hidden-dims', type=str, default=None, help='Comma-separated hidden dims (e.g., "128,64")')
+    parser.add_argument('--eval-every', type=int, default=200, help='Evaluate every N episodes')
+    parser.add_argument('--eval-episodes', type=int, default=30, help='Number of evaluation episodes')
     args = parser.parse_args()
-    
-    agent = train_dqn(num_episodes=args.episodes)
+
+    use_dueling = True
+    if args.no_dueling:
+        use_dueling = False
+    elif args.dueling:
+        use_dueling = True
+
+    hidden_dims = None
+    if args.hidden_dims:
+        hidden_dims = [int(x.strip()) for x in args.hidden_dims.split(',') if x.strip()]
+
+    agent = train_dqn(
+        num_episodes=args.episodes,
+        use_dueling=use_dueling,
+        hidden_dims=hidden_dims,
+        eval_every=args.eval_every,
+        eval_episodes=args.eval_episodes
+    )
     
     if args.evaluate:
         evaluate_agent(agent)

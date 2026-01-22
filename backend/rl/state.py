@@ -24,10 +24,22 @@ class StateBuilder:
 
     def __init__(self, history_length: int = 24):
         self.history_length = history_length
+        self.tech_indicator_count = 4  # RSI, MACD, signal, Bollinger position
+        self.state_version = "v2_38"
         # Base features: 1 (current_price) + history_length + 4 (time) + 3 (volatility/momentum/percentile) + 2 (urgency/time_waiting)
         # Technical indicators: +4 (RSI, MACD, signal, Bollinger position)
         # Total: 1 + history_length + 4 + 3 + 2 + 4 = 14 + history_length
-        self.state_dim = 1 + history_length + 4 + 3 + 2 + 4  # 38 features (with 24 history)
+        self.state_dim = 1 + history_length + 4 + 3 + 2 + self.tech_indicator_count  # 38 features (with 24 history)
+        self.feature_names = self._build_feature_names()
+
+    def _build_feature_names(self) -> List[str]:
+        names = ["current_price"]
+        names.extend([f"history_{i+1}" for i in range(self.history_length)])
+        names.extend(["hour_sin", "hour_cos", "dow_sin", "dow_cos"])
+        names.extend(["volatility", "momentum", "percentile_rank"])
+        names.extend(["urgency", "time_waiting"])
+        names.extend(["rsi", "macd", "macd_signal", "bollinger_pos"])
+        return names
 
     def build_state(self, gas_state: GasState, price_stats: Dict) -> np.ndarray:
         """Convert GasState to normalized numpy array with improved normalization."""
@@ -114,6 +126,10 @@ class StateBuilder:
             # Not enough data, use neutral values
             features.extend([0.0, 0.0, 0.0, 0.0])
         
+        if len(features) != self.state_dim:
+            raise ValueError(
+                f"State dimension mismatch in StateBuilder: expected {self.state_dim}, got {len(features)}"
+            )
         return np.array(features, dtype=np.float32)
     
     def _calculate_rsi(self, prices: np.ndarray, period: int = 14) -> float:
@@ -189,3 +205,9 @@ class StateBuilder:
 
     def get_state_dim(self) -> int:
         return self.state_dim
+
+    def get_feature_names(self) -> List[str]:
+        return list(self.feature_names)
+
+    def get_state_version(self) -> str:
+        return self.state_version
