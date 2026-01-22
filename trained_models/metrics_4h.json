@@ -1,0 +1,49 @@
+{
+  "horizon": "4h",
+  "timestamp": "2026-01-21T21:23:58.693106",
+  "best_model": "LightGBM_Regressor",
+  "version": 7,
+  "previous_version_r2": -0.061973789835827686,
+  "r2_improvement": 0.3536484424926222,
+  "target_type": "volatility_scaled_return",
+  "skill_score": 0.5445216820013593,
+  "test_metrics": {
+    "r2": 0.2916746526567945,
+    "r2_ci_lower": -0.0034732138310363952,
+    "r2_ci_upper": 0.8503932013401375,
+    "mae": 0.07126968570191906,
+    "mae_ci_lower": 0.017696678332964493,
+    "mae_ci_upper": 0.1051976078186279,
+    "rmse": 0.15743982830006803,
+    "mape": 117.0739354017104,
+    "directional_accuracy": 0.44
+  },
+  "train_metrics": {
+    "r2": -0.00026647398954526835,
+    "mae": 0.10529970942165989
+  },
+  "baseline_comparison": {
+    "baseline_r2": -0.5551241834201195,
+    "baseline_mae": 0.13372573076923075,
+    "r2_improvement": 0.846798836076914,
+    "mae_improvement_pct": 46.70458311055447
+  },
+  "overfitting": {
+    "r2_gap": -0.29194112664633975,
+    "mae_gap": 0.03403002371974083,
+    "status": "OK"
+  },
+  "error_distribution": {
+    "mean": 0.059964069303562746,
+    "std": 0.1455733833079125,
+    "skewness": 2.217430732547379,
+    "kurtosis": 3.6945304253942535
+  },
+  "data_info": {
+    "training_samples": 80,
+    "validation_samples": 21,
+    "test_samples": 26,
+    "selected_features": 10,
+    "original_features": 162
+  }
+}
