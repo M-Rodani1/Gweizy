@@ -107,30 +107,30 @@ class BaseGasCollector:
                 gas_limit = block.get('gasLimit', 1)
                 utilization = (gas_used / gas_limit) * 100 if gas_limit > 0 else 0
 
-            # Get recent transactions to estimate priority fee
-            # Reduce transaction sampling for faster requests
-            transactions = block.transactions[:10]  # Sample
+                # Get recent transactions to estimate priority fee
+                # Reduce transaction sampling for faster requests
+                transactions = block.transactions[:10]  # Sample
 
-            priority_fees = []
-            for tx in transactions:
-                if hasattr(tx, 'maxPriorityFeePerGas'):
-                    priority_fees.append(tx.maxPriorityFeePerGas)
+                priority_fees = []
+                for tx in transactions:
+                    if hasattr(tx, 'maxPriorityFeePerGas'):
+                        priority_fees.append(tx.maxPriorityFeePerGas)
 
-            avg_priority_fee = sum(priority_fees) / len(priority_fees) if priority_fees else 0
+                avg_priority_fee = sum(priority_fees) / len(priority_fees) if priority_fees else 0
 
-            total_gas = (base_fee + avg_priority_fee) / 1e9  # Convert to Gwei
+                total_gas = (base_fee + avg_priority_fee) / 1e9  # Convert to Gwei
 
-            return {
-                'timestamp': datetime.now().isoformat(),
-                'current_gas': round(total_gas, 6),
-                'base_fee': round(base_fee / 1e9, 6),
-                'priority_fee': round(avg_priority_fee / 1e9, 6),
-                'block_number': block.number,
+                return {
+                    'timestamp': datetime.now().isoformat(),
+                    'current_gas': round(total_gas, 6),
+                    'base_fee': round(base_fee / 1e9, 6),
+                    'priority_fee': round(avg_priority_fee / 1e9, 6),
+                    'block_number': block.number,
                     'gas_used': gas_used,
                     'gas_limit': gas_limit,
                     'utilization': round(utilization, 2),
-                'rpc_source': rpc_url  # Track which RPC was used
-            }
+                    'rpc_source': rpc_url  # Track which RPC was used
+                }
             except BlockNotFound as e:
                 logger.warning(f"Block not found: {e}")
                 raise
