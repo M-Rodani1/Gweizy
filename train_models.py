@@ -64,6 +64,47 @@ log(f"📊 Loaded {len(df):,} raw records (≈2s cadence)")
 log(f"📅 Raw date range: {df['timestamp'].min()} to {df['timestamp'].max()}")
 log(f"⛽ Raw gas price range: {df['gas_price'].min():.6f} to {df['gas_price'].max():.6f} gwei")
 
+# Load mempool_stats data and join with gas_prices
+log("\n📡 Loading mempool_stats data...")
+try:
+    mempool_query = """
+    SELECT timestamp, tx_count
+    FROM mempool_stats
+    ORDER BY timestamp ASC
+    """
+    df_mempool = pd.read_sql(mempool_query, engine)
+    
+    if len(df_mempool) > 0:
+        df_mempool['timestamp'] = pd.to_datetime(df_mempool['timestamp'])
+        log(f"   ✅ Loaded {len(df_mempool):,} mempool_stats records")
+        log(f"   📅 Mempool date range: {df_mempool['timestamp'].min()} to {df_mempool['timestamp'].max()}")
+        
+        # Convert gas_prices timestamp to datetime for joining
+        df['timestamp'] = pd.to_datetime(df['timestamp'])
+        
+        # Left join mempool_stats with gas_prices on timestamp
+        # Use merge_asof for nearest timestamp matching (since timestamps may not align exactly)
+        df = pd.merge_asof(
+            df.sort_values('timestamp'),
+            df_mempool.sort_values('timestamp'),
+            on='timestamp',
+            direction='nearest',
+            tolerance=pd.Timedelta(seconds=5),  # Match within 5 seconds
+            suffixes=('', '_mempool')
+        )
+        
+        log(f"   ✅ Joined mempool data: {df['tx_count'].notna().sum():,} rows have mempool data")
+        log(f"   📊 Mempool coverage: {df['tx_count'].notna().sum() / len(df) * 100:.1f}%")
+        
+        # Fill missing mempool data with 0 (for rows without mempool data)
+        df['tx_count'] = df['tx_count'].fillna(0)
+    else:
+        log(f"   ⚠️  No mempool_stats data found - mempool features will be zero")
+        df['tx_count'] = 0
+except Exception as e:
+    log(f"   ⚠️  Error loading mempool_stats: {e} - mempool features will be zero")
+    df['tx_count'] = 0
+
 # -------------------------------------------
 # Load Mempool Stats (Leading Indicators)
 # -------------------------------------------
@@ -195,6 +236,27 @@ df['hour'] = df['timestamp'].dt.hour
 df['hour_sin'] = np.sin(2 * np.pi * df['hour'] / 24)
 df['hour_cos'] = np.cos(2 * np.pi * df['hour'] / 24)
 # REMOVED: day_of_week, is_weekend, day_sin, day_cos (misleading with only 14h of data)
+
+# Mempool features (leading indicators)
+log("   Adding mempool features (leading indicators)...")
+# mempool_velocity: 1st derivative (change in tx_count per time period)
+df['mempool_velocity'] = df['tx_count'].diff().fillna(0)
+
+# mempool_acceleration: 2nd derivative (change of the change)
+df['mempool_acceleration'] = df['mempool_velocity'].diff().fillna(0)
+
+# Additional mempool features for robustness
+# Rolling statistics of mempool activity
+for window in [6, 12, 24]:
+    df[f'mempool_ma_{window}'] = df['tx_count'].rolling(window=window, min_periods=1).mean()
+    df[f'mempool_std_{window}'] = df['tx_count'].rolling(window=window, min_periods=1).std()
+    df[f'mempool_max_{window}'] = df['tx_count'].rolling(window=window, min_periods=1).max()
+
+# Mempool momentum (rate of change over different windows)
+for window in [6, 12, 24]:
+    df[f'mempool_momentum_{window}'] = df['tx_count'] - df['tx_count'].shift(window).fillna(df['tx_count'])
+
+log(f"   ✅ Added mempool features: velocity, acceleration, and rolling statistics")
 
 # EIP-1559 pressure features (utilization-aware) + Physics features
 log("   Adding EIP-1559 pressure features with physics derivatives...")
