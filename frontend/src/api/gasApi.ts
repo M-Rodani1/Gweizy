@@ -5,7 +5,8 @@ import {
   CurrentGasData,
   PredictionsResponse,
   TableRowData,
-  HistoricalResponse
+  HistoricalResponse,
+  HybridPrediction
 } from '../../types';
 
 class GasAPIError extends Error {
@@ -265,6 +266,20 @@ export async function fetchGlobalStats(): Promise<any> {
     { method: 'GET', headers: { 'Content-Type': 'application/json' } },
     { key: getCacheKey(url), ttlMs: CACHE_TTL_MS.stats },
     'Failed to fetch stats'
+  );
+}
+
+/**
+ * Fetch hybrid model prediction
+ * Returns action recommendation (WAIT/NORMAL/URGENT) with probabilities and trend signal
+ */
+export async function fetchHybridPrediction(): Promise<HybridPrediction> {
+  const url = getApiUrl(API_CONFIG.ENDPOINTS.HYBRID_PREDICTION);
+  return fetchJsonWithRetry<HybridPrediction>(
+    url,
+    { method: 'GET', headers: { 'Content-Type': 'application/json' } },
+    { key: getCacheKey(url), ttlMs: CACHE_TTL_MS.predictions },
+    'Failed to fetch hybrid prediction'
   );
 }
 

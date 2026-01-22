@@ -1,9 +1,13 @@
 import React, { useState, useEffect, useCallback, useMemo, memo } from 'react';
-import { fetchPredictions, fetchCurrentGas } from '../api/gasApi';
+import { fetchPredictions, fetchCurrentGas, fetchHybridPrediction } from '../api/gasApi';
 import { useChain } from '../contexts/ChainContext';
 import LoadingSpinner from './LoadingSpinner';
 import ConfidenceBar from './ui/ConfidenceBar';
 import { HybridPrediction } from '../../types';
+
+interface PredictionCardsProps {
+  hybridData?: HybridPrediction;
+}
 
 interface PredictionCard {
   horizon: '1h' | '4h' | '24h';
@@ -28,7 +32,7 @@ interface PredictionCard {
   };
 }
 
-const PredictionCards: React.FC = () => {
+const PredictionCards: React.FC<PredictionCardsProps> = ({ hybridData }) => {
   const { selectedChainId } = useChain();
   const [cards, setCards] = useState<PredictionCard[]>([]);
   const [loading, setLoading] = useState(true);
@@ -242,25 +246,34 @@ const PredictionCards: React.FC = () => {
             </h3>
           </div>
 
-          {/* Trend Indicator */}
-          {card.trendSignal4h !== undefined && card.trendSignal4h !== null && (
+          {/* Trend Indicator - Only show for 4h prediction */}
+          {card.horizon === '4h' && (card.trendSignal4h !== undefined && card.trendSignal4h !== null || hybridData?.trend_signal_4h !== undefined) && (
             <div className="mb-3">
-              {card.trendSignal4h > 0.2 ? (
-                <div className="flex items-center gap-2 text-red-400 text-sm font-medium">
-                  <span>↗</span>
-                  <span>Rising Trend</span>
-                </div>
-              ) : card.trendSignal4h < -0.2 ? (
-                <div className="flex items-center gap-2 text-green-400 text-sm font-medium">
-                  <span>↘</span>
-                  <span>Falling Trend</span>
-                </div>
-              ) : (
-                <div className="flex items-center gap-2 text-gray-400 text-sm font-medium">
-                  <span>→</span>
-                  <span>Market Flat</span>
-                </div>
-              )}
+              {(() => {
+                const trendSignal = card.trendSignal4h ?? hybridData?.trend_signal_4h ?? 0;
+                if (trendSignal > 0.2) {
+                  return (
+                    <div className="flex items-center gap-2 text-red-400 text-sm font-medium">
+                      <span>↗</span>
+                      <span>Rising Trend</span>
+                    </div>
+                  );
+                } else if (trendSignal < -0.2) {
+                  return (
+                    <div className="flex items-center gap-2 text-green-400 text-sm font-medium">
+                      <span>↘</span>
+                      <span>Falling Trend</span>
+                    </div>
+                  );
+                } else {
+                  return (
+                    <div className="flex items-center gap-2 text-gray-400 text-sm font-medium">
+                      <span>→</span>
+                      <span>Market Flat</span>
+                    </div>
+                  );
+                }
+              })()}
             </div>
           )}
 
@@ -343,11 +356,11 @@ const PredictionCards: React.FC = () => {
             </div>
           </div>
 
-          {/* Confidence Bar (Hybrid Model Probabilities) */}
-          {card.probabilities && (
+          {/* Confidence Bar (Hybrid Model Probabilities) - Show in first card or if hybridData provided */}
+          {(card.horizon === '1h' || hybridData) && (hybridData?.probabilities || card.probabilities) && (
             <div className="mb-4">
               <div className="text-xs text-gray-400 mb-2 font-medium">Action Probabilities</div>
-              <ConfidenceBar probs={card.probabilities} />
+              <ConfidenceBar probs={hybridData?.probabilities || card.probabilities!} />
             </div>
           )}
 

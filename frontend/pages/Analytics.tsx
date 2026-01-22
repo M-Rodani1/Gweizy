@@ -1,4 +1,4 @@
-import React, { lazy, Suspense } from 'react';
+import React, { lazy, Suspense, useState, useEffect } from 'react';
 import { Brain, Calendar, ClipboardList, Sparkles, Target, TrendingUp, Activity, Grid3X3 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import StickyHeader from '../src/components/StickyHeader';
@@ -11,6 +11,8 @@ import HourlyHeatmap from '../src/components/HourlyHeatmap';
 import { CardSkeleton, ChartSkeleton, HeatmapSkeleton } from '../src/components/SkeletonLoader';
 import { useChain } from '../src/contexts/ChainContext';
 import { useEthPrice } from '../src/hooks/useEthPrice';
+import { fetchHybridPrediction } from '../src/api/gasApi';
+import { HybridPrediction } from '../types';
 
 // Lazy load analytics components
 const GasPriceGraph = lazy(() => import('../src/components/GasPriceGraph'));
@@ -26,6 +28,23 @@ const Analytics: React.FC = () => {
   const { selectedChain, multiChainGas } = useChain();
   useEthPrice(60000); // Keep price updated in context
   const currentGas = multiChainGas[selectedChain.id]?.gasPrice || 0;
+  const [hybridData, setHybridData] = useState<HybridPrediction | undefined>(undefined);
+
+  // Fetch hybrid prediction data
+  useEffect(() => {
+    const loadHybridData = async () => {
+      try {
+        const data = await fetchHybridPrediction();
+        setHybridData(data);
+      } catch (error) {
+        console.error('Failed to fetch hybrid prediction:', error);
+      }
+    };
+
+    loadHybridData();
+    const interval = setInterval(loadHybridData, 60000); // Refresh every 60 seconds
+    return () => clearInterval(interval);
+  }, []);
 
   return (
     <div className="min-h-screen app-shell">
@@ -89,7 +108,7 @@ const Analytics: React.FC = () => {
             ML Predictions
           </h2>
           <Suspense fallback={<CardSkeleton rows={4} />}>
-            <PredictionCards />
+            <PredictionCards hybridData={hybridData} />
           </Suspense>
         </section>
 

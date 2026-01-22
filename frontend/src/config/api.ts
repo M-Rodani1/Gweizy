@@ -56,7 +56,9 @@ export const API_CONFIG = {
     ANALYTICS_VOLATILITY: '/analytics/volatility',
     ANALYTICS_WHALES: '/analytics/whales',
     ANALYTICS_ANOMALIES: '/analytics/anomalies',
-    ANALYTICS_ENSEMBLE: '/analytics/ensemble'
+    ANALYTICS_ENSEMBLE: '/analytics/ensemble',
+    // Hybrid prediction endpoint
+    HYBRID_PREDICTION: '/predictions/hybrid'
   },
   TIMEOUT: 10000, // 10 seconds
   RETRY_ATTEMPTS: 3,

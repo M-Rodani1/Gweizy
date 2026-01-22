@@ -31,23 +31,17 @@ const ConfidenceBar: React.FC<ConfidenceBarProps> = ({ probs }) => {
 
   return (
     <div className="w-full">
-      {/* Labels above the bar */}
-      <div className="flex justify-between items-center mb-2">
-        <div className="flex flex-col items-start">
-          <span className="text-xs font-semibold text-green-400">
-            Wait: {(normalizedWait * 100).toFixed(1)}%
-          </span>
-        </div>
-        <div className="flex flex-col items-center">
-          <span className="text-xs font-semibold text-cyan-400">
-            Normal: {(normalizedNormal * 100).toFixed(1)}%
-          </span>
-        </div>
-        <div className="flex flex-col items-end">
-          <span className="text-xs font-semibold text-red-400">
-            Urgent: {(normalizedUrgent * 100).toFixed(1)}%
-          </span>
-        </div>
+      {/* Labels above the bar - flex container displaying % text */}
+      <div className="flex justify-between items-center mb-3">
+        <span className="text-xs font-semibold text-green-400">
+          Wait: {(normalizedWait * 100).toFixed(1)}%
+        </span>
+        <span className="text-xs font-semibold text-cyan-400">
+          Normal: {(normalizedNormal * 100).toFixed(1)}%
+        </span>
+        <span className="text-xs font-semibold text-red-400">
+          Urgent: {(normalizedUrgent * 100).toFixed(1)}%
+        </span>
       </div>
 
       {/* Progress bar container */}

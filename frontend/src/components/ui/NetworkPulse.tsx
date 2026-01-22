@@ -51,7 +51,7 @@ const NetworkPulse: React.FC<NetworkPulseProps> = ({ utilization, isConnected })
   const pulseSpeed = 1 + clampedUtil * 2; // 1s to 3s
 
   return (
-    <div className="bg-gray-800 rounded-lg shadow-lg border border-gray-700 p-6">
+    <div className="bg-surface-tertiary rounded-lg shadow-lg border border-gray-700 p-6">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
@@ -60,7 +60,7 @@ const NetworkPulse: React.FC<NetworkPulseProps> = ({ utilization, isConnected })
             aria-hidden="true"
           />
           <h3 className="text-lg font-semibold text-gray-200">
-            Base Network Load
+            Network Load
           </h3>
         </div>
         {isConnected && (
