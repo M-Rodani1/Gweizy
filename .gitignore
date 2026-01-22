@@ -98,3 +98,4 @@ FRONTEND_PRESENTATION.md
 .wrangler/
 node_modules/
 backend/node_modules/
+cloudflare-worker/node_modules/
