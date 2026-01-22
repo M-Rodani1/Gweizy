@@ -5,9 +5,12 @@ Enhanced with Prioritized Experience Replay, Double DQN, and Dueling Architectur
 import numpy as np
 import pickle
 import os
+import logging
 from typing import List, Tuple, Optional
 from collections import deque
 import random
+
+logger = logging.getLogger(__name__)
 
 
 class SumTree:
@@ -612,6 +615,18 @@ class DQNAgent:
         with open(path, 'rb') as f:
             data = pickle.load(f)
         
+        # Get the actual input dimension from the first layer weights
+        # This is the most reliable way to determine what the model expects
+        if 'weights' in data and len(data['weights']) > 0:
+            actual_input_dim = data['weights'][0].shape[0]
+            if actual_input_dim != self.state_dim:
+                logger.warning(
+                    f"State dimension mismatch: agent initialized with {self.state_dim}, "
+                    f"but model expects {actual_input_dim}. Will align features automatically."
+                )
+                # Update state_dim so _align_state_features knows what to expect
+                self.state_dim = actual_input_dim
+        
         self.q_network.weights = data['weights']
         self.q_network.biases = data['biases']
         self.target_network.copy_from(self.q_network)
@@ -619,8 +634,35 @@ class DQNAgent:
         self.training_steps = data.get('training_steps', 0)
         self.episode_rewards = data.get('episode_rewards', [])
 
+    def _align_state_features(self, state: np.ndarray) -> np.ndarray:
+        """Align state features to match model's expected input dimension.
+        
+        If state has more features than expected, truncate.
+        If state has fewer features than expected, pad with zeros.
+        """
+        if state.ndim == 1:
+            state = state.reshape(1, -1)
+        
+        current_dim = state.shape[1]
+        expected_dim = self.state_dim
+        
+        if current_dim == expected_dim:
+            return state
+        
+        if current_dim > expected_dim:
+            # Truncate: take first N features (most important features are usually first)
+            logger.debug(f"Truncating state from {current_dim} to {expected_dim} features")
+            return state[:, :expected_dim]
+        else:
+            # Pad with zeros
+            logger.debug(f"Padding state from {current_dim} to {expected_dim} features")
+            padding = np.zeros((state.shape[0], expected_dim - current_dim), dtype=state.dtype)
+            return np.concatenate([state, padding], axis=1)
+    
     def get_recommendation(self, state: np.ndarray, threshold: float = 0.6) -> dict:
         """Get action recommendation with confidence."""
+        # Align state dimensions to match model expectations
+        state = self._align_state_features(state)
         q_values = self.get_q_values(state)
         
         # Softmax for confidence
