@@ -1,15 +1,16 @@
 #!/usr/bin/env python3
 """
-Mempool Monitoring Worker
+Block Header Monitoring Worker
 
 Asynchronous background worker that connects to Alchemy WebSocket to monitor
-pending transactions as a leading indicator of gas price congestion.
+new block headers as a leading indicator of gas price congestion.
 
 Features:
 - WebSocket connection to Alchemy Base mainnet
-- Subscribes to alchemy_pendingTransactions
-- Aggregates transaction counts in memory
-- Flushes to database every 1 second
+- Subscribes to newHeads (new block headers)
+- Tracks block utilization (gasUsed/gasLimit) and base fee
+- Records block-level metrics to database
+- Provides "heartbeat" every ~2 seconds (Base block time)
 - Auto-reconnect with exponential backoff
 """
 
@@ -45,83 +46,108 @@ if not os.path.exists(DB_PATH):
 
 def init_db():
     """
-    Initialize database schema for mempool_stats table.
+    Initialize database schema for block_stats table.
     Creates the table if it doesn't exist.
     """
     try:
         conn = sqlite3.connect(DB_PATH, timeout=30.0)
         cursor = conn.cursor()
         
+        # Create block_stats table for block-level metrics
         cursor.execute("""
-            CREATE TABLE IF NOT EXISTS mempool_stats (
-                timestamp DATETIME PRIMARY KEY,
-                tx_count INTEGER,
+            CREATE TABLE IF NOT EXISTS block_stats (
+                block_number INTEGER PRIMARY KEY,
+                timestamp DATETIME NOT NULL,
+                gas_used INTEGER NOT NULL,
+                gas_limit INTEGER NOT NULL,
+                utilization REAL NOT NULL,
+                base_fee REAL,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )
         """)
         
-        # Create index on timestamp for faster queries
+        # Create indexes for faster queries
         cursor.execute("""
-            CREATE INDEX IF NOT EXISTS idx_mempool_stats_timestamp 
-            ON mempool_stats(timestamp)
+            CREATE INDEX IF NOT EXISTS idx_block_stats_timestamp 
+            ON block_stats(timestamp)
         """)
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_block_stats_block_number 
+            ON block_stats(block_number)
+        """)
+        
+        # Keep old mempool_stats table for backward compatibility (if it exists)
+        # But we'll use block_stats going forward
         
         conn.commit()
         conn.close()
-        logger.info(f"✅ Initialized mempool_stats table in {DB_PATH}")
+        logger.info(f"✅ Initialized block_stats table in {DB_PATH}")
     except Exception as e:
         logger.error(f"❌ Failed to initialize database: {e}")
         raise
 
 
-def save_mempool_count(tx_count: int, timestamp: datetime):
+def save_block_stats(block_number: int, gas_used: int, gas_limit: int, utilization: float, base_fee: Optional[float], timestamp: datetime):
     """
-    Save mempool transaction count to database.
+    Save block statistics to database.
     
     Args:
-        tx_count: Number of pending transactions
-        timestamp: Timestamp for this measurement
+        block_number: Block number
+        gas_used: Gas used in the block
+        gas_limit: Gas limit of the block
+        utilization: Gas utilization percentage (gas_used / gas_limit)
+        base_fee: Base fee per gas (in wei, will be converted to gwei)
+        timestamp: Block timestamp
     """
     try:
         conn = sqlite3.connect(DB_PATH, timeout=30.0)
         cursor = conn.cursor()
         
-        # Use timestamp as primary key, so we'll use INSERT OR REPLACE
+        # Convert base_fee from wei to gwei if provided
+        base_fee_gwei = base_fee / 1e9 if base_fee else None
+        
+        # Use block_number as primary key, so we'll use INSERT OR REPLACE
         # to handle potential duplicates
         cursor.execute("""
-            INSERT OR REPLACE INTO mempool_stats (timestamp, tx_count, created_at)
-            VALUES (?, ?, ?)
-        """, (timestamp.isoformat(), tx_count, datetime.now().isoformat()))
+            INSERT OR REPLACE INTO block_stats 
+            (block_number, timestamp, gas_used, gas_limit, utilization, base_fee, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, (
+            block_number,
+            timestamp.isoformat(),
+            gas_used,
+            gas_limit,
+            utilization,
+            base_fee_gwei,
+            datetime.now().isoformat()
+        ))
         
         conn.commit()
         conn.close()
-        logger.debug(f"💾 Saved mempool count: {tx_count} at {timestamp.isoformat()}")
+        logger.debug(f"💾 Saved block {block_number}: {utilization:.1%} utilization, base_fee={base_fee_gwei:.2f} gwei" if base_fee_gwei else f"💾 Saved block {block_number}: {utilization:.1%} utilization")
     except Exception as e:
-        logger.error(f"❌ Failed to save mempool count: {e}")
+        logger.error(f"❌ Failed to save block stats: {e}")
 
 
-class MempoolWorker:
+class BlockHeaderWorker:
     """
-    Asynchronous worker that monitors mempool via Alchemy WebSocket.
+    Asynchronous worker that monitors new block headers via Alchemy WebSocket.
     """
     
-    def __init__(self, ws_url: str = ALCHEMY_WS_URL, flush_interval: float = 1.0):
+    def __init__(self, ws_url: str = ALCHEMY_WS_URL):
         """
-        Initialize mempool worker.
+        Initialize block header worker.
         
         Args:
             ws_url: WebSocket URL for Alchemy
-            flush_interval: Seconds between database flushes (default 1.0)
         """
         self.ws_url = ws_url
-        self.flush_interval = flush_interval
-        self.pending_tx_count = 0
         self.running = False
         self.ws = None  # WebSocket connection
-        self._lock = asyncio.Lock()
+        self.subscription_id = None
         
     async def connect(self):
-        """Connect to Alchemy WebSocket and subscribe to pending transactions."""
+        """Connect to Alchemy WebSocket and subscribe to new block headers."""
         try:
             logger.info(f"🔌 Connecting to Alchemy WebSocket: {self.ws_url}")
             self.ws = await websockets.connect(
@@ -132,37 +158,53 @@ class MempoolWorker:
             )
             logger.info("✅ Connected to Alchemy WebSocket")
             
-            # Subscribe to pending transactions
+            # Subscribe to new block headers
             subscribe_msg = {
                 "jsonrpc": "2.0",
                 "id": 1,
                 "method": "eth_subscribe",
-                "params": ["alchemy_pendingTransactions"]
+                "params": ["newHeads"]
             }
             
             await self.ws.send(json.dumps(subscribe_msg))
-            logger.info("📡 Subscribed to alchemy_pendingTransactions")
+            logger.info("📡 Subscribing to newHeads (new block headers)...")
             
             # Wait for subscription confirmation
             response = await self.ws.recv()
             response_data = json.loads(response)
             
+            logger.info(f"📥 Subscription response: {json.dumps(response_data, indent=2)}")
+            
             if 'result' in response_data:
                 subscription_id = response_data['result']
+                self.subscription_id = subscription_id
                 logger.info(f"✅ Subscription confirmed: {subscription_id}")
+                logger.info("🔍 Listening for new block headers...")
+                logger.info("   Will track block utilization (gasUsed/gasLimit) as congestion signal")
                 return True
+            elif 'error' in response_data:
+                error = response_data.get('error', {})
+                logger.error(f"❌ Subscription failed: {error.get('message', 'Unknown error')}")
+                logger.error(f"   Error code: {error.get('code', 'N/A')}")
+                return False
             else:
-                logger.error(f"❌ Subscription failed: {response_data}")
+                logger.error(f"❌ Unexpected subscription response: {response_data}")
                 return False
                 
         except Exception as e:
             logger.error(f"❌ Connection error: {e}")
             return False
     
+    def hex_to_int(self, hex_str: str) -> int:
+        """Convert hex string to integer."""
+        if hex_str.startswith('0x'):
+            return int(hex_str, 16)
+        return int(hex_str, 16)
+    
     async def handle_message(self, message: str):
         """
-        Handle incoming WebSocket message.
-        Increments pending transaction counter.
+        Handle incoming WebSocket message (new block header).
+        Processes block header and saves statistics.
         
         Args:
             message: JSON string message from WebSocket
@@ -170,53 +212,80 @@ class MempoolWorker:
         try:
             data = json.loads(message)
             
-            # Check if this is a pending transaction notification from Alchemy
+            # Check if this is a new block header notification
             # Format: {"jsonrpc":"2.0","method":"eth_subscription","params":{"subscription":"...","result":{...}}}
             if data.get('method') == 'eth_subscription':
                 params = data.get('params', {})
-                if 'result' in params:
-                    # Each notification represents a new pending transaction
-                    async with self._lock:
-                        self.pending_tx_count += 1
-                        logger.debug(f"📨 Pending tx received (count: {self.pending_tx_count})")
+                subscription = params.get('subscription')
+                
+                # Verify this is for our subscription
+                if subscription == self.subscription_id or subscription is None:
+                    if 'result' in params:
+                        block_header = params.get('result')
+                        
+                        if isinstance(block_header, dict):
+                            # Extract block information
+                            block_number_hex = block_header.get('number', '0x0')
+                            block_number = self.hex_to_int(block_number_hex)
+                            
+                            gas_used_hex = block_header.get('gasUsed', '0x0')
+                            gas_used = self.hex_to_int(gas_used_hex)
+                            
+                            gas_limit_hex = block_header.get('gasLimit', '0x0')
+                            gas_limit = self.hex_to_int(gas_limit_hex)
+                            
+                            # Calculate utilization
+                            utilization = gas_used / gas_limit if gas_limit > 0 else 0.0
+                            
+                            # Extract base fee (if available)
+                            base_fee_hex = block_header.get('baseFeePerGas')
+                            base_fee = self.hex_to_int(base_fee_hex) if base_fee_hex else None
+                            
+                            # Extract timestamp
+                            timestamp_hex = block_header.get('timestamp', '0x0')
+                            timestamp_int = self.hex_to_int(timestamp_hex)
+                            block_timestamp = datetime.fromtimestamp(timestamp_int)
+                            
+                            # Log the block
+                            base_fee_str = f", base_fee={base_fee/1e9:.2f} gwei" if base_fee else ""
+                            logger.info(f"📦 New Block {block_number}: {utilization:.1%} full ({gas_used:,}/{gas_limit:,} gas){base_fee_str}")
+                            
+                            # Save to database
+                            save_block_stats(
+                                block_number=block_number,
+                                gas_used=gas_used,
+                                gas_limit=gas_limit,
+                                utilization=utilization,
+                                base_fee=base_fee,
+                                timestamp=block_timestamp
+                            )
+                        else:
+                            logger.warning(f"⚠️  Unexpected block header format: {type(block_header)}")
+                    else:
+                        logger.debug(f"📨 Subscription message without result: {params}")
+                else:
+                    logger.debug(f"📨 Message for different subscription: {subscription}")
+            # Check for error messages
+            elif 'error' in data:
+                error_msg = data.get('error', {})
+                logger.error(f"❌ WebSocket error: {error_msg.get('message', 'Unknown error')} (Code: {error_msg.get('code', 'N/A')})")
             # Ignore subscription confirmation messages (they have 'result' at top level)
             elif 'result' in data and 'id' in data:
-                # This is likely a subscription confirmation, ignore
+                # This is likely a subscription confirmation, already handled in connect()
                 pass
             else:
-                logger.debug(f"📨 Received non-transaction message: {data.get('method', 'unknown')}")
+                logger.debug(f"📨 Received other message type: {data.get('method', 'unknown')}")
                     
         except json.JSONDecodeError as e:
             logger.warning(f"⚠️  Invalid JSON message: {e}")
+            logger.debug(f"   Raw message: {message[:200]}")
         except Exception as e:
-            logger.error(f"❌ Error handling message: {e}")
+            logger.error(f"❌ Error handling message: {e}", exc_info=True)
     
-    async def flush_to_db(self):
-        """
-        Flush current transaction count to database and reset counter.
-        This runs every flush_interval seconds.
-        """
-        while self.running:
-            try:
-                await asyncio.sleep(self.flush_interval)
-                
-                async with self._lock:
-                    count = self.pending_tx_count
-                    timestamp = datetime.now()
-                    self.pending_tx_count = 0  # Reset counter
-                
-                if count > 0:
-                    save_mempool_count(count, timestamp)
-                    logger.info(f"💾 Flushed {count} pending transactions to DB")
-                else:
-                    logger.debug("💾 Flushed 0 transactions (no activity)")
-                    
-            except Exception as e:
-                logger.error(f"❌ Error flushing to database: {e}")
     
     async def listen(self):
         """
-        Listen for incoming WebSocket messages.
+        Listen for incoming WebSocket messages (new block headers).
         """
         try:
             while self.running:
@@ -250,7 +319,7 @@ class MempoolWorker:
             try:
                 self.running = True
                 
-                # Connect and subscribe
+                # Connect and subscribe via WebSocket
                 if not await self.connect():
                     logger.error("❌ Failed to connect, retrying in 5 seconds...")
                     await asyncio.sleep(5)
@@ -259,25 +328,11 @@ class MempoolWorker:
                 # Reset reconnect delay on successful connection
                 reconnect_delay = 5
                 
-                # Start flush task
-                flush_task = asyncio.create_task(self.flush_to_db())
-                
-                # Start listening
+                # Start listening for new block headers
                 listen_task = asyncio.create_task(self.listen())
                 
-                # Wait for either task to complete (they shouldn't normally)
-                done, pending = await asyncio.wait(
-                    [flush_task, listen_task],
-                    return_when=asyncio.FIRST_COMPLETED
-                )
-                
-                # Cancel pending tasks
-                for task in pending:
-                    task.cancel()
-                    try:
-                        await task
-                    except asyncio.CancelledError:
-                        pass
+                # Wait for task to complete (shouldn't normally)
+                await listen_task
                 
                 # Close WebSocket if still open
                 if self.ws:
@@ -297,7 +352,7 @@ class MempoolWorker:
                 reconnect_delay = min(reconnect_delay * 2, 60)
                 
             except KeyboardInterrupt:
-                logger.info("🛑 Shutting down mempool worker...")
+                logger.info("🛑 Shutting down block header worker...")
                 self.running = False
                 if self.ws:
                     try:
@@ -318,12 +373,12 @@ class MempoolWorker:
 
 
 async def main():
-    """Main entry point for the mempool worker."""
+    """Main entry point for the block header worker."""
     # Initialize database
     init_db()
     
     # Create and run worker
-    worker = MempoolWorker()
+    worker = BlockHeaderWorker()
     await worker.run()
 
 
@@ -338,4 +393,4 @@ if __name__ == "__main__":
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
-        logger.info("🛑 Mempool worker stopped by user")
+        logger.info("🛑 Block header worker stopped by user")
