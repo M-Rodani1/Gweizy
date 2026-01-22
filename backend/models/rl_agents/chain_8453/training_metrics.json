@@ -1,0 +1,8 @@
+{
+  "episode": 1000,
+  "avg_reward_last_100": 10.017528595303794,
+  "avg_savings_last_100": 0.0040045850117941565,
+  "epsilon": 0.02,
+  "training_steps": 24942,
+  "timestamp": "2026-01-22T00:05:27.296783"
+}

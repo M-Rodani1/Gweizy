@@ -1,0 +1,14 @@
+{
+  "chain_id": 8453,
+  "chain_name": "Base",
+  "total_episodes": 1000,
+  "training_time_minutes": 0.33233445,
+  "final_avg_reward_last_100": 10.017528595303794,
+  "final_avg_savings_last_100": 0.0040045850117941565,
+  "best_avg_reward": 16.499939698698665,
+  "best_avg_savings": 0.05426702404766041,
+  "total_training_steps": 24942,
+  "final_epsilon": 0.02,
+  "final_buffer_size": 25069,
+  "timestamp": "2026-01-22T00:05:27.298380"
+}
