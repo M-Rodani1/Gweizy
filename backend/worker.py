@@ -87,9 +87,9 @@ class DataCollectionWorker:
                         logger.info(f"[{datetime.now().strftime('%H:%M:%S')}] New block detected: {current_block}")
 
                         # Collect gas prices for this specific block
-                    try:
+                        try:
                             gas_data = self._collect_gas_prices(block_number=current_block)
-                        if gas_data:
+                            if gas_data:
                                 utilization = gas_data.get('utilization', 0)
                                 logger.info(
                                     f"  ✓ [Block {current_block}] "
@@ -98,19 +98,19 @@ class DataCollectionWorker:
                                 )
                         except BlockNotFound:
                             logger.debug(f"  Block {current_block} not found yet, will retry")
-                    except Exception as e:
-                        logger.error(f"  ✗ Gas collection failed: {e}")
+                        except Exception as e:
+                            logger.error(f"  ✗ Gas collection failed: {e}")
 
                         # Collect onchain features for this block
-                    try:
+                        try:
                             onchain_data = self._collect_onchain_features(block_number=current_block)
-                        if onchain_data:
+                            if onchain_data:
                                 # Already logged in gas collection, just confirm
                                 pass
                         except BlockNotFound:
                             logger.debug(f"  Block {current_block} not found yet for onchain features")
-                    except Exception as e:
-                        logger.error(f"  ✗ OnChain collection failed: {e}")
+                        except Exception as e:
+                            logger.error(f"  ✗ OnChain collection failed: {e}")
 
                         # Update last processed block
                         last_processed_block = current_block
