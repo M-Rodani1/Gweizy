@@ -43,8 +43,8 @@ backend/models/saved_models/*
 !backend/models/saved_models/scaler_*.pkl
 !backend/models/saved_models/feature_names.pkl
 !backend/models/saved_models/.gitkeep
-# Spike detectors excluded due to Git LFS budget (213MB total)
-backend/models/saved_models/spike_detector*.pkl
+# Spike detectors are small enough (2MB) for now
+!backend/models/saved_models/spike_detector*.pkl
 backend/gas_data.db
 
 # Editor directories and files
