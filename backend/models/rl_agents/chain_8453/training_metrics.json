@@ -1,8 +1,23 @@
 {
   "episode": 1000,
-  "avg_reward_last_100": 10.017528595303794,
-  "avg_savings_last_100": 0.0040045850117941565,
-  "epsilon": 0.02,
-  "training_steps": 24942,
-  "timestamp": "2026-01-22T00:05:27.296783"
+  "avg_reward_last_50": 0.19923559793226941,
+  "avg_savings_last_50": -6.411144569453853,
+  "avg_loss_last_50": 0.02178110547038795,
+  "epsilon": 0.34653724972211336,
+  "training_steps": 2119,
+  "timestamp": "2026-01-22T23:45:09.908509",
+  "eval_metrics": {
+    "avg_reward": 0.25713969749833954,
+    "avg_savings": 0.12904004311508477,
+    "median_savings": 25.73843009989648,
+    "positive_savings_rate": 73.33333333333333,
+    "avg_wait_time": 3.7666666666666666,
+    "action_distribution": {
+      "wait": 113,
+      "execute": 30
+    },
+    "avg_confidence": 0.6186780323253245,
+    "price_improvement": 12.904004311508476,
+    "net_savings": 0.12904004311508477
+  }
 }
