@@ -591,6 +591,8 @@ class DQNAgent:
 
     def get_q_values(self, state: np.ndarray) -> np.ndarray:
         """Get Q-values for all actions."""
+        # Ensure state is aligned before forward pass (safety check)
+        state = self._align_state_features(state)
         return self.q_network.forward(state).flatten()
 
     def save(self, path: str):
@@ -621,11 +623,16 @@ class DQNAgent:
             actual_input_dim = data['weights'][0].shape[0]
             if actual_input_dim != self.state_dim:
                 logger.warning(
-                    f"State dimension mismatch: agent initialized with {self.state_dim}, "
-                    f"but model expects {actual_input_dim}. Will align features automatically."
+                    f"State dimension mismatch detected during load: "
+                    f"agent initialized with {self.state_dim}, but model expects {actual_input_dim}. "
+                    f"Updating state_dim to {actual_input_dim}."
                 )
                 # Update state_dim so _align_state_features knows what to expect
                 self.state_dim = actual_input_dim
+            else:
+                logger.debug(f"State dimension matches: {self.state_dim}")
+        else:
+            logger.warning("Could not determine input dimension from saved weights. Using initialized state_dim.")
         
         self.q_network.weights = data['weights']
         self.q_network.biases = data['biases']
@@ -640,6 +647,7 @@ class DQNAgent:
         If state has more features than expected, truncate.
         If state has fewer features than expected, pad with zeros.
         """
+        # Ensure state is 2D
         if state.ndim == 1:
             state = state.reshape(1, -1)
         
@@ -651,11 +659,18 @@ class DQNAgent:
         
         if current_dim > expected_dim:
             # Truncate: take first N features (most important features are usually first)
-            logger.debug(f"Truncating state from {current_dim} to {expected_dim} features")
-            return state[:, :expected_dim]
+            logger.warning(
+                f"State dimension mismatch: input has {current_dim} features, "
+                f"model expects {expected_dim}. Truncating to {expected_dim} features."
+            )
+            aligned_state = state[:, :expected_dim].copy()
+            return aligned_state
         else:
             # Pad with zeros
-            logger.debug(f"Padding state from {current_dim} to {expected_dim} features")
+            logger.warning(
+                f"State dimension mismatch: input has {current_dim} features, "
+                f"model expects {expected_dim}. Padding with zeros."
+            )
             padding = np.zeros((state.shape[0], expected_dim - current_dim), dtype=state.dtype)
             return np.concatenate([state, padding], axis=1)
     
