@@ -25,9 +25,9 @@ class StateBuilder:
     def __init__(self, history_length: int = 24):
         self.history_length = history_length
         # Base features: 1 (current_price) + history_length + 4 (time) + 3 (volatility/momentum/percentile) + 2 (urgency/time_waiting)
-        # Technical indicators: +3 (RSI, MACD, Bollinger)
-        # Total: 1 + history_length + 4 + 3 + 2 + 3 = 13 + history_length
-        self.state_dim = 1 + history_length + 4 + 3 + 2 + 3  # 37 features (with 24 history)
+        # Technical indicators: +4 (RSI, MACD, signal, Bollinger position)
+        # Total: 1 + history_length + 4 + 3 + 2 + 4 = 14 + history_length
+        self.state_dim = 1 + history_length + 4 + 3 + 2 + 4  # 38 features (with 24 history)
 
     def build_state(self, gas_state: GasState, price_stats: Dict) -> np.ndarray:
         """Convert GasState to normalized numpy array with improved normalization."""

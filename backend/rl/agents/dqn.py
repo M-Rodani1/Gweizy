@@ -601,6 +601,7 @@ class DQNAgent:
         data = {
             'weights': self.q_network.weights,
             'biases': self.q_network.biases,
+            'dueling': self.q_network.dueling,
             'epsilon': self.epsilon,
             'training_steps': self.training_steps,
             'state_dim': self.state_dim,
@@ -609,6 +610,11 @@ class DQNAgent:
             'learning_rate': self.learning_rate,
             'initial_learning_rate': self.initial_learning_rate
         }
+        if self.q_network.dueling:
+            data['value_weights'] = self.q_network.value_weights
+            data['value_biases'] = self.q_network.value_biases
+            data['advantage_weights'] = self.q_network.advantage_weights
+            data['advantage_biases'] = self.q_network.advantage_biases
         with open(path, 'wb') as f:
             pickle.dump(data, f)
 
@@ -616,26 +622,49 @@ class DQNAgent:
         """Load agent from file."""
         with open(path, 'rb') as f:
             data = pickle.load(f)
-        
-        # Get the actual input dimension from the first layer weights
-        # This is the most reliable way to determine what the model expects
+
+        data_dueling = bool(data.get('dueling', False))
+        if data_dueling and not all(k in data for k in ('value_weights', 'value_biases', 'advantage_weights', 'advantage_biases')):
+            logger.warning("Dueling weights missing in saved model. Falling back to non-dueling load.")
+            data_dueling = False
+
+        # Infer dimensions from saved weights
+        inferred_state_dim = self.state_dim
+        inferred_action_dim = self.action_dim
         if 'weights' in data and len(data['weights']) > 0:
-            actual_input_dim = data['weights'][0].shape[0]
-            if actual_input_dim != self.state_dim:
-                logger.warning(
-                    f"State dimension mismatch detected during load: "
-                    f"agent initialized with {self.state_dim}, but model expects {actual_input_dim}. "
-                    f"Updating state_dim to {actual_input_dim}."
-                )
-                # Update state_dim so _align_state_features knows what to expect
-                self.state_dim = actual_input_dim
-            else:
-                logger.debug(f"State dimension matches: {self.state_dim}")
+            inferred_state_dim = data['weights'][0].shape[0]
+            if not data_dueling:
+                inferred_action_dim = data['weights'][-1].shape[1]
         else:
             logger.warning("Could not determine input dimension from saved weights. Using initialized state_dim.")
-        
+
+        inferred_action_dim = int(data.get('action_dim', inferred_action_dim))
+
+        # Rebuild networks if architecture differs
+        if (
+            self.q_network.dueling != data_dueling
+            or self.state_dim != inferred_state_dim
+            or self.action_dim != inferred_action_dim
+        ):
+            logger.warning(
+                f"Rebuilding networks for loaded model "
+                f"(dueling={data_dueling}, state_dim={inferred_state_dim}, action_dim={inferred_action_dim})."
+            )
+            hidden_dims = self.q_network.hidden_dims
+            self.state_dim = inferred_state_dim
+            self.action_dim = inferred_action_dim
+            self.q_network = QNetwork(self.state_dim, self.action_dim, hidden_dims, dueling=data_dueling)
+            self.target_network = QNetwork(self.state_dim, self.action_dim, hidden_dims, dueling=data_dueling)
+
+        # Load weights
         self.q_network.weights = data['weights']
         self.q_network.biases = data['biases']
+        if data_dueling:
+            self.q_network.value_weights = data['value_weights']
+            self.q_network.value_biases = data['value_biases']
+            self.q_network.advantage_weights = data['advantage_weights']
+            self.q_network.advantage_biases = data['advantage_biases']
+
         self.target_network.copy_from(self.q_network)
         self.epsilon = data.get('epsilon', 0.01)
         self.training_steps = data.get('training_steps', 0)
