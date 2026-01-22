@@ -32,6 +32,7 @@ aiohttp>=3.9.0
 sentry-sdk==2.48.0
 flask-socketio>=5.3.0
 simple-websocket>=1.0.0
+websockets>=12.0  # For async WebSocket client in mempool_worker
 
 # Advanced ML Models
 lightgbm>=4.0.0

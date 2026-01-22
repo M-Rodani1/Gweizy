@@ -65,6 +65,45 @@ log(f"📅 Raw date range: {df['timestamp'].min()} to {df['timestamp'].max()}")
 log(f"⛽ Raw gas price range: {df['gas_price'].min():.6f} to {df['gas_price'].max():.6f} gwei")
 
 # -------------------------------------------
+# Load Mempool Stats (Leading Indicators)
+# -------------------------------------------
+log("\n📡 Loading mempool statistics (leading indicators)...")
+try:
+    mempool_query = """
+    SELECT timestamp, tx_count
+    FROM mempool_stats
+    ORDER BY timestamp ASC
+    """
+    df_mempool = pd.read_sql(mempool_query, engine)
+    
+    if len(df_mempool) > 0:
+        df_mempool['timestamp'] = pd.to_datetime(df_mempool['timestamp'])
+        log(f"   ✅ Loaded {len(df_mempool):,} mempool records")
+        log(f"   📅 Mempool date range: {df_mempool['timestamp'].min()} to {df_mempool['timestamp'].max()}")
+        
+        # Merge with gas_prices using nearest timestamp (forward fill)
+        # Convert timestamps to datetime if not already
+        df['timestamp'] = pd.to_datetime(df['timestamp'])
+        
+        # Merge using merge_asof for nearest timestamp matching (forward fill)
+        df = pd.merge_asof(
+            df.sort_values('timestamp'),
+            df_mempool.sort_values('timestamp'),
+            on='timestamp',
+            direction='forward',  # Forward fill - use next available mempool data
+            suffixes=('', '_mempool')
+        )
+        
+        log(f"   ✅ Merged mempool data: {df['tx_count'].notna().sum():,} records have mempool data")
+    else:
+        log(f"   ⚠️  No mempool data found (table may be empty - mempool worker may not be running)")
+        df['tx_count'] = None
+except Exception as e:
+    log(f"   ⚠️  Failed to load mempool stats: {e}")
+    log(f"   ⚠️  Continuing without mempool features (mempool_stats table may not exist yet)")
+    df['tx_count'] = None
+
+# -------------------------------------------
 # "Tick Bar" Sampling: Only keep rows where market actually moved
 # -------------------------------------------
 log("\n⏱️  Tick Bar Sampling: Filtering for market movements (>1% change)")
@@ -436,6 +475,31 @@ if 'priority_fee' in df.columns:
 
 if 'base_fee' in df.columns:
     df['gas_base_divergence'] = df['gas_price'] - df['base_fee']
+
+# NEW: Mempool Features (Leading Indicators)
+log("   Adding mempool features (leading indicators of congestion)...")
+if 'tx_count' in df.columns and df['tx_count'].notna().any():
+    # mempool_velocity: Raw tx_count (transactions per second)
+    df['mempool_velocity'] = df['tx_count'].fillna(0)
+    
+    # mempool_acceleration: Difference in tx_count from previous second
+    df['mempool_acceleration'] = df['tx_count'].diff().fillna(0)
+    
+    # mempool_surge: Boolean (1 if tx_count > rolling_mean + 2*std)
+    if df['tx_count'].notna().sum() > 10:  # Need enough data for rolling stats
+        rolling_mean = df['tx_count'].rolling(window=60, min_periods=1).mean()
+        rolling_std = df['tx_count'].rolling(window=60, min_periods=1).std()
+        df['mempool_surge'] = ((df['tx_count'] > (rolling_mean + 2 * rolling_std)) & (df['tx_count'].notna())).astype(int)
+    else:
+        df['mempool_surge'] = 0
+    
+    log(f"      ✅ Created mempool features: velocity, acceleration, surge")
+    log(f"      📊 Mempool data coverage: {df['tx_count'].notna().sum():,} / {len(df):,} records ({100*df['tx_count'].notna().sum()/len(df):.1f}%)")
+else:
+    log(f"      ⚠️  Skipping mempool features (no mempool data available)")
+    df['mempool_velocity'] = 0
+    df['mempool_acceleration'] = 0
+    df['mempool_surge'] = 0
     
 # Drop NaN rows but be more selective - only drop rows where critical features are NaN
 initial_len = len(df)
