@@ -38,60 +38,64 @@ class GasDataLoader:
     def load_data(self, hours: int = 720, min_records: int = 100, chain_id: int = 8453) -> List[Dict]:
         """
         Load historical gas prices from database for a specific chain.
+        REQUIRES REAL DATA - no synthetic fallback.
         
         Args:
             hours: Hours of historical data to load
-            min_records: Minimum records needed, otherwise use synthetic data
+            min_records: Minimum records needed (raises error if not met)
             chain_id: Chain ID (8453=Base, 1=Ethereum, etc.)
-        """
-        if self.use_database and self._db:
-            try:
-                # Use DatabaseManager to get historical data for specific chain
-                raw_data = self._db.get_historical_data(hours=hours, chain_id=chain_id)
-                
-                if len(raw_data) < min_records:
-                    print(f"Only {len(raw_data)} records found for chain {chain_id}, using synthetic data")
-                    return self._generate_synthetic_data(hours)
-                
-                # Convert to format expected by RL environment
-                data = []
-                for d in raw_data:
-                    # Handle timestamp
-                    ts = d.get('timestamp', '')
-                    if isinstance(ts, str):
-                        from dateutil import parser
-                        try:
-                            ts = parser.parse(ts)
-                        except:
-                            ts = datetime.now()
-                    elif not isinstance(ts, datetime):
-                        ts = datetime.now()
-                    
-                    # Get gas price (handle different field names)
-                    gas_price = d.get('gwei') or d.get('current_gas') or 0.001
-                    base_fee = d.get('baseFee') or d.get('base_fee') or gas_price * 0.9
-                    
-                    data.append({
-                        'timestamp': ts,
-                        'gas_price': float(gas_price),
-                        'base_fee': float(base_fee),
-                        'hour': ts.hour,
-                        'day_of_week': ts.weekday()
-                    })
-                
-                # Sort by timestamp
-                data.sort(key=lambda x: x['timestamp'])
-                
-                self._cache = data
-                print(f"Loaded {len(data)} records from database")
-                return data
-                
-            except Exception as e:
-                print(f"DB error: {e}, using synthetic data")
-                return self._generate_synthetic_data(hours)
         
-        # Fallback to synthetic data
-        return self._generate_synthetic_data(hours)
+        Raises:
+            ValueError: If insufficient real data is available
+        """
+        if not self.use_database or not self._db:
+            raise ValueError("Database not available. Cannot train DQN without real data.")
+        
+        try:
+            # Use DatabaseManager to get historical data for specific chain
+            raw_data = self._db.get_historical_data(hours=hours, chain_id=chain_id)
+            
+            if len(raw_data) < min_records:
+                raise ValueError(
+                    f"Insufficient real data: {len(raw_data)} records found for chain {chain_id}, "
+                    f"need at least {min_records}. Please collect more data before training."
+                )
+            
+            # Convert to format expected by RL environment
+            data = []
+            for d in raw_data:
+                # Handle timestamp
+                ts = d.get('timestamp', '')
+                if isinstance(ts, str):
+                    from dateutil import parser
+                    try:
+                        ts = parser.parse(ts)
+                    except:
+                        ts = datetime.now()
+                elif not isinstance(ts, datetime):
+                    ts = datetime.now()
+                
+                # Get gas price (handle different field names)
+                gas_price = d.get('gwei') or d.get('current_gas') or 0.001
+                base_fee = d.get('baseFee') or d.get('base_fee') or gas_price * 0.9
+                
+                data.append({
+                    'timestamp': ts,
+                    'gas_price': float(gas_price),
+                    'base_fee': float(base_fee),
+                    'hour': ts.hour,
+                    'day_of_week': ts.weekday()
+                })
+            
+            # Sort by timestamp
+            data.sort(key=lambda x: x['timestamp'])
+            
+            self._cache = data
+            print(f"✅ Loaded {len(data)} REAL records from database for chain {chain_id}")
+            return data
+            
+        except Exception as e:
+            raise ValueError(f"Failed to load real data from database: {e}. Cannot train without real data.")
 
     def _generate_synthetic_data(self, hours: int) -> List[Dict]:
         """Generate realistic synthetic gas data for training."""
@@ -178,11 +182,15 @@ class GasDataLoader:
                      augment: bool = True) -> List[List[Dict]]:
         """
         Split data into training episodes with optional augmentation.
+        REQUIRES REAL DATA - no synthetic fallback.
         
         Args:
             episode_length: Length of each episode in time steps
             num_episodes: Number of episodes to generate
             augment: Whether to apply data augmentation (noise, time shifts)
+        
+        Raises:
+            ValueError: If insufficient real data is available
         """
         if not self._cache:
             self.load_data(hours=720)  # Load more data for better episodes
@@ -191,8 +199,10 @@ class GasDataLoader:
         data_len = len(self._cache)
         
         if data_len < episode_length:
-            print(f"Warning: Not enough data ({data_len} < {episode_length}), using synthetic")
-            return [self._generate_synthetic_data(episode_length // 12) for _ in range(num_episodes)]
+            raise ValueError(
+                f"Insufficient real data: {data_len} records < {episode_length} required. "
+                f"Please collect more data before training."
+            )
         
         # Generate episodes with augmentation
         for _ in range(num_episodes):
@@ -238,12 +248,15 @@ class GasDataLoader:
         - Low volatility periods
         - Price spikes
         - Normal conditions
+        
+        REQUIRES REAL DATA - no synthetic fallback.
         """
         if not self._cache:
-            self.load_data(hours=720)
+            self.load_data(hours=720)  # This will raise if no real data
         
         data_len = len(self._cache)
         if data_len < episode_length * 2:
+            # Still use real data, just with less diversity
             return self.get_episodes(episode_length, num_episodes)
         
         episodes = []

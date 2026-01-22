@@ -62,6 +62,11 @@ class RewardCalculator:
 
     def calculate_reward(self, action: int, current_price: float, 
                         urgency: float, time_waiting: int, done: bool = False) -> float:
+        """
+        Calculate reward using RELATIVE SAVINGS approach.
+        Reward = Benchmark_Price - Execution_Price
+        Where Benchmark_Price = initial price at episode start (Step 0).
+        """
         if self.initial_price is None:
             self.initial_price = current_price
             self.best_price_seen = current_price
@@ -69,26 +74,34 @@ class RewardCalculator:
         self.best_price_seen = min(self.best_price_seen, current_price)
 
         if action == 1:  # Execute
-            reward = 0.0
+            # RELATIVE SAVINGS: (Benchmark - Execution) / Benchmark
+            # Positive if execution price < benchmark (saved money)
+            # Negative if execution price > benchmark (paid more)
             if self.initial_price > 0:
-                savings_pct = (self.initial_price - current_price) / self.initial_price
-                reward += savings_pct * self.config.savings_weight * 10
+                relative_savings = (self.initial_price - current_price) / self.initial_price
+                # Scale to meaningful reward range (multiply by 100 for percentage points)
+                reward = relative_savings * 100.0 * self.config.savings_weight
+            else:
+                reward = 0.0
             
-            if self.best_price_seen > 0:
-                price_quality = 1.0 - (current_price - self.best_price_seen) / self.best_price_seen
-                reward += max(0, min(1, price_quality)) * 0.5
-            
+            # Small bonus for executing (encourages action)
             reward += self.config.execution_bonus
             
+            # Time penalty for urgent transactions (if waited too long on urgent tx)
             if urgency > 0.5:
                 reward -= time_waiting * self.config.time_penalty * urgency * self.config.urgency_multiplier
         else:  # Wait
+            # Small negative reward for waiting (encourages eventual execution)
             reward = -self.config.time_penalty * (1 + urgency * self.config.urgency_multiplier)
+            
+            # If episode ends without execution, apply missed opportunity penalty
             if done:
-                missed = (current_price - self.best_price_seen) / self.initial_price
-                reward -= missed * self.config.missed_opportunity_penalty * 10
+                # Penalty for missing the best price seen
+                if self.initial_price > 0:
+                    missed_opportunity = (current_price - self.best_price_seen) / self.initial_price
+                    reward -= missed_opportunity * self.config.missed_opportunity_penalty * 50
         
-        # Scale reward to [-1, 1] range
+        # Scale reward to [-1, 1] range for stable learning
         return self._scale_reward(reward)
 
     def get_recommendation(self, current_price: float, predicted_prices: list, urgency: float) -> dict:

@@ -17,7 +17,7 @@ from rl.data_loader import GasDataLoader
 
 
 def train_dqn(
-    num_episodes: int = 1000,
+    num_episodes: int = 10000,
     episode_length: int = 48,
     save_path: str = None,
     checkpoint_dir: str = None,
@@ -64,9 +64,17 @@ def train_dqn(
     os.makedirs(os.path.dirname(save_path), exist_ok=True)
     os.makedirs(checkpoint_dir, exist_ok=True)
     
-    # Initialize with chain-specific data
-    data_loader = GasDataLoader()
-    data_loader.load_data(hours=720, chain_id=chain_id)  # Pre-load chain data
+    # Initialize with chain-specific REAL data (no synthetic fallback)
+    print("Loading REAL data from database (no synthetic fallback)...")
+    data_loader = GasDataLoader(use_database=True)
+    try:
+        data_loader.load_data(hours=720, min_records=500, chain_id=chain_id)  # Require at least 500 records
+        print(f"✅ Successfully loaded real data for training")
+    except ValueError as e:
+        print(f"❌ {e}")
+        print("   Please collect real data before training DQN agent.")
+        raise
+    
     env = GasOptimizationEnv(data_loader, episode_length=episode_length)
     
     agent = DQNAgent(
@@ -383,7 +391,7 @@ if __name__ == '__main__':
     import argparse
     
     parser = argparse.ArgumentParser(description='Train DQN gas optimization agent')
-    parser.add_argument('--episodes', type=int, default=500, help='Number of episodes')
+    parser.add_argument('--episodes', type=int, default=10000, help='Number of episodes (default: 10000)')
     parser.add_argument('--evaluate', action='store_true', help='Evaluate after training')
     args = parser.parse_args()
     
