@@ -241,41 +241,33 @@ const PredictionCards: React.FC<PredictionCardsProps> = ({ hybridData }) => {
           )}
           
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-gray-200">
-              {card.horizon.toUpperCase()} PREDICTION
-            </h3>
-          </div>
-
-          {/* Trend Indicator - Only show for 4h prediction */}
-          {card.horizon === '4h' && (card.trendSignal4h !== undefined && card.trendSignal4h !== null || hybridData?.trend_signal_4h !== undefined) && (
-            <div className="mb-3">
-              {(() => {
-                const trendSignal = card.trendSignal4h ?? hybridData?.trend_signal_4h ?? 0;
+            <div className="flex items-center gap-3">
+              <h3 className="text-lg font-semibold text-gray-200">
+                {card.horizon.toUpperCase()} PREDICTION
+              </h3>
+              {card.horizon === '4h' && (() => {
+                const trendSignal = card.trendSignal4h ?? hybridData?.trend_signal_4h;
+                if (trendSignal === undefined || trendSignal === null) {
+                  return null;
+                }
                 if (trendSignal > 0.2) {
                   return (
-                    <div className="flex items-center gap-2 text-red-400 text-sm font-medium">
-                      <span>↗</span>
-                      <span>Rising Trend</span>
-                    </div>
-                  );
-                } else if (trendSignal < -0.2) {
-                  return (
-                    <div className="flex items-center gap-2 text-green-400 text-sm font-medium">
-                      <span>↘</span>
-                      <span>Falling Trend</span>
-                    </div>
-                  );
-                } else {
-                  return (
-                    <div className="flex items-center gap-2 text-gray-400 text-sm font-medium">
-                      <span>→</span>
-                      <span>Market Flat</span>
-                    </div>
+                    <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-red-500/10 text-red-300 border border-red-500/30">
+                      ↗ Rising
+                    </span>
                   );
                 }
+                if (trendSignal < -0.2) {
+                  return (
+                    <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-green-500/10 text-green-300 border border-green-500/30">
+                      ↘ Falling
+                    </span>
+                  );
+                }
+                return null;
               })()}
             </div>
-          )}
+          </div>
 
           <div className="mb-4">
             <div className={`text-xl font-bold mb-2 ${getTextColor(card.color)}`}>
@@ -357,10 +349,16 @@ const PredictionCards: React.FC<PredictionCardsProps> = ({ hybridData }) => {
           </div>
 
           {/* Confidence Bar (Hybrid Model Probabilities) - Show in first card or if hybridData provided */}
-          {(card.horizon === '1h' || hybridData) && (hybridData?.probabilities || card.probabilities) && (
+          {(card.horizon === '1h' || hybridData) && (
             <div className="mb-4">
               <div className="text-xs text-gray-400 mb-2 font-medium">Action Probabilities</div>
-              <ConfidenceBar probs={hybridData?.probabilities || card.probabilities!} />
+              {hybridData?.probabilities ? (
+                <ConfidenceBar probs={hybridData.probabilities} />
+              ) : card.probabilities ? (
+                <ConfidenceBar probs={card.probabilities} />
+              ) : (
+                <div className="h-4 bg-gray-800/50 rounded-full animate-pulse mt-4" />
+              )}
             </div>
           )}
 
@@ -458,4 +456,3 @@ const PredictionCards: React.FC<PredictionCardsProps> = ({ hybridData }) => {
 
 // Memoize the component to prevent unnecessary re-renders
 export default memo(PredictionCards);
-

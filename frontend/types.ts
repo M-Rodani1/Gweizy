@@ -99,7 +99,6 @@ export interface APIError {
 export interface HybridPrediction {
   action: 'WAIT' | 'NORMAL' | 'URGENT';
   confidence: number; // 0.0 to 1.0
-  gas_price: number;
   trend_signal_4h: number; // The "Macro" signal (-1.0 to 1.0)
   probabilities: {
     wait: number;

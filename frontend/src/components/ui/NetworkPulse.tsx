@@ -9,39 +9,33 @@ interface NetworkPulseProps {
 
 /**
  * NetworkPulse Component
- * 
- * Visualizes the live network load (Block Headers) with a breathing
- * progress bar that pulses based on utilization level.
+ *
+ * Visualizes the live network load with a breathing progress bar that
+ * pulses based on utilization level.
  */
 const NetworkPulse: React.FC<NetworkPulseProps> = ({ utilization, isConnected }) => {
   // Clamp utilization between 0 and 1
   const clampedUtil = Math.max(0, Math.min(1, utilization));
-  const percentage = (clampedUtil * 100).toFixed(1);
+  const percentage = Math.round(clampedUtil * 100);
 
   // Color logic: <50% (Green), 50-80% (Yellow), >80% (Red)
   const getColorClasses = () => {
     if (clampedUtil < 0.5) {
       return {
-        bg: 'bg-green-500',
         gradient: 'from-green-500 to-green-600',
         text: 'text-green-400',
-        glow: 'shadow-glow-cyan',
-      };
-    } else if (clampedUtil < 0.8) {
-      return {
-        bg: 'bg-yellow-500',
-        gradient: 'from-yellow-500 to-yellow-600',
-        text: 'text-yellow-400',
-        glow: 'shadow-glow-cyan',
-      };
-    } else {
-      return {
-        bg: 'bg-red-500',
-        gradient: 'from-red-500 to-red-600',
-        text: 'text-red-400',
-        glow: 'shadow-glow-cyan',
       };
     }
+    if (clampedUtil < 0.8) {
+      return {
+        gradient: 'from-yellow-500 to-yellow-600',
+        text: 'text-yellow-400',
+      };
+    }
+    return {
+      gradient: 'from-red-500 to-red-600',
+      text: 'text-red-400',
+    };
   };
 
   const colors = getColorClasses();
@@ -51,75 +45,46 @@ const NetworkPulse: React.FC<NetworkPulseProps> = ({ utilization, isConnected })
   const pulseSpeed = 1 + clampedUtil * 2; // 1s to 3s
 
   return (
-    <div className="bg-surface-tertiary rounded-lg shadow-lg border border-gray-700 p-6">
+    <div className="bg-gray-800/60 rounded-xl shadow-lg border border-gray-700 p-4 flex flex-col gap-4">
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Activity 
-            className={`w-5 h-5 ${colors.text} ${isConnected ? 'animate-pulse' : 'opacity-50'}`}
+          <Activity
+            className={`w-4 h-4 ${colors.text} ${isConnected ? 'animate-pulse' : 'opacity-60'}`}
             aria-hidden="true"
           />
-          <h3 className="text-lg font-semibold text-gray-200">
-            Network Load
-          </h3>
+          <h3 className="text-sm font-semibold text-gray-200">Network Load</h3>
         </div>
-        {isConnected && (
-          <span className="text-xs text-green-400 flex items-center gap-1">
-            <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
-            Live
-          </span>
-        )}
+        <span className={`text-xs ${isConnected ? 'text-green-400' : 'text-yellow-400'}`}>
+          {isConnected ? 'Live' : 'Cached'}
+        </span>
       </div>
 
-      {/* Large percentage display */}
-      <div className="mb-4">
-        <div className={`text-4xl font-bold ${colors.text} mb-1`}>
-          {percentage}%
-        </div>
-        <p className="text-sm text-gray-400">
-          Network Utilization
-        </p>
+      {/* Center value */}
+      <div className="flex flex-col items-center justify-center flex-1">
+        <div className={`text-3xl font-bold ${colors.text}`}>{percentage}%</div>
+        <p className="text-xs text-gray-400">Utilization</p>
       </div>
 
       {/* Breathing progress bar */}
-      <div className="relative w-full h-4 bg-gray-900 rounded-full overflow-hidden border border-gray-700">
-        {/* Background fill */}
+      <div className="relative w-full h-2 bg-gray-900 rounded-full overflow-hidden border border-gray-700">
         <motion.div
           initial={{ width: 0 }}
           animate={{ width: `${clampedUtil * 100}%` }}
           transition={{ duration: 0.8, ease: 'easeOut' }}
           className={`absolute left-0 top-0 h-full bg-gradient-to-r ${colors.gradient}`}
         />
-
-        {/* Breathing pulse overlay */}
         {isConnected && (
           <motion.div
-            animate={{
-              opacity: [0.3, 0.7, 0.3],
-            }}
+            animate={{ opacity: [0.3, 0.7, 0.3] }}
             transition={{
               duration: pulseSpeed,
               repeat: Infinity,
               ease: 'easeInOut',
             }}
-            className={`absolute left-0 top-0 h-full w-full bg-gradient-to-r ${colors.gradient}`}
+            className={`absolute left-0 top-0 h-full bg-gradient-to-r ${colors.gradient}`}
             style={{ width: `${clampedUtil * 100}%` }}
           />
-        )}
-      </div>
-
-      {/* Status indicator */}
-      <div className="mt-4 flex items-center justify-between text-xs">
-        <div className="flex items-center gap-2">
-          <div className={`w-2 h-2 rounded-full ${colors.bg}`} />
-          <span className="text-gray-400">
-            {clampedUtil < 0.5 && 'Low Load'}
-            {clampedUtil >= 0.5 && clampedUtil < 0.8 && 'Moderate Load'}
-            {clampedUtil >= 0.8 && 'High Load'}
-          </span>
-        </div>
-        {!isConnected && (
-          <span className="text-yellow-400">Using cached data</span>
         )}
       </div>
     </div>

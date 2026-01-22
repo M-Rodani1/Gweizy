@@ -38,7 +38,8 @@ type DashboardTab = 'overview' | 'analytics' | 'system';
 const Dashboard: React.FC = () => {
   const [apiStatus, setApiStatus] = useState<'checking' | 'online' | 'offline'>('checking');
   const [activeTab, setActiveTab] = useState<DashboardTab>('overview');
-  const [networkUtilization, setNetworkUtilization] = useState<number>(0);
+  // TODO: wire utilization into a shared gas data hook when available
+  const [networkUtilization, setNetworkUtilization] = useState<number>(0.2);
   const { selectedChain, multiChainGas } = useChain();
   const { ethPrice } = useEthPrice(60000);
   const walletAddress = useWalletAddress();
@@ -196,16 +197,16 @@ const Dashboard: React.FC = () => {
               className="space-y-6 animate-fadeIn"
               tabIndex={0}
             >
-              {/* Top row: Network Pulse + Forecast + Network */}
+              {/* Top row: Forecast + Network Pulse + Network */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-                <SectionErrorBoundary sectionName="Network Pulse">
-                  <NetworkPulse utilization={networkUtilization} isConnected={isWebSocketConnected} />
-                </SectionErrorBoundary>
                 <div data-tour="forecast" className="h-full">
                   <SectionErrorBoundary sectionName="Price Forecast" className="h-full">
                     <CompactForecast />
                   </SectionErrorBoundary>
                 </div>
+                <SectionErrorBoundary sectionName="Network Pulse">
+                  <NetworkPulse utilization={networkUtilization} isConnected={isWebSocketConnected} />
+                </SectionErrorBoundary>
                 <SectionErrorBoundary sectionName="Network Insights" className="h-full">
                   <MultiChainComparison txType="swap" ethPrice={ethPrice} />
                 </SectionErrorBoundary>

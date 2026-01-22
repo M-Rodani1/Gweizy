@@ -36,7 +36,7 @@ const ConfidenceBar: React.FC<ConfidenceBarProps> = ({ probs }) => {
         <span className="text-xs font-semibold text-green-400">
           Wait: {(normalizedWait * 100).toFixed(1)}%
         </span>
-        <span className="text-xs font-semibold text-cyan-400">
+        <span className="text-xs font-semibold text-blue-400">
           Normal: {(normalizedNormal * 100).toFixed(1)}%
         </span>
         <span className="text-xs font-semibold text-red-400">
@@ -63,7 +63,7 @@ const ConfidenceBar: React.FC<ConfidenceBarProps> = ({ probs }) => {
             initial={{ width: 0 }}
             animate={{ width: `${normalWidth}%` }}
             transition={{ duration: 0.6, ease: 'easeOut', delay: 0.1 }}
-            className="absolute h-full bg-gradient-to-r from-cyan-500 to-cyan-600"
+            className="absolute h-full bg-gradient-to-r from-blue-500 to-blue-600"
             style={{
               left: `${waitWidth}%`,
               zIndex: 2,
@@ -104,7 +104,7 @@ const ConfidenceBar: React.FC<ConfidenceBarProps> = ({ probs }) => {
           <span>Wait</span>
         </div>
         <div className="flex items-center gap-1">
-          <div className="w-3 h-3 rounded-full bg-cyan-500" />
+          <div className="w-3 h-3 rounded-full bg-blue-500" />
           <span>Normal</span>
         </div>
         <div className="flex items-center gap-1">
