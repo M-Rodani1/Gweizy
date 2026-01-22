@@ -11,6 +11,26 @@ export interface GraphDataPoint {
   confidenceLevel?: 'high' | 'medium' | 'low';
   confidenceEmoji?: string;
   confidenceColor?: string;
+  trend_signal_4h?: number; // The "Macro" signal (-1.0 to 1.0)
+  classification?: {
+    class?: string;
+    emoji?: string;
+    color?: string;
+    probabilities?: {
+      wait?: number;
+      normal?: number;
+      urgent?: number;
+      // Alternative format from backend
+      elevated?: number;
+      spike?: number;
+    };
+    trend_signal_4h?: number;
+  };
+  probabilities?: {
+    wait?: number;
+    normal?: number;
+    urgent?: number;
+  };
 }
 
 // Current gas data from backend
@@ -73,4 +93,26 @@ export interface LeaderboardItem {
 export interface APIError {
   error: string;
   message?: string;
+}
+
+// Hybrid Model Prediction
+export interface HybridPrediction {
+  action: 'WAIT' | 'NORMAL' | 'URGENT';
+  confidence: number; // 0.0 to 1.0
+  gas_price: number;
+  trend_signal_4h: number; // The "Macro" signal (-1.0 to 1.0)
+  probabilities: {
+    wait: number;
+    normal: number;
+    urgent: number;
+  };
+}
+
+// Block Pulse (Mempool Monitor)
+export interface BlockPulse {
+  block_number: number;
+  utilization: number; // 0.0 to 1.0 (e.g. 0.85 for 85%)
+  gas_used: number;
+  base_fee: number;
+  timestamp: string;
 }

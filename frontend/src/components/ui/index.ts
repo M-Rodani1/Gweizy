@@ -4,6 +4,8 @@ export { Button, IconButton } from './Button';
 export { Modal, ModalHeader, ModalBody, ModalFooter } from './Modal';
 export { default as CollapsibleSection } from './CollapsibleSection';
 export { default as ConfidenceRing } from './ConfidenceRing';
+export { default as ConfidenceBar } from './ConfidenceBar';
+export { default as NetworkPulse } from './NetworkPulse';
 export { default as Sparkline } from './Sparkline';
 export { default as ThemeToggle } from './ThemeToggle';
 export { default as VirtualizedList } from './VirtualizedList';

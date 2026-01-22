@@ -19,10 +19,13 @@ import PersonalizationPanel from '../src/components/PersonalizationPanel';
 import PersonalizedRecommendations from '../src/components/PersonalizedRecommendations';
 import AdvancedAnalyticsPanel from '../src/components/AdvancedAnalyticsPanel';
 import ModelTrainingPanel from '../src/components/ModelTrainingPanel';
+import NetworkPulse from '../src/components/ui/NetworkPulse';
 import { checkHealth } from '../src/api/gasApi';
 import { useChain } from '../src/contexts/ChainContext';
 import { useEthPrice } from '../src/hooks/useEthPrice';
 import { useWalletAddress } from '../src/hooks/useWalletAddress';
+import { useWebSocket } from '../src/hooks/useWebSocket';
+import { API_CONFIG, getApiUrl } from '../src/config/api';
 
 // Lazy load secondary components
 const ScheduledTransactionsList = lazy(() => import('../src/components/ScheduledTransactionsList'));
@@ -35,15 +38,37 @@ type DashboardTab = 'overview' | 'analytics' | 'system';
 const Dashboard: React.FC = () => {
   const [apiStatus, setApiStatus] = useState<'checking' | 'online' | 'offline'>('checking');
   const [activeTab, setActiveTab] = useState<DashboardTab>('overview');
+  const [networkUtilization, setNetworkUtilization] = useState<number>(0);
   const { selectedChain, multiChainGas } = useChain();
   const { ethPrice } = useEthPrice(60000);
   const walletAddress = useWalletAddress();
+  const { isConnected: isWebSocketConnected } = useWebSocket({ enabled: true });
 
   // Memoize currentGas calculation
   const currentGas = useMemo(
     () => multiChainGas[selectedChain.id]?.gasPrice || 0,
     [multiChainGas, selectedChain.id]
   );
+
+  // Fetch network utilization
+  useEffect(() => {
+    const fetchNetworkUtilization = async () => {
+      try {
+        const response = await fetch(getApiUrl(API_CONFIG.ENDPOINTS.ONCHAIN_NETWORK_STATE));
+        if (response.ok) {
+          const data = await response.json();
+          const utilization = data?.network_state?.avg_utilization || 0;
+          setNetworkUtilization(utilization);
+        }
+      } catch (error) {
+        console.error('Error fetching network utilization:', error);
+      }
+    };
+
+    fetchNetworkUtilization();
+    const interval = setInterval(fetchNetworkUtilization, 30000); // Refresh every 30 seconds
+    return () => clearInterval(interval);
+  }, []);
 
   // Memoize API health check function
   const checkAPI = useCallback(async () => {
@@ -171,8 +196,11 @@ const Dashboard: React.FC = () => {
               className="space-y-6 animate-fadeIn"
               tabIndex={0}
             >
-              {/* Top row: Forecast + Network */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:min-h-[400px]">
+              {/* Top row: Network Pulse + Forecast + Network */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                <SectionErrorBoundary sectionName="Network Pulse">
+                  <NetworkPulse utilization={networkUtilization} isConnected={isWebSocketConnected} />
+                </SectionErrorBoundary>
                 <div data-tour="forecast" className="h-full">
                   <SectionErrorBoundary sectionName="Price Forecast" className="h-full">
                     <CompactForecast />

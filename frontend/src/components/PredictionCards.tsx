@@ -2,6 +2,8 @@ import React, { useState, useEffect, useCallback, useMemo, memo } from 'react';
 import { fetchPredictions, fetchCurrentGas } from '../api/gasApi';
 import { useChain } from '../contexts/ChainContext';
 import LoadingSpinner from './LoadingSpinner';
+import ConfidenceBar from './ui/ConfidenceBar';
+import { HybridPrediction } from '../../types';
 
 interface PredictionCard {
   horizon: '1h' | '4h' | '24h';
@@ -18,6 +20,12 @@ interface PredictionCard {
   color: 'red' | 'green' | 'yellow';
   icon: string;
   isBest?: boolean;
+  trendSignal4h?: number; // The "Macro" signal (-1.0 to 1.0)
+  probabilities?: {
+    wait: number;
+    normal: number;
+    urgent: number;
+  };
 }
 
 const PredictionCards: React.FC = () => {
@@ -99,6 +107,26 @@ const PredictionCards: React.FC = () => {
           const confidenceLevel = firstPrediction?.confidenceLevel || 'medium';
           const confidenceEmoji = firstPrediction?.confidenceEmoji || '';
           const confidenceColor = firstPrediction?.confidenceColor || 'yellow';
+          
+          // Extract hybrid prediction data (trend_signal_4h and probabilities)
+          const classification = firstPrediction?.classification;
+          const trendSignal4h = firstPrediction?.trend_signal_4h ?? classification?.trend_signal_4h;
+          const probabilities = classification?.probabilities || firstPrediction?.probabilities;
+          
+          // Normalize probabilities if they use different keys (normal/elevated/spike -> wait/normal/urgent)
+          let normalizedProbs: { wait: number; normal: number; urgent: number } | undefined;
+          if (probabilities) {
+            if ('wait' in probabilities && 'normal' in probabilities && 'urgent' in probabilities) {
+              normalizedProbs = probabilities as { wait: number; normal: number; urgent: number };
+            } else if ('normal' in probabilities && 'elevated' in probabilities && 'spike' in probabilities) {
+              // Map: normal -> normal, elevated -> wait, spike -> urgent
+              normalizedProbs = {
+                wait: probabilities.elevated || 0,
+                normal: probabilities.normal || 0,
+                urgent: probabilities.spike || 0,
+              };
+            }
+          }
 
           // Prevent division by zero
           const changePercent = current === 0 ? 0 : ((predicted - current) / current) * 100;
@@ -145,7 +173,9 @@ const PredictionCards: React.FC = () => {
             recommendation,
             color,
             icon,
-            isBest: isBest || false
+            isBest: isBest || false,
+            trendSignal4h,
+            probabilities: normalizedProbs
           });
         }
       });
@@ -211,6 +241,28 @@ const PredictionCards: React.FC = () => {
               {card.horizon.toUpperCase()} PREDICTION
             </h3>
           </div>
+
+          {/* Trend Indicator */}
+          {card.trendSignal4h !== undefined && card.trendSignal4h !== null && (
+            <div className="mb-3">
+              {card.trendSignal4h > 0.2 ? (
+                <div className="flex items-center gap-2 text-red-400 text-sm font-medium">
+                  <span>↗</span>
+                  <span>Rising Trend</span>
+                </div>
+              ) : card.trendSignal4h < -0.2 ? (
+                <div className="flex items-center gap-2 text-green-400 text-sm font-medium">
+                  <span>↘</span>
+                  <span>Falling Trend</span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 text-gray-400 text-sm font-medium">
+                  <span>→</span>
+                  <span>Market Flat</span>
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="mb-4">
             <div className={`text-xl font-bold mb-2 ${getTextColor(card.color)}`}>
@@ -290,6 +342,14 @@ const PredictionCards: React.FC = () => {
               </span>
             </div>
           </div>
+
+          {/* Confidence Bar (Hybrid Model Probabilities) */}
+          {card.probabilities && (
+            <div className="mb-4">
+              <div className="text-xs text-gray-400 mb-2 font-medium">Action Probabilities</div>
+              <ConfidenceBar probs={card.probabilities} />
+            </div>
+          )}
 
           {/* Confidence indicator */}
           {card.confidence !== undefined && (() => {
