@@ -8,21 +8,16 @@ from typing import Optional
 
 @dataclass
 class RewardConfig:
-    savings_weight: float = 10.0  # Scale relative savings to a stable reward range
-    max_relative_savings: float = 0.5  # Cap +/- savings at 50%
-    time_penalty: float = 0.005
-    urgency_multiplier: float = 2.0
-    missed_opportunity_penalty: float = 0.6
-    execution_bonus: float = 0.02
-    execution_cost: float = 0.02  # Penalize instant execution slightly
-    max_time_penalty: float = 1.0
-    reward_scale: float = 5.0  # Tanh scaling factor
+    wait_penalty: float = 0.001  # Per-step waiting cost
+    max_loss: float = -0.30  # Cap catastrophic loss at -30%
+    urgency_multiplier: float = 0.0  # Optional extra wait penalty for urgency
+    reward_scale: float = 1.0  # Optional scaling if enabled
 
 
 class RewardCalculator:
     """Calculates rewards for RL agent actions with reward scaling."""
 
-    def __init__(self, config: Optional[RewardConfig] = None, scale_rewards: bool = True):
+    def __init__(self, config: Optional[RewardConfig] = None, scale_rewards: bool = False):
         self.config = config or RewardConfig()
         self.best_price_seen = None
         self.initial_price = None
@@ -57,45 +52,19 @@ class RewardCalculator:
         self.best_price_seen = min(self.best_price_seen, current_price)
 
         if action == 1:  # Execute
-            # RELATIVE SAVINGS: (Benchmark - Execution) / Benchmark
-            # Positive if execution price < benchmark (saved money)
-            # Negative if execution price > benchmark (paid more)
+            # Direct savings-based reward (aligned with objective)
             if self.initial_price > 0:
                 relative_savings = (self.initial_price - current_price) / self.initial_price
-                relative_savings = np.clip(
-                    relative_savings,
-                    -self.config.max_relative_savings,
-                    self.config.max_relative_savings
-                )
-                reward = relative_savings * self.config.savings_weight
+                reward = relative_savings - (time_waiting * self.config.wait_penalty)
             else:
                 reward = 0.0
-            
-            # Small bonus for executing (encourages action)
-            reward += self.config.execution_bonus
-            # Slight execution cost to avoid always-execute behavior
-            reward -= self.config.execution_cost
-            
-            # Time penalty for urgent transactions (if waited too long on urgent tx)
-            if urgency > 0.5:
-                urgency_penalty = time_waiting * self.config.time_penalty * urgency * self.config.urgency_multiplier
-                reward -= min(urgency_penalty, self.config.max_time_penalty)
+
+            # Cap catastrophic losses
+            if reward < self.config.max_loss:
+                reward = self.config.max_loss
         else:  # Wait
-            # Volatility-scaled waiting penalty: more penalty during calm periods
-            # This discourages passive behavior when market is stable
-            base_wait_penalty = self.config.time_penalty * (1 + urgency * self.config.urgency_multiplier)
-            # During low volatility (calm market), increase penalty to encourage action
-            # During high volatility, reduce penalty to allow strategic waiting
-            volatility_factor = 1.2 - min(volatility, 1.0)  # Scale: 0.2 to 1.2
-            reward = -min(base_wait_penalty * volatility_factor, self.config.max_time_penalty)
-            
-            # If episode ends without execution, apply missed opportunity penalty
-            if done:
-                # Penalty for missing the best price seen
-                if self.initial_price > 0:
-                    missed_opportunity = (current_price - self.best_price_seen) / self.initial_price
-                    missed_opportunity = np.clip(missed_opportunity, 0.0, self.config.max_relative_savings)
-                    reward -= missed_opportunity * self.config.savings_weight * self.config.missed_opportunity_penalty
+            # Small per-step wait penalty (optionally scaled by urgency)
+            reward = -self.config.wait_penalty * (1 + urgency * self.config.urgency_multiplier)
         
         # Scale reward to [-1, 1] range for stable learning
         return self._scale_reward(reward)

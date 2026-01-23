@@ -297,6 +297,7 @@ class DQNAgent:
         epsilon_start: float = 1.0,
         epsilon_end: float = 0.01,
         epsilon_decay: float = 0.995,
+        epsilon_decay_episodes: Optional[int] = None,
         buffer_size: int = 10000,
         batch_size: int = 32,
         target_update_freq: int = 100,
@@ -321,12 +322,18 @@ class DQNAgent:
         self.epsilon = epsilon_start
         self.epsilon_end = epsilon_end
         self.epsilon_decay = epsilon_decay
+        self.epsilon_start = epsilon_start
+        self.epsilon_decay_episodes = epsilon_decay_episodes
         self.batch_size = batch_size
         self.target_update_freq = target_update_freq
         self.gradient_clip = gradient_clip
         self.use_double_dqn = use_double_dqn
         self.target_update_tau = target_update_tau
         self.use_soft_target = use_soft_target
+        
+        # State normalization (fitted during training)
+        self.state_mean = None
+        self.state_std = None
         
         # Networks with optional dueling architecture
         self.q_network = QNetwork(state_dim, action_dim, hidden_dims, dueling=use_dueling)
@@ -352,9 +359,37 @@ class DQNAgent:
         """Select action using epsilon-greedy policy."""
         if training and random.random() < self.epsilon:
             return random.randint(0, self.action_dim - 1)
-        
+
+        state = self._align_state_features(state)
+        state = self._normalize_state(state)
         q_values = self.q_network.forward(state)
         return int(np.argmax(q_values))
+
+    def fit_state_normalizer(self, states: np.ndarray):
+        """Fit normalization statistics from training states."""
+        if states.ndim == 1:
+            states = states.reshape(1, -1)
+        self.state_mean = np.mean(states, axis=0)
+        self.state_std = np.std(states, axis=0) + 1e-8
+
+    def _normalize_state(self, state: np.ndarray) -> np.ndarray:
+        """Normalize state using fitted statistics."""
+        if self.state_mean is None or self.state_std is None:
+            return state
+        if state.ndim == 1:
+            state = state.reshape(1, -1)
+        return (state - self.state_mean) / self.state_std
+
+    def decay_epsilon(self, episode: int):
+        """Linearly decay epsilon per episode if configured."""
+        if self.epsilon_decay_episodes is None:
+            return
+        if episode < self.epsilon_decay_episodes:
+            decay_rate = (self.epsilon_start - self.epsilon_end) / self.epsilon_decay_episodes
+            self.epsilon = self.epsilon_start - decay_rate * episode
+        else:
+            self.epsilon = self.epsilon_end
+        self.epsilon = max(self.epsilon_end, min(self.epsilon_start, self.epsilon))
 
     def store_transition(self, state, action, reward, next_state, done, td_error: float = None):
         """Store transition in replay buffer with optional TD error for PER."""
@@ -372,22 +407,27 @@ class DQNAgent:
         rewards = np.array([t[2] for t in batch])
         next_states = np.array([t[3] for t in batch])
         dones = np.array([t[4] for t in batch])
+
+        states = self._align_state_features(states)
+        next_states = self._align_state_features(next_states)
+        states_norm = self._normalize_state(states)
+        next_states_norm = self._normalize_state(next_states)
         
         # Compute current Q-values
-        current_q = self.q_network.forward(states)
+        current_q = self.q_network.forward(states_norm)
         
         # Double DQN: Use online network to select action, target network to evaluate
         if self.use_double_dqn:
             # Select best action using online network
-            next_q_online = self.q_network.forward(next_states)
+            next_q_online = self.q_network.forward(next_states_norm)
             next_actions = np.argmax(next_q_online, axis=1)
             
             # Evaluate using target network
-            next_q_target = self.target_network.forward(next_states)
+            next_q_target = self.target_network.forward(next_states_norm)
             next_q_values = next_q_target[np.arange(self.batch_size), next_actions]
         else:
             # Standard DQN: use target network for both selection and evaluation
-            next_q_target = self.target_network.forward(next_states)
+            next_q_target = self.target_network.forward(next_states_norm)
             next_q_values = np.max(next_q_target, axis=1)
         
         # Compute targets
@@ -409,7 +449,7 @@ class DQNAgent:
             self.replay_buffer.update_priorities(indices, np.array(td_errors))
         
         # Compute gradients and update (with importance sampling weights for PER)
-        loss = self._update_network(states, targets, is_weights=is_weights)
+        loss = self._update_network(states_norm, targets, is_weights=is_weights)
         
         # Store TD errors for next transition storage
         self.last_td_errors = np.array(td_errors)
@@ -421,8 +461,9 @@ class DQNAgent:
         elif self.training_steps % self.target_update_freq == 0:
             self.target_network.copy_from(self.q_network)
         
-        # Decay epsilon
-        self.epsilon = max(self.epsilon_end, self.epsilon * self.epsilon_decay)
+        # Decay epsilon per step only if linear schedule not configured
+        if self.epsilon_decay_episodes is None:
+            self.epsilon = max(self.epsilon_end, self.epsilon * self.epsilon_decay)
         
         # Learning rate scheduling: decay learning rate over time
         self.learning_rate = max(self.lr_min, self.learning_rate * self.lr_decay)
@@ -648,6 +689,7 @@ class DQNAgent:
         """Get Q-values for all actions."""
         # Ensure state is aligned before forward pass (safety check)
         state = self._align_state_features(state)
+        state = self._normalize_state(state)
         return self.q_network.forward(state).flatten()
 
     def save(self, path: str):
@@ -658,12 +700,19 @@ class DQNAgent:
             'biases': self.q_network.biases,
             'dueling': self.q_network.dueling,
             'epsilon': self.epsilon,
+            'epsilon_start': self.epsilon_start,
             'training_steps': self.training_steps,
             'state_dim': self.state_dim,
             'action_dim': self.action_dim,
             'episode_rewards': self.episode_rewards,
             'learning_rate': self.learning_rate,
-            'initial_learning_rate': self.initial_learning_rate
+            'initial_learning_rate': self.initial_learning_rate,
+            'epsilon_decay': self.epsilon_decay,
+            'epsilon_decay_episodes': self.epsilon_decay_episodes,
+            'state_mean': self.state_mean,
+            'state_std': self.state_std,
+            'target_update_tau': self.target_update_tau,
+            'use_soft_target': self.use_soft_target
         }
         if self.q_network.dueling:
             data['value_weights'] = self.q_network.value_weights
@@ -749,8 +798,22 @@ class DQNAgent:
 
         self.target_network.copy_from(self.q_network)
         self.epsilon = data.get('epsilon', 0.01)
+        self.epsilon_start = data.get('epsilon_start', self.epsilon_start)
+        self.epsilon_decay = data.get('epsilon_decay', self.epsilon_decay)
+        self.epsilon_decay_episodes = data.get('epsilon_decay_episodes', self.epsilon_decay_episodes)
         self.training_steps = data.get('training_steps', 0)
         self.episode_rewards = data.get('episode_rewards', [])
+        self.target_update_tau = data.get('target_update_tau', self.target_update_tau)
+        self.use_soft_target = data.get('use_soft_target', self.use_soft_target)
+
+        loaded_mean = data.get('state_mean')
+        loaded_std = data.get('state_std')
+        if loaded_mean is not None and loaded_std is not None:
+            if len(loaded_mean) == self.state_dim and len(loaded_std) == self.state_dim:
+                self.state_mean = loaded_mean
+                self.state_std = loaded_std
+            else:
+                logger.warning("State normalizer dims mismatch; skipping loaded normalizer.")
 
     def _align_state_features(self, state: np.ndarray) -> np.ndarray:
         """Align state features to match model's expected input dimension.

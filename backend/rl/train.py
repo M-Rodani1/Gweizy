@@ -105,18 +105,19 @@ def train_dqn(
         epsilon_start=1.0,
         epsilon_end=0.05,
         epsilon_decay=0.9995,  # Slower decay
+        epsilon_decay_episodes=5000,
         buffer_size=50000,  # Larger replay buffer
         batch_size=32,  # Start small; ramp later
         target_update_freq=200,  # Update target network less frequently
-        lr_decay=0.9997,  # Learning rate decay (per training step)
-        lr_min=0.00005,  # Minimum learning rate
+        lr_decay=1.0,  # Disable LR decay for short runs
+        lr_min=0.0002,  # Keep constant unless loss spike triggers reduction
         gradient_clip=10.0,  # Gradient clipping threshold
         use_per=True,  # Enable Prioritized Experience Replay
-        per_alpha=0.4,  # Lower prioritization to reduce noise chasing
-        per_beta=0.6,  # Stronger IS correction
+        per_alpha=0.6,
+        per_beta=0.4,
         use_double_dqn=True,  # Enable Double DQN
         use_dueling=use_dueling,
-        target_update_tau=0.01,
+        target_update_tau=0.005,
         use_soft_target=True
     )
     
@@ -140,6 +141,24 @@ def train_dqn(
         print(f"Generated {len(training_episodes)} diverse episodes")
     else:
         training_episodes = None
+
+    # Fit state normalizer from a sample of training episodes
+    if training_episodes:
+        sample_states = []
+        max_states = 2000
+        for episode_data in training_episodes[:min(50, len(training_episodes))]:
+            if len(sample_states) >= max_states:
+                break
+            state = env.reset(episode_data=episode_data[:episode_length])
+            sample_states.append(state)
+            done = False
+            while not done and len(sample_states) < max_states:
+                action = np.random.randint(0, env.action_space_n)
+                next_state, _, done, _ = env.step(action)
+                if not done:
+                    sample_states.append(next_state)
+        if sample_states:
+            agent.fit_state_normalizer(np.array(sample_states))
     
     # Get chain name for display
     from data.multichain_collector import CHAINS
@@ -181,6 +200,7 @@ def train_dqn(
     loss_spike_threshold = 5.0
     
     for episode in range(num_episodes):
+        agent.decay_epsilon(episode)
         # Curriculum learning: adjust episode length
         current_episode_length = get_curriculum_length(episode)
         if current_episode_length != episode_length:
