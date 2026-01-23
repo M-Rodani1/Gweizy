@@ -211,6 +211,8 @@ def train_dqn(
     ]
     next_batch_idx = 1
     loss_spike_threshold = 5.0
+    early_stop_loss_threshold = 1000.0  # Stop training if loss exceeds this
+    early_stopped = False
     
     for episode in range(num_episodes):
         agent.decay_epsilon(episode)
@@ -371,11 +373,21 @@ def train_dqn(
                 if avg_loss > loss_spike_threshold and agent.learning_rate > agent.lr_min:
                     agent.learning_rate = max(agent.lr_min, agent.learning_rate * 0.5)
                     print(f"  ↓ LR reduced to {agent.learning_rate:.6f} due to loss spike")
-                
+
+                # Early stopping if loss diverges
+                if avg_loss > early_stop_loss_threshold:
+                    print(f"\n⚠️  EARLY STOPPING: Loss ({avg_loss:.2f}) exceeded threshold ({early_stop_loss_threshold})")
+                    print(f"   Stopping to preserve best model. Training completed {episode + 1}/{num_episodes} episodes.")
+                    early_stopped = True
+
                 if len(episode_rewards) >= 100:
                     print(f"  Best Avg Reward (last 100): {best_avg_reward:.3f}")
                     print(f"  Best Avg Savings (last 100): {best_avg_savings*100:.2f}%")
-    
+
+        # Break out of training loop if early stopped
+        if early_stopped:
+            break
+
     # Save final trained agent
     agent.episode_rewards = episode_rewards
     agent.save(save_path)
@@ -384,13 +396,16 @@ def train_dqn(
     summary_path = os.path.join(checkpoint_dir, 'training_summary.json')
     training_time = (datetime.now() - start_time).total_seconds() / 60
     
+    actual_episodes = len(episode_rewards)
     summary = {
         'chain_id': chain_id,
         'chain_name': chain_name,
         'total_episodes': num_episodes,
+        'actual_episodes': actual_episodes,
+        'early_stopped': early_stopped,
         'training_time_minutes': training_time,
-        'final_avg_reward_last_100': float(np.mean(episode_rewards[-100:])),
-        'final_avg_savings_last_100': float(np.mean(avg_savings[-100:])),
+        'final_avg_reward_last_100': float(np.mean(episode_rewards[-100:])) if len(episode_rewards) >= 100 else float(np.mean(episode_rewards)),
+        'final_avg_savings_last_100': float(np.mean(avg_savings[-100:])) if len(avg_savings) >= 100 else float(np.mean(avg_savings)),
         'best_avg_reward': float(best_avg_reward),
         'best_avg_savings': float(best_avg_savings),
         'best_eval_savings': float(best_eval_savings),
