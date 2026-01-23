@@ -2,28 +2,28 @@
   "chain_id": 8453,
   "chain_name": "Base",
   "total_episodes": 1000,
-  "training_time_minutes": 0.03791696666666667,
-  "final_avg_reward_last_100": 0.0681555462677381,
-  "final_avg_savings_last_100": -1.1748366641424683,
-  "best_avg_reward": 0.11594645093908021,
-  "best_avg_savings": -0.31388846435473333,
-  "best_eval_savings": -0.8563965186489568,
+  "training_time_minutes": 0.03815013333333333,
+  "final_avg_reward_last_100": -0.06139610270873746,
+  "final_avg_savings_last_100": -1.6859428437043258,
+  "best_avg_reward": 0.0778488095366476,
+  "best_avg_savings": -0.2572597681598479,
+  "best_eval_savings": 0.0625875986857638,
   "eval_metrics": {
-    "avg_reward": 0.12692601271686882,
-    "avg_savings": -2.2078900858824206,
-    "median_savings": -11.94152998407846,
-    "positive_savings_rate": 46.666666666666664,
-    "avg_wait_time": 11.966666666666667,
+    "avg_reward": -0.012526934012703292,
+    "avg_savings": 0.0625875986857638,
+    "median_savings": 0.04095776785850792,
+    "positive_savings_rate": 50.0,
+    "avg_wait_time": 1.7666666666666666,
     "action_distribution": {
-      "wait": 359,
+      "wait": 53,
       "execute": 30
     },
-    "avg_confidence": 0.8503591840376609,
-    "price_improvement": -220.78900858824207,
-    "net_savings": -2.2078900858824206
+    "avg_confidence": 0.6742283852774077,
+    "price_improvement": 6.25875986857638,
+    "net_savings": 0.0625875986857638
   },
-  "total_training_steps": 2119,
-  "final_epsilon": 0.81019,
-  "final_buffer_size": 2150,
-  "timestamp": "2026-01-23T00:04:37.251824"
+  "total_training_steps": 2330,
+  "final_epsilon": 0.05095000000000005,
+  "final_buffer_size": 2361,
+  "timestamp": "2026-01-23T19:29:26.104355"
 }

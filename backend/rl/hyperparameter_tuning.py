@@ -139,7 +139,7 @@ class HyperparameterTuner:
         # Setup environment
         data_loader = GasDataLoader()
         data_loader.load_data(hours=720, chain_id=self.chain_id)
-        env = GasOptimizationEnv(data_loader, episode_length=48)
+        env = GasOptimizationEnv(data_loader, episode_length=24, max_wait_steps=24)
         
         # Extract parameters with defaults
         hidden_dims = params.get('hidden_dims', [128, 128, 64])
@@ -276,4 +276,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-

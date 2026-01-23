@@ -26,7 +26,7 @@ class GasOptimizationEnv:
         data_loader: Optional[GasDataLoader] = None,
         episode_length: int = 48,
         urgency_range: Tuple[float, float] = (0.1, 0.9),
-        max_wait_steps: int = 100,
+        max_wait_steps: Optional[int] = None,
         reward_config: Optional[RewardConfig] = None
     ):
         self.data_loader = data_loader or GasDataLoader()
@@ -90,12 +90,14 @@ class GasOptimizationEnv:
         current_data = self._episode_data[self._current_step]
         current_price = current_data['gas_price']
         max_steps = len(self._episode_data) - 1
+        if self.max_wait_steps is not None:
+            max_steps = min(max_steps, self.max_wait_steps)
         
         # Check if we're at the deadline and haven't executed yet
         if self._current_step >= max_steps and action == 0:
             # FORCED EXECUTION: Agent must execute at deadline
             action = 1  # Force execution
-            deadline_penalty = -100.0  # Large penalty for missing deadline
+            deadline_penalty = -10.0  # Moderate penalty (reduced from -100 to stabilize Q-values)
             info = {
                 'price': current_price,
                 'step': self._current_step,
@@ -154,7 +156,7 @@ class GasOptimizationEnv:
                 final_price = self._episode_data[-1]['gas_price']
                 final_volatility = current_volatility  # Use current volatility
                 reward += self.reward_calculator.calculate_reward(1, final_price, self._urgency, self._time_waiting, done=True, volatility=final_volatility)
-                reward += -100.0  # Deadline penalty
+                reward += -10.0  # Deadline penalty (reduced from -100 to stabilize Q-values)
                 info['forced_execution'] = True
                 info['execution_price'] = final_price
                 info['savings_vs_initial'] = (self.reward_calculator.initial_price - final_price) / self.reward_calculator.initial_price

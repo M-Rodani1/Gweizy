@@ -607,7 +607,8 @@ class AutonomousPipeline:
             # Train agent (this may take a while, but we'll let it run)
             agent = train_dqn(
                 num_episodes=episodes,
-                episode_length=48,
+                episode_length=24,
+                max_wait_steps=24,
                 save_path=save_path,
                 checkpoint_dir=checkpoint_dir,
                 checkpoint_freq=100,
@@ -795,4 +796,3 @@ def get_autonomous_pipeline() -> AutonomousPipeline:
     if _autonomous_pipeline is None:
         _autonomous_pipeline = AutonomousPipeline()
     return _autonomous_pipeline
-

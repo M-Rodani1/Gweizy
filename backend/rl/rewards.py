@@ -8,9 +8,9 @@ from typing import Optional
 
 @dataclass
 class RewardConfig:
-    wait_penalty: float = 0.001  # Per-step waiting cost
+    wait_penalty: float = 0.015  # Per-step waiting cost (balanced to allow price observation)
     max_loss: float = -0.30  # Cap catastrophic loss at -30%
-    urgency_multiplier: float = 0.0  # Optional extra wait penalty for urgency
+    urgency_multiplier: float = 2.0  # Optional extra wait penalty for urgency
     reward_scale: float = 1.0  # Optional scaling if enabled
 
 

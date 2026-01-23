@@ -19,7 +19,8 @@ from rl.data_loader import GasDataLoader
 
 def train_dqn(
     num_episodes: int = 10000,
-    episode_length: int = 48,
+    episode_length: int = 48,  # Increased from 24 to allow more price observation
+    max_wait_steps: Optional[int] = None,
     save_path: str = None,
     checkpoint_dir: str = None,
     checkpoint_freq: int = 100,
@@ -37,6 +38,7 @@ def train_dqn(
     Args:
         num_episodes: Number of training episodes
         episode_length: Steps per episode
+        max_wait_steps: Maximum wait steps before forced execution
         save_path: Where to save final trained model
         checkpoint_dir: Directory for checkpoints
         checkpoint_freq: Save checkpoint every N episodes
@@ -91,7 +93,14 @@ def train_dqn(
     eval_loader = GasDataLoader(use_database=False)
     eval_loader.set_cache(eval_data)
 
-    env = GasOptimizationEnv(train_loader, episode_length=episode_length)
+    if max_wait_steps is None:
+        max_wait_steps = episode_length
+
+    env = GasOptimizationEnv(
+        train_loader,
+        episode_length=episode_length,
+        max_wait_steps=max_wait_steps
+    )
 
     if hidden_dims is None:
         hidden_dims = [128, 64]
@@ -104,8 +113,9 @@ def train_dqn(
         gamma=0.98,  # Higher discount for longer-term planning
         epsilon_start=1.0,
         epsilon_end=0.05,
-        epsilon_decay=0.9995,  # Slower decay
-        epsilon_decay_episodes=5000,
+        epsilon_decay=0.9995,  # Slower decay (used as fallback)
+        epsilon_decay_episodes=num_episodes,  # Episode-based decay over full training
+        epsilon_decay_steps=None,  # Disable step-based decay (was causing slow exploration)
         buffer_size=50000,  # Larger replay buffer
         batch_size=32,  # Start small; ramp later
         target_update_freq=200,  # Update target network less frequently
@@ -177,9 +187,11 @@ def train_dqn(
     start_time = datetime.now()
     
     # Curriculum Learning: Start with shorter episodes, gradually increase
+    # Minimum 12 steps to ensure meaningful exploration before forced execution
+    min_episode_length = 12
     curriculum_episode_lengths = [
-        (0, int(num_episodes * 0.2), episode_length // 2),  # First 20%: half length
-        (int(num_episodes * 0.2), int(num_episodes * 0.5), int(episode_length * 0.75)),  # Next 30%: 75% length
+        (0, int(num_episodes * 0.2), max(min_episode_length, episode_length // 2)),  # First 20%: half length (min 12)
+        (int(num_episodes * 0.2), int(num_episodes * 0.5), max(min_episode_length, int(episode_length * 0.75))),  # Next 30%: 75% length
         (int(num_episodes * 0.5), num_episodes, episode_length)  # Last 50%: full length
     ]
     
@@ -315,7 +327,8 @@ def train_dqn(
                 num_episodes=eval_episodes,
                 verbose=False,
                 data_loader=eval_loader,
-                episode_length=episode_length
+                episode_length=episode_length,
+                max_wait_steps=max_wait_steps
             )
             if last_eval_metrics['avg_savings'] > best_eval_savings:
                 best_eval_savings = last_eval_metrics['avg_savings']
@@ -417,7 +430,8 @@ def evaluate_agent(
     num_episodes: int = 100,
     verbose: bool = True,
     data_loader: Optional[GasDataLoader] = None,
-    episode_length: int = 48
+    episode_length: int = 24,
+    max_wait_steps: Optional[int] = None
 ):
     """
     Evaluate trained agent with comprehensive metrics.
@@ -426,9 +440,17 @@ def evaluate_agent(
         agent: Trained DQN agent
         num_episodes: Number of evaluation episodes
         verbose: Print detailed results
+        episode_length: Steps per episode
+        max_wait_steps: Maximum wait steps before forced execution
     """
     data_loader = data_loader or GasDataLoader()
-    env = GasOptimizationEnv(data_loader, episode_length=episode_length)
+    if max_wait_steps is None:
+        max_wait_steps = episode_length
+    env = GasOptimizationEnv(
+        data_loader,
+        episode_length=episode_length,
+        max_wait_steps=max_wait_steps
+    )
     
     total_rewards = []
     savings_list = []

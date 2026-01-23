@@ -298,6 +298,7 @@ class DQNAgent:
         epsilon_end: float = 0.01,
         epsilon_decay: float = 0.995,
         epsilon_decay_episodes: Optional[int] = None,
+        epsilon_decay_steps: Optional[int] = None,
         buffer_size: int = 10000,
         batch_size: int = 32,
         target_update_freq: int = 100,
@@ -324,6 +325,7 @@ class DQNAgent:
         self.epsilon_decay = epsilon_decay
         self.epsilon_start = epsilon_start
         self.epsilon_decay_episodes = epsilon_decay_episodes
+        self.epsilon_decay_steps = epsilon_decay_steps
         self.batch_size = batch_size
         self.target_update_freq = target_update_freq
         self.gradient_clip = gradient_clip
@@ -355,6 +357,9 @@ class DQNAgent:
         self.episode_rewards = []
         self.last_td_errors = None  # Store TD errors for PER priority updates
 
+        if self.epsilon_decay_steps is not None and self.epsilon_decay_episodes is not None:
+            logger.warning("Both epsilon_decay_steps and epsilon_decay_episodes set; using step-based decay.")
+
     def select_action(self, state: np.ndarray, training: bool = True) -> int:
         """Select action using epsilon-greedy policy."""
         if training and random.random() < self.epsilon:
@@ -382,6 +387,8 @@ class DQNAgent:
 
     def decay_epsilon(self, episode: int):
         """Linearly decay epsilon per episode if configured."""
+        if self.epsilon_decay_steps is not None:
+            return
         if self.epsilon_decay_episodes is None:
             return
         if episode < self.epsilon_decay_episodes:
@@ -461,8 +468,17 @@ class DQNAgent:
         elif self.training_steps % self.target_update_freq == 0:
             self.target_network.copy_from(self.q_network)
         
-        # Decay epsilon per step only if linear schedule not configured
-        if self.epsilon_decay_episodes is None:
+        # Epsilon decay: step-based linear schedule > episode-based > multiplicative
+        if self.epsilon_decay_steps is not None:
+            if self.epsilon_decay_steps <= 0:
+                self.epsilon = self.epsilon_end
+            elif self.training_steps < self.epsilon_decay_steps:
+                decay_rate = (self.epsilon_start - self.epsilon_end) / self.epsilon_decay_steps
+                self.epsilon = self.epsilon_start - decay_rate * self.training_steps
+            else:
+                self.epsilon = self.epsilon_end
+            self.epsilon = max(self.epsilon_end, min(self.epsilon_start, self.epsilon))
+        elif self.epsilon_decay_episodes is None:
             self.epsilon = max(self.epsilon_end, self.epsilon * self.epsilon_decay)
         
         # Learning rate scheduling: decay learning rate over time
@@ -709,6 +725,7 @@ class DQNAgent:
             'initial_learning_rate': self.initial_learning_rate,
             'epsilon_decay': self.epsilon_decay,
             'epsilon_decay_episodes': self.epsilon_decay_episodes,
+            'epsilon_decay_steps': self.epsilon_decay_steps,
             'state_mean': self.state_mean,
             'state_std': self.state_std,
             'target_update_tau': self.target_update_tau,
@@ -801,6 +818,7 @@ class DQNAgent:
         self.epsilon_start = data.get('epsilon_start', self.epsilon_start)
         self.epsilon_decay = data.get('epsilon_decay', self.epsilon_decay)
         self.epsilon_decay_episodes = data.get('epsilon_decay_episodes', self.epsilon_decay_episodes)
+        self.epsilon_decay_steps = data.get('epsilon_decay_steps', self.epsilon_decay_steps)
         self.training_steps = data.get('training_steps', 0)
         self.episode_rewards = data.get('episode_rewards', [])
         self.target_update_tau = data.get('target_update_tau', self.target_update_tau)

@@ -196,6 +196,8 @@ class AutomatedRetraining:
         try:
             agent = train_dqn(
                 num_episodes=episodes,
+                episode_length=24,
+                max_wait_steps=24,
                 chain_id=chain_id,
                 verbose=False,
                 use_diverse_episodes=True
@@ -322,4 +324,3 @@ def get_retraining_service() -> AutomatedRetraining:
     if _retraining_service is None:
         _retraining_service = AutomatedRetraining()
     return _retraining_service
-
