@@ -13,8 +13,34 @@ from typing import Optional, List
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from rl.environment import GasOptimizationEnv
-from rl.agents.dqn import DQNAgent, PrioritizedReplayBuffer
 from rl.data_loader import GasDataLoader
+
+# Try to import PyTorch agent first, fall back to numpy
+try:
+    from rl.agents.dqn_torch import DQNAgent as DQNAgentTorch, PrioritizedReplayBuffer, TORCH_AVAILABLE
+except ImportError:
+    TORCH_AVAILABLE = False
+    DQNAgentTorch = None
+
+from rl.agents.dqn import DQNAgent as DQNAgentNumpy
+
+def get_dqn_agent(backend: str = "auto"):
+    """Get appropriate DQN agent based on backend preference."""
+    if backend == "auto":
+        if TORCH_AVAILABLE:
+            print("Using PyTorch backend (recommended)")
+            return DQNAgentTorch
+        else:
+            print("PyTorch not available, using numpy backend")
+            return DQNAgentNumpy
+    elif backend == "pytorch":
+        if not TORCH_AVAILABLE:
+            raise ImportError("PyTorch requested but not available. Install with: pip install torch")
+        return DQNAgentTorch
+    elif backend == "numpy":
+        return DQNAgentNumpy
+    else:
+        raise ValueError(f"Unknown backend: {backend}. Use 'auto', 'pytorch', or 'numpy'")
 
 
 def train_dqn(
@@ -30,7 +56,8 @@ def train_dqn(
     use_dueling: bool = True,
     hidden_dims: Optional[List[int]] = None,
     eval_every: int = 200,
-    eval_episodes: int = 30
+    eval_episodes: int = 30,
+    backend: str = "auto"  # "auto", "pytorch", or "numpy"
 ):
     """
     Train DQN agent on historical gas data for a specific chain.
@@ -105,12 +132,30 @@ def train_dqn(
 
     if hidden_dims is None:
         hidden_dims = [128, 64]
-    
+
+    # Select DQN backend
+    DQNAgent = get_dqn_agent(backend)
+    is_pytorch = (DQNAgent == DQNAgentTorch) if TORCH_AVAILABLE else False
+
+    # Hyperparameters differ between backends
+    if is_pytorch:
+        # PyTorch: can handle higher learning rates due to better gradient handling
+        learning_rate = 0.0003
+        lr_min = 0.00005
+        gradient_clip = 1.0
+        batch_size = 64
+    else:
+        # Numpy: needs conservative hyperparameters
+        learning_rate = 0.00005
+        lr_min = 0.00005
+        gradient_clip = 1.0
+        batch_size = 32
+
     agent = DQNAgent(
         state_dim=env.observation_space_shape[0],
         action_dim=env.action_space_n,
         hidden_dims=hidden_dims,
-        learning_rate=0.00005,  # Lower learning rate for stability (reduced from 0.0002)
+        learning_rate=learning_rate,
         gamma=0.98,  # Higher discount for longer-term planning
         epsilon_start=1.0,
         epsilon_end=0.05,
@@ -118,11 +163,11 @@ def train_dqn(
         epsilon_decay_episodes=num_episodes,  # Episode-based decay over full training
         epsilon_decay_steps=None,  # Disable step-based decay (was causing slow exploration)
         buffer_size=50000,  # Larger replay buffer
-        batch_size=32,  # Start small; ramp later
+        batch_size=batch_size,
         target_update_freq=200,  # Update target network less frequently
-        lr_decay=1.0,  # Disable LR decay for short runs
-        lr_min=0.00005,  # Keep constant unless loss spike triggers reduction
-        gradient_clip=1.0,  # Aggressive gradient clipping (reduced from 10.0)
+        lr_decay=0.9999,  # Gradual LR decay
+        lr_min=lr_min,
+        gradient_clip=gradient_clip,
         use_per=True,  # Enable Prioritized Experience Replay
         per_alpha=0.6,
         per_beta=0.4,
@@ -175,13 +220,15 @@ def train_dqn(
     from data.multichain_collector import CHAINS
     chain_name = CHAINS.get(chain_id, {}).get('name', f'Chain {chain_id}')
     
+    backend_name = "PyTorch" if is_pytorch else "NumPy"
     print(f"Starting Enhanced DQN training for {chain_name} (Chain ID: {chain_id})")
+    print(f"Backend: {backend_name}")
     print(f"Episodes: {num_episodes}")
     print(f"State dim: {agent.state_dim}, Action dim: {agent.action_dim}")
-    print(f"Network: {agent.q_network.hidden_dims} (Dueling: {agent.q_network.dueling})")
+    print(f"Network: {hidden_dims} (Dueling: {use_dueling})")
     print(f"Learning rate: {agent.learning_rate}, Gamma: {agent.gamma}")
     print(f"Features: PER={isinstance(agent.replay_buffer, PrioritizedReplayBuffer)}, "
-          f"Double DQN={agent.use_double_dqn}, Dueling={agent.q_network.dueling}")
+          f"Double DQN={agent.use_double_dqn}, Dueling={use_dueling}")
     print(f"Curriculum Learning: Enabled (episode length increases over time)")
     print("-" * 50)
     
@@ -442,7 +489,7 @@ def train_dqn(
 
 
 def evaluate_agent(
-    agent: DQNAgent,
+    agent,  # DQNAgent (PyTorch or Numpy)
     num_episodes: int = 100,
     verbose: bool = True,
     data_loader: Optional[GasDataLoader] = None,
@@ -575,6 +622,8 @@ if __name__ == '__main__':
     parser.add_argument('--hidden-dims', type=str, default=None, help='Comma-separated hidden dims (e.g., "128,64")')
     parser.add_argument('--eval-every', type=int, default=200, help='Evaluate every N episodes')
     parser.add_argument('--eval-episodes', type=int, default=30, help='Number of evaluation episodes')
+    parser.add_argument('--backend', type=str, default='auto', choices=['auto', 'pytorch', 'numpy'],
+                       help='Backend for DQN (auto=prefer pytorch, pytorch, numpy)')
     args = parser.parse_args()
 
     use_dueling = True
@@ -592,7 +641,8 @@ if __name__ == '__main__':
         use_dueling=use_dueling,
         hidden_dims=hidden_dims,
         eval_every=args.eval_every,
-        eval_episodes=args.eval_episodes
+        eval_episodes=args.eval_episodes,
+        backend=args.backend
     )
     
     if args.evaluate:
