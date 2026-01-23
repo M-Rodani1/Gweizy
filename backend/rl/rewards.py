@@ -12,6 +12,10 @@ class RewardConfig:
     max_loss: float = -0.30  # Cap catastrophic loss at -30%
     urgency_multiplier: float = 2.0  # Optional extra wait penalty for urgency
     reward_scale: float = 1.0  # Optional scaling if enabled
+    # Phase 3: Action timing
+    min_wait_steps: int = 3  # Minimum steps before execution is optimal
+    early_execution_penalty: float = 0.1  # Penalty for executing before min_wait_steps
+    observation_bonus: float = 0.02  # Small bonus for observing during volatile periods
 
 
 class RewardCalculator:
@@ -34,14 +38,18 @@ class RewardCalculator:
 
         return float(np.tanh(reward / self.config.reward_scale))
 
-    def calculate_reward(self, action: int, current_price: float, 
+    def calculate_reward(self, action: int, current_price: float,
                         urgency: float, time_waiting: int, done: bool = False,
                         volatility: float = 0.0) -> float:
         """
-        Calculate reward using RELATIVE SAVINGS approach with volatility-scaled waiting penalty.
+        Calculate reward using RELATIVE SAVINGS approach with action timing incentives.
         Reward = Benchmark_Price - Execution_Price
         Where Benchmark_Price = initial price at episode start (Step 0).
-        
+
+        Phase 3 additions:
+        - Early execution penalty: discourage executing before min_wait_steps
+        - Observation bonus: reward waiting during volatile periods
+
         Args:
             volatility: Current market volatility (0-1 scale) for reward shaping
         """
@@ -59,13 +67,26 @@ class RewardCalculator:
             else:
                 reward = 0.0
 
+            # Phase 3: Early execution penalty
+            # Penalize executing before observing enough price data
+            if time_waiting < self.config.min_wait_steps:
+                steps_short = self.config.min_wait_steps - time_waiting
+                early_penalty = self.config.early_execution_penalty * steps_short
+                reward -= early_penalty
+
             # Cap catastrophic losses
             if reward < self.config.max_loss:
                 reward = self.config.max_loss
         else:  # Wait
             # Small per-step wait penalty (optionally scaled by urgency)
             reward = -self.config.wait_penalty * (1 + urgency * self.config.urgency_multiplier)
-        
+
+            # Phase 3: Observation bonus during volatile periods
+            # Encourage waiting when there's useful price movement to observe
+            if volatility > 0.05:  # Only give bonus when volatility is meaningful
+                observation_bonus = self.config.observation_bonus * min(volatility, 0.5)
+                reward += observation_bonus
+
         # Scale reward to [-1, 1] range for stable learning
         return self._scale_reward(reward)
 

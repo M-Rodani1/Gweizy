@@ -14,6 +14,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from rl.environment import GasOptimizationEnv
 from rl.data_loader import GasDataLoader
+from rl.rewards import RewardConfig
 
 # Try to import PyTorch agent first, fall back to numpy
 try:
@@ -61,7 +62,12 @@ def train_dqn(
     # Phase 2 features (PyTorch only)
     n_steps: int = 3,  # N-step returns (1 = standard TD)
     use_reward_norm: bool = True,  # Reward normalization
-    use_noisy_nets: bool = False  # Noisy networks for exploration
+    use_noisy_nets: bool = False,  # Noisy networks for exploration
+    # Phase 3: Action timing parameters
+    min_wait_steps: int = 3,  # Minimum steps before optimal execution
+    early_execution_penalty: float = 0.1,  # Penalty for executing too early
+    observation_bonus: float = 0.02,  # Bonus for waiting during volatile periods
+    wait_penalty: float = 0.015  # Per-step waiting cost
 ):
     """
     Train DQN agent on historical gas data for a specific chain.
@@ -127,10 +133,19 @@ def train_dqn(
     if max_wait_steps is None:
         max_wait_steps = episode_length
 
+    # Phase 3: Configure reward function with action timing parameters
+    reward_config = RewardConfig(
+        wait_penalty=wait_penalty,
+        min_wait_steps=min_wait_steps,
+        early_execution_penalty=early_execution_penalty,
+        observation_bonus=observation_bonus
+    )
+
     env = GasOptimizationEnv(
         train_loader,
         episode_length=episode_length,
         max_wait_steps=max_wait_steps,
+        reward_config=reward_config,
         scale_rewards=True  # Scale rewards to [-1, 1] for stable Q-learning
     )
 
@@ -246,6 +261,7 @@ def train_dqn(
           f"Double DQN={agent.use_double_dqn}, Dueling={use_dueling}")
     if is_pytorch:
         print(f"Phase 2: N-step={n_steps}, RewardNorm={use_reward_norm}, NoisyNets={use_noisy_nets}")
+    print(f"Phase 3: MinWait={min_wait_steps}, EarlyPenalty={early_execution_penalty}, ObsBonus={observation_bonus}")
     print(f"Curriculum Learning: Enabled (episode length increases over time)")
     print("-" * 50)
     
@@ -650,6 +666,11 @@ if __name__ == '__main__':
     parser.add_argument('--n-steps', type=int, default=3, help='N-step returns (default: 3, use 1 for standard TD)')
     parser.add_argument('--no-reward-norm', action='store_true', help='Disable reward normalization')
     parser.add_argument('--noisy-nets', action='store_true', help='Use noisy networks for exploration (replaces epsilon-greedy)')
+    # Phase 3: Action timing
+    parser.add_argument('--min-wait-steps', type=int, default=3, help='Minimum steps before optimal execution (default: 3)')
+    parser.add_argument('--early-penalty', type=float, default=0.1, help='Penalty for executing before min-wait-steps (default: 0.1)')
+    parser.add_argument('--obs-bonus', type=float, default=0.02, help='Bonus for waiting during volatile periods (default: 0.02)')
+    parser.add_argument('--wait-penalty', type=float, default=0.015, help='Per-step waiting cost (default: 0.015)')
     args = parser.parse_args()
 
     use_dueling = True
@@ -672,7 +693,12 @@ if __name__ == '__main__':
         # Phase 2 features
         n_steps=args.n_steps,
         use_reward_norm=not args.no_reward_norm,
-        use_noisy_nets=args.noisy_nets
+        use_noisy_nets=args.noisy_nets,
+        # Phase 3: Action timing
+        min_wait_steps=args.min_wait_steps,
+        early_execution_penalty=args.early_penalty,
+        observation_bonus=args.obs_bonus,
+        wait_penalty=args.wait_penalty
     )
     
     if args.evaluate:

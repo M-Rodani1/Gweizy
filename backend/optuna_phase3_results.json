@@ -1,0 +1,293 @@
+{
+  "chain_id": 8453,
+  "study_name": "dqn_phase3",
+  "n_trials": 10,
+  "best_trial": {
+    "number": 1,
+    "value": 0.11590245376194505,
+    "params": {
+      "hidden_dim_1": 64,
+      "hidden_dim_2": 128,
+      "learning_rate": 2.5081156860452307e-05,
+      "gamma": 0.9731405497286125,
+      "batch_size": 128,
+      "epsilon_decay_ratio": 0.38526206184364575,
+      "target_update_tau": 0.0015854643368675158,
+      "n_steps": 5,
+      "use_reward_norm": true,
+      "min_wait_steps": 3,
+      "early_execution_penalty": 0.029301634201915158,
+      "observation_bonus": 0.0684233026512157,
+      "wait_penalty": 0.02480686221828206
+    },
+    "user_attrs": {
+      "eval_reward": -0.05085814067269091,
+      "positive_savings_rate": 76.66666666666667,
+      "avg_wait_time": 3.4,
+      "train_savings_final": -2.7943940729576364
+    }
+  },
+  "all_trials": [
+    {
+      "number": 0,
+      "value": -0.10028702630962817,
+      "params": {
+        "hidden_dim_1": 128,
+        "hidden_dim_2": 32,
+        "learning_rate": 1.3066739238053272e-05,
+        "gamma": 0.988977926559872,
+        "batch_size": 64,
+        "epsilon_decay_ratio": 0.7849549260809972,
+        "target_update_tau": 0.008491983767203797,
+        "n_steps": 2,
+        "use_reward_norm": false,
+        "min_wait_steps": 3,
+        "early_execution_penalty": 0.15742692948967135,
+        "observation_bonus": 0.04319450186421158,
+        "wait_penalty": 0.018105311308911888
+      },
+      "state": "TrialState.COMPLETE",
+      "user_attrs": {
+        "eval_reward": 0.14848252519313995,
+        "positive_savings_rate": 73.33333333333333,
+        "avg_wait_time": 2.1666666666666665,
+        "train_savings_final": -0.8224105312142406
+      }
+    },
+    {
+      "number": 1,
+      "value": 0.11590245376194505,
+      "params": {
+        "hidden_dim_1": 64,
+        "hidden_dim_2": 128,
+        "learning_rate": 2.5081156860452307e-05,
+        "gamma": 0.9731405497286125,
+        "batch_size": 128,
+        "epsilon_decay_ratio": 0.38526206184364575,
+        "target_update_tau": 0.0015854643368675158,
+        "n_steps": 5,
+        "use_reward_norm": true,
+        "min_wait_steps": 3,
+        "early_execution_penalty": 0.029301634201915158,
+        "observation_bonus": 0.0684233026512157,
+        "wait_penalty": 0.02480686221828206
+      },
+      "state": "TrialState.COMPLETE",
+      "user_attrs": {
+        "eval_reward": -0.05085814067269091,
+        "positive_savings_rate": 76.66666666666667,
+        "avg_wait_time": 3.4,
+        "train_savings_final": -2.7943940729576364
+      }
+    },
+    {
+      "number": 2,
+      "value": -1.7667791892905007,
+      "params": {
+        "hidden_dim_1": 128,
+        "hidden_dim_2": 32,
+        "learning_rate": 4.201672054372529e-05,
+        "gamma": 0.9734030609530014,
+        "batch_size": 128,
+        "epsilon_decay_ratio": 0.6875664116805573,
+        "target_update_tau": 0.009455490474077703,
+        "n_steps": 5,
+        "use_reward_norm": false,
+        "min_wait_steps": 1,
+        "early_execution_penalty": 0.058794858725743554,
+        "observation_bonus": 0.004522728891053806,
+        "wait_penalty": 0.019639864884346898
+      },
+      "state": "TrialState.COMPLETE",
+      "user_attrs": {
+        "eval_reward": -0.0743520363105294,
+        "positive_savings_rate": 40.0,
+        "avg_wait_time": 1.2,
+        "train_savings_final": 0.015936102651545023
+      }
+    },
+    {
+      "number": 3,
+      "value": -0.1505233473103746,
+      "params": {
+        "hidden_dim_1": 256,
+        "hidden_dim_2": 128,
+        "learning_rate": 1.913588048769229e-05,
+        "gamma": 0.9860988641339318,
+        "batch_size": 64,
+        "epsilon_decay_ratio": 0.3993578407670862,
+        "target_update_tau": 0.0010496990541124216,
+        "n_steps": 5,
+        "use_reward_norm": false,
+        "min_wait_steps": 7,
+        "early_execution_penalty": 0.02221339552022711,
+        "observation_bonus": 0.035846572854427265,
+        "wait_penalty": 0.010214107678630837
+      },
+      "state": "TrialState.COMPLETE",
+      "user_attrs": {
+        "eval_reward": 0.07654205294083839,
+        "positive_savings_rate": 73.33333333333333,
+        "avg_wait_time": 2.566666666666667,
+        "train_savings_final": -0.17991300802296117
+      }
+    },
+    {
+      "number": 4,
+      "value": -5.44493442644108,
+      "params": {
+        "hidden_dim_1": 64,
+        "hidden_dim_2": 128,
+        "learning_rate": 0.0002878805718308924,
+        "gamma": 0.9786900862109845,
+        "batch_size": 32,
+        "epsilon_decay_ratio": 0.6566223936114974,
+        "target_update_tau": 0.007847065437552078,
+        "n_steps": 3,
+        "use_reward_norm": true,
+        "min_wait_steps": 5,
+        "early_execution_penalty": 0.12826230550756487,
+        "observation_bonus": 0.002541912674409519,
+        "wait_penalty": 0.009855114214698701
+      },
+      "state": "TrialState.COMPLETE",
+      "user_attrs": {
+        "eval_reward": -0.40696874505821456,
+        "positive_savings_rate": 66.66666666666666,
+        "avg_wait_time": 21.866666666666667,
+        "train_savings_final": -5.101608010078367
+      }
+    },
+    {
+      "number": 5,
+      "value": -0.08363022331072835,
+      "params": {
+        "hidden_dim_1": 128,
+        "hidden_dim_2": 64,
+        "learning_rate": 6.618595597183474e-05,
+        "gamma": 0.9839998012344372,
+        "batch_size": 128,
+        "epsilon_decay_ratio": 0.3806106436270022,
+        "target_update_tau": 0.009367278871083158,
+        "n_steps": 5,
+        "use_reward_norm": false,
+        "min_wait_steps": 7,
+        "early_execution_penalty": 0.05597101766581075,
+        "observation_bonus": 0.08925589984899779,
+        "wait_penalty": 0.029270400886204286
+      },
+      "state": "TrialState.COMPLETE",
+      "user_attrs": {
+        "eval_reward": 0.003023212960968093,
+        "positive_savings_rate": 63.33333333333333,
+        "avg_wait_time": 2.4,
+        "train_savings_final": 0.16944364708616397
+      }
+    },
+    {
+      "number": 6,
+      "value": -2.117000515915548,
+      "params": {
+        "hidden_dim_1": 128,
+        "hidden_dim_2": 128,
+        "learning_rate": 0.0004325432427964555,
+        "gamma": 0.9887328762465355,
+        "batch_size": 64,
+        "epsilon_decay_ratio": 0.4110539052353651,
+        "target_update_tau": 0.0020787883060031454,
+        "n_steps": 2,
+        "use_reward_norm": true,
+        "min_wait_steps": 5,
+        "early_execution_penalty": 0.21090568766855336,
+        "observation_bonus": 0.0363629602379294,
+        "wait_penalty": 0.048730193722443235
+      },
+      "state": "TrialState.COMPLETE",
+      "user_attrs": {
+        "eval_reward": -0.37102471560273786,
+        "positive_savings_rate": 56.666666666666664,
+        "avg_wait_time": 19.266666666666666,
+        "train_savings_final": -1.7220162903654248
+      }
+    },
+    {
+      "number": 7,
+      "value": -0.05778434130679411,
+      "params": {
+        "hidden_dim_1": 64,
+        "hidden_dim_2": 32,
+        "learning_rate": 0.0001656260589333595,
+        "gamma": 0.9726205560452987,
+        "batch_size": 128,
+        "epsilon_decay_ratio": 0.4197809453334862,
+        "target_update_tau": 0.002304053848821008,
+        "n_steps": 3,
+        "use_reward_norm": true,
+        "min_wait_steps": 6,
+        "early_execution_penalty": 0.22848588459861527,
+        "observation_bonus": 0.02376375439923997,
+        "wait_penalty": 0.03776973568753368
+      },
+      "state": "TrialState.COMPLETE",
+      "user_attrs": {
+        "eval_reward": -0.8025543867188466,
+        "positive_savings_rate": 53.333333333333336,
+        "avg_wait_time": 32.233333333333334,
+        "train_savings_final": -1.7622709358410864
+      }
+    },
+    {
+      "number": 8,
+      "value": 0.03459896844174888,
+      "params": {
+        "hidden_dim_1": 256,
+        "hidden_dim_2": 128,
+        "learning_rate": 4.3808676197257874e-05,
+        "gamma": 0.9583933329679934,
+        "batch_size": 128,
+        "epsilon_decay_ratio": 0.30829391446392806,
+        "target_update_tau": 0.005608837524693529,
+        "n_steps": 2,
+        "use_reward_norm": true,
+        "min_wait_steps": 6,
+        "early_execution_penalty": 0.11602060389016122,
+        "observation_bonus": 0.09367299887367346,
+        "wait_penalty": 0.011188442486569698
+      },
+      "state": "TrialState.COMPLETE",
+      "user_attrs": {
+        "eval_reward": -0.5067056339927045,
+        "positive_savings_rate": 73.33333333333333,
+        "avg_wait_time": 24.833333333333332,
+        "train_savings_final": -1.479723827666345
+      }
+    },
+    {
+      "number": 9,
+      "value": 0.0,
+      "params": {
+        "hidden_dim_1": 256,
+        "hidden_dim_2": 32,
+        "learning_rate": 0.00043096738082034535,
+        "gamma": 0.9749840365219757,
+        "batch_size": 32,
+        "epsilon_decay_ratio": 0.7486078789766634,
+        "target_update_tau": 0.009103762514469975,
+        "n_steps": 4,
+        "use_reward_norm": false,
+        "min_wait_steps": 6,
+        "early_execution_penalty": 0.26913307798577313,
+        "observation_bonus": 0.08870864242651173,
+        "wait_penalty": 0.04009439956359308
+      },
+      "state": "TrialState.COMPLETE",
+      "user_attrs": {
+        "eval_reward": -0.30000000000000004,
+        "positive_savings_rate": 0.0,
+        "avg_wait_time": 0.0,
+        "train_savings_final": -0.1163845461322413
+      }
+    }
+  ],
+  "timestamp": "2026-01-23T20:22:34.392788"
+}
