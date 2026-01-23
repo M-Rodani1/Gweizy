@@ -99,7 +99,8 @@ def train_dqn(
     env = GasOptimizationEnv(
         train_loader,
         episode_length=episode_length,
-        max_wait_steps=max_wait_steps
+        max_wait_steps=max_wait_steps,
+        scale_rewards=True  # Scale rewards to [-1, 1] for stable Q-learning
     )
 
     if hidden_dims is None:
@@ -109,7 +110,7 @@ def train_dqn(
         state_dim=env.observation_space_shape[0],
         action_dim=env.action_space_n,
         hidden_dims=hidden_dims,
-        learning_rate=0.0002,  # Lower learning rate for stability
+        learning_rate=0.00005,  # Lower learning rate for stability (reduced from 0.0002)
         gamma=0.98,  # Higher discount for longer-term planning
         epsilon_start=1.0,
         epsilon_end=0.05,
@@ -120,14 +121,14 @@ def train_dqn(
         batch_size=32,  # Start small; ramp later
         target_update_freq=200,  # Update target network less frequently
         lr_decay=1.0,  # Disable LR decay for short runs
-        lr_min=0.0002,  # Keep constant unless loss spike triggers reduction
-        gradient_clip=10.0,  # Gradient clipping threshold
+        lr_min=0.00005,  # Keep constant unless loss spike triggers reduction
+        gradient_clip=1.0,  # Aggressive gradient clipping (reduced from 10.0)
         use_per=True,  # Enable Prioritized Experience Replay
         per_alpha=0.6,
         per_beta=0.4,
         use_double_dqn=True,  # Enable Double DQN
         use_dueling=use_dueling,
-        target_update_tau=0.005,
+        target_update_tau=0.001,  # Slower target updates (reduced from 0.005)
         use_soft_target=True
     )
     

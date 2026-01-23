@@ -27,15 +27,16 @@ class GasOptimizationEnv:
         episode_length: int = 48,
         urgency_range: Tuple[float, float] = (0.1, 0.9),
         max_wait_steps: Optional[int] = None,
-        reward_config: Optional[RewardConfig] = None
+        reward_config: Optional[RewardConfig] = None,
+        scale_rewards: bool = False
     ):
         self.data_loader = data_loader or GasDataLoader()
         self.episode_length = episode_length
         self.urgency_range = urgency_range
         self.max_wait_steps = max_wait_steps
-        
+
         self.state_builder = StateBuilder(history_length=24)
-        self.reward_calculator = RewardCalculator(config=reward_config)
+        self.reward_calculator = RewardCalculator(config=reward_config, scale_rewards=scale_rewards)
         
         self.action_space_n = 2  # Wait or Execute
         self.observation_space_shape = (self.state_builder.get_state_dim(),)
@@ -97,7 +98,7 @@ class GasOptimizationEnv:
         if self._current_step >= max_steps and action == 0:
             # FORCED EXECUTION: Agent must execute at deadline
             action = 1  # Force execution
-            deadline_penalty = -10.0  # Moderate penalty (reduced from -100 to stabilize Q-values)
+            deadline_penalty = -0.5  # Moderate penalty (scaled to match tanh reward range [-1, 1])
             info = {
                 'price': current_price,
                 'step': self._current_step,
@@ -156,7 +157,7 @@ class GasOptimizationEnv:
                 final_price = self._episode_data[-1]['gas_price']
                 final_volatility = current_volatility  # Use current volatility
                 reward += self.reward_calculator.calculate_reward(1, final_price, self._urgency, self._time_waiting, done=True, volatility=final_volatility)
-                reward += -10.0  # Deadline penalty (reduced from -100 to stabilize Q-values)
+                reward += -0.5  # Deadline penalty (scaled to match tanh reward range [-1, 1])
                 info['forced_execution'] = True
                 info['execution_price'] = final_price
                 info['savings_vs_initial'] = (self.reward_calculator.initial_price - final_price) / self.reward_calculator.initial_price
