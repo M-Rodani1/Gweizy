@@ -57,7 +57,11 @@ def train_dqn(
     hidden_dims: Optional[List[int]] = None,
     eval_every: int = 200,
     eval_episodes: int = 30,
-    backend: str = "auto"  # "auto", "pytorch", or "numpy"
+    backend: str = "auto",  # "auto", "pytorch", or "numpy"
+    # Phase 2 features (PyTorch only)
+    n_steps: int = 3,  # N-step returns (1 = standard TD)
+    use_reward_norm: bool = True,  # Reward normalization
+    use_noisy_nets: bool = False  # Noisy networks for exploration
 ):
     """
     Train DQN agent on historical gas data for a specific chain.
@@ -151,7 +155,8 @@ def train_dqn(
         gradient_clip = 1.0
         batch_size = 32
 
-    agent = DQNAgent(
+    # Build agent kwargs
+    agent_kwargs = dict(
         state_dim=env.observation_space_shape[0],
         action_dim=env.action_space_n,
         hidden_dims=hidden_dims,
@@ -176,6 +181,16 @@ def train_dqn(
         target_update_tau=0.001,  # Slower target updates (reduced from 0.005)
         use_soft_target=True
     )
+
+    # Add Phase 2 features for PyTorch backend
+    if is_pytorch:
+        agent_kwargs.update(
+            n_steps=n_steps,
+            use_reward_norm=use_reward_norm,
+            use_noisy_nets=use_noisy_nets
+        )
+
+    agent = DQNAgent(**agent_kwargs)
     
     # Training metrics
     episode_rewards = []
@@ -229,6 +244,8 @@ def train_dqn(
     print(f"Learning rate: {agent.learning_rate}, Gamma: {agent.gamma}")
     print(f"Features: PER={isinstance(agent.replay_buffer, PrioritizedReplayBuffer)}, "
           f"Double DQN={agent.use_double_dqn}, Dueling={use_dueling}")
+    if is_pytorch:
+        print(f"Phase 2: N-step={n_steps}, RewardNorm={use_reward_norm}, NoisyNets={use_noisy_nets}")
     print(f"Curriculum Learning: Enabled (episode length increases over time)")
     print("-" * 50)
     
@@ -263,6 +280,11 @@ def train_dqn(
     
     for episode in range(num_episodes):
         agent.decay_epsilon(episode)
+
+        # Reset episode-specific state (n-step buffer, etc.)
+        if hasattr(agent, 'reset_episode'):
+            agent.reset_episode()
+
         # Curriculum learning: adjust episode length
         current_episode_length = get_curriculum_length(episode)
         if current_episode_length != episode_length:
@@ -624,6 +646,10 @@ if __name__ == '__main__':
     parser.add_argument('--eval-episodes', type=int, default=30, help='Number of evaluation episodes')
     parser.add_argument('--backend', type=str, default='auto', choices=['auto', 'pytorch', 'numpy'],
                        help='Backend for DQN (auto=prefer pytorch, pytorch, numpy)')
+    # Phase 2 features (PyTorch only)
+    parser.add_argument('--n-steps', type=int, default=3, help='N-step returns (default: 3, use 1 for standard TD)')
+    parser.add_argument('--no-reward-norm', action='store_true', help='Disable reward normalization')
+    parser.add_argument('--noisy-nets', action='store_true', help='Use noisy networks for exploration (replaces epsilon-greedy)')
     args = parser.parse_args()
 
     use_dueling = True
@@ -642,7 +668,11 @@ if __name__ == '__main__':
         hidden_dims=hidden_dims,
         eval_every=args.eval_every,
         eval_episodes=args.eval_episodes,
-        backend=args.backend
+        backend=args.backend,
+        # Phase 2 features
+        n_steps=args.n_steps,
+        use_reward_norm=not args.no_reward_norm,
+        use_noisy_nets=args.noisy_nets
     )
     
     if args.evaluate:

@@ -145,7 +145,141 @@ class ReplayBuffer:
         return len(self.buffer)
 
 
+class NStepBuffer:
+    """N-step return buffer for computing multi-step TD targets."""
+
+    def __init__(self, n_steps: int = 3, gamma: float = 0.99):
+        self.n_steps = n_steps
+        self.gamma = gamma
+        self.buffer = deque(maxlen=n_steps)
+
+    def push(self, state, action, reward, next_state, done) -> Optional[Tuple]:
+        """Add transition and return n-step transition if ready."""
+        self.buffer.append((state, action, reward, next_state, done))
+
+        if len(self.buffer) < self.n_steps:
+            return None
+
+        # Compute n-step return
+        n_step_reward = 0
+        for i, (_, _, r, _, d) in enumerate(self.buffer):
+            n_step_reward += (self.gamma ** i) * r
+            if d:
+                break
+
+        # Get first state/action and last next_state/done
+        first_state, first_action, _, _, _ = self.buffer[0]
+        _, _, _, last_next_state, last_done = self.buffer[-1]
+
+        return (first_state, first_action, n_step_reward, last_next_state, last_done)
+
+    def flush(self) -> List[Tuple]:
+        """Flush remaining transitions at episode end."""
+        transitions = []
+        while len(self.buffer) > 0:
+            # Compute partial n-step return
+            n_step_reward = 0
+            for i, (_, _, r, _, d) in enumerate(self.buffer):
+                n_step_reward += (self.gamma ** i) * r
+                if d:
+                    break
+
+            first_state, first_action, _, _, _ = self.buffer[0]
+            _, _, _, last_next_state, last_done = self.buffer[-1]
+
+            transitions.append((first_state, first_action, n_step_reward, last_next_state, last_done))
+            self.buffer.popleft()
+
+        return transitions
+
+    def reset(self):
+        """Reset buffer for new episode."""
+        self.buffer.clear()
+
+
+class RewardNormalizer:
+    """Running reward normalization for stable training."""
+
+    def __init__(self, clip_range: float = 10.0, epsilon: float = 1e-8):
+        self.clip_range = clip_range
+        self.epsilon = epsilon
+        self.running_mean = 0.0
+        self.running_var = 1.0
+        self.count = 0
+
+    def normalize(self, reward: float) -> float:
+        """Normalize reward using running statistics."""
+        self.count += 1
+
+        # Welford's online algorithm for running mean/variance
+        delta = reward - self.running_mean
+        self.running_mean += delta / self.count
+        delta2 = reward - self.running_mean
+        self.running_var += delta * delta2
+
+        # Compute standard deviation
+        std = np.sqrt(self.running_var / max(1, self.count - 1)) + self.epsilon
+
+        # Normalize and clip
+        normalized = (reward - self.running_mean) / std
+        return float(np.clip(normalized, -self.clip_range, self.clip_range))
+
+    def reset_stats(self):
+        """Reset running statistics."""
+        self.running_mean = 0.0
+        self.running_var = 1.0
+        self.count = 0
+
+
 if TORCH_AVAILABLE:
+    class NoisyLinear(nn.Module):
+        """Noisy linear layer for exploration (Fortunato et al., 2017)."""
+
+        def __init__(self, in_features: int, out_features: int, std_init: float = 0.5):
+            super().__init__()
+            self.in_features = in_features
+            self.out_features = out_features
+            self.std_init = std_init
+
+            # Learnable parameters
+            self.weight_mu = nn.Parameter(torch.empty(out_features, in_features))
+            self.weight_sigma = nn.Parameter(torch.empty(out_features, in_features))
+            self.bias_mu = nn.Parameter(torch.empty(out_features))
+            self.bias_sigma = nn.Parameter(torch.empty(out_features))
+
+            # Factorized noise buffers
+            self.register_buffer('weight_epsilon', torch.empty(out_features, in_features))
+            self.register_buffer('bias_epsilon', torch.empty(out_features))
+
+            self._init_parameters()
+            self.reset_noise()
+
+        def _init_parameters(self):
+            mu_range = 1 / np.sqrt(self.in_features)
+            self.weight_mu.data.uniform_(-mu_range, mu_range)
+            self.weight_sigma.data.fill_(self.std_init / np.sqrt(self.in_features))
+            self.bias_mu.data.uniform_(-mu_range, mu_range)
+            self.bias_sigma.data.fill_(self.std_init / np.sqrt(self.out_features))
+
+        def _scale_noise(self, size: int) -> torch.Tensor:
+            x = torch.randn(size, device=self.weight_mu.device)
+            return x.sign() * x.abs().sqrt()
+
+        def reset_noise(self):
+            """Sample new noise."""
+            epsilon_in = self._scale_noise(self.in_features)
+            epsilon_out = self._scale_noise(self.out_features)
+            self.weight_epsilon.copy_(epsilon_out.outer(epsilon_in))
+            self.bias_epsilon.copy_(epsilon_out)
+
+        def forward(self, x: torch.Tensor) -> torch.Tensor:
+            if self.training:
+                weight = self.weight_mu + self.weight_sigma * self.weight_epsilon
+                bias = self.bias_mu + self.bias_sigma * self.bias_epsilon
+            else:
+                weight = self.weight_mu
+                bias = self.bias_mu
+            return F.linear(x, weight, bias)
     class DuelingQNetwork(nn.Module):
         """Dueling DQN architecture with LayerNorm for stability."""
 
@@ -239,6 +373,69 @@ if TORCH_AVAILABLE:
             return self.network(x)
 
 
+    class NoisyDuelingQNetwork(nn.Module):
+        """Dueling DQN with Noisy layers for exploration."""
+
+        def __init__(self, state_dim: int, action_dim: int, hidden_dims: List[int] = [128, 64]):
+            super().__init__()
+            self.state_dim = state_dim
+            self.action_dim = action_dim
+            self.hidden_dims = hidden_dims
+
+            # Shared feature layers (standard linear + LayerNorm)
+            layers = []
+            in_dim = state_dim
+            for hidden_dim in hidden_dims[:-1]:
+                layers.append(nn.Linear(in_dim, hidden_dim))
+                layers.append(nn.LayerNorm(hidden_dim))
+                layers.append(nn.ReLU())
+                in_dim = hidden_dim
+            self.shared = nn.Sequential(*layers) if layers else nn.Identity()
+
+            shared_out_dim = hidden_dims[-2] if len(hidden_dims) > 1 else state_dim
+
+            # Value stream with noisy output
+            self.value_hidden = nn.Sequential(
+                NoisyLinear(shared_out_dim, hidden_dims[-1]),
+                nn.LayerNorm(hidden_dims[-1]),
+                nn.ReLU()
+            )
+            self.value_out = NoisyLinear(hidden_dims[-1], 1)
+
+            # Advantage stream with noisy output
+            self.advantage_hidden = nn.Sequential(
+                NoisyLinear(shared_out_dim, hidden_dims[-1]),
+                nn.LayerNorm(hidden_dims[-1]),
+                nn.ReLU()
+            )
+            self.advantage_out = NoisyLinear(hidden_dims[-1], action_dim)
+
+            self._init_shared_weights()
+
+        def _init_shared_weights(self):
+            for m in self.shared.modules():
+                if isinstance(m, nn.Linear):
+                    nn.init.orthogonal_(m.weight, gain=np.sqrt(2))
+                    nn.init.constant_(m.bias, 0)
+
+        def reset_noise(self):
+            """Reset noise for all noisy layers."""
+            for module in self.modules():
+                if isinstance(module, NoisyLinear):
+                    module.reset_noise()
+
+        def forward(self, x: torch.Tensor) -> torch.Tensor:
+            if x.dim() == 1:
+                x = x.unsqueeze(0)
+
+            shared = self.shared(x)
+            value = self.value_out(self.value_hidden(shared))
+            advantage = self.advantage_out(self.advantage_hidden(shared))
+
+            q_values = value + (advantage - advantage.mean(dim=-1, keepdim=True))
+            return q_values
+
+
 class DQNAgent:
     """
     PyTorch-based DQN Agent for gas price optimization.
@@ -249,6 +446,9 @@ class DQNAgent:
     - Dueling Network Architecture
     - LayerNorm for training stability
     - Proper gradient clipping
+    - N-step returns for better credit assignment
+    - Reward normalization for stable training
+    - Noisy networks for exploration (optional)
     """
 
     def __init__(
@@ -276,7 +476,11 @@ class DQNAgent:
         use_dueling: bool = True,
         target_update_tau: float = 0.005,
         use_soft_target: bool = True,
-        device: str = None
+        device: str = None,
+        # Phase 2 features
+        n_steps: int = 3,  # N-step returns (1 = standard TD)
+        use_reward_norm: bool = True,  # Reward normalization
+        use_noisy_nets: bool = False  # Noisy networks for exploration
     ):
         if not TORCH_AVAILABLE:
             raise ImportError("PyTorch is required for DQNAgent. Install with: pip install torch")
@@ -303,6 +507,11 @@ class DQNAgent:
         self.target_update_tau = target_update_tau
         self.use_soft_target = use_soft_target
 
+        # Phase 2 features
+        self.n_steps = n_steps
+        self.use_reward_norm = use_reward_norm
+        self.use_noisy_nets = use_noisy_nets
+
         # Device setup
         if device is None:
             self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -313,8 +522,11 @@ class DQNAgent:
         self.state_mean = None
         self.state_std = None
 
-        # Networks
-        if use_dueling:
+        # Networks - use noisy version if enabled
+        if use_noisy_nets and use_dueling:
+            self.q_network = NoisyDuelingQNetwork(state_dim, action_dim, hidden_dims).to(self.device)
+            self.target_network = NoisyDuelingQNetwork(state_dim, action_dim, hidden_dims).to(self.device)
+        elif use_dueling:
             self.q_network = DuelingQNetwork(state_dim, action_dim, hidden_dims).to(self.device)
             self.target_network = DuelingQNetwork(state_dim, action_dim, hidden_dims).to(self.device)
         else:
@@ -338,6 +550,12 @@ class DQNAgent:
         else:
             self.replay_buffer = ReplayBuffer(buffer_size)
 
+        # N-step buffer for computing multi-step returns
+        self.n_step_buffer = NStepBuffer(n_steps=n_steps, gamma=gamma) if n_steps > 1 else None
+
+        # Reward normalizer
+        self.reward_normalizer = RewardNormalizer() if use_reward_norm else None
+
         # Training stats
         self.training_steps = 0
         self.episode_rewards = []
@@ -350,8 +568,9 @@ class DQNAgent:
             logger.warning("Both epsilon_decay_steps and epsilon_decay_episodes set; using step-based decay.")
 
     def select_action(self, state: np.ndarray, training: bool = True) -> int:
-        """Select action using epsilon-greedy policy."""
-        if training and random.random() < self.epsilon:
+        """Select action using epsilon-greedy policy (or noisy nets if enabled)."""
+        # Noisy nets handle exploration internally, no epsilon needed
+        if not self.use_noisy_nets and training and random.random() < self.epsilon:
             return random.randint(0, self.action_dim - 1)
 
         state = self._align_state_features(state)
@@ -391,13 +610,38 @@ class DQNAgent:
         self.epsilon = max(self.epsilon_end, min(self.epsilon_start, self.epsilon))
 
     def store_transition(self, state, action, reward, next_state, done, td_error: float = None):
-        """Store transition in replay buffer."""
-        self.replay_buffer.push(state, action, reward, next_state, done, td_error=td_error)
+        """Store transition in replay buffer with n-step returns and reward normalization."""
+        # Normalize reward if enabled
+        if self.reward_normalizer is not None:
+            reward = self.reward_normalizer.normalize(reward)
+
+        # Use n-step buffer if enabled
+        if self.n_step_buffer is not None:
+            n_step_transition = self.n_step_buffer.push(state, action, reward, next_state, done)
+            if n_step_transition is not None:
+                self.replay_buffer.push(*n_step_transition, td_error=td_error)
+
+            # Flush remaining transitions at episode end
+            if done:
+                for transition in self.n_step_buffer.flush():
+                    self.replay_buffer.push(*transition, td_error=td_error)
+        else:
+            self.replay_buffer.push(state, action, reward, next_state, done, td_error=td_error)
+
+    def reset_episode(self):
+        """Reset episode-specific state (call at start of each episode)."""
+        if self.n_step_buffer is not None:
+            self.n_step_buffer.reset()
 
     def train_step(self) -> Optional[float]:
         """Perform one training step."""
         if len(self.replay_buffer) < self.batch_size:
             return None
+
+        # Reset noise for noisy networks
+        if self.use_noisy_nets and hasattr(self.q_network, 'reset_noise'):
+            self.q_network.reset_noise()
+            self.target_network.reset_noise()
 
         # Sample batch
         batch, indices, is_weights = self.replay_buffer.sample(self.batch_size)
@@ -426,7 +670,8 @@ class DQNAgent:
         current_q = self.q_network(states_t)
         current_q_actions = current_q.gather(1, actions_t.unsqueeze(1)).squeeze(1)
 
-        # Target Q-values
+        # Target Q-values (use gamma^n for n-step returns)
+        n_step_gamma = self.gamma ** self.n_steps
         with torch.no_grad():
             if self.use_double_dqn:
                 # Double DQN: select action with online, evaluate with target
@@ -435,7 +680,7 @@ class DQNAgent:
             else:
                 next_q_values = self.target_network(next_states_t).max(dim=1)[0]
 
-            targets = rewards_t + self.gamma * next_q_values * (1 - dones_t)
+            targets = rewards_t + n_step_gamma * next_q_values * (1 - dones_t)
 
         # TD errors for PER
         td_errors = (targets - current_q_actions).abs().detach().cpu().numpy()
@@ -559,6 +804,10 @@ class DQNAgent:
             'use_dueling': self.use_dueling,
             'target_update_tau': self.target_update_tau,
             'use_soft_target': self.use_soft_target,
+            # Phase 2 parameters
+            'n_steps': self.n_steps,
+            'use_reward_norm': self.use_reward_norm,
+            'use_noisy_nets': self.use_noisy_nets,
             'backend': 'pytorch'
         }
 
