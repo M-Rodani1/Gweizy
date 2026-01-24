@@ -331,6 +331,40 @@ class EnsembleDQN:
 
         return ensemble_action, confidence, info
 
+    def get_recommendation(self, state: np.ndarray, threshold: float = 0.6) -> Dict:
+        """
+        Get action recommendation with confidence - compatible with gate interface.
+
+        Args:
+            state: Current state observation
+            threshold: Confidence threshold for recommendation
+
+        Returns:
+            Dict with action, confidence, q_values, etc.
+        """
+        action, confidence, info = self.select_action(state, training=False)
+
+        # Get average Q-values across agents
+        q_values_list = []
+        for agent in self.agents:
+            q_values = agent.get_q_values(state)
+            q_values_list.append(q_values)
+
+        avg_q_values = np.mean(q_values_list, axis=0)
+
+        return {
+            'action': 'execute' if action == 1 else 'wait',
+            'action_id': action,
+            'confidence': confidence,
+            'q_values': {
+                'wait': float(avg_q_values[0]),
+                'execute': float(avg_q_values[1])
+            },
+            'vote_fractions': info['vote_fractions'],
+            'agent_actions': info['agent_actions'],
+            'should_act': action == 1 and confidence >= threshold
+        }
+
     def evaluate(
         self,
         data_loader: GasDataLoader = None,
