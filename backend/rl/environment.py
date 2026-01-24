@@ -28,14 +28,16 @@ class GasOptimizationEnv:
         urgency_range: Tuple[float, float] = (0.1, 0.9),
         max_wait_steps: Optional[int] = None,
         reward_config: Optional[RewardConfig] = None,
-        scale_rewards: bool = False
+        scale_rewards: bool = False,
+        use_enhanced_features: bool = True  # Phase 4A: Enhanced state features
     ):
         self.data_loader = data_loader or GasDataLoader()
         self.episode_length = episode_length
         self.urgency_range = urgency_range
         self.max_wait_steps = max_wait_steps
+        self.use_enhanced_features = use_enhanced_features
 
-        self.state_builder = StateBuilder(history_length=24)
+        self.state_builder = StateBuilder(history_length=24, use_enhanced_features=use_enhanced_features)
         self.reward_calculator = RewardCalculator(config=reward_config, scale_rewards=scale_rewards)
         
         self.action_space_n = 2  # Wait or Execute
@@ -189,6 +191,9 @@ class GasOptimizationEnv:
             volatility = 0.0
             momentum = 0.0
         
+        # Calculate effective max wait steps for time_remaining feature
+        effective_max_wait = self.max_wait_steps if self.max_wait_steps is not None else self.episode_length
+
         gas_state = GasState(
             current_price=current['gas_price'],
             price_history=price_history,
@@ -197,7 +202,8 @@ class GasOptimizationEnv:
             volatility=volatility,
             momentum=momentum,
             urgency=self._urgency,
-            time_waiting=self._time_waiting
+            time_waiting=self._time_waiting,
+            max_wait_steps=effective_max_wait  # Phase 4A: For time_remaining feature
         )
 
         return self.state_builder.build_state(gas_state, price_stats)

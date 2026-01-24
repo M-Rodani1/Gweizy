@@ -67,7 +67,9 @@ def train_dqn(
     min_wait_steps: int = 3,  # Minimum steps before optimal execution
     early_execution_penalty: float = 0.1,  # Penalty for executing too early
     observation_bonus: float = 0.02,  # Bonus for waiting during volatile periods
-    wait_penalty: float = 0.015  # Per-step waiting cost
+    wait_penalty: float = 0.015,  # Per-step waiting cost
+    # Phase 4A: Enhanced state features
+    use_enhanced_features: bool = True  # Enable enhanced state representation
 ):
     """
     Train DQN agent on historical gas data for a specific chain.
@@ -146,7 +148,8 @@ def train_dqn(
         episode_length=episode_length,
         max_wait_steps=max_wait_steps,
         reward_config=reward_config,
-        scale_rewards=True  # Scale rewards to [-1, 1] for stable Q-learning
+        scale_rewards=True,  # Scale rewards to [-1, 1] for stable Q-learning
+        use_enhanced_features=use_enhanced_features  # Phase 4A: Enhanced state representation
     )
 
     if hidden_dims is None:
@@ -262,6 +265,7 @@ def train_dqn(
     if is_pytorch:
         print(f"Phase 2: N-step={n_steps}, RewardNorm={use_reward_norm}, NoisyNets={use_noisy_nets}")
     print(f"Phase 3: MinWait={min_wait_steps}, EarlyPenalty={early_execution_penalty}, ObsBonus={observation_bonus}")
+    print(f"Phase 4A: EnhancedFeatures={use_enhanced_features} (state_dim={env.observation_space_shape[0]})")
     print(f"Curriculum Learning: Enabled (episode length increases over time)")
     print("-" * 50)
     
@@ -671,6 +675,8 @@ if __name__ == '__main__':
     parser.add_argument('--early-penalty', type=float, default=0.1, help='Penalty for executing before min-wait-steps (default: 0.1)')
     parser.add_argument('--obs-bonus', type=float, default=0.02, help='Bonus for waiting during volatile periods (default: 0.02)')
     parser.add_argument('--wait-penalty', type=float, default=0.015, help='Per-step waiting cost (default: 0.015)')
+    # Phase 4A: Enhanced state features
+    parser.add_argument('--no-enhanced-features', action='store_true', help='Disable Phase 4A enhanced state features')
     args = parser.parse_args()
 
     use_dueling = True
@@ -698,7 +704,9 @@ if __name__ == '__main__':
         min_wait_steps=args.min_wait_steps,
         early_execution_penalty=args.early_penalty,
         observation_bonus=args.obs_bonus,
-        wait_penalty=args.wait_penalty
+        wait_penalty=args.wait_penalty,
+        # Phase 4A: Enhanced state features
+        use_enhanced_features=not args.no_enhanced_features
     )
     
     if args.evaluate:

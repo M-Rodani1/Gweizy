@@ -4,28 +4,28 @@
   "total_episodes": 5000,
   "actual_episodes": 5000,
   "early_stopped": false,
-  "training_time_minutes": 0.46704928333333334,
-  "final_avg_reward_last_100": 0.06614149787567174,
-  "final_avg_savings_last_100": -0.32086773714721006,
-  "best_avg_reward": 0.11950374981962797,
-  "best_avg_savings": 0.17190333900765062,
-  "best_eval_savings": 0.2943350019222109,
+  "training_time_minutes": 0.5242948666666667,
+  "final_avg_reward_last_100": 0.05163913042399537,
+  "final_avg_savings_last_100": -0.33219813315133073,
+  "best_avg_reward": 0.1392284853955293,
+  "best_avg_savings": 0.2180408198764453,
+  "best_eval_savings": 0.40206883135640387,
   "eval_metrics": {
-    "avg_reward": -0.01805959764205254,
-    "avg_savings": 0.17784365884830539,
-    "median_savings": 5.805168330935281,
-    "positive_savings_rate": 53.333333333333336,
-    "avg_wait_time": 1.6333333333333333,
+    "avg_reward": -0.11885870957394015,
+    "avg_savings": 0.02364111187644397,
+    "median_savings": 0.0,
+    "positive_savings_rate": 40.0,
+    "avg_wait_time": 1.2333333333333334,
     "action_distribution": {
-      "wait": 49,
+      "wait": 37,
       "execute": 30
     },
-    "avg_confidence": 0.6808814134778856,
-    "price_improvement": 17.78436588483054,
-    "net_savings": 0.17784365884830539
+    "avg_confidence": 0.6116131917754216,
+    "price_improvement": 2.3641111876443968,
+    "net_savings": 0.02364111187644397
   },
-  "total_training_steps": 11676,
+  "total_training_steps": 11832,
   "final_epsilon": 0.05019000000000007,
-  "final_buffer_size": 12209,
-  "timestamp": "2026-01-23T20:23:20.185438"
+  "final_buffer_size": 12390,
+  "timestamp": "2026-01-24T12:08:15.131664"
 }
