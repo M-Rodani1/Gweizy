@@ -5,6 +5,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { fetchCurrentGas, fetchPredictions, checkHealth } from '../../api/gasApi';
 import { API_CONFIG } from '../../config/api';
+import { requestDeduplicator } from '../../utils/requestDeduplication';
 
 // Mock fetch globally
 global.fetch = vi.fn();
@@ -12,6 +13,14 @@ global.fetch = vi.fn();
 describe('API Integration Tests', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    requestDeduplicator.clear();
+    if (typeof globalThis !== 'undefined' && 'localStorage' in globalThis) {
+      try {
+        globalThis.localStorage.clear();
+      } catch {
+        // Ignore storage cleanup errors in tests.
+      }
+    }
   });
 
   describe('checkHealth', () => {

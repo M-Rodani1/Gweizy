@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent, act } from '@testing-library/react';
 import NetworkIntelligencePanel from '../../components/NetworkIntelligencePanel';
 
 // Mock fetch globally
@@ -266,24 +266,30 @@ describe('NetworkIntelligencePanel', () => {
     it('refreshes data every 30 seconds', async () => {
       vi.useFakeTimers();
 
-      setupSuccessfulMocks();
+      try {
+        setupSuccessfulMocks();
 
-      render(<NetworkIntelligencePanel />);
+        render(<NetworkIntelligencePanel />);
 
-      // Wait for initial load using vi.waitFor which works with fake timers
-      await vi.waitFor(() => {
-        expect(mockFetch).toHaveBeenCalled();
-      });
+        // Wait for initial load using vi.waitFor which works with fake timers
+        await vi.waitFor(() => {
+          expect(mockFetch).toHaveBeenCalled();
+        });
 
-      const initialCallCount = mockFetch.mock.calls.length;
+        const initialCallCount = mockFetch.mock.calls.length;
 
-      // Advance timer by 30 seconds
-      await vi.advanceTimersByTimeAsync(30000);
+        // Advance timer by 30 seconds inside act to flush state updates
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(30000);
+        });
 
-      // Should have been called again
-      expect(mockFetch.mock.calls.length).toBeGreaterThan(initialCallCount);
-
-      vi.useRealTimers();
+        await vi.waitFor(() => {
+          // Should have been called again
+          expect(mockFetch.mock.calls.length).toBeGreaterThan(initialCallCount);
+        });
+      } finally {
+        vi.useRealTimers();
+      }
     });
   });
 

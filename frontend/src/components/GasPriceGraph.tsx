@@ -13,6 +13,24 @@ const GasPriceGraph: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [currentGas, setCurrentGas] = useState<number | null>(null);
 
+  const toFiniteNumber = useCallback((value: unknown): number | undefined => {
+    if (value === null || value === undefined) return undefined;
+    const num = typeof value === 'number' ? value : Number(value);
+    return Number.isFinite(num) ? num : undefined;
+  }, []);
+
+  const normalizeData = useCallback((input: unknown): GraphDataPoint[] => {
+    if (!Array.isArray(input)) return [];
+    return input
+      .filter((point): point is GraphDataPoint => !!point && typeof point === 'object')
+      .map((point) => ({
+        ...point,
+        time: typeof point.time === 'string' ? point.time : String(point.time ?? ''),
+        gwei: toFiniteNumber((point as GraphDataPoint).gwei),
+        predictedGwei: toFiniteNumber((point as GraphDataPoint).predictedGwei)
+      }));
+  }, [toFiniteNumber]);
+
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
@@ -27,7 +45,7 @@ const GasPriceGraph: React.FC = () => {
       setCurrentGas(currentGasData?.current_gas || null);
 
       // Get data for selected timeframe - with safe access
-      let selectedData = predictionsResult?.predictions?.[timeScale] || [];
+      let selectedData = normalizeData(predictionsResult?.predictions?.[timeScale]);
 
       // For prediction timeframes (1h, 4h, 24h), add current gas as first point
       if (timeScale !== 'historical' && currentGasData?.current_gas) {
@@ -37,7 +55,7 @@ const GasPriceGraph: React.FC = () => {
         };
 
         // Get the first predicted point for this timeframe
-        if (Array.isArray(selectedData) && selectedData.length > 0 && selectedData[0]?.predictedGwei !== undefined) {
+        if (selectedData.length > 0 && selectedData[0]?.predictedGwei !== undefined) {
           const firstPredicted: GraphDataPoint = {
             time: selectedData[0].time,
             predictedGwei: selectedData[0].predictedGwei
@@ -58,7 +76,7 @@ const GasPriceGraph: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [timeScale]);
+  }, [normalizeData, timeScale]);
 
   useEffect(() => {
     loadData();
@@ -96,11 +114,17 @@ const GasPriceGraph: React.FC = () => {
   const chartSummary = useMemo(() => {
     if (data.length === 0) return 'No data available';
 
-    const actualPrices = data.filter(d => d.gwei !== null).map(d => d.gwei as number);
-    const predictions = data.filter(d => d.predictedGwei !== null).map(d => d.predictedGwei as number);
+    const actualPrices = data
+      .map(d => d?.gwei)
+      .filter((value): value is number => typeof value === 'number' && Number.isFinite(value));
+    const predictions = data
+      .map(d => d?.predictedGwei)
+      .filter((value): value is number => typeof value === 'number' && Number.isFinite(value));
 
     const parts = [];
-    if (currentGas) parts.push(`Current gas price is ${currentGas.toFixed(4)} gwei.`);
+    if (typeof currentGas === 'number' && Number.isFinite(currentGas)) {
+      parts.push(`Current gas price is ${currentGas.toFixed(4)} gwei.`);
+    }
     if (predictions.length > 0) {
       const minPred = Math.min(...predictions);
       const maxPred = Math.max(...predictions);

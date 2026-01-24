@@ -9,7 +9,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent, act } from '@testing-library/react';
 import AdvancedAnalyticsPanel from '../../components/AdvancedAnalyticsPanel';
 
 // Mock fetch globally
@@ -371,24 +371,30 @@ describe('AdvancedAnalyticsPanel', () => {
   describe('Auto-refresh', () => {
     it('refreshes data every 60 seconds', async () => {
       vi.useFakeTimers();
-      setupMockFetch();
+      try {
+        setupMockFetch();
 
-      render(<AdvancedAnalyticsPanel />);
+        render(<AdvancedAnalyticsPanel />);
 
-      // Wait for initial load using vi.waitFor which works with fake timers
-      await vi.waitFor(() => {
-        expect(global.fetch).toHaveBeenCalled();
-      });
+        // Wait for initial load using vi.waitFor which works with fake timers
+        await vi.waitFor(() => {
+          expect(global.fetch).toHaveBeenCalled();
+        });
 
-      const initialCallCount = (global.fetch as any).mock.calls.length;
+        const initialCallCount = (global.fetch as any).mock.calls.length;
 
-      // Advance timer by 60 seconds
-      await vi.advanceTimersByTimeAsync(60000);
+        // Advance timer by 60 seconds inside act to flush state updates
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(60000);
+        });
 
-      // Should have been called again
-      expect((global.fetch as any).mock.calls.length).toBeGreaterThan(initialCallCount);
-
-      vi.useRealTimers();
+        await vi.waitFor(() => {
+          // Should have been called again
+          expect((global.fetch as any).mock.calls.length).toBeGreaterThan(initialCallCount);
+        });
+      } finally {
+        vi.useRealTimers();
+      }
     });
   });
 });

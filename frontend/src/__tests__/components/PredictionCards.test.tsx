@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent, act } from '@testing-library/react';
 import PredictionCards from '../../components/PredictionCards';
 import { ChainProvider } from '../../contexts/ChainContext';
 import * as gasApi from '../../api/gasApi';
@@ -247,23 +247,29 @@ describe('PredictionCards', () => {
     it('refreshes data every 30 seconds', async () => {
       vi.useFakeTimers();
 
-      vi.mocked(gasApi.fetchPredictions).mockResolvedValue(mockPredictionsResponse);
-      vi.mocked(gasApi.fetchCurrentGas).mockResolvedValue(mockCurrentGasResponse);
+      try {
+        vi.mocked(gasApi.fetchPredictions).mockResolvedValue(mockPredictionsResponse);
+        vi.mocked(gasApi.fetchCurrentGas).mockResolvedValue(mockCurrentGasResponse);
 
-      render(<PredictionCards />, { wrapper: TestWrapper });
+        render(<PredictionCards />, { wrapper: TestWrapper });
 
-      // Wait for initial load
-      await vi.waitFor(() => {
-        expect(gasApi.fetchPredictions).toHaveBeenCalledTimes(1);
-      });
+        // Wait for initial load
+        await vi.waitFor(() => {
+          expect(gasApi.fetchPredictions).toHaveBeenCalledTimes(1);
+        });
 
-      // Advance timer by 30 seconds
-      await vi.advanceTimersByTimeAsync(30000);
+        // Advance timer by 30 seconds inside act to flush state updates
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(30000);
+        });
 
-      // Should have been called again
-      expect(gasApi.fetchPredictions).toHaveBeenCalledTimes(2);
-
-      vi.useRealTimers();
+        await vi.waitFor(() => {
+          // Should have been called again
+          expect(gasApi.fetchPredictions).toHaveBeenCalledTimes(2);
+        });
+      } finally {
+        vi.useRealTimers();
+      }
     });
   });
 
