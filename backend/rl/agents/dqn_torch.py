@@ -842,3 +842,39 @@ class DQNAgent:
         # Load normalizer
         self.state_mean = data.get('state_mean')
         self.state_std = data.get('state_std')
+
+    def get_state_dict(self) -> dict:
+        """Get agent state for ensemble saving."""
+        return {
+            'q_network_state_dict': self.q_network.state_dict(),
+            'target_network_state_dict': self.target_network.state_dict(),
+            'epsilon': self.epsilon,
+            'state_mean': self.state_mean,
+            'state_std': self.state_std,
+            'hidden_dims': self.hidden_dims,
+            'use_dueling': self.use_dueling,
+            'n_steps': self.n_steps,
+            'use_reward_norm': self.use_reward_norm,
+            'use_noisy_nets': self.use_noisy_nets
+        }
+
+    def load_state_dict(self, state_dict: dict):
+        """Load agent state from ensemble."""
+        self.q_network.load_state_dict(state_dict['q_network_state_dict'])
+        self.target_network.load_state_dict(state_dict['target_network_state_dict'])
+        self.epsilon = state_dict.get('epsilon', 0.01)
+        self.state_mean = state_dict.get('state_mean')
+        self.state_std = state_dict.get('state_std')
+
+    def get_q_values(self, state: np.ndarray) -> np.ndarray:
+        """Get Q-values for a state (for ensemble use)."""
+        # Normalize state
+        if self.state_mean is not None and self.state_std is not None:
+            state = (state - self.state_mean) / (self.state_std + 1e-8)
+
+        state_tensor = torch.FloatTensor(state).unsqueeze(0).to(self.device)
+
+        with torch.no_grad():
+            q_values = self.q_network(state_tensor)
+
+        return q_values.cpu().numpy().flatten()
