@@ -1,0 +1,54 @@
+{
+  "training_results": [
+    {
+      "agent_idx": 0,
+      "seed": 42,
+      "best_savings": -0.16783292188272703,
+      "final_savings": -2.6436224490032645
+    },
+    {
+      "agent_idx": 1,
+      "seed": 1042,
+      "best_savings": -0.08345639650846198,
+      "final_savings": -0.10902957876980715
+    },
+    {
+      "agent_idx": 2,
+      "seed": 2042,
+      "best_savings": -0.28787371224093267,
+      "final_savings": -0.5472167403849884
+    }
+  ],
+  "eval_results": {
+    "avg_reward": 0.5626434068607048,
+    "avg_savings": 0.21897781892089416,
+    "std_savings": 0.6012789051511471,
+    "median_savings": 0.19822574766841686,
+    "positive_savings_rate": 76.66666666666667,
+    "avg_wait_time": 11.5,
+    "avg_confidence": 0.9467124052418169,
+    "threshold_decision_rate": 100.0,
+    "action_distribution": {
+      "wait": 345,
+      "execute": 30
+    },
+    "n_episodes": 30
+  },
+  "config": {
+    "n_agents": 3,
+    "seeds": [
+      42,
+      1042,
+      2042
+    ],
+    "num_episodes": 500,
+    "episode_length": 72,
+    "hidden_dims": [
+      128,
+      64
+    ],
+    "voting_threshold": 0.6,
+    "confidence_method": "agreement"
+  },
+  "timestamp": "2026-01-24T12:54:35.755625"
+}

@@ -436,6 +436,378 @@ if TORCH_AVAILABLE:
             return q_values
 
 
+    # Phase 4B-5: Quantile Regression DQN Network
+    class QuantileNetwork(nn.Module):
+        """
+        Quantile Regression DQN Network for distributional RL.
+
+        Instead of learning E[Q(s,a)], learns the full distribution
+        of returns as a set of quantiles.
+        """
+
+        def __init__(
+            self,
+            state_dim: int,
+            action_dim: int,
+            hidden_dims: List[int] = [128, 64],
+            n_quantiles: int = 51
+        ):
+            super().__init__()
+            self.state_dim = state_dim
+            self.action_dim = action_dim
+            self.n_quantiles = n_quantiles
+            self.hidden_dims = hidden_dims
+
+            # Build network layers
+            layers = []
+            in_dim = state_dim
+            for hidden_dim in hidden_dims:
+                layers.append(nn.Linear(in_dim, hidden_dim))
+                layers.append(nn.LayerNorm(hidden_dim))
+                layers.append(nn.ReLU())
+                in_dim = hidden_dim
+
+            self.features = nn.Sequential(*layers)
+
+            # Output: n_quantiles for each action
+            self.quantile_layer = nn.Linear(hidden_dims[-1], action_dim * n_quantiles)
+
+            self._init_weights()
+
+        def _init_weights(self):
+            for m in self.modules():
+                if isinstance(m, nn.Linear):
+                    nn.init.orthogonal_(m.weight, gain=np.sqrt(2))
+                    nn.init.constant_(m.bias, 0)
+
+        def forward(self, x: torch.Tensor) -> torch.Tensor:
+            """
+            Returns quantile values for each action.
+
+            Output shape: (batch_size, action_dim, n_quantiles)
+            """
+            if x.dim() == 1:
+                x = x.unsqueeze(0)
+
+            features = self.features(x)
+            quantiles = self.quantile_layer(features)
+
+            # Reshape to (batch_size, action_dim, n_quantiles)
+            batch_size = x.shape[0]
+            quantiles = quantiles.view(batch_size, self.action_dim, self.n_quantiles)
+
+            return quantiles
+
+        def get_q_values(self, x: torch.Tensor) -> torch.Tensor:
+            """Get mean Q-values (average over quantiles)."""
+            quantiles = self.forward(x)
+            return quantiles.mean(dim=-1)  # (batch_size, action_dim)
+
+
+def quantile_huber_loss(
+    quantiles: torch.Tensor,
+    target_quantiles: torch.Tensor,
+    taus: torch.Tensor,
+    kappa: float = 1.0
+) -> torch.Tensor:
+    """
+    Compute Quantile Huber Loss for QR-DQN.
+
+    Args:
+        quantiles: Predicted quantile values (batch_size, n_quantiles)
+        target_quantiles: Target quantile values (batch_size, n_quantiles)
+        taus: Quantile midpoints (n_quantiles,)
+        kappa: Huber loss threshold
+
+    Returns:
+        Scalar loss value
+    """
+    batch_size = quantiles.shape[0]
+    n_quantiles = quantiles.shape[1]
+
+    # Pairwise TD errors: (batch_size, n_quantiles, n_quantiles)
+    # quantiles: (batch, n_q) -> (batch, n_q, 1)
+    # target_quantiles: (batch, n_q) -> (batch, 1, n_q)
+    td_errors = target_quantiles.unsqueeze(1) - quantiles.unsqueeze(2)
+
+    # Huber loss
+    huber_loss = torch.where(
+        td_errors.abs() <= kappa,
+        0.5 * td_errors ** 2,
+        kappa * (td_errors.abs() - 0.5 * kappa)
+    )
+
+    # Quantile weights: |tau - I(td_error < 0)|
+    # taus: (n_quantiles,) -> (1, n_quantiles, 1)
+    taus_expanded = taus.view(1, n_quantiles, 1)
+    quantile_weights = torch.abs(taus_expanded - (td_errors < 0).float())
+
+    # Weighted Huber loss
+    quantile_loss = quantile_weights * huber_loss
+
+    # Average over all quantile pairs and batch
+    loss = quantile_loss.sum(dim=2).mean(dim=1).mean()
+
+    return loss
+
+
+class QRDQNAgent:
+    """
+    Quantile Regression DQN Agent for distributional RL.
+
+    Instead of learning expected Q-values, learns the full distribution
+    of returns. This enables:
+    - Better value estimation
+    - Risk-aware decision making (CVaR, etc.)
+    - Uncertainty quantification
+
+    Phase 4B-5: Distributional RL implementation.
+    """
+
+    def __init__(
+        self,
+        state_dim: int,
+        action_dim: int,
+        hidden_dims: List[int] = None,
+        n_quantiles: int = 51,
+        learning_rate: float = 0.0003,
+        gamma: float = 0.98,
+        epsilon_start: float = 1.0,
+        epsilon_end: float = 0.05,
+        epsilon_decay_episodes: int = 2000,
+        buffer_size: int = 50000,
+        batch_size: int = 64,
+        target_update_tau: float = 0.001,
+        gradient_clip: float = 1.0,
+        risk_measure: str = "mean",  # "mean", "cvar_0.25", "cvar_0.1"
+        device: str = None
+    ):
+        if not TORCH_AVAILABLE:
+            raise ImportError("PyTorch is required for QR-DQN")
+
+        self.state_dim = state_dim
+        self.action_dim = action_dim
+        self.hidden_dims = hidden_dims or [128, 64]
+        self.n_quantiles = n_quantiles
+        self.gamma = gamma
+        self.epsilon = epsilon_start
+        self.epsilon_start = epsilon_start
+        self.epsilon_end = epsilon_end
+        self.epsilon_decay_episodes = epsilon_decay_episodes
+        self.buffer_size = buffer_size
+        self.batch_size = batch_size
+        self.target_update_tau = target_update_tau
+        self.gradient_clip = gradient_clip
+        self.risk_measure = risk_measure
+        self.learning_rate = learning_rate
+
+        # Device
+        if device is None:
+            self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        else:
+            self.device = torch.device(device)
+
+        # Quantile midpoints (tau_i = (i + 0.5) / N)
+        self.taus = torch.FloatTensor(
+            [(i + 0.5) / n_quantiles for i in range(n_quantiles)]
+        ).to(self.device)
+
+        # Networks
+        self.q_network = QuantileNetwork(
+            state_dim, action_dim, self.hidden_dims, n_quantiles
+        ).to(self.device)
+
+        self.target_network = QuantileNetwork(
+            state_dim, action_dim, self.hidden_dims, n_quantiles
+        ).to(self.device)
+
+        self.target_network.load_state_dict(self.q_network.state_dict())
+
+        # Optimizer
+        self.optimizer = optim.Adam(self.q_network.parameters(), lr=learning_rate)
+
+        # Replay buffer (simple, not prioritized for QR-DQN)
+        self.replay_buffer = deque(maxlen=buffer_size)
+
+        # State normalization
+        self.state_mean = None
+        self.state_std = None
+
+        # Tracking
+        self.training_steps = 0
+        self.last_loss = None
+
+        logger.info(f"QR-DQN Agent initialized: {n_quantiles} quantiles, risk={risk_measure}")
+
+    def fit_state_normalizer(self, states: np.ndarray):
+        """Fit state normalizer on sample states."""
+        self.state_mean = np.mean(states, axis=0)
+        self.state_std = np.std(states, axis=0) + 1e-8
+
+    def _normalize_state(self, state: np.ndarray) -> np.ndarray:
+        """Normalize state using fitted normalizer."""
+        if self.state_mean is not None and self.state_std is not None:
+            return (state - self.state_mean) / self.state_std
+        return state
+
+    def decay_epsilon(self, episode: int):
+        """Decay epsilon based on episode number."""
+        if self.epsilon_decay_episodes > 0:
+            decay = (self.epsilon_start - self.epsilon_end) / self.epsilon_decay_episodes
+            self.epsilon = max(self.epsilon_end, self.epsilon_start - decay * episode)
+
+    def get_quantiles(self, state: np.ndarray) -> np.ndarray:
+        """Get quantile values for all actions."""
+        state = self._normalize_state(state)
+        state_tensor = torch.FloatTensor(state).unsqueeze(0).to(self.device)
+
+        with torch.no_grad():
+            quantiles = self.q_network(state_tensor)
+
+        return quantiles.cpu().numpy()[0]  # (action_dim, n_quantiles)
+
+    def get_q_values(self, state: np.ndarray) -> np.ndarray:
+        """Get Q-values using specified risk measure."""
+        quantiles = self.get_quantiles(state)  # (action_dim, n_quantiles)
+
+        if self.risk_measure == "mean":
+            return np.mean(quantiles, axis=1)
+        elif self.risk_measure.startswith("cvar_"):
+            # CVaR (Conditional Value at Risk) - average of worst quantiles
+            alpha = float(self.risk_measure.split("_")[1])
+            n_worst = max(1, int(self.n_quantiles * alpha))
+            return np.mean(np.sort(quantiles, axis=1)[:, :n_worst], axis=1)
+        else:
+            return np.mean(quantiles, axis=1)
+
+    def get_uncertainty(self, state: np.ndarray) -> np.ndarray:
+        """Get uncertainty (std of quantiles) for each action."""
+        quantiles = self.get_quantiles(state)
+        return np.std(quantiles, axis=1)
+
+    def select_action(self, state: np.ndarray, training: bool = True) -> int:
+        """Select action using epsilon-greedy with risk-aware Q-values."""
+        if training and np.random.random() < self.epsilon:
+            return np.random.randint(self.action_dim)
+
+        q_values = self.get_q_values(state)
+        return int(np.argmax(q_values))
+
+    def store_transition(
+        self,
+        state: np.ndarray,
+        action: int,
+        reward: float,
+        next_state: np.ndarray,
+        done: bool,
+        **kwargs
+    ):
+        """Store transition in replay buffer."""
+        self.replay_buffer.append((state, action, reward, next_state, done))
+
+    def train_step(self) -> Optional[float]:
+        """Perform one training step."""
+        if len(self.replay_buffer) < self.batch_size:
+            return None
+
+        # Sample batch
+        batch = random.sample(self.replay_buffer, self.batch_size)
+        states, actions, rewards, next_states, dones = zip(*batch)
+
+        # Normalize states
+        states = np.array([self._normalize_state(s) for s in states])
+        next_states = np.array([self._normalize_state(s) for s in next_states])
+
+        # Convert to tensors
+        states = torch.FloatTensor(states).to(self.device)
+        actions = torch.LongTensor(actions).to(self.device)
+        rewards = torch.FloatTensor(rewards).to(self.device)
+        next_states = torch.FloatTensor(next_states).to(self.device)
+        dones = torch.FloatTensor(dones).to(self.device)
+
+        # Get current quantiles for taken actions
+        current_quantiles = self.q_network(states)  # (batch, action_dim, n_quantiles)
+        current_quantiles = current_quantiles[
+            torch.arange(self.batch_size), actions
+        ]  # (batch, n_quantiles)
+
+        # Get target quantiles
+        with torch.no_grad():
+            # Get next Q-values for action selection (mean of quantiles)
+            next_quantiles = self.target_network(next_states)  # (batch, action_dim, n_quantiles)
+            next_q_values = next_quantiles.mean(dim=-1)  # (batch, action_dim)
+            next_actions = next_q_values.argmax(dim=1)  # (batch,)
+
+            # Get quantiles for best actions
+            next_quantiles_best = next_quantiles[
+                torch.arange(self.batch_size), next_actions
+            ]  # (batch, n_quantiles)
+
+            # Compute target quantiles
+            target_quantiles = rewards.unsqueeze(1) + (
+                self.gamma * (1 - dones.unsqueeze(1)) * next_quantiles_best
+            )
+
+        # Compute quantile Huber loss
+        loss = quantile_huber_loss(current_quantiles, target_quantiles, self.taus)
+
+        # Optimize
+        self.optimizer.zero_grad()
+        loss.backward()
+
+        # Gradient clipping
+        torch.nn.utils.clip_grad_norm_(self.q_network.parameters(), self.gradient_clip)
+
+        self.optimizer.step()
+
+        # Soft update target network
+        for target_param, param in zip(
+            self.target_network.parameters(), self.q_network.parameters()
+        ):
+            target_param.data.copy_(
+                self.target_update_tau * param.data +
+                (1 - self.target_update_tau) * target_param.data
+            )
+
+        self.training_steps += 1
+        self.last_loss = loss.item()
+
+        return self.last_loss
+
+    def get_state_dict(self) -> dict:
+        """Get agent state for saving."""
+        return {
+            'q_network_state_dict': self.q_network.state_dict(),
+            'target_network_state_dict': self.target_network.state_dict(),
+            'optimizer_state_dict': self.optimizer.state_dict(),
+            'epsilon': self.epsilon,
+            'state_mean': self.state_mean,
+            'state_std': self.state_std,
+            'n_quantiles': self.n_quantiles,
+            'risk_measure': self.risk_measure,
+            'hidden_dims': self.hidden_dims
+        }
+
+    def load_state_dict(self, state_dict: dict):
+        """Load agent state."""
+        self.q_network.load_state_dict(state_dict['q_network_state_dict'])
+        self.target_network.load_state_dict(state_dict['target_network_state_dict'])
+        self.optimizer.load_state_dict(state_dict['optimizer_state_dict'])
+        self.epsilon = state_dict.get('epsilon', 0.01)
+        self.state_mean = state_dict.get('state_mean')
+        self.state_std = state_dict.get('state_std')
+
+    def save(self, path: str):
+        """Save agent to file."""
+        os.makedirs(os.path.dirname(path) if os.path.dirname(path) else '.', exist_ok=True)
+        torch.save(self.get_state_dict(), path)
+
+    def load(self, path: str):
+        """Load agent from file."""
+        state_dict = torch.load(path, map_location=self.device)
+        self.load_state_dict(state_dict)
+
+
 class DQNAgent:
     """
     PyTorch-based DQN Agent for gas price optimization.
