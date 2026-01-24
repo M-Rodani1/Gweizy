@@ -166,7 +166,11 @@ class WalkForwardValidator:
         early_execution_penalty: float = 0.1,
         observation_bonus: float = 0.02,
         wait_penalty: float = 0.015,
-        use_enhanced_features: bool = True
+        use_enhanced_features: bool = True,
+        # Phase 4B-2: Risk adjustment
+        use_risk_adjustment: bool = False,
+        risk_penalty_weight: float = 0.5,
+        target_savings: float = 0.10
     ) -> WalkForwardResults:
         """
         Run walk-forward validation across all folds.
@@ -228,6 +232,9 @@ class WalkForwardValidator:
                 observation_bonus=observation_bonus,
                 wait_penalty=wait_penalty,
                 use_enhanced_features=use_enhanced_features,
+                use_risk_adjustment=use_risk_adjustment,
+                risk_penalty_weight=risk_penalty_weight,
+                target_savings=target_savings,
                 verbose=verbose
             )
 
@@ -276,7 +283,10 @@ class WalkForwardValidator:
                 'eval_episodes': eval_episodes,
                 'episode_length': episode_length,
                 'n_steps': n_steps,
-                'min_wait_steps': min_wait_steps
+                'min_wait_steps': min_wait_steps,
+                'use_risk_adjustment': use_risk_adjustment,
+                'risk_penalty_weight': risk_penalty_weight,
+                'target_savings': target_savings
             }
         )
 
@@ -311,6 +321,9 @@ class WalkForwardValidator:
         observation_bonus: float,
         wait_penalty: float,
         use_enhanced_features: bool,
+        use_risk_adjustment: bool,
+        risk_penalty_weight: float,
+        target_savings: float,
         verbose: bool
     ) -> WalkForwardFold:
         """Train and evaluate a single fold."""
@@ -320,7 +333,10 @@ class WalkForwardValidator:
             wait_penalty=wait_penalty,
             min_wait_steps=min_wait_steps,
             early_execution_penalty=early_execution_penalty,
-            observation_bonus=observation_bonus
+            observation_bonus=observation_bonus,
+            use_risk_adjustment=use_risk_adjustment,
+            risk_penalty_weight=risk_penalty_weight,
+            target_savings=target_savings
         )
 
         # Create environment

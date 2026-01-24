@@ -69,7 +69,11 @@ def train_dqn(
     observation_bonus: float = 0.02,  # Bonus for waiting during volatile periods
     wait_penalty: float = 0.015,  # Per-step waiting cost
     # Phase 4A: Enhanced state features
-    use_enhanced_features: bool = True  # Enable enhanced state representation
+    use_enhanced_features: bool = True,  # Enable enhanced state representation
+    # Phase 4B-2: Risk-adjusted metrics
+    use_risk_adjustment: bool = False,  # Enable risk-adjusted rewards
+    risk_penalty_weight: float = 0.5,  # Weight for variance penalty
+    target_savings: float = 0.10  # Target savings rate
 ):
     """
     Train DQN agent on historical gas data for a specific chain.
@@ -135,12 +139,15 @@ def train_dqn(
     if max_wait_steps is None:
         max_wait_steps = episode_length
 
-    # Phase 3: Configure reward function with action timing parameters
+    # Phase 3 & 4B-2: Configure reward function with action timing and risk adjustment
     reward_config = RewardConfig(
         wait_penalty=wait_penalty,
         min_wait_steps=min_wait_steps,
         early_execution_penalty=early_execution_penalty,
-        observation_bonus=observation_bonus
+        observation_bonus=observation_bonus,
+        use_risk_adjustment=use_risk_adjustment,
+        risk_penalty_weight=risk_penalty_weight,
+        target_savings=target_savings
     )
 
     env = GasOptimizationEnv(
@@ -266,6 +273,7 @@ def train_dqn(
         print(f"Phase 2: N-step={n_steps}, RewardNorm={use_reward_norm}, NoisyNets={use_noisy_nets}")
     print(f"Phase 3: MinWait={min_wait_steps}, EarlyPenalty={early_execution_penalty}, ObsBonus={observation_bonus}")
     print(f"Phase 4A: EnhancedFeatures={use_enhanced_features} (state_dim={env.observation_space_shape[0]})")
+    print(f"Phase 4B-2: RiskAdjustment={use_risk_adjustment}, RiskWeight={risk_penalty_weight}, TargetSavings={target_savings}")
     print(f"Curriculum Learning: Enabled (episode length increases over time)")
     print("-" * 50)
     
@@ -677,6 +685,10 @@ if __name__ == '__main__':
     parser.add_argument('--wait-penalty', type=float, default=0.015, help='Per-step waiting cost (default: 0.015)')
     # Phase 4A: Enhanced state features
     parser.add_argument('--no-enhanced-features', action='store_true', help='Disable Phase 4A enhanced state features')
+    # Phase 4B-2: Risk-adjusted metrics
+    parser.add_argument('--risk-adjustment', action='store_true', help='Enable risk-adjusted rewards')
+    parser.add_argument('--risk-weight', type=float, default=0.5, help='Weight for variance penalty (default: 0.5)')
+    parser.add_argument('--target-savings', type=float, default=0.10, help='Target savings rate (default: 0.10)')
     args = parser.parse_args()
 
     use_dueling = True
@@ -706,7 +718,11 @@ if __name__ == '__main__':
         observation_bonus=args.obs_bonus,
         wait_penalty=args.wait_penalty,
         # Phase 4A: Enhanced state features
-        use_enhanced_features=not args.no_enhanced_features
+        use_enhanced_features=not args.no_enhanced_features,
+        # Phase 4B-2: Risk-adjusted metrics
+        use_risk_adjustment=args.risk_adjustment,
+        risk_penalty_weight=args.risk_weight,
+        target_savings=args.target_savings
     )
     
     if args.evaluate:
