@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """
 PyTorch-based Deep Q-Network (DQN) agent for gas price optimization.
 Features: Prioritized Experience Replay, Double DQN, Dueling Architecture, LayerNorm.

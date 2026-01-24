@@ -4,7 +4,7 @@ flask-cors==4.0.0
 flask-limiter==3.5.0
 python-dotenv==1.0.0
 gunicorn==21.2.0
-setuptools>=65.5.1
+setuptools>=65.5.1,<81
 
 # Database
 sqlalchemy>=2.0.0
@@ -38,3 +38,4 @@ websockets>=12.0  # For async WebSocket client in mempool_worker
 lightgbm>=4.0.0
 xgboost>=2.0.0
 optuna>=3.0.0  # For hyperparameter tuning
+torch>=2.2.0
