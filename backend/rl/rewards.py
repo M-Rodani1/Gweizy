@@ -20,6 +20,11 @@ class RewardConfig:
     use_risk_adjustment: bool = False  # Enable risk-adjusted rewards
     risk_penalty_weight: float = 0.5  # Weight for variance penalty (higher = more conservative)
     target_savings: float = 0.10  # Target savings rate for risk calculation
+    # Phase 4B-3: Extended observation window
+    progressive_obs_bonus: bool = True  # Bonus increases with observation time
+    max_obs_bonus: float = 0.15  # Maximum observation bonus at peak
+    obs_bonus_peak_step: int = 8  # Step at which observation bonus peaks
+    patience_bonus: float = 0.03  # Extra bonus for waiting through high volatility
 
 
 class RewardCalculator:
@@ -164,6 +169,18 @@ class RewardCalculator:
             if volatility > 0.05:  # Only give bonus when volatility is meaningful
                 observation_bonus = self.config.observation_bonus * min(volatility, 0.5)
                 reward += observation_bonus
+
+                # Phase 4B-3: Extra patience bonus for waiting through high volatility
+                if volatility > 0.15:
+                    reward += self.config.patience_bonus
+
+            # Phase 4B-3: Progressive observation bonus
+            # Encourages agent to wait longer by providing increasing bonus up to peak
+            if self.config.progressive_obs_bonus and time_waiting < self.config.obs_bonus_peak_step:
+                # Bonus increases linearly until peak step, then decays
+                progress = time_waiting / self.config.obs_bonus_peak_step
+                progressive_bonus = self.config.max_obs_bonus * progress * (1 - progress * 0.5)
+                reward += progressive_bonus
 
         # Scale reward to [-1, 1] range for stable learning
         return self._scale_reward(reward)

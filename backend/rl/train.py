@@ -46,7 +46,7 @@ def get_dqn_agent(backend: str = "auto"):
 
 def train_dqn(
     num_episodes: int = 10000,
-    episode_length: int = 48,  # Increased from 24 to allow more price observation
+    episode_length: int = 72,  # Increased from 48 to allow more price observation
     max_wait_steps: Optional[int] = None,
     save_path: str = None,
     checkpoint_dir: str = None,
@@ -64,10 +64,10 @@ def train_dqn(
     use_reward_norm: bool = True,  # Reward normalization
     use_noisy_nets: bool = False,  # Noisy networks for exploration
     # Phase 3: Action timing parameters
-    min_wait_steps: int = 3,  # Minimum steps before optimal execution
-    early_execution_penalty: float = 0.1,  # Penalty for executing too early
-    observation_bonus: float = 0.02,  # Bonus for waiting during volatile periods
-    wait_penalty: float = 0.015,  # Per-step waiting cost
+    min_wait_steps: int = 6,  # Minimum steps before optimal execution (increased from 3)
+    early_execution_penalty: float = 0.15,  # Penalty for executing too early (increased)
+    observation_bonus: float = 0.03,  # Bonus for waiting during volatile periods
+    wait_penalty: float = 0.012,  # Per-step waiting cost (reduced to encourage waiting)
     # Phase 4A: Enhanced state features
     use_enhanced_features: bool = True,  # Enable enhanced state representation
     # Phase 4B-2: Risk-adjusted metrics
@@ -679,10 +679,10 @@ if __name__ == '__main__':
     parser.add_argument('--no-reward-norm', action='store_true', help='Disable reward normalization')
     parser.add_argument('--noisy-nets', action='store_true', help='Use noisy networks for exploration (replaces epsilon-greedy)')
     # Phase 3: Action timing
-    parser.add_argument('--min-wait-steps', type=int, default=3, help='Minimum steps before optimal execution (default: 3)')
-    parser.add_argument('--early-penalty', type=float, default=0.1, help='Penalty for executing before min-wait-steps (default: 0.1)')
-    parser.add_argument('--obs-bonus', type=float, default=0.02, help='Bonus for waiting during volatile periods (default: 0.02)')
-    parser.add_argument('--wait-penalty', type=float, default=0.015, help='Per-step waiting cost (default: 0.015)')
+    parser.add_argument('--min-wait-steps', type=int, default=6, help='Minimum steps before optimal execution (default: 6)')
+    parser.add_argument('--early-penalty', type=float, default=0.15, help='Penalty for executing before min-wait-steps (default: 0.15)')
+    parser.add_argument('--obs-bonus', type=float, default=0.03, help='Bonus for waiting during volatile periods (default: 0.03)')
+    parser.add_argument('--wait-penalty', type=float, default=0.012, help='Per-step waiting cost (default: 0.012)')
     # Phase 4A: Enhanced state features
     parser.add_argument('--no-enhanced-features', action='store_true', help='Disable Phase 4A enhanced state features')
     # Phase 4B-2: Risk-adjusted metrics
