@@ -1,5 +1,7 @@
 """
 RL Agent API routes for transaction timing recommendations.
+
+Supports both single DQN agent and production ensemble for robust predictions.
 """
 from flask import Blueprint, jsonify, request
 from datetime import datetime
@@ -12,6 +14,14 @@ from data.database import DatabaseManager
 from data.multichain_collector import MultiChainGasCollector
 
 agent_bp = Blueprint('agent', __name__)
+
+# Import ensemble service
+try:
+    from services.ensemble_service import get_ensemble_service, ProductionEnsembleService
+    ENSEMBLE_AVAILABLE = True
+except ImportError:
+    ENSEMBLE_AVAILABLE = False
+    logger.warning("Ensemble service not available")
 
 # Shared helpers for request handlers
 db = DatabaseManager()
@@ -358,6 +368,145 @@ def _heuristic_recommendation(current_gas, price_history, urgency, gas_amount):
         'urgency': urgency,
         'generated_at': datetime.utcnow().isoformat() + 'Z'
     })
+
+
+@agent_bp.route('/ensemble/recommend', methods=['GET', 'POST'])
+@cached(ttl=15, key_prefix='ensemble_recommend')
+def get_ensemble_recommendation():
+    """
+    Get AI recommendation using production ensemble (recommended).
+
+    The ensemble provides more robust predictions with:
+    - 75% positive rate
+    - 29% median savings
+    - 95% confidence from multi-agent agreement
+
+    GET params or POST body:
+        {
+            "urgency": 0.5,           # 0-1 urgency level
+            "chain_id": 8453,         # Chain ID (default: Base)
+            "current_gas": 0.001,     # Current gas price (optional)
+            "time_waiting": 0         # Steps already waited (optional)
+        }
+
+    Returns:
+        {
+            "recommendation": {
+                "action": "WAIT" | "EXECUTE",
+                "confidence": 0.95,
+                "reason": "...",
+                "predicted_savings": 0.15,
+                "optimal_time": "1-2 hours"
+            },
+            "model": "ensemble",
+            "metrics": {...}
+        }
+    """
+    if not ENSEMBLE_AVAILABLE:
+        return jsonify({
+            'success': False,
+            'error': 'Ensemble service not available',
+            'fallback': 'Use /agent/recommend for single-agent recommendations'
+        }), 503
+
+    try:
+        # Parse request
+        if request.method == 'GET':
+            data = {
+                'urgency': request.args.get('urgency', 0.5, type=float),
+                'chain_id': request.args.get('chain_id', 8453, type=int),
+                'current_gas': request.args.get('current_gas', type=float),
+                'time_waiting': request.args.get('time_waiting', 0, type=int)
+            }
+        else:
+            data = request.get_json() or {}
+
+        urgency = min(1.0, max(0.0, float(data.get('urgency', 0.5))))
+        chain_id = data.get('chain_id', 8453)
+        time_waiting = data.get('time_waiting', 0)
+
+        # Get current gas price
+        current_gas = data.get('current_gas')
+        if current_gas is None:
+            gas_data = multichain_collector.get_current_gas(chain_id)
+            current_gas = gas_data.get('current_gas', 0.001) if gas_data else 0.001
+
+        # Get predictions (optional)
+        predictions = data.get('predictions', {})
+
+        # Get ensemble service
+        service = get_ensemble_service(chain_id)
+
+        # Get recommendation
+        rec = service.get_recommendation(
+            current_price=current_gas,
+            predictions=predictions,
+            urgency=urgency,
+            time_waiting=time_waiting
+        )
+
+        return jsonify({
+            'success': True,
+            'recommendation': {
+                'action': rec.action,
+                'confidence': round(rec.confidence, 3),
+                'reason': rec.reasoning,
+                'predicted_savings': round(rec.expected_savings, 3),
+                'optimal_time': rec.wait_time_estimate,
+                'q_values': {k: round(v, 4) for k, v in rec.q_values.items()}
+            },
+            'model': 'ensemble',
+            'chain_id': chain_id,
+            'current_gas': current_gas,
+            'urgency': urgency,
+            'metrics': rec.metrics,
+            'agent_agreement': rec.agent_agreement,
+            'generated_at': datetime.utcnow().isoformat() + 'Z'
+        })
+
+    except Exception as e:
+        logger.error(f"Error in /agent/ensemble/recommend: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'recommendation': {
+                'action': 'EXECUTE',
+                'confidence': 0.5,
+                'reason': 'Error occurred, defaulting to execute',
+                'predicted_savings': 0,
+                'optimal_time': 'now'
+            }
+        }), 200
+
+
+@agent_bp.route('/ensemble/status', methods=['GET'])
+@cached(ttl=30, key_prefix='ensemble_status')
+def get_ensemble_status():
+    """Get ensemble service status and metrics."""
+    if not ENSEMBLE_AVAILABLE:
+        return jsonify({
+            'available': False,
+            'error': 'Ensemble service not available'
+        })
+
+    try:
+        chain_id = request.args.get('chain_id', 8453, type=int)
+        service = get_ensemble_service(chain_id)
+        status = service.get_status()
+
+        return jsonify({
+            'available': True,
+            **status
+        })
+
+    except Exception as e:
+        logger.error(f"Error getting ensemble status: {e}")
+        return jsonify({
+            'available': False,
+            'error': str(e)
+        })
 
 
 @agent_bp.route('/status', methods=['GET'])

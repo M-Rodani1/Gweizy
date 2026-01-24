@@ -807,7 +807,7 @@ class QRDQNAgent:
 
     def load(self, path: str):
         """Load agent from file."""
-        state_dict = torch.load(path, map_location=self.device)
+        state_dict = torch.load(path, map_location=self.device, weights_only=False)
         self.load_state_dict(state_dict)
 
     def reset_episode(self):
@@ -1223,7 +1223,7 @@ class DQNAgent:
 
     def load(self, path: str):
         """Load agent from file."""
-        data = torch.load(path, map_location=self.device)
+        data = torch.load(path, map_location=self.device, weights_only=False)
 
         # Check if this is a PyTorch model
         if data.get('backend') != 'pytorch':
