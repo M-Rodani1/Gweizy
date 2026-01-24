@@ -18,10 +18,11 @@ from rl.rewards import RewardConfig
 
 # Try to import PyTorch agent first, fall back to numpy
 try:
-    from rl.agents.dqn_torch import DQNAgent as DQNAgentTorch, PrioritizedReplayBuffer, TORCH_AVAILABLE
+    from rl.agents.dqn_torch import DQNAgent as DQNAgentTorch, PrioritizedReplayBuffer, TORCH_AVAILABLE, QRDQNAgent
 except ImportError:
     TORCH_AVAILABLE = False
     DQNAgentTorch = None
+    QRDQNAgent = None
 
 from rl.agents.dqn import DQNAgent as DQNAgentNumpy
 
@@ -73,7 +74,11 @@ def train_dqn(
     # Phase 4B-2: Risk-adjusted metrics
     use_risk_adjustment: bool = False,  # Enable risk-adjusted rewards
     risk_penalty_weight: float = 0.5,  # Weight for variance penalty
-    target_savings: float = 0.10  # Target savings rate
+    target_savings: float = 0.10,  # Target savings rate
+    # Phase 4B-5: Distributional RL (QR-DQN)
+    use_qrdqn: bool = False,  # Use Quantile Regression DQN
+    n_quantiles: int = 51,  # Number of quantiles for QR-DQN
+    risk_measure: str = "mean"  # Risk measure: "mean", "cvar_0.25", "cvar_0.1"
 ):
     """
     Train DQN agent on historical gas data for a specific chain.
@@ -215,7 +220,31 @@ def train_dqn(
             use_noisy_nets=use_noisy_nets
         )
 
-    agent = DQNAgent(**agent_kwargs)
+    # Phase 4B-5: Use QR-DQN for distributional RL if requested
+    if use_qrdqn:
+        if QRDQNAgent is None:
+            raise ImportError("QR-DQN requires PyTorch. Install with: pip install torch")
+        print(f"Using QR-DQN with {n_quantiles} quantiles, risk_measure={risk_measure}")
+        agent = QRDQNAgent(
+            state_dim=env.observation_space_shape[0],
+            action_dim=env.action_space_n,
+            hidden_dims=hidden_dims,
+            n_quantiles=n_quantiles,
+            learning_rate=learning_rate,
+            gamma=0.98,
+            epsilon_start=1.0,
+            epsilon_end=0.05,
+            epsilon_decay_episodes=num_episodes,
+            buffer_size=50000,
+            batch_size=batch_size,
+            target_update_tau=0.001,
+            gradient_clip=gradient_clip,
+            risk_measure=risk_measure
+        )
+        is_qrdqn = True
+    else:
+        agent = DQNAgent(**agent_kwargs)
+        is_qrdqn = False
     
     # Training metrics
     episode_rewards = []
@@ -261,16 +290,20 @@ def train_dqn(
     chain_name = CHAINS.get(chain_id, {}).get('name', f'Chain {chain_id}')
     
     backend_name = "PyTorch" if is_pytorch else "NumPy"
-    print(f"Starting Enhanced DQN training for {chain_name} (Chain ID: {chain_id})")
+    agent_type = "QR-DQN" if is_qrdqn else "Enhanced DQN"
+    print(f"Starting {agent_type} training for {chain_name} (Chain ID: {chain_id})")
     print(f"Backend: {backend_name}")
     print(f"Episodes: {num_episodes}")
     print(f"State dim: {agent.state_dim}, Action dim: {agent.action_dim}")
-    print(f"Network: {hidden_dims} (Dueling: {use_dueling})")
+    print(f"Network: {hidden_dims} (Dueling: {use_dueling if not is_qrdqn else 'N/A'})")
     print(f"Learning rate: {agent.learning_rate}, Gamma: {agent.gamma}")
-    print(f"Features: PER={isinstance(agent.replay_buffer, PrioritizedReplayBuffer)}, "
-          f"Double DQN={agent.use_double_dqn}, Dueling={use_dueling}")
-    if is_pytorch:
-        print(f"Phase 2: N-step={n_steps}, RewardNorm={use_reward_norm}, NoisyNets={use_noisy_nets}")
+    if is_qrdqn:
+        print(f"Phase 4B-5: QR-DQN n_quantiles={n_quantiles}, risk_measure={risk_measure}")
+    else:
+        print(f"Features: PER={isinstance(agent.replay_buffer, PrioritizedReplayBuffer)}, "
+              f"Double DQN={agent.use_double_dqn}, Dueling={use_dueling}")
+        if is_pytorch:
+            print(f"Phase 2: N-step={n_steps}, RewardNorm={use_reward_norm}, NoisyNets={use_noisy_nets}")
     print(f"Phase 3: MinWait={min_wait_steps}, EarlyPenalty={early_execution_penalty}, ObsBonus={observation_bonus}")
     print(f"Phase 4A: EnhancedFeatures={use_enhanced_features} (state_dim={env.observation_space_shape[0]})")
     print(f"Phase 4B-2: RiskAdjustment={use_risk_adjustment}, RiskWeight={risk_penalty_weight}, TargetSavings={target_savings}")
@@ -689,6 +722,11 @@ if __name__ == '__main__':
     parser.add_argument('--risk-adjustment', action='store_true', help='Enable risk-adjusted rewards')
     parser.add_argument('--risk-weight', type=float, default=0.5, help='Weight for variance penalty (default: 0.5)')
     parser.add_argument('--target-savings', type=float, default=0.10, help='Target savings rate (default: 0.10)')
+    # Phase 4B-5: Distributional RL (QR-DQN)
+    parser.add_argument('--qrdqn', action='store_true', help='Use Quantile Regression DQN for distributional RL')
+    parser.add_argument('--n-quantiles', type=int, default=51, help='Number of quantiles for QR-DQN (default: 51)')
+    parser.add_argument('--risk-measure', type=str, default='mean', choices=['mean', 'cvar_0.25', 'cvar_0.1'],
+                       help='Risk measure for QR-DQN action selection (default: mean)')
     args = parser.parse_args()
 
     use_dueling = True
@@ -722,7 +760,11 @@ if __name__ == '__main__':
         # Phase 4B-2: Risk-adjusted metrics
         use_risk_adjustment=args.risk_adjustment,
         risk_penalty_weight=args.risk_weight,
-        target_savings=args.target_savings
+        target_savings=args.target_savings,
+        # Phase 4B-5: Distributional RL (QR-DQN)
+        use_qrdqn=args.qrdqn,
+        n_quantiles=args.n_quantiles,
+        risk_measure=args.risk_measure
     )
     
     if args.evaluate:

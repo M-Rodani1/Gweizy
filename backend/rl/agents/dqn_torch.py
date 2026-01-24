@@ -602,6 +602,7 @@ class QRDQNAgent:
         self.gradient_clip = gradient_clip
         self.risk_measure = risk_measure
         self.learning_rate = learning_rate
+        self.lr_min = learning_rate * 0.1  # Minimum learning rate for compatibility
 
         # Device
         if device is None:
@@ -808,6 +809,39 @@ class QRDQNAgent:
         """Load agent from file."""
         state_dict = torch.load(path, map_location=self.device)
         self.load_state_dict(state_dict)
+
+    def reset_episode(self):
+        """Reset episode-specific state (compatibility with training loop)."""
+        pass  # QR-DQN doesn't need episode-level reset
+
+    @property
+    def last_td_errors(self):
+        """Return None as QR-DQN doesn't track TD errors the same way."""
+        return None
+
+    def get_recommendation(self, state: np.ndarray, threshold: float = 0.6) -> dict:
+        """Get action recommendation with confidence and uncertainty."""
+        q_values = self.get_q_values(state)
+        uncertainty = self.get_uncertainty(state)
+
+        # Softmax for confidence
+        exp_q = np.exp(q_values - np.max(q_values))
+        probs = exp_q / exp_q.sum()
+
+        action = int(np.argmax(q_values))
+        confidence = float(probs[action])
+
+        return {
+            'action': 'execute' if action == 1 else 'wait',
+            'action_id': action,
+            'confidence': confidence,
+            'uncertainty': {
+                'wait': float(uncertainty[0]),
+                'execute': float(uncertainty[1])
+            },
+            'q_values': {'wait': float(q_values[0]), 'execute': float(q_values[1])},
+            'should_act': action == 1 and confidence >= threshold
+        }
 
 
 class DQNAgent:
