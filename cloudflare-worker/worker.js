@@ -206,6 +206,12 @@ export default {
       console.log('[CRON] Updating prediction accuracy');
       ctx.waitUntil(updatePredictionAccuracy(env));
     }
+
+    // Hourly at :30: Validate predictions against actuals
+    if (minute === 30) {
+      console.log('[CRON] Validating predictions');
+      ctx.waitUntil(validatePredictions(env));
+    }
   }
 };
 
@@ -516,5 +522,45 @@ async function performHealthCheck(env) {
   } catch (error) {
     console.error('[HEALTH] Error during health check:', error);
     return { healthy: false, error: error.message };
+  }
+}
+
+/**
+ * Validate pending predictions against actual gas prices
+ */
+async function validatePredictions(env) {
+  try {
+    console.log('[VALIDATION] Running prediction validation...');
+
+    const response = await fetch(`${BACKEND_API}/validation/validate`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'User-Agent': 'Cloudflare-Worker-Cron/1.0',
+        'X-Cron-Trigger': 'hourly-validation'
+      }
+    });
+
+    const result = await response.json();
+
+    if (response.ok) {
+      console.log('[VALIDATION] ✅ Validated:', result.validated, 'predictions');
+
+      // Store validation result in KV
+      await env.GAS_CACHE.put('last_validation', JSON.stringify({
+        timestamp: new Date().toISOString(),
+        validated: result.validated,
+        pending: result.pending
+      }), {
+        expirationTtl: 7200 // Keep for 2 hours
+      });
+    } else {
+      console.error('[VALIDATION] ❌ Failed:', result);
+    }
+
+    return result;
+  } catch (error) {
+    console.error('[VALIDATION] Error:', error);
+    return { success: false, error: error.message };
   }
 }
