@@ -1338,10 +1338,17 @@ except ImportError:
     XGBOOST_AVAILABLE = False
     log("   ⚠️  XGBoost not available for spike detectors, using GradientBoosting")
 
-# Spike detection thresholds (must match HybridPredictor)
-NORMAL_THRESHOLD = 0.01   # < 0.01 gwei = Normal
-ELEVATED_THRESHOLD = 0.05  # 0.01-0.05 gwei = Elevated
-# > 0.05 gwei = Spike
+# Spike detection thresholds - ADAPTIVE based on price distribution
+# Using percentiles instead of absolute values for network-agnostic classification
+log("\n📊 Computing adaptive spike thresholds from price distribution...")
+# Calculate percentile-based thresholds from the training data
+# Normal: bottom 50% of prices
+# Elevated: 50th-85th percentile
+# Spike: top 15% of prices
+NORMAL_THRESHOLD = df['gas_price'].quantile(0.50)
+ELEVATED_THRESHOLD = df['gas_price'].quantile(0.85)
+log(f"   Adaptive thresholds: Normal < {NORMAL_THRESHOLD:.6f} gwei < Elevated < {ELEVATED_THRESHOLD:.6f} gwei < Spike")
+log(f"   Based on {len(df):,} samples from {df['timestamp'].min()} to {df['timestamp'].max()}")
 
 def create_spike_features(df):
     """Create enhanced features for spike detection with volatility clustering, acceleration, and regime indicators"""
@@ -1652,7 +1659,7 @@ for horizon in ['1h', '4h', '24h']:
             recall = tp / (tp + fn) if (tp + fn) > 0 else 0
             log(f"      {cls_name}: Precision={precision:.3f}, Recall={recall:.3f}")
     
-    # Save spike detector with enhanced metrics
+    # Save spike detector with enhanced metrics and adaptive thresholds
     spike_detector_data = {
         'model': calibrated_model,  # Save calibrated model
         'base_model': model_spike,  # Also save base model for reference
@@ -1668,7 +1675,13 @@ for horizon in ['1h', '4h', '24h']:
         'class_weights': class_weight_dict,
         'is_calibrated': True,
         'model_type': 'XGBoost' if XGBOOST_AVAILABLE else 'GradientBoosting',
-        'trained_at': datetime.now().isoformat()
+        'trained_at': datetime.now().isoformat(),
+        # Adaptive thresholds for inference
+        'thresholds': {
+            'normal_threshold': float(NORMAL_THRESHOLD),
+            'elevated_threshold': float(ELEVATED_THRESHOLD),
+            'percentiles_used': {'normal': 0.50, 'elevated': 0.85}
+        }
     }
     
     spike_path = f'trained_models/spike_detector_{horizon}.pkl'
