@@ -876,6 +876,132 @@ os.makedirs('trained_models', exist_ok=True)
 
 results = {}
 
+# Hyperparameter tuning configuration
+# Set TUNE_HYPERPARAMS=1 environment variable to enable tuning (slower but better)
+TUNE_HYPERPARAMS = os.environ.get('TUNE_HYPERPARAMS', '0') == '1'
+TUNING_ITERATIONS = int(os.environ.get('TUNING_ITERATIONS', '20'))
+
+if TUNE_HYPERPARAMS:
+    log(f"\n🔧 Hyperparameter tuning ENABLED ({TUNING_ITERATIONS} iterations per model)")
+else:
+    log(f"\n⚡ Hyperparameter tuning DISABLED (using defaults, set TUNE_HYPERPARAMS=1 to enable)")
+
+
+def tune_lgbm_regressor(X_train, y_train, horizon_name, n_iter=20):
+    """
+    Tune LightGBM regressor hyperparameters using RandomizedSearchCV with TimeSeriesSplit.
+
+    Args:
+        X_train: Training features (scaled)
+        y_train: Training targets
+        horizon_name: Name of the horizon (for logging)
+        n_iter: Number of random parameter combinations to try
+
+    Returns:
+        Best parameters dict
+    """
+    log(f"   🔍 Tuning hyperparameters for {horizon_name} ({n_iter} iterations)...")
+
+    param_distributions = {
+        'n_estimators': [100, 200, 300, 500],
+        'max_depth': [3, 4, 5, 7, 10],
+        'learning_rate': [0.005, 0.01, 0.02, 0.05, 0.1],
+        'num_leaves': [15, 31, 63, 127],
+        'min_child_samples': [10, 20, 30, 50],
+        'subsample': [0.7, 0.8, 0.9, 1.0],
+        'colsample_bytree': [0.7, 0.8, 0.9, 1.0],
+        'reg_alpha': [0, 0.01, 0.1, 1.0],
+        'reg_lambda': [0, 0.01, 0.1, 1.0],
+    }
+
+    base_model = lgb.LGBMRegressor(
+        objective='huber', alpha=0.95, random_state=42, n_jobs=-1, verbose=-1
+    )
+
+    tscv = TimeSeriesSplit(n_splits=3)
+
+    search = RandomizedSearchCV(
+        base_model,
+        param_distributions,
+        n_iter=n_iter,
+        cv=tscv,
+        scoring='neg_mean_absolute_error',
+        random_state=42,
+        n_jobs=-1,
+        verbose=0
+    )
+
+    search.fit(X_train, y_train)
+
+    log(f"      Best MAE (CV): {-search.best_score_:.4f}")
+    log(f"      Best params: {search.best_params_}")
+
+    return search.best_params_
+
+
+def tune_lgbm_classifier(X_train, y_train, horizon_name, n_iter=20):
+    """
+    Tune LightGBM classifier hyperparameters using RandomizedSearchCV with TimeSeriesSplit.
+
+    Args:
+        X_train: Training features (scaled)
+        y_train: Training targets
+        horizon_name: Name of the horizon (for logging)
+        n_iter: Number of random parameter combinations to try
+
+    Returns:
+        Best parameters dict
+    """
+    log(f"   🔍 Tuning hyperparameters for {horizon_name} ({n_iter} iterations)...")
+
+    param_distributions = {
+        'n_estimators': [100, 200, 300, 500],
+        'max_depth': [3, 5, 7, 10],
+        'learning_rate': [0.01, 0.02, 0.05, 0.1],
+        'num_leaves': [15, 31, 63, 127],
+        'min_child_samples': [10, 20, 30, 50],
+        'subsample': [0.7, 0.8, 0.9, 1.0],
+        'colsample_bytree': [0.7, 0.8, 0.9, 1.0],
+        'reg_alpha': [0, 0.01, 0.1],
+        'reg_lambda': [0, 0.01, 0.1],
+    }
+
+    base_model = lgb.LGBMClassifier(
+        objective='multiclass', num_class=3, random_state=42, n_jobs=-1, verbose=-1
+    )
+
+    tscv = TimeSeriesSplit(n_splits=3)
+
+    search = RandomizedSearchCV(
+        base_model,
+        param_distributions,
+        n_iter=n_iter,
+        cv=tscv,
+        scoring='accuracy',
+        random_state=42,
+        n_jobs=-1,
+        verbose=0
+    )
+
+    search.fit(X_train, y_train)
+
+    log(f"      Best Accuracy (CV): {search.best_score_:.4f}")
+    log(f"      Best params: {search.best_params_}")
+
+    return search.best_params_
+
+
+# Default hyperparameters (used when tuning is disabled)
+DEFAULT_PARAMS_24H = {
+    'n_estimators': 300, 'max_depth': 5, 'learning_rate': 0.01, 'num_leaves': 31
+}
+DEFAULT_PARAMS_4H = {
+    'n_estimators': 200, 'max_depth': 3, 'learning_rate': 0.01, 'num_leaves': 15
+}
+DEFAULT_PARAMS_1H = {
+    'n_estimators': 200, 'max_depth': 5, 'learning_rate': 0.05, 'num_leaves': 31
+}
+
 # Only train models for horizons with sufficient data
 # horizons_to_train = available_horizons if 'available_horizons' in locals() else ['1h', '4h', '24h']
 
@@ -936,8 +1062,14 @@ else:
         X_train_val_24h_scaled = scaler_24h.fit_transform(X_train_val_24h)
         X_test_24h_scaled = scaler_24h.transform(X_test_24h)
 
+        # Get hyperparameters (tuned or default)
+        if TUNE_HYPERPARAMS:
+            params_24h = tune_lgbm_regressor(X_train_val_24h_scaled, y_train_val_24h, '24h', TUNING_ITERATIONS)
+        else:
+            params_24h = DEFAULT_PARAMS_24H
+
         model_24h = lgb.LGBMRegressor(
-            n_estimators=300, max_depth=5, learning_rate=0.01, num_leaves=31,
+            **params_24h,
             objective='huber', alpha=0.95, random_state=42, n_jobs=-1, verbose=-1
         )
         model_24h.fit(X_train_val_24h_scaled, y_train_val_24h)
@@ -1081,9 +1213,15 @@ else:
     scaler_4h = RobustScaler()
     X_train_val_4h_scaled = scaler_4h.fit_transform(X_train_val_4h)
     X_test_4h_scaled = scaler_4h.transform(X_test_4h)
-    
+
+    # Get hyperparameters (tuned or default)
+    if TUNE_HYPERPARAMS:
+        params_4h = tune_lgbm_regressor(X_train_val_4h_scaled, y_train_val_4h, '4h', TUNING_ITERATIONS)
+    else:
+        params_4h = DEFAULT_PARAMS_4H
+
     model_4h = lgb.LGBMRegressor(
-        n_estimators=200, max_depth=3, learning_rate=0.01, num_leaves=15,
+        **params_4h,
         objective='huber', alpha=0.95, random_state=42, n_jobs=-1, verbose=-1
     )
     model_4h.fit(X_train_val_4h_scaled, y_train_val_4h)
@@ -1240,13 +1378,19 @@ log(f"   📊 Train/Test split with {EMBARGO_GAP}-sample embargo gap")
 log(f"      Train: {len(X_train_1h):,}, Embargo: {EMBARGO_GAP}, Test: {len(X_test_1h):,}")
 
 # Train Classifier
-log(f"   🚀 Training LightGBM Classifier for 1h (Unbalanced weights)...")
+log(f"   🚀 Training LightGBM Classifier for 1h...")
 scaler_1h = RobustScaler()
 X_train_1h_scaled = scaler_1h.fit_transform(X_train_1h)
 X_test_1h_scaled = scaler_1h.transform(X_test_1h)
 
+# Get hyperparameters (tuned or default)
+if TUNE_HYPERPARAMS:
+    params_1h = tune_lgbm_classifier(X_train_1h_scaled, y_train_1h, '1h', TUNING_ITERATIONS)
+else:
+    params_1h = DEFAULT_PARAMS_1H
+
 model_1h = lgb.LGBMClassifier(
-    n_estimators=200, max_depth=5, learning_rate=0.05, num_leaves=31,
+    **params_1h,
     objective='multiclass', num_class=3, metric='multi_logloss',
     random_state=42, n_jobs=-1, verbose=-1
 )
