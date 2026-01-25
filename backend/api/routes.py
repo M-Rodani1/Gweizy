@@ -388,6 +388,32 @@ def current_gas():
         return jsonify({'error': str(e)}), 500
 
 
+@api_bp.route('/eth-price', methods=['GET'])
+@cached(ttl=60)  # Cache for 1 minute
+def eth_price():
+    """Proxy endpoint for ETH price from CoinGecko (avoids CORS issues)"""
+    try:
+        import requests
+        response = requests.get(
+            'https://api.coingecko.com/api/v3/simple/price',
+            params={
+                'ids': 'ethereum',
+                'vs_currencies': 'usd',
+                'include_24hr_change': 'true'
+            },
+            timeout=10
+        )
+
+        if response.ok:
+            data = response.json()
+            return jsonify(data), 200
+        else:
+            return jsonify({'error': 'Failed to fetch ETH price'}), response.status_code
+    except Exception as e:
+        logger.error(f"Error fetching ETH price: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
 @api_bp.route('/historical', methods=['GET'])
 @cached(ttl=300)  # Cache for 5 minutes
 def historical():

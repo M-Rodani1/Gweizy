@@ -15,8 +15,8 @@ interface UseEthPriceReturn {
   refetch: () => Promise<void>;
 }
 
-// CoinGecko free API endpoint for ETH price
-const COINGECKO_API = 'https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd&include_24hr_change=true';
+// ETH price endpoint - proxied through backend to avoid CORS
+const ETH_PRICE_API = 'https://basegasfeesml-production.up.railway.app/api/eth-price';
 
 // Cache to prevent excessive API calls
 let priceCache: {
@@ -47,7 +47,7 @@ export function useEthPrice(refreshInterval = 60000): UseEthPriceReturn {
     try {
       setError(null);
 
-      const response = await fetch(COINGECKO_API, {
+      const response = await fetch(ETH_PRICE_API, {
         headers: {
           'Accept': 'application/json',
         }
@@ -116,7 +116,7 @@ export async function getEthPrice(): Promise<number> {
   }
 
   try {
-    const response = await fetch(COINGECKO_API);
+    const response = await fetch(ETH_PRICE_API);
     const data = await response.json();
 
     if (data.ethereum) {

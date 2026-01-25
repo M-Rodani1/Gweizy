@@ -180,18 +180,6 @@ const Docs: React.FC = () => {
             </p>
           </section>
 
-          {/* Support */}
-          <section className="bg-gray-800 rounded-lg p-6 border border-gray-700">
-            <h2 className="text-2xl font-bold mb-4 text-cyan-400">Need Help?</h2>
-            <p className="text-gray-300 mb-4">
-              We're here to help! Reach out through:
-            </p>
-            <ul className="space-y-2 text-gray-300">
-              <li>🐦 Twitter: @BaseGasOptimiser</li>
-              <li>💬 Discord: Join our community</li>
-              <li>📧 Email: support@basegasoptimiser.com</li>
-            </ul>
-          </section>
         </div>
 
         {/* CTA */}
