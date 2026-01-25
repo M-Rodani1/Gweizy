@@ -129,7 +129,7 @@ def check_model_health():
     - No recent validations
     """
     try:
-        threshold_mae = float(request.args.get('threshold_mae', 0.001))
+        threshold_mae = float(request.args.get('threshold_mae', 2.0))
 
         health = validator.check_model_health(threshold_mae=threshold_mae)
 

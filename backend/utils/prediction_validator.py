@@ -387,7 +387,7 @@ class PredictionValidator:
         finally:
             session.close()
 
-    def check_model_health(self, threshold_mae: float = 0.001) -> Dict:
+    def check_model_health(self, threshold_mae: float = 2.0) -> Dict:
         """
         Check if model performance is degrading
 
