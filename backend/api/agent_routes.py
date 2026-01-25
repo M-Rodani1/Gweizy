@@ -42,6 +42,16 @@ def _is_torch_checkpoint(path: str) -> bool:
         return False
 
 
+def _looks_like_torch_pickle(path: str) -> bool:
+    """Heuristic for legacy torch pickles (non-zip)."""
+    try:
+        with open(path, 'rb') as f:
+            head = f.read(2048)
+        return b'torch' in head or b'PYTORCH' in head
+    except Exception:
+        return False
+
+
 def _load_torch_agent(model_path: str, state_dim: int, action_dim: int):
     """Load a PyTorch DQN agent from a checkpoint with hidden_dims inference."""
     try:
@@ -125,7 +135,7 @@ def get_dqn_agent(chain_id: int = 8453):
             action_dim = 2
 
             for model_path in existing_paths:
-                is_torch = _is_torch_checkpoint(model_path)
+                is_torch = _is_torch_checkpoint(model_path) or _looks_like_torch_pickle(model_path)
                 if is_torch and not TORCH_AVAILABLE:
                     logger.warning(
                         f"Found PyTorch checkpoint at {model_path} but torch is not available. Skipping."
@@ -133,13 +143,17 @@ def get_dqn_agent(chain_id: int = 8453):
                     continue
 
                 try:
-                    if is_torch and TORCH_AVAILABLE:
-                        agent = _load_torch_agent(model_path, state_dim=state_dim, action_dim=action_dim)
-                        if agent is None:
+                    agent = None
+                    if TORCH_AVAILABLE:
+                        torch_agent = _load_torch_agent(model_path, state_dim=state_dim, action_dim=action_dim)
+                        if torch_agent is not None:
+                            agent = torch_agent
+                            logger.debug("Using PyTorch DQN agent")
+                        elif is_torch:
                             logger.warning(f"Failed to initialize PyTorch agent for {model_path}.")
                             continue
-                        logger.debug("Using PyTorch DQN agent")
-                    else:
+
+                    if agent is None:
                         agent = NumpyDQNAgent(
                             state_dim=state_dim,
                             action_dim=action_dim,
