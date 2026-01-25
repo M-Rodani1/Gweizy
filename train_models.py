@@ -154,15 +154,20 @@ raw_len = len(df)
 
 # Group by minute and aggregate
 df['minute'] = df['timestamp'].dt.floor('1T')
-df_grouped = df.groupby('minute').agg({
+agg_dict = {
     'gas_price': 'last',  # Close price (last value in the minute)
     'gas_used': 'sum',    # Total volume per minute
     'gas_limit': 'mean',
     'base_fee': 'mean',
     'priority_fee': 'mean',
     'block_number': 'max',
-    'utilization': 'mean' if 'utilization' in df.columns else 'first'
-}).reset_index()
+}
+# Add optional columns if they exist
+if 'utilization' in df.columns:
+    agg_dict['utilization'] = 'mean'
+if 'tx_count' in df.columns:
+    agg_dict['tx_count'] = 'mean'
+df_grouped = df.groupby('minute').agg(agg_dict).reset_index()
 df_grouped.rename(columns={'minute': 'timestamp'}, inplace=True)
 
 # CRITICAL: Drop rows where gas_price changes by less than 1% compared to previous row
@@ -239,24 +244,35 @@ df['hour_cos'] = np.cos(2 * np.pi * df['hour'] / 24)
 
 # Mempool features (leading indicators)
 log("   Adding mempool features (leading indicators)...")
-# mempool_velocity: 1st derivative (change in tx_count per time period)
-df['mempool_velocity'] = df['tx_count'].diff().fillna(0)
+if 'tx_count' in df.columns and df['tx_count'].notna().any():
+    # mempool_velocity: 1st derivative (change in tx_count per time period)
+    df['mempool_velocity'] = df['tx_count'].diff().fillna(0)
 
-# mempool_acceleration: 2nd derivative (change of the change)
-df['mempool_acceleration'] = df['mempool_velocity'].diff().fillna(0)
+    # mempool_acceleration: 2nd derivative (change of the change)
+    df['mempool_acceleration'] = df['mempool_velocity'].diff().fillna(0)
 
-# Additional mempool features for robustness
-# Rolling statistics of mempool activity
-for window in [6, 12, 24]:
-    df[f'mempool_ma_{window}'] = df['tx_count'].rolling(window=window, min_periods=1).mean()
-    df[f'mempool_std_{window}'] = df['tx_count'].rolling(window=window, min_periods=1).std()
-    df[f'mempool_max_{window}'] = df['tx_count'].rolling(window=window, min_periods=1).max()
+    # Additional mempool features for robustness
+    # Rolling statistics of mempool activity
+    for window in [6, 12, 24]:
+        df[f'mempool_ma_{window}'] = df['tx_count'].rolling(window=window, min_periods=1).mean()
+        df[f'mempool_std_{window}'] = df['tx_count'].rolling(window=window, min_periods=1).std()
+        df[f'mempool_max_{window}'] = df['tx_count'].rolling(window=window, min_periods=1).max()
 
-# Mempool momentum (rate of change over different windows)
-for window in [6, 12, 24]:
-    df[f'mempool_momentum_{window}'] = df['tx_count'] - df['tx_count'].shift(window).fillna(df['tx_count'])
+    # Mempool momentum (rate of change over different windows)
+    for window in [6, 12, 24]:
+        df[f'mempool_momentum_{window}'] = df['tx_count'] - df['tx_count'].shift(window).fillna(df['tx_count'])
 
-log(f"   ✅ Added mempool features: velocity, acceleration, and rolling statistics")
+    log(f"   ✅ Added mempool features: velocity, acceleration, and rolling statistics")
+else:
+    log(f"   ⚠️  No tx_count data available - creating zero mempool features")
+    df['tx_count'] = 0
+    df['mempool_velocity'] = 0
+    df['mempool_acceleration'] = 0
+    for window in [6, 12, 24]:
+        df[f'mempool_ma_{window}'] = 0
+        df[f'mempool_std_{window}'] = 0
+        df[f'mempool_max_{window}'] = 0
+        df[f'mempool_momentum_{window}'] = 0
 
 # EIP-1559 pressure features (utilization-aware) + Physics features
 log("   Adding EIP-1559 pressure features with physics derivatives...")
@@ -928,39 +944,96 @@ else:
     log(f"   💾 Saved 4h model to trained_models/model_4h.pkl")
 
 # ==============================================================================
-# PHASE 2: Feature Injection (Model Stacking)
+# PHASE 2: Feature Injection (Model Stacking) - With Proper OOF Predictions
 # ==============================================================================
 log(f"\n{'='*60}")
-log(f"💉 PHASE 2: Injecting 4h Trend Signal")
+log(f"💉 PHASE 2: Injecting 4h Trend Signal (Leak-Free OOF)")
 log(f"{'='*60}")
 
 if model_4h is not None:
-    # We need predictions for the ENTIRE dataset X to serve as features for 1h
-    # 1. Use X with 4h-selected features
+    # IMPORTANT: To prevent data leakage, we use Out-of-Fold (OOF) predictions
+    # for the training portion and regular predictions for the test portion.
+
+    # 1. Prepare features for prediction
     X_for_4h_pred = X[selected_features_4h]
-    X_for_4h_pred_scaled = scaler_4h.transform(X_for_4h_pred)
-    
-    # 2. Generate predictions
-    # Ideally OOF for training part, but for simplicity/robustness in production script:
-    # We will use cross_val_predict for the whole set to avoid leakage?
-    # Actually, cross_val_predict on TimeSeriesSplit leaves gaps.
-    # Hybrid Approach:
-    # - Train OOF on Train set
-    # - Predict normally on Test set
-    # OR simpler: Just predict using the trained model (soft leakage on train set, but okay for stacking signal)
-    # The user asked for cross_val_predict.
-    
-    # OOF Predictions for Training Data
-    tscv_stacking = TimeSeriesSplit(n_splits=5)
-    # Note: cross_val_predict with TimeSeriesSplit only returns predictions for test folds
-    # We'll use the trained model for simplicity and consistency, accepting slight overfitting bias in signal
-    # This is often acceptable for "trend" signals which are smoothed
-    trend_signal_4h = model_4h.predict(X_for_4h_pred_scaled)
-    
-    # Add to X
+
+    # 2. Initialize trend signal array with NaN
+    trend_signal_4h = np.full(len(X), np.nan)
+
+    # 3. Get the valid indices (same as used in Phase 1)
+    valid_idx_4h_bool = ~(X[selected_features_4h].isna().any(axis=1) | targets[horizon_4h]['volatility_scaled_return'].isna())
+    valid_indices = np.where(valid_idx_4h_bool)[0]
+
+    # 4. Split indices into train and test (same split as Phase 1)
+    n_valid = len(valid_indices)
+    train_end_idx = int(n_valid * 0.8)
+    train_indices = valid_indices[:train_end_idx]
+    test_indices = valid_indices[train_end_idx:]
+
+    log(f"   📊 Train samples: {len(train_indices):,}, Test samples: {len(test_indices):,}")
+
+    # 5. Generate OOF predictions for training data using TimeSeriesSplit
+    log(f"   🔄 Generating Out-of-Fold predictions for training data...")
+    X_train_for_oof = X_for_4h_pred.iloc[train_indices]
+    y_train_for_oof = targets[horizon_4h]['volatility_scaled_return'].iloc[train_indices]
+
+    # Use TimeSeriesSplit for proper temporal cross-validation
+    tscv_oof = TimeSeriesSplit(n_splits=5)
+    oof_predictions = np.full(len(train_indices), np.nan)
+
+    for fold_idx, (train_fold_idx, val_fold_idx) in enumerate(tscv_oof.split(X_train_for_oof)):
+        # Get fold data
+        X_fold_train = X_train_for_oof.iloc[train_fold_idx]
+        y_fold_train = y_train_for_oof.iloc[train_fold_idx]
+        X_fold_val = X_train_for_oof.iloc[val_fold_idx]
+
+        # Scale using only training fold data
+        fold_scaler = RobustScaler()
+        X_fold_train_scaled = fold_scaler.fit_transform(X_fold_train)
+        X_fold_val_scaled = fold_scaler.transform(X_fold_val)
+
+        # Train fold model with same hyperparameters
+        fold_model = lgb.LGBMRegressor(
+            n_estimators=200, max_depth=3, learning_rate=0.01, num_leaves=15,
+            objective='huber', alpha=0.95, random_state=42, n_jobs=-1, verbose=-1
+        )
+        fold_model.fit(X_fold_train_scaled, y_fold_train)
+
+        # Predict on validation fold
+        oof_predictions[val_fold_idx] = fold_model.predict(X_fold_val_scaled)
+
+        log(f"      Fold {fold_idx + 1}/5: Train={len(train_fold_idx)}, Val={len(val_fold_idx)}")
+
+    # Fill training indices with OOF predictions
+    for i, idx in enumerate(train_indices):
+        if not np.isnan(oof_predictions[i]):
+            trend_signal_4h[idx] = oof_predictions[i]
+
+    # 6. Generate predictions for test data using the final trained model
+    log(f"   🎯 Generating predictions for test data using final model...")
+    X_test_for_pred = X_for_4h_pred.iloc[test_indices]
+    X_test_scaled = scaler_4h.transform(X_test_for_pred)
+    test_predictions = model_4h.predict(X_test_scaled)
+
+    # Fill test indices with model predictions
+    for i, idx in enumerate(test_indices):
+        trend_signal_4h[idx] = test_predictions[i]
+
+    # 7. Handle any remaining NaN values (fill with 0 for non-valid indices)
+    trend_signal_4h = np.nan_to_num(trend_signal_4h, nan=0.0)
+
+    # 8. Add to X
     X = X.copy()
     X['trend_signal_4h'] = trend_signal_4h
-    log(f"   ✅ Added 'trend_signal_4h' feature to X (Range: {trend_signal_4h.min():.4f} to {trend_signal_4h.max():.4f})")
+
+    # Calculate statistics for valid predictions only
+    valid_preds = trend_signal_4h[trend_signal_4h != 0]
+    if len(valid_preds) > 0:
+        log(f"   ✅ Added 'trend_signal_4h' feature (OOF leak-free)")
+        log(f"      Range: {valid_preds.min():.4f} to {valid_preds.max():.4f}")
+        log(f"      Mean: {valid_preds.mean():.4f}, Std: {valid_preds.std():.4f}")
+    else:
+        log(f"   ✅ Added 'trend_signal_4h' feature (all zeros - no valid predictions)")
 else:
     log(f"   ⚠️  Skipping Feature Injection (4h model failed)")
     X['trend_signal_4h'] = 0
