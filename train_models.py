@@ -906,15 +906,24 @@ else:
     log(f"   🔍 Feature selection for 4h...")
     X_4h_selected, selected_features_4h = select_features(X_4h, y_4h, len(X_4h), verbose=True)
     
-    # Train/Val/Test Split
+    # Train/Val/Test Split with Embargo Gap
+    # Embargo gap prevents look-ahead bias from lag features and rolling windows
+    # Use 24 samples (~24 time periods after tick-bar filtering) as buffer
+    EMBARGO_GAP = 24
+
     n_total_4h = len(X_4h_selected)
-    test_start_4h = int(n_total_4h * 0.8)
-    X_train_val_4h = X_4h_selected.iloc[:test_start_4h]
+    train_end_4h = int(n_total_4h * 0.8) - EMBARGO_GAP  # End training before embargo
+    test_start_4h = int(n_total_4h * 0.8)  # Test starts after embargo
+
+    X_train_val_4h = X_4h_selected.iloc[:train_end_4h]
     X_test_4h = X_4h_selected.iloc[test_start_4h:]
-    y_train_val_4h = y_4h.iloc[:test_start_4h]
+    y_train_val_4h = y_4h.iloc[:train_end_4h]
     y_test_4h = y_4h.iloc[test_start_4h:]
     y_orig_test_4h = y_price_4h[valid_idx_4h].iloc[test_start_4h:]
     current_test_4h = targets[horizon_4h]['current_price'][valid_idx_4h].iloc[test_start_4h:]
+
+    log(f"   📊 Train/Test split with {EMBARGO_GAP}-sample embargo gap")
+    log(f"      Train: {len(X_train_val_4h):,}, Embargo: {EMBARGO_GAP}, Test: {len(X_test_4h):,}")
     
     # Train 4h Model
     log(f"   🚀 Training LightGBM Regressor for 4h...")
@@ -964,13 +973,14 @@ if model_4h is not None:
     valid_idx_4h_bool = ~(X[selected_features_4h].isna().any(axis=1) | targets[horizon_4h]['volatility_scaled_return'].isna())
     valid_indices = np.where(valid_idx_4h_bool)[0]
 
-    # 4. Split indices into train and test (same split as Phase 1)
+    # 4. Split indices into train and test (same split as Phase 1, with embargo)
     n_valid = len(valid_indices)
-    train_end_idx = int(n_valid * 0.8)
+    train_end_idx = int(n_valid * 0.8) - EMBARGO_GAP  # Match Phase 1 embargo
+    test_start_idx = int(n_valid * 0.8)
     train_indices = valid_indices[:train_end_idx]
-    test_indices = valid_indices[train_end_idx:]
+    test_indices = valid_indices[test_start_idx:]
 
-    log(f"   📊 Train samples: {len(train_indices):,}, Test samples: {len(test_indices):,}")
+    log(f"   📊 Train samples: {len(train_indices):,}, Embargo: {EMBARGO_GAP}, Test samples: {len(test_indices):,}")
 
     # 5. Generate OOF predictions for training data using TimeSeriesSplit
     log(f"   🔄 Generating Out-of-Fold predictions for training data...")
@@ -1066,13 +1076,17 @@ log(f"   Class Distribution: {y_1h.value_counts().to_dict()}")
 # Feature Selection for 1h (now includes trend_signal_4h)
 X_1h_selected, selected_features_1h = select_features(X_1h, y_1h, len(X_1h), verbose=True)
 
-# Train/Test Split
+# Train/Test Split with Embargo Gap
 n_total_1h = len(X_1h_selected)
+train_end_1h = int(n_total_1h * 0.8) - EMBARGO_GAP
 test_start_1h = int(n_total_1h * 0.8)
-X_train_1h = X_1h_selected.iloc[:test_start_1h]
+X_train_1h = X_1h_selected.iloc[:train_end_1h]
 X_test_1h = X_1h_selected.iloc[test_start_1h:]
-y_train_1h = y_1h.iloc[:test_start_1h]
+y_train_1h = y_1h.iloc[:train_end_1h]
 y_test_1h = y_1h.iloc[test_start_1h:]
+
+log(f"   📊 Train/Test split with {EMBARGO_GAP}-sample embargo gap")
+log(f"      Train: {len(X_train_1h):,}, Embargo: {EMBARGO_GAP}, Test: {len(X_test_1h):,}")
 
 # Train Classifier
 log(f"   🚀 Training LightGBM Classifier for 1h (Unbalanced weights)...")
@@ -1355,19 +1369,24 @@ for horizon in ['1h', '4h', '24h']:
         log(f"      Need at least 2 classes for spike detection. All prices are classified as the same category.")
         continue
     
-    # Train/val/test split (60/20/20, temporal)
+    # Train/val/test split (60/20/20, temporal) with Embargo Gaps
+    # Use smaller embargo (12) between train/val and val/test to preserve more data
+    SPIKE_EMBARGO = 12
+
     n_total = len(X_clean)
-    train_end = int(n_total * 0.6)
-    val_end = int(n_total * 0.8)
-    
+    train_end = int(n_total * 0.6) - SPIKE_EMBARGO
+    val_start = int(n_total * 0.6)
+    val_end = int(n_total * 0.8) - SPIKE_EMBARGO
+    test_start = int(n_total * 0.8)
+
     X_train_spike = X_clean.iloc[:train_end]
-    X_val_spike = X_clean.iloc[train_end:val_end]
-    X_test_spike = X_clean.iloc[val_end:]
+    X_val_spike = X_clean.iloc[val_start:val_end]
+    X_test_spike = X_clean.iloc[test_start:]
     y_train_spike = y_clean.iloc[:train_end]
-    y_val_spike = y_clean.iloc[train_end:val_end]
-    y_test_spike = y_clean.iloc[val_end:]
-    
-    log(f"   Train: {len(X_train_spike):,}, Val: {len(X_val_spike):,}, Test: {len(X_test_spike):,}")
+    y_val_spike = y_clean.iloc[val_start:val_end]
+    y_test_spike = y_clean.iloc[test_start:]
+
+    log(f"   Train: {len(X_train_spike):,}, Val: {len(X_val_spike):,}, Test: {len(X_test_spike):,} (embargo: {SPIKE_EMBARGO})")
     
     # Calculate class weights for balancing
     from sklearn.utils.class_weight import compute_class_weight
