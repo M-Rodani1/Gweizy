@@ -32,6 +32,41 @@ _chain_agents = {}
 _chain_agents_loaded = {}
 
 
+def _is_torch_checkpoint(path: str) -> bool:
+    """Detect Torch zip checkpoint by magic header."""
+    try:
+        with open(path, 'rb') as f:
+            return f.read(4) == b'PK\x03\x04'
+    except Exception:
+        return False
+
+
+def _load_torch_agent(model_path: str, state_dim: int, action_dim: int):
+    """Load a PyTorch DQN agent from a checkpoint with hidden_dims inference."""
+    try:
+        from rl.agents.dqn_torch import DQNAgent as TorchDQNAgent, TORCH_AVAILABLE
+        if not TORCH_AVAILABLE:
+            return None
+        import torch  # type: ignore
+    except Exception:
+        return None
+
+    state_dict = torch.load(model_path, map_location='cpu', weights_only=False)
+    hidden_dims = state_dict.get('hidden_dims', [128, 64])
+    # Heuristic: default dueling unless keys indicate otherwise
+    q_keys = state_dict.get('q_network_state_dict', {}).keys()
+    use_dueling = any('advantage' in k or 'value' in k for k in q_keys)
+
+    agent = TorchDQNAgent(
+        state_dim=state_dim,
+        action_dim=action_dim,
+        hidden_dims=hidden_dims,
+        use_dueling=use_dueling
+    )
+    agent.load_state_dict(state_dict)
+    return agent
+
+
 def get_dqn_agent(chain_id: int = 8453):
     """Lazy load the DQN agent for a specific chain with improved path resolution."""
     global _chain_agents, _chain_agents_loaded
@@ -41,16 +76,16 @@ def get_dqn_agent(chain_id: int = 8453):
         return _chain_agents.get(chain_id)
     
     try:
-        # Try to use PyTorch agent first (preferred), fallback to numpy
+        # Import numpy agent (always available)
+        from rl.agents.dqn import DQNAgent as NumpyDQNAgent
+        # Torch availability
         try:
-            from rl.agents.dqn_torch import DQNAgent
-            logger.debug("Using PyTorch DQN agent")
-        except (ImportError, ModuleNotFoundError):
-            from rl.agents.dqn import DQNAgent
-            logger.debug("Using numpy DQN agent (PyTorch not available)")
+            from rl.agents.dqn_torch import TORCH_AVAILABLE
+        except Exception:
+            TORCH_AVAILABLE = False
 
         from rl.state import StateBuilder
-        
+
         base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         
         # Try persistent storage first, then fallback paths
@@ -81,30 +116,55 @@ def get_dqn_agent(chain_id: int = 8453):
             os.path.join(base_dir, 'models', 'dqn_agent.pkl'),
         ])
         
-        model_path = None
-        for path in possible_paths:
-            if os.path.exists(path):
-                model_path = path
-                break
-        
-        if model_path:
+        existing_paths = [path for path in possible_paths if os.path.exists(path)]
+
+        if existing_paths:
             state_builder = StateBuilder(history_length=40)
-            agent = DQNAgent(
-                state_dim=state_builder.get_state_dim(),
-                action_dim=2,
-                hidden_dims=[64, 64]  # Match training configuration
-            )
-            agent.load(model_path)
-            
-            # Cache the agent for this chain
-            _chain_agents[chain_id] = agent
+            state_dim = state_builder.get_state_dim()
+            action_dim = 2
+
+            for model_path in existing_paths:
+                is_torch = _is_torch_checkpoint(model_path)
+                if is_torch and not TORCH_AVAILABLE:
+                    logger.warning(
+                        f"Found PyTorch checkpoint at {model_path} but torch is not available. Skipping."
+                    )
+                    continue
+
+                try:
+                    if is_torch and TORCH_AVAILABLE:
+                        agent = _load_torch_agent(model_path, state_dim=state_dim, action_dim=action_dim)
+                        if agent is None:
+                            logger.warning(f"Failed to initialize PyTorch agent for {model_path}.")
+                            continue
+                        logger.debug("Using PyTorch DQN agent")
+                    else:
+                        agent = NumpyDQNAgent(
+                            state_dim=state_dim,
+                            action_dim=action_dim,
+                            hidden_dims=[64, 64]  # Match training configuration
+                        )
+                        agent.load(model_path)
+                        logger.debug("Using numpy DQN agent")
+
+                    # Cache the agent for this chain
+                    _chain_agents[chain_id] = agent
+                    _chain_agents_loaded[chain_id] = True
+
+                    from data.multichain_collector import CHAINS
+                    chain_name = CHAINS.get(chain_id, {}).get('name', f'Chain {chain_id}')
+                    logger.info(f"✓ DQN agent loaded from {model_path} for {chain_name} (Chain ID: {chain_id})")
+                    if hasattr(agent, 'training_steps'):
+                        logger.info(f"  Training steps: {agent.training_steps}, Epsilon: {agent.epsilon:.4f}")
+                    return agent
+                except Exception as e:
+                    logger.warning(f"Failed to load DQN agent from {model_path}: {e}")
+                    continue
+
+            logger.warning(f"DQN model(s) found for chain {chain_id} but none could be loaded - using heuristic fallback")
+            _chain_agents[chain_id] = None
             _chain_agents_loaded[chain_id] = True
-            
-            from data.multichain_collector import CHAINS
-            chain_name = CHAINS.get(chain_id, {}).get('name', f'Chain {chain_id}')
-            logger.info(f"✓ DQN agent loaded from {model_path} for {chain_name} (Chain ID: {chain_id})")
-            logger.info(f"  Training steps: {agent.training_steps}, Epsilon: {agent.epsilon:.4f}")
-            return agent
+            return None
         else:
             # Only log detailed paths once, then use brief message
             if not hasattr(get_dqn_agent, '_warned_chains'):
