@@ -7,6 +7,7 @@ from flask import Blueprint, jsonify, request
 from datetime import datetime
 import numpy as np
 import os
+import pickle
 
 from utils.logger import logger
 from api.cache import cached
@@ -144,7 +145,21 @@ def get_dqn_agent(chain_id: int = 8453):
                             action_dim=action_dim,
                             hidden_dims=[64, 64]  # Match training configuration
                         )
-                        agent.load(model_path)
+                        try:
+                            agent.load(model_path)
+                        except pickle.UnpicklingError as e:
+                            # Likely a torch legacy checkpoint; try torch loader if available.
+                            if TORCH_AVAILABLE:
+                                torch_agent = _load_torch_agent(
+                                    model_path, state_dim=state_dim, action_dim=action_dim
+                                )
+                                if torch_agent is not None:
+                                    agent = torch_agent
+                                    logger.debug("Recovered using PyTorch DQN agent after pickle error")
+                                else:
+                                    raise e
+                            else:
+                                raise e
                         logger.debug("Using numpy DQN agent")
 
                     # Cache the agent for this chain
@@ -157,6 +172,9 @@ def get_dqn_agent(chain_id: int = 8453):
                     if hasattr(agent, 'training_steps'):
                         logger.info(f"  Training steps: {agent.training_steps}, Epsilon: {agent.epsilon:.4f}")
                     return agent
+                except pickle.UnpicklingError as e:
+                    logger.warning(f"Pickle load failed for {model_path}: {e}")
+                    continue
                 except Exception as e:
                     logger.warning(f"Failed to load DQN agent from {model_path}: {e}")
                     continue
