@@ -43,145 +43,133 @@ const Landing: React.FC = () => {
   }, []);
 
   return (
-    <div className="landing-shell" style={{ minHeight: '100vh' }}>
+    <div className="landing-shell min-h-screen">
       {/* Navigation */}
-      <nav
-        style={{
-          position: 'fixed',
-          top: 0,
-          width: '100%',
-          background: 'rgba(10, 14, 26, 0.7)',
-          backdropFilter: 'blur(16px)',
-          borderBottom: '1px solid var(--border)',
-          zIndex: 50
-        }}
-      >
-        <div className="container" style={{ padding: 'var(--space-lg) var(--space-xl)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-md)' }}>
+      <nav className="landing-nav">
+        <div className="container">
+          <div className="landing-nav-content">
+            <div className="landing-nav-brand">
               <div className="icon-tile">
                 <Logo size="sm" />
               </div>
-              <span style={{ fontSize: '1.1rem', fontWeight: 600, letterSpacing: '-0.01em' }}>
+              <span className="text-[1.1rem] font-semibold tracking-[-0.01em]">
                 Gweizy
               </span>
-              <span className="badge badge-accent" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+              <span className="badge badge-accent flex items-center gap-1">
                 <Trophy size={14} />
                 Hackathon Winner
               </span>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-lg)' }}>
+            <div className="landing-nav-links">
               <Link to="/pricing" className="btn btn-ghost">Pricing</Link>
-              <Link to="/app" className="btn btn-primary">Launch AI Pilot</Link>
+              <Link to="/app" className="btn btn-primary btn-lg">Launch AI Pilot</Link>
             </div>
           </div>
         </div>
       </nav>
 
       {/* Hero Section - 2 Column Layout */}
-      <section className="section" style={{ paddingTop: '120px', minHeight: '90vh', display: 'flex', alignItems: 'center' }}>
+      <section className="section landing-hero">
         <div className="container">
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(500px, 1fr))', gap: 'var(--space-3xl)', alignItems: 'center' }}>
+          <div className="landing-hero-grid">
 
             {/* Left: Hero Content */}
             <div>
-              <div className="badge badge-accent" style={{ marginBottom: 'var(--space-lg)', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+              <div className="badge badge-accent mb-[var(--space-lg)] inline-flex items-center gap-[0.35rem]">
                 <Trophy size={14} />
                 Coinbase 2025 Hackathon Winner
               </div>
 
-              <h1 className="hero-title" style={{ marginBottom: 'var(--space-lg)' }}>
-                <span style={{ color: 'var(--accent)' }}>AI Transaction Pilot</span>{' '}
+              <h1 className="hero-title mb-[var(--space-lg)]">
+                <span className="text-[var(--accent)]">AI Transaction Pilot</span>{' '}
                 for Base and beyond
               </h1>
 
-              <p className="hero-subtitle" style={{ marginBottom: 'var(--space-md)' }}>
+              <p className="hero-subtitle mb-[var(--space-md)]">
                 A DQN agent that tells you when to submit, wait, or rebid. Cut gas spend by up to 40%.
               </p>
 
-              <p className="hero-kicker" style={{ marginBottom: 'var(--space-2xl)' }}>
+              <p className="hero-kicker mb-[var(--space-2xl)]">
                 Live coverage: Base, Ethereum, Arbitrum, Optimism, Polygon
               </p>
 
-              <div style={{ display: 'flex', gap: 'var(--space-md)', flexWrap: 'wrap', marginBottom: 'var(--space-2xl)' }}>
-                <Link to="/app" className="btn btn-primary" style={{ padding: '1rem 2rem', fontSize: '1.125rem' }}>
+              <div className="flex flex-wrap gap-[var(--space-md)] mb-[var(--space-2xl)]">
+                <Link to="/app" className="btn btn-primary btn-lg">
                   Launch AI Pilot
                 </Link>
-                <a href="#how-it-works" className="btn btn-secondary" style={{ padding: '1rem 2rem', fontSize: '1.125rem' }}>
+                <a href="#how-it-works" className="btn btn-secondary btn-lg">
                   See How It Works
                 </a>
               </div>
 
               {/* Trust Indicators */}
-              <div style={{ display: 'flex', gap: 'var(--space-xl)', marginTop: 'var(--space-2xl)', paddingTop: 'var(--space-xl)', borderTop: '1px solid var(--border-subtle)' }}>
-                <div>
-                  <div style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--accent)' }}>
+              <div className="landing-stats-row">
+                <div className="landing-stat">
+                  <div className="landing-stat-value">
                     {statsLoading ? '...' : `$${stats.total_saved_k}K+`}
                   </div>
-                  <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>Gas Saved</div>
+                  <div className="landing-stat-label">Gas Saved</div>
                 </div>
-                <div>
-                  <div style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--accent)' }}>
+                <div className="landing-stat">
+                  <div className="landing-stat-value">
                     {statsLoading ? '...' : `${stats.accuracy_percent}%`}
                   </div>
-                  <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>Accuracy</div>
+                  <div className="landing-stat-label">Accuracy</div>
                 </div>
-                <div>
-                  <div style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--accent)' }}>
+                <div className="landing-stat">
+                  <div className="landing-stat-value">
                     {statsLoading ? '...' : `${stats.predictions_k}K+`}
                   </div>
-                  <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>Predictions</div>
+                  <div className="landing-stat-label">Predictions</div>
                 </div>
               </div>
             </div>
 
             {/* Right: Dashboard Preview in Browser Frame */}
-            <div style={{ position: 'relative' }}>
-              <div className="card" style={{ padding: 0, overflow: 'hidden', background: 'var(--surface-2)' }}>
+            <div className="relative">
+              <div className="card browser-frame">
                 {/* Browser Chrome */}
-                <div style={{ padding: 'var(--space-md)', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
-                  <div style={{ display: 'flex', gap: 'var(--space-xs)' }}>
-                    <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#ef4444' }}></div>
-                    <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#f59e0b' }}></div>
-                    <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#10b981' }}></div>
+                <div className="browser-chrome">
+                  <div className="browser-dots">
+                    <div className="browser-dot browser-dot-red" />
+                    <div className="browser-dot browser-dot-yellow" />
+                    <div className="browser-dot browser-dot-green" />
                   </div>
-                  <div style={{ flex: 1, background: 'var(--surface)', padding: 'var(--space-xs) var(--space-md)', borderRadius: 'var(--radius-sm)', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                    basegasfeesml.pages.dev/app
-                  </div>
+                  <div className="browser-url">basegasfeesml.pages.dev/app</div>
                 </div>
 
                 {/* Dashboard Preview Content */}
-                <div style={{ padding: 'var(--space-xl)', background: 'var(--bg)' }}>
+                <div className="browser-content">
                   {/* Mini KPI Cards */}
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-md)', marginBottom: 'var(--space-lg)' }}>
-                    <div className="card" style={{ padding: 'var(--space-md)' }}>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: 'var(--space-xs)' }}>Current Gas</div>
-                      <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>0.0048 gwei</div>
-                      <span className="badge badge-success" style={{ marginTop: 'var(--space-xs)', fontSize: '0.625rem' }}>
+                  <div className="grid grid-cols-2 gap-[var(--space-md)] mb-[var(--space-lg)]">
+                    <div className="card p-[var(--space-md)]">
+                      <div className="text-[0.75rem] text-[var(--text-muted)] mb-[var(--space-xs)]">Current Gas</div>
+                      <div className="text-[1.5rem] font-bold">0.0048 gwei</div>
+                      <span className="badge badge-success mt-[var(--space-xs)] text-[0.625rem]">
                         <span className="status-dot success"></span> Low
                       </span>
                     </div>
-                    <div className="card" style={{ padding: 'var(--space-md)' }}>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: 'var(--space-xs)' }}>1h Forecast</div>
-                      <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>0.0052 gwei</div>
-                      <span className="badge badge-warning" style={{ marginTop: 'var(--space-xs)', fontSize: '0.625rem' }}>
+                    <div className="card p-[var(--space-md)]">
+                      <div className="text-[0.75rem] text-[var(--text-muted)] mb-[var(--space-xs)]">1h Forecast</div>
+                      <div className="text-[1.5rem] font-bold">0.0052 gwei</div>
+                      <span className="badge badge-warning mt-[var(--space-xs)] text-[0.625rem]">
                         <span className="status-dot warning"></span> Rising
                       </span>
                     </div>
                   </div>
 
                   {/* Mini Chart Placeholder */}
-                  <div className="card" style={{ padding: 'var(--space-lg)', height: '180px', display: 'flex', alignItems: 'flex-end', gap: '4px' }}>
+                  <div className="card p-[var(--space-lg)] h-[180px] flex items-end gap-1">
                     {[40, 60, 55, 70, 45, 50, 35, 60, 55, 48, 42, 38].map((height, i) => (
-                      <div key={i} style={{ flex: 1, background: 'var(--accent-light)', borderRadius: '2px', height: `${height}%`, transition: 'all 0.3s' }}></div>
+                      <div key={i} className="flex-1 bg-[var(--accent-light)] rounded-sm transition-all duration-300" style={{ height: `${height}%` }}></div>
                     ))}
                   </div>
 
                   {/* Recommendation */}
-                  <div className="card" style={{ marginTop: 'var(--space-md)', padding: 'var(--space-md)', background: 'var(--success-bg)', border: '1px solid var(--success-border)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)' }}>
+                  <div className="card mt-[var(--space-md)] p-[var(--space-md)] recommendation-card-green">
+                    <div className="flex items-center gap-[var(--space-sm)]">
                       <CheckCircle size={18} color="var(--success)" />
-                      <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--success)' }}>
+                      <div className="text-[0.875rem] font-semibold text-[var(--success)]">
                         Good time to transact - Gas is 25% below average
                       </div>
                     </div>
@@ -194,42 +182,42 @@ const Landing: React.FC = () => {
       </section>
 
       {/* How It Works */}
-      <section id="how-it-works" className="section" style={{ background: 'var(--surface)' }}>
+      <section id="how-it-works" className="section bg-surface">
         <div className="container">
-          <div style={{ textAlign: 'center', marginBottom: 'var(--space-3xl)' }}>
+          <div className="landing-section-header">
             <h2>How It Works</h2>
-            <p style={{ fontSize: '1.25rem', color: 'var(--text-secondary)', maxWidth: '600px', margin: '0 auto', marginTop: 'var(--space-md)' }}>
+            <p className="landing-section-subtitle">
               Machine learning models trained on real Base network data predict optimal transaction times
             </p>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 'var(--space-xl)' }}>
-            <div className="card" style={{ padding: 'var(--space-xl)', textAlign: 'center' }}>
-              <div className="icon-tile" style={{ margin: '0 auto var(--space-md)' }}>
+          <div className="landing-features-grid">
+            <div className="card landing-feature-card">
+              <div className="icon-tile landing-feature-icon">
                 <Activity size={22} />
               </div>
-              <h3 style={{ marginBottom: 'var(--space-md)' }}>1. Real-Time Analysis</h3>
-              <p style={{ color: 'var(--text-secondary)', lineHeight: 1.7 }}>
+              <h3 className="mb-[var(--space-md)]">1. Real-Time Analysis</h3>
+              <p className="text-[var(--text-secondary)] leading-[1.7]">
                 We track Base network activity every minute, measuring congestion, gas prices, and load.
               </p>
             </div>
 
-            <div className="card" style={{ padding: 'var(--space-xl)', textAlign: 'center' }}>
-              <div className="icon-tile" style={{ margin: '0 auto var(--space-md)' }}>
+            <div className="card landing-feature-card">
+              <div className="icon-tile landing-feature-icon">
                 <Brain size={22} />
               </div>
-              <h3 style={{ marginBottom: 'var(--space-md)' }}>2. AI Decisions</h3>
-              <p style={{ color: 'var(--text-secondary)', lineHeight: 1.7 }}>
+              <h3 className="mb-[var(--space-md)]">2. AI Decisions</h3>
+              <p className="text-[var(--text-secondary)] leading-[1.7]">
                 A reinforcement model predicts the right moment to submit, wait, or bid higher.
               </p>
             </div>
 
-            <div className="card" style={{ padding: 'var(--space-xl)', textAlign: 'center' }}>
-              <div className="icon-tile" style={{ margin: '0 auto var(--space-md)' }}>
+            <div className="card landing-feature-card">
+              <div className="icon-tile landing-feature-icon">
                 <Coins size={22} />
               </div>
-              <h3 style={{ marginBottom: 'var(--space-md)' }}>3. Save Money</h3>
-              <p style={{ color: 'var(--text-secondary)', lineHeight: 1.7 }}>
+              <h3 className="mb-[var(--space-md)]">3. Save Money</h3>
+              <p className="text-[var(--text-secondary)] leading-[1.7]">
                 Optimize timing and save up to 40% versus peak-hour submissions.
               </p>
             </div>
@@ -240,14 +228,14 @@ const Landing: React.FC = () => {
       {/* Features Grid - Compact */}
       <section className="section">
         <div className="container">
-          <div style={{ textAlign: 'center', marginBottom: 'var(--space-3xl)' }}>
+          <div className="landing-section-header">
             <h2>Everything You Need</h2>
-            <p style={{ fontSize: '1.25rem', color: 'var(--text-secondary)' }}>
+            <p className="landing-section-subtitle">
               Powerful tools to optimize your Base transactions
             </p>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 'var(--space-lg)' }}>
+          <div className="landing-features-grid gap-[var(--space-lg)]">
             {[
               { icon: Activity, title: 'Signal Lights', desc: 'Instant visual indicator shows if now is a good time to transact.' },
               { icon: Clock, title: 'Best Time Widget', desc: 'See when gas is cheapest today, not just current price.' },
@@ -258,12 +246,12 @@ const Landing: React.FC = () => {
             ].map((feature, i) => {
               const Icon = feature.icon;
               return (
-                <div key={i} className="card" style={{ padding: 'var(--space-lg)' }}>
-                  <div className="icon-tile" style={{ marginBottom: 'var(--space-md)' }}>
+                <div key={i} className="card p-[var(--space-lg)]">
+                  <div className="icon-tile mb-[var(--space-md)]">
                     <Icon size={18} />
                   </div>
-                  <h4 style={{ marginBottom: 'var(--space-sm)' }}>{feature.title}</h4>
-                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', lineHeight: 1.6 }}>{feature.desc}</p>
+                  <h4 className="mb-[var(--space-sm)]">{feature.title}</h4>
+                  <p className="text-[var(--text-secondary)] text-[0.875rem] leading-[1.6]">{feature.desc}</p>
                 </div>
               );
             })}
@@ -272,29 +260,29 @@ const Landing: React.FC = () => {
       </section>
 
       {/* Final CTA */}
-      <section className="section" style={{ background: 'var(--surface)', textAlign: 'center' }}>
-        <div className="container" style={{ maxWidth: '800px' }}>
-          <h2 style={{ marginBottom: 'var(--space-lg)' }}>Stop Overpaying for Gas</h2>
-          <p style={{ fontSize: '1.25rem', color: 'var(--text-secondary)', marginBottom: 'var(--space-2xl)' }}>
+      <section className="section bg-surface text-center">
+        <div className="container max-w-[800px]">
+          <h2 className="mb-[var(--space-lg)]">Stop Overpaying for Gas</h2>
+          <p className="text-[1.25rem] text-[var(--text-secondary)] mb-[var(--space-2xl)]">
             Join thousands of Base users saving money with AI-powered gas predictions
           </p>
-          <Link to="/app" className="btn btn-primary" style={{ padding: '1.25rem 2.5rem', fontSize: '1.25rem' }}>
+          <Link to="/app" className="btn btn-primary btn-lg px-10 py-5 text-[1.25rem]">
             Start Saving Now - It's Free →
           </Link>
-          <p style={{ marginTop: 'var(--space-lg)', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+          <p className="mt-[var(--space-lg)] text-[0.875rem] text-[var(--text-muted)]">
             No wallet connection required • No sign-up • Instant access
           </p>
         </div>
       </section>
 
       {/* Footer */}
-      <footer style={{ padding: 'var(--space-2xl) 0', background: 'var(--bg)', borderTop: '1px solid var(--border)' }}>
+      <footer className="py-[var(--space-2xl)] bg-bg border-t border-[var(--border)]">
         <div className="container">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--space-lg)' }}>
-            <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+          <div className="flex justify-between items-center flex-wrap gap-[var(--space-lg)]">
+            <div className="text-[0.875rem] text-[var(--text-muted)]">
               © 2025 Base Gas Optimiser. Built at Coinbase 2025 Hackathon.
             </div>
-            <div style={{ display: 'flex', gap: 'var(--space-lg)', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+            <div className="flex gap-[var(--space-lg)] text-[0.875rem] text-[var(--text-muted)]">
               <span>Queen Mary University of London</span>
               <span>•</span>
               <span>Powered by Base</span>
