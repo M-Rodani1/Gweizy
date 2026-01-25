@@ -41,7 +41,14 @@ def get_dqn_agent(chain_id: int = 8453):
         return _chain_agents.get(chain_id)
     
     try:
-        from rl.agents.dqn import DQNAgent
+        # Try to use PyTorch agent first (preferred), fallback to numpy
+        try:
+            from rl.agents.dqn_torch import DQNAgent
+            logger.debug("Using PyTorch DQN agent")
+        except (ImportError, ModuleNotFoundError):
+            from rl.agents.dqn import DQNAgent
+            logger.debug("Using numpy DQN agent (PyTorch not available)")
+
         from rl.state import StateBuilder
         
         base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -81,10 +88,11 @@ def get_dqn_agent(chain_id: int = 8453):
                 break
         
         if model_path:
-            state_builder = StateBuilder(history_length=24)
+            state_builder = StateBuilder(history_length=40)
             agent = DQNAgent(
                 state_dim=state_builder.get_state_dim(),
-                action_dim=2
+                action_dim=2,
+                hidden_dims=[64, 64]  # Match training configuration
             )
             agent.load(model_path)
             
@@ -184,8 +192,8 @@ def get_recommendation():
         if agent is not None:
             # Build state for DQN
             from rl.state import StateBuilder, GasState
-            
-            state_builder = StateBuilder(history_length=24)
+
+            state_builder = StateBuilder(history_length=40)
             
             # Calculate volatility and momentum
             if len(price_history) >= 2:

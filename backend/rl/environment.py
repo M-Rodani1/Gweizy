@@ -37,7 +37,7 @@ class GasOptimizationEnv:
         self.max_wait_steps = max_wait_steps
         self.use_enhanced_features = use_enhanced_features
 
-        self.state_builder = StateBuilder(history_length=24, use_enhanced_features=use_enhanced_features)
+        self.state_builder = StateBuilder(history_length=40, use_enhanced_features=use_enhanced_features)
         self.reward_calculator = RewardCalculator(config=reward_config, scale_rewards=scale_rewards)
         
         self.action_space_n = 2  # Wait or Execute
