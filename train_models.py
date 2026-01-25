@@ -966,8 +966,10 @@ def tune_lgbm_classifier(X_train, y_train, horizon_name, n_iter=20):
         'reg_lambda': [0, 0.01, 0.1],
     }
 
+    # Determine number of classes from training data
+    n_classes = len(np.unique(y_train))
     base_model = lgb.LGBMClassifier(
-        objective='multiclass', num_class=3, random_state=42, n_jobs=-1, verbose=-1
+        objective='multiclass', num_class=n_classes, random_state=42, n_jobs=-1, verbose=-1
     )
 
     tscv = TimeSeriesSplit(n_splits=3)
@@ -1413,13 +1415,43 @@ log(f"🎯 PHASE 3: Training 1h Classifier (Action Taker)")
 log(f"{'='*60}")
 
 # Define Target: action_class
-# 0 (Wait): Log-return < -0.05
-# 1 (Normal): -0.05 <= Log-return <= 0.05
-# 2 (Urgent): Log-return > 0.05
+# Choose number of classes based on USE_5_CLASSES environment variable
+USE_5_CLASSES = os.environ.get('USE_5_CLASSES', '0') == '1'
+
 target_log_return_1h = targets[horizon_1h]['target_log_return']
-action_class = pd.Series(1, index=target_log_return_1h.index) # Default Normal
-action_class[target_log_return_1h < -0.05] = 0 # Wait
-action_class[target_log_return_1h > 0.05] = 2 # Urgent
+
+if USE_5_CLASSES:
+    # 5 classes based on percentiles for balanced distribution
+    p20 = target_log_return_1h.quantile(0.20)
+    p40 = target_log_return_1h.quantile(0.40)
+    p60 = target_log_return_1h.quantile(0.60)
+    p80 = target_log_return_1h.quantile(0.80)
+
+    log(f"   📊 Using 5 classes (percentile thresholds)")
+    log(f"      p20={p20:.4f}, p40={p40:.4f}, p60={p60:.4f}, p80={p80:.4f}")
+
+    action_class = pd.Series(2, index=target_log_return_1h.index)
+    action_class[target_log_return_1h <= p20] = 0  # Strong Wait
+    action_class[(target_log_return_1h > p20) & (target_log_return_1h <= p40)] = 1  # Wait
+    action_class[(target_log_return_1h > p40) & (target_log_return_1h <= p60)] = 2  # Hold
+    action_class[(target_log_return_1h > p60) & (target_log_return_1h <= p80)] = 3  # Act Soon
+    action_class[target_log_return_1h > p80] = 4  # Act Now
+
+    CLASS_NAMES_1H = ['Strong Wait', 'Wait', 'Hold', 'Act Soon', 'Act Now']
+    NUM_CLASSES_1H = 5
+else:
+    # 3 classes (default - better accuracy with limited data)
+    # 0 (Wait): Log-return < -0.05 (price will drop)
+    # 1 (Normal): -0.05 <= Log-return <= 0.05 (price stable)
+    # 2 (Urgent): Log-return > 0.05 (price rising)
+    log(f"   📊 Using 3 classes (set USE_5_CLASSES=1 for 5 classes)")
+
+    action_class = pd.Series(1, index=target_log_return_1h.index)  # Default Normal
+    action_class[target_log_return_1h < -0.05] = 0  # Wait
+    action_class[target_log_return_1h > 0.05] = 2  # Urgent
+
+    CLASS_NAMES_1H = ['Wait', 'Normal', 'Urgent']
+    NUM_CLASSES_1H = 3
 
 # Align Data
 valid_idx_1h = ~(X.isna().any(axis=1) | action_class.isna())
@@ -1456,23 +1488,61 @@ if TUNE_HYPERPARAMS:
 else:
     params_1h = DEFAULT_PARAMS_1H
 
-model_1h = lgb.LGBMClassifier(
-    **params_1h,
-    objective='multiclass', num_class=3, metric='multi_logloss',
-    random_state=42, n_jobs=-1, verbose=-1
-)
-model_1h.fit(X_train_1h_scaled, y_train_1h)
+# Only use class balancing for 5-class model (3-class works well without it)
+if NUM_CLASSES_1H == 5:
+    from sklearn.utils.class_weight import compute_class_weight
+    unique_classes_1h = np.unique(y_train_1h)
+    class_weights_1h = compute_class_weight('balanced', classes=unique_classes_1h, y=y_train_1h)
+    class_weight_dict_1h = dict(zip(unique_classes_1h, class_weights_1h))
+    log(f"   📊 Class weights (5-class): {class_weight_dict_1h}")
+    sample_weights_1h = np.array([class_weight_dict_1h[y] for y in y_train_1h])
 
-# Evaluate with Probability Gating
+    model_1h = lgb.LGBMClassifier(
+        **params_1h,
+        objective='multiclass', num_class=NUM_CLASSES_1H, metric='multi_logloss',
+        class_weight='balanced',
+        random_state=42, n_jobs=-1, verbose=-1
+    )
+    model_1h.fit(X_train_1h_scaled, y_train_1h, sample_weight=sample_weights_1h)
+else:
+    # 3-class model without class balancing (works better)
+    model_1h = lgb.LGBMClassifier(
+        **params_1h,
+        objective='multiclass', num_class=NUM_CLASSES_1H, metric='multi_logloss',
+        random_state=42, n_jobs=-1, verbose=-1
+    )
+    model_1h.fit(X_train_1h_scaled, y_train_1h)
+
+# Evaluate with Probability Gating (updated for 5 classes)
 y_proba_1h = model_1h.predict_proba(X_test_1h_scaled)
 
+def apply_gating_5class(probs, threshold=0.5):
+    """
+    Apply probability gating for 5-class predictions.
+    Classes: 0=Strong Wait, 1=Wait, 2=Hold, 3=Act Soon, 4=Act Now
+
+    Strategy:
+    - If high confidence in extreme classes (0 or 4), use them
+    - Otherwise, use argmax
+    """
+    preds = np.argmax(probs, axis=1)  # Default to argmax
+
+    # Override to extreme classes if high confidence
+    strong_wait_mask = probs[:, 0] > threshold
+    act_now_mask = probs[:, 4] > threshold
+
+    # Strong Wait takes precedence (conservative)
+    preds[strong_wait_mask] = 0
+    # Act Now only if not Strong Wait
+    preds[act_now_mask & ~strong_wait_mask] = 4
+
+    return preds
+
+# Legacy function for backward compatibility
 def apply_gating(probs, threshold=0.7):
-    # probs is (n_samples, 3) -> [Wait, Normal, Urgent] (assuming classes 0, 1, 2)
-    # Default to Normal (1)
-    preds = np.ones(len(probs), dtype=int) * 1
-    
-    # If P(Urgent) > threshold -> Urgent (2)
-    # If P(Wait) > threshold -> Wait (0)
+    # For 5-class, map to simplified 3-class view
+    # Combine: Strong Wait + Wait = Wait, Hold = Normal, Act Soon + Act Now = Urgent
+    preds = np.ones(len(probs), dtype=int) * 1  # Default Hold
     # Urgent takes precedence if both high (rare with softmax)
     
     # Check Urgent (Class 2)
@@ -1485,40 +1555,67 @@ def apply_gating(probs, threshold=0.7):
     
     return preds
 
-log(f"\n   🔍 Probability Gating Analysis (Precision vs Recall):")
-best_threshold = 0.7  # Default start
+# Evaluate model based on number of classes
+log(f"\n   🔍 {NUM_CLASSES_1H}-Class Evaluation:")
+
+# Basic argmax predictions
+y_pred_1h_argmax = np.argmax(y_proba_1h, axis=1)
+acc_argmax = accuracy_score(y_test_1h, y_pred_1h_argmax)
+log(f"   📊 Argmax Accuracy: {acc_argmax:.4f}")
+
+# Gated predictions (with threshold)
+log(f"\n   🔍 Probability Gating Analysis:")
+best_threshold = 0.5
 best_score = 0
 
-for threshold in [0.5, 0.6, 0.7, 0.8]:
-    y_pred_gated = apply_gating(y_proba_1h, threshold)
-    
-    # Calculate metrics
-    report = classification_report(y_test_1h, y_pred_gated, output_dict=True, zero_division=0)
-    
-    # Metrics for Class 2 (Urgent) and Class 0 (Wait)
-    urgent_prec = report.get('2', {}).get('precision', 0)
-    urgent_rec = report.get('2', {}).get('recall', 0)
-    wait_prec = report.get('0', {}).get('precision', 0)
-    wait_rec = report.get('0', {}).get('recall', 0)
-    normal_count = (y_pred_gated == 1).sum()
-    
-    log(f"      Threshold {threshold:.1f}: Urgent P={urgent_prec:.2f}/R={urgent_rec:.2f} | Wait P={wait_prec:.2f}/R={wait_rec:.2f} | Normal Preds={normal_count}")
-    
-    # Score: Weighted average of F1s for active classes (Wait/Urgent)
-    current_score = (report.get('2', {}).get('f1-score', 0) + report.get('0', {}).get('f1-score', 0)) / 2
-    if current_score > best_score:
-        best_score = current_score
-        best_threshold = threshold
+if NUM_CLASSES_1H == 5:
+    for threshold in [0.4, 0.5, 0.6, 0.7]:
+        y_pred_gated = apply_gating_5class(y_proba_1h, threshold)
+        acc = accuracy_score(y_test_1h, y_pred_gated)
+        report = classification_report(y_test_1h, y_pred_gated, output_dict=True, zero_division=0)
+
+        sw_prec = report.get('0', {}).get('precision', 0)
+        sw_rec = report.get('0', {}).get('recall', 0)
+        an_prec = report.get('4', {}).get('precision', 0)
+        an_rec = report.get('4', {}).get('recall', 0)
+
+        log(f"      Threshold {threshold:.1f}: StrongWait P={sw_prec:.2f}/R={sw_rec:.2f} | ActNow P={an_prec:.2f}/R={an_rec:.2f} | Acc={acc:.2f}")
+
+        current_score = (report.get('0', {}).get('f1-score', 0) + report.get('4', {}).get('f1-score', 0)) / 2
+        if current_score > best_score:
+            best_score = current_score
+            best_threshold = threshold
+
+    y_pred_1h = apply_gating_5class(y_proba_1h, best_threshold)
+else:
+    # 3-class gating
+    for threshold in [0.5, 0.6, 0.7, 0.8]:
+        y_pred_gated = apply_gating(y_proba_1h, threshold)
+        acc = accuracy_score(y_test_1h, y_pred_gated)
+        report = classification_report(y_test_1h, y_pred_gated, output_dict=True, zero_division=0)
+
+        urgent_prec = report.get('2', {}).get('precision', 0)
+        urgent_rec = report.get('2', {}).get('recall', 0)
+        wait_prec = report.get('0', {}).get('precision', 0)
+        wait_rec = report.get('0', {}).get('recall', 0)
+
+        log(f"      Threshold {threshold:.1f}: Urgent P={urgent_prec:.2f}/R={urgent_rec:.2f} | Wait P={wait_prec:.2f}/R={wait_rec:.2f} | Acc={acc:.2f}")
+
+        current_score = (report.get('2', {}).get('f1-score', 0) + report.get('0', {}).get('f1-score', 0)) / 2
+        if current_score > best_score:
+            best_score = current_score
+            best_threshold = threshold
+
+    y_pred_1h = apply_gating(y_proba_1h, best_threshold)
 
 log(f"   ✨ Selected Inference Threshold: {best_threshold}")
-y_pred_1h = apply_gating(y_proba_1h, best_threshold)
 acc_1h = accuracy_score(y_test_1h, y_pred_1h)
-log(f"   ✅ 1h Final Accuracy: {acc_1h:.4f}")
+log(f"   ✅ 1h Final Accuracy ({NUM_CLASSES_1H}-class): {acc_1h:.4f}")
 
-log(f"\n   📊 Classification Report (Threshold {best_threshold}):")
-print(classification_report(y_test_1h, y_pred_1h, target_names=['Wait', 'Normal', 'Urgent'], zero_division=0))
+log(f"\n   📊 Classification Report ({NUM_CLASSES_1H} Classes):")
+print(classification_report(y_test_1h, y_pred_1h, target_names=CLASS_NAMES_1H, zero_division=0))
 
-log(f"\n   📊 Confusion Matrix:")
+log(f"\n   📊 Confusion Matrix ({NUM_CLASSES_1H} Classes):")
 print(confusion_matrix(y_test_1h, y_pred_1h))
 
 # Save 1h Model
@@ -1527,11 +1624,20 @@ model_data_1h = {
     'feature_names': selected_features_1h,
     'scaler': scaler_1h,
     'trained_at': datetime.now().isoformat(),
-    'model_type': 'hybrid_classifier',
-    'inference_config': {'threshold': best_threshold, 'default_class': 1}
+    'model_type': 'hybrid_classifier_5class',
+    'num_classes': NUM_CLASSES_1H,
+    'class_names': CLASS_NAMES_1H,
+    'inference_config': {
+        'threshold': best_threshold,
+        'default_class': 2  # Hold
+    },
+    'metrics': {
+        'accuracy': float(acc_1h),
+        'class_distribution': y_1h.value_counts().to_dict()
+    }
 }
 joblib.dump(model_data_1h, 'trained_models/model_1h.pkl')
-log(f"   💾 Saved 1h Hybrid Classifier to trained_models/model_1h.pkl")
+log(f"   💾 Saved 1h Hybrid Classifier (5-class) to trained_models/model_1h.pkl")
 
 log(f"\n{'='*60}")
 log("🎉 HYBRID TRAINING COMPLETE!")
