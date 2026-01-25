@@ -64,84 +64,57 @@ log(f"📊 Loaded {len(df):,} raw records (≈2s cadence)")
 log(f"📅 Raw date range: {df['timestamp'].min()} to {df['timestamp'].max()}")
 log(f"⛽ Raw gas price range: {df['gas_price'].min():.6f} to {df['gas_price'].max():.6f} gwei")
 
-# Load mempool_stats data and join with gas_prices
-log("\n📡 Loading mempool_stats data...")
+# Load block_stats data (from mempool worker) and join with gas_prices
+log("\n📡 Loading block_stats data (from mempool worker)...")
 try:
-    mempool_query = """
-    SELECT timestamp, tx_count
-    FROM mempool_stats
+    block_stats_query = """
+    SELECT timestamp, block_number as block_num_stats, gas_used as gas_used_stats,
+           gas_limit as gas_limit_stats, utilization as util_stats, base_fee as base_fee_stats
+    FROM block_stats
     ORDER BY timestamp ASC
     """
-    df_mempool = pd.read_sql(mempool_query, engine)
-    
-    if len(df_mempool) > 0:
-        df_mempool['timestamp'] = pd.to_datetime(df_mempool['timestamp'])
-        log(f"   ✅ Loaded {len(df_mempool):,} mempool_stats records")
-        log(f"   📅 Mempool date range: {df_mempool['timestamp'].min()} to {df_mempool['timestamp'].max()}")
-        
+    df_block_stats = pd.read_sql(block_stats_query, engine)
+
+    if len(df_block_stats) > 0:
+        df_block_stats['timestamp'] = pd.to_datetime(df_block_stats['timestamp'])
+        log(f"   ✅ Loaded {len(df_block_stats):,} block_stats records")
+        log(f"   📅 Block stats date range: {df_block_stats['timestamp'].min()} to {df_block_stats['timestamp'].max()}")
+
         # Convert gas_prices timestamp to datetime for joining
         df['timestamp'] = pd.to_datetime(df['timestamp'])
-        
-        # Left join mempool_stats with gas_prices on timestamp
-        # Use merge_asof for nearest timestamp matching (since timestamps may not align exactly)
+
+        # Left join block_stats with gas_prices on timestamp
         df = pd.merge_asof(
             df.sort_values('timestamp'),
-            df_mempool.sort_values('timestamp'),
+            df_block_stats.sort_values('timestamp'),
             on='timestamp',
             direction='nearest',
-            tolerance=pd.Timedelta(seconds=5),  # Match within 5 seconds
-            suffixes=('', '_mempool')
+            tolerance=pd.Timedelta(seconds=5),
+            suffixes=('', '_block')
         )
-        
-        log(f"   ✅ Joined mempool data: {df['tx_count'].notna().sum():,} rows have mempool data")
-        log(f"   📊 Mempool coverage: {df['tx_count'].notna().sum() / len(df) * 100:.1f}%")
-        
-        # Fill missing mempool data with 0 (for rows without mempool data)
-        df['tx_count'] = df['tx_count'].fillna(0)
-    else:
-        log(f"   ⚠️  No mempool_stats data found - mempool features will be zero")
-        df['tx_count'] = 0
-except Exception as e:
-    log(f"   ⚠️  Error loading mempool_stats: {e} - mempool features will be zero")
-    df['tx_count'] = 0
 
-# -------------------------------------------
-# Load Mempool Stats (Leading Indicators)
-# -------------------------------------------
-log("\n📡 Loading mempool statistics (leading indicators)...")
-try:
-    mempool_query = """
-    SELECT timestamp, tx_count
-    FROM mempool_stats
-    ORDER BY timestamp ASC
-    """
-    df_mempool = pd.read_sql(mempool_query, engine)
-    
-    if len(df_mempool) > 0:
-        df_mempool['timestamp'] = pd.to_datetime(df_mempool['timestamp'])
-        log(f"   ✅ Loaded {len(df_mempool):,} mempool records")
-        log(f"   📅 Mempool date range: {df_mempool['timestamp'].min()} to {df_mempool['timestamp'].max()}")
-        
-        # Merge with gas_prices using nearest timestamp (forward fill)
-        # Convert timestamps to datetime if not already
-        df['timestamp'] = pd.to_datetime(df['timestamp'])
-        
-        # Merge using merge_asof for nearest timestamp matching (forward fill)
-        df = pd.merge_asof(
-            df.sort_values('timestamp'),
-            df_mempool.sort_values('timestamp'),
-            on='timestamp',
-            direction='forward',  # Forward fill - use next available mempool data
-            suffixes=('', '_mempool')
-        )
-        
-        log(f"   ✅ Merged mempool data: {df['tx_count'].notna().sum():,} records have mempool data")
+        log(f"   ✅ Joined block stats: {df['util_stats'].notna().sum():,} rows have block data")
+        log(f"   📊 Block stats coverage: {df['util_stats'].notna().sum() / len(df) * 100:.1f}%")
+
+        # Fill missing data
+        df['util_stats'] = df['util_stats'].fillna(0)
+        df['base_fee_stats'] = df['base_fee_stats'].fillna(df['base_fee'] if 'base_fee' in df.columns else 0)
+
+        # Create tx_count proxy from gas_used (higher gas used = more transactions)
+        df['tx_count'] = df['gas_used_stats'].fillna(0) / 21000  # Approximate tx count (21000 gas per simple tx)
     else:
-        log(f"   ⚠️  No mempool data found (table may be empty - mempool worker may not be running)")
-        df['tx_count'] = None
+        log(f"   ⚠️  No block_stats data found - block features will be zero")
+        df['tx_count'] = 0
+        df['util_stats'] = 0
+        df['base_fee_stats'] = 0
 except Exception as e:
-    log(f"   ⚠️  Failed to load mempool stats: {e}")
-    log(f"   ⚠️  Continuing without mempool features (mempool_stats table may not exist yet)")
+    log(f"   ⚠️  Error loading block_stats: {e} - block features will be zero")
+    df['tx_count'] = 0
+    df['util_stats'] = 0
+    df['base_fee_stats'] = 0
+
+# Note: tx_count is now derived from block_stats (gas_used / 21000) above
+# The mempool_stats table is deprecated in favor of block_stats from the mempool worker
     df['tx_count'] = None
 
 # -------------------------------------------
