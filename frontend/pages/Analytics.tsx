@@ -1,7 +1,6 @@
 import React, { lazy, Suspense, useState, useEffect } from 'react';
 import { Brain, Calendar, ClipboardList, Sparkles, Target, TrendingUp, Activity, Grid3X3 } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import StickyHeader from '../src/components/StickyHeader';
 import AccuracyMetricsCard from '../src/components/AccuracyMetricsCard';
 import FeatureImportanceChart from '../src/components/FeatureImportanceChart';
 import AccuracyHistoryChart from '../src/components/AccuracyHistoryChart';
@@ -13,6 +12,7 @@ import { useChain } from '../src/contexts/ChainContext';
 import { useEthPrice } from '../src/hooks/useEthPrice';
 import { fetchHybridPrediction } from '../src/api/gasApi';
 import { HybridPrediction } from '../types';
+import AppShell from '../src/components/layout/AppShell';
 
 // Lazy load analytics components
 const GasPriceGraph = lazy(() => import('../src/components/GasPriceGraph'));
@@ -47,10 +47,8 @@ const Analytics: React.FC = () => {
   }, []);
 
   return (
-    <div className="min-h-screen app-shell">
-      <StickyHeader apiStatus="online" currentGas={currentGas} />
-
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <AppShell activePath="/analytics">
+      <div className="max-w-7xl mx-auto py-2">
         {/* Page Header */}
         <div className="mb-8">
           <div className="flex items-center gap-2 text-sm text-gray-500 mb-2">
@@ -200,7 +198,7 @@ const Analytics: React.FC = () => {
           </div>
         </footer>
       </div>
-    </div>
+    </AppShell>
   );
 };
 

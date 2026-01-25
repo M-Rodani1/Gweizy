@@ -10,6 +10,7 @@ import ExecuteTransactionModal from './ExecuteTransactionModal';
 import ConfidenceRing from './ui/ConfidenceRing';
 import { formatGwei, formatUsd } from '../utils/formatNumber';
 import { usePreferences } from '../contexts/PreferencesContext';
+import { useWalletAddress } from '../hooks/useWalletAddress';
 
 interface AgentRecommendation {
   action: string;
@@ -37,6 +38,7 @@ const TransactionPilot: React.FC<TransactionPilotProps> = ({ ethPrice = 3000 }) 
   const { selectedChain, multiChainGas, bestChainForTx, setSelectedChainId } = useChain();
   const { pendingCount, readyCount } = useScheduler();
   const { preferences, updatePreferences } = usePreferences();
+  const walletAddress = useWalletAddress();
   const [selectedTxType, setSelectedTxType] = useState<TransactionType>(preferences.defaultTxType);
   const [urgency, setUrgency] = useState(preferences.urgency);
   const [recommendation, setRecommendation] = useState<AgentRecommendation | null>(null);
@@ -261,8 +263,49 @@ const TransactionPilot: React.FC<TransactionPilotProps> = ({ ethPrice = 3000 }) 
     }
   };
 
+  if (!walletAddress) {
+    return (
+      <div
+        className="bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 rounded-2xl border border-gray-700/50 p-6 card-interactive focus-card"
+        role="article"
+        aria-label="Transaction pilot onboarding"
+        tabIndex={0}
+      >
+        <div className="flex items-center gap-3 mb-3">
+          <div className="w-10 h-10 rounded-xl bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center">
+            <Bot className="w-5 h-5 text-cyan-300" />
+          </div>
+          <div>
+            <h2 className="text-lg font-bold text-white">AI Transaction Pilot</h2>
+            <p className="text-xs text-gray-400">Connect your wallet to get personalized actions</p>
+          </div>
+        </div>
+        <div className="bg-black/30 border border-gray-700/60 rounded-xl p-4 mb-4">
+          <ul className="space-y-2 text-sm text-gray-200">
+            <li>• Get live recommendations for your next transaction</li>
+            <li>• Auto-fill gas targets and scheduling options</li>
+            <li>• Sync preferences across devices</li>
+          </ul>
+        </div>
+        <div className="flex flex-wrap gap-3">
+          <a href="/docs#connect-wallet" className="btn btn-secondary text-sm">
+            Learn how to connect
+          </a>
+          <span className="text-xs text-gray-400 flex items-center gap-1">
+            Tip: Use the top-right wallet button to link your account
+          </span>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 rounded-2xl border border-gray-700/50 card-interactive">
+    <div
+      className="bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 rounded-2xl border border-gray-700/50 card-interactive focus-card"
+      role="article"
+      aria-label="AI transaction pilot"
+      tabIndex={0}
+    >
       {/* Chain Switch Toast - Improvement #18 */}
       {showChainToast && bestChainForTx && (
         <div className="absolute top-4 right-4 z-50 animate-slide-up">
@@ -312,6 +355,12 @@ const TransactionPilot: React.FC<TransactionPilotProps> = ({ ethPrice = 3000 }) 
           <div className="text-lg font-mono font-bold text-cyan-400">
             {formatGwei(currentGas)} gwei
           </div>
+          <a
+            href="/docs#transaction-pilot"
+            className="text-[11px] text-cyan-300 hover:text-cyan-100 underline decoration-dotted"
+          >
+            Learn more
+          </a>
         </div>
       </div>
 

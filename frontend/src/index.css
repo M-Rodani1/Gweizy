@@ -210,6 +210,12 @@ textarea:focus-visible {
   outline: none;
 }
 
+.focus-card:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+  box-shadow: 0 0 0 4px rgba(6, 182, 212, 0.25);
+}
+
 /* Screen reader only - visually hidden but accessible */
 .sr-only {
   position: absolute;

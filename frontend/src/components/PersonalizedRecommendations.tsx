@@ -54,8 +54,32 @@ const PersonalizedRecommendations: React.FC<PersonalizedRecommendationsProps> = 
 
   if (!walletAddress) {
     return (
-      <div className="bg-gray-800 rounded-lg p-6">
-        <p className="text-gray-400 text-center">Connect your wallet to see personalized recommendations</p>
+      <div
+        className="bg-gradient-to-br from-blue-900/30 to-purple-900/30 border border-blue-500/30 rounded-2xl p-6 h-full flex flex-col justify-between shadow-xl focus-card"
+        role="article"
+        aria-label="Personalized recommendations onboarding"
+        tabIndex={0}
+      >
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <Target className="w-5 h-5 text-blue-300" />
+            <h2 className="text-lg font-semibold text-white">Personalized Recommendations</h2>
+          </div>
+          <p className="text-sm text-gray-300">
+            Connect your wallet to unlock timing tips based on your on-chain history.
+          </p>
+          <ul className="text-xs text-gray-400 space-y-1">
+            <li>• Best hour to transact today</li>
+            <li>• Typical gas you pay vs. market</li>
+            <li>• Savings estimate for your wallet</li>
+          </ul>
+        </div>
+        <div className="flex items-center justify-between pt-4">
+          <a href="/docs#personalization" className="text-sm text-cyan-300 hover:text-cyan-100 underline decoration-dotted">
+            Learn more
+          </a>
+          <span className="text-xs text-gray-400">Use the header wallet button to connect</span>
+        </div>
       </div>
     );
   }
@@ -83,7 +107,12 @@ const PersonalizedRecommendations: React.FC<PersonalizedRecommendationsProps> = 
   const { recommended_time, hours_until_best, confidence, reason, potential_savings, patterns } = recommendations;
 
   return (
-    <div className="bg-gradient-to-br from-blue-900/20 to-purple-900/20 border border-blue-500/30 rounded-2xl p-6 h-full flex flex-col shadow-xl widget-glow-purple w-full max-w-full overflow-y-auto">
+    <div
+      className="bg-gradient-to-br from-blue-900/20 to-purple-900/20 border border-blue-500/30 rounded-2xl p-6 h-full flex flex-col shadow-xl widget-glow-purple w-full max-w-full overflow-y-auto focus-card"
+      role="article"
+      aria-label="Personalized recommendations"
+      tabIndex={0}
+    >
       <div className="flex items-center justify-between mb-5 min-w-0">
         <div className="flex items-center gap-3 min-w-0 flex-1">
           <Target className="w-6 h-6 text-blue-400 flex-shrink-0" />
@@ -181,4 +210,3 @@ const PersonalizedRecommendations: React.FC<PersonalizedRecommendationsProps> = 
 };
 
 export default PersonalizedRecommendations;
-

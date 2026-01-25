@@ -9,6 +9,7 @@ const Dashboard = lazy(() => import(/* webpackChunkName: "dashboard" */ './pages
 const Docs = lazy(() => import(/* webpackChunkName: "docs" */ './pages/Docs'));
 const Pricing = lazy(() => import(/* webpackChunkName: "pricing" */ './pages/Pricing'));
 const Analytics = lazy(() => import(/* webpackChunkName: "analytics" */ './pages/Analytics'));
+const SystemStatus = lazy(() => import(/* webpackChunkName: "system" */ './pages/SystemStatus'));
 const Terms = lazy(() => import('./pages/legal/Terms'));
 const Privacy = lazy(() => import('./pages/legal/Privacy'));
 const About = lazy(() => import('./pages/legal/About'));
@@ -44,6 +45,7 @@ function App() {
               <Route path="/" element={<Landing />} />
               <Route path="/app" element={<Dashboard />} />
               <Route path="/analytics" element={<Analytics />} />
+              <Route path="/system" element={<SystemStatus />} />
               <Route path="/docs" element={<Docs />} />
               <Route path="/pricing" element={<Pricing />} />
               <Route path="/terms" element={<Terms />} />

@@ -212,8 +212,43 @@ const GasAlertSettings: React.FC<GasAlertSettingsProps> = ({ currentGas, walletA
     });
   };
 
+  if (!walletAddress) {
+    return (
+      <div
+        className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-sm border border-slate-700 rounded-xl p-6 shadow-xl focus-card"
+        role="article"
+        aria-label="Gas alerts onboarding"
+        tabIndex={0}
+      >
+        <div className="flex items-center gap-3 mb-3">
+          <div className="p-2 bg-blue-500/20 rounded-lg">
+            <Bell className="w-5 h-5 text-blue-400" />
+          </div>
+          <div>
+            <h3 className="text-lg font-bold text-white">Gas Price Alerts</h3>
+            <p className="text-xs text-gray-400">Connect your wallet to save and sync alerts</p>
+          </div>
+        </div>
+        <p className="text-sm text-gray-300 mb-3">
+          We’ll send pings when gas crosses your thresholds. Alerts stay linked to your address.
+        </p>
+        <div className="flex items-center justify-between text-xs text-gray-400">
+          <a href="/docs#alerts" className="text-cyan-300 hover:text-cyan-100 underline decoration-dotted">
+            Learn how alerts work
+          </a>
+          <span>Use the header wallet button to connect</span>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-sm border border-slate-700 rounded-xl p-6 shadow-xl">
+    <div
+      className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-sm border border-slate-700 rounded-xl p-6 shadow-xl focus-card"
+      role="article"
+      aria-label="Gas price alerts"
+      tabIndex={0}
+    >
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
@@ -225,6 +260,12 @@ const GasAlertSettings: React.FC<GasAlertSettingsProps> = ({ currentGas, walletA
             <p className="text-xs text-gray-400">Get notified when gas reaches your target</p>
           </div>
         </div>
+        <a
+          href="/docs#alerts"
+          className="text-xs text-cyan-300 hover:text-cyan-100 underline decoration-dotted mr-3"
+        >
+          Learn more
+        </a>
         <button
           onClick={() => setShowCreateForm(!showCreateForm)}
           className="px-4 py-2 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
