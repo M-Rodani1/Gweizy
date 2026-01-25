@@ -1074,17 +1074,51 @@ else:
         )
         model_24h.fit(X_train_val_24h_scaled, y_train_val_24h)
 
+        # Train quantile models for uncertainty estimation (10th and 90th percentiles)
+        log(f"   📊 Training quantile models for prediction intervals...")
+        quantile_params = {k: v for k, v in params_24h.items() if k not in ['objective', 'alpha']}
+
+        model_24h_q10 = lgb.LGBMRegressor(
+            **quantile_params,
+            objective='quantile', alpha=0.10, random_state=42, n_jobs=-1, verbose=-1
+        )
+        model_24h_q10.fit(X_train_val_24h_scaled, y_train_val_24h)
+
+        model_24h_q90 = lgb.LGBMRegressor(
+            **quantile_params,
+            objective='quantile', alpha=0.90, random_state=42, n_jobs=-1, verbose=-1
+        )
+        model_24h_q90.fit(X_train_val_24h_scaled, y_train_val_24h)
+
         # Evaluate 24h
         y_pred_24h_vol = model_24h.predict(X_test_24h_scaled)
-        mae_24h = np.mean(np.abs(y_pred_24h_vol - y_test_24h))
-        log(f"   📊 24h Test MAE (volatility-scaled): {mae_24h:.4f}")
+        y_pred_24h_q10 = model_24h_q10.predict(X_test_24h_scaled)
+        y_pred_24h_q90 = model_24h_q90.predict(X_test_24h_scaled)
 
-        # Save 24h Model
+        mae_24h = np.mean(np.abs(y_pred_24h_vol - y_test_24h))
+        # Calculate prediction interval coverage (should be ~80%)
+        coverage_24h = np.mean((y_test_24h >= y_pred_24h_q10) & (y_test_24h <= y_pred_24h_q90))
+        avg_interval_24h = np.mean(y_pred_24h_q90 - y_pred_24h_q10)
+
+        log(f"   📊 24h Test MAE (volatility-scaled): {mae_24h:.4f}")
+        log(f"   📊 24h Prediction Interval Coverage: {coverage_24h:.1%} (target: 80%)")
+        log(f"   📊 24h Average Interval Width: {avg_interval_24h:.4f}")
+
+        # Save 24h Model with quantile models
         model_data_24h = {
             'regressor': model_24h,
+            'quantile_models': {
+                'q10': model_24h_q10,
+                'q90': model_24h_q90
+            },
             'feature_names': selected_features_24h,
             'scaler': scaler_24h,
-            'trained_at': datetime.now().isoformat()
+            'trained_at': datetime.now().isoformat(),
+            'metrics': {
+                'mae': float(mae_24h),
+                'interval_coverage': float(coverage_24h),
+                'avg_interval_width': float(avg_interval_24h)
+            }
         }
         joblib.dump(model_data_24h, 'trained_models/model_24h.pkl')
         log(f"   💾 Saved 24h model to trained_models/model_24h.pkl")
@@ -1225,18 +1259,51 @@ else:
         objective='huber', alpha=0.95, random_state=42, n_jobs=-1, verbose=-1
     )
     model_4h.fit(X_train_val_4h_scaled, y_train_val_4h)
-    
+
+    # Train quantile models for uncertainty estimation
+    log(f"   📊 Training quantile models for prediction intervals...")
+    quantile_params_4h = {k: v for k, v in params_4h.items() if k not in ['objective', 'alpha']}
+
+    model_4h_q10 = lgb.LGBMRegressor(
+        **quantile_params_4h,
+        objective='quantile', alpha=0.10, random_state=42, n_jobs=-1, verbose=-1
+    )
+    model_4h_q10.fit(X_train_val_4h_scaled, y_train_val_4h)
+
+    model_4h_q90 = lgb.LGBMRegressor(
+        **quantile_params_4h,
+        objective='quantile', alpha=0.90, random_state=42, n_jobs=-1, verbose=-1
+    )
+    model_4h_q90.fit(X_train_val_4h_scaled, y_train_val_4h)
+
     # Evaluate 4h
     y_pred_4h_vol = model_4h.predict(X_test_4h_scaled)
-    # Reconstruct prices (simplified for quick check)
-    # Note: Full reconstruction requires rolling stats, skipping for brevity in Phase 1 log
-    
-    # Save 4h Model
+    y_pred_4h_q10 = model_4h_q10.predict(X_test_4h_scaled)
+    y_pred_4h_q90 = model_4h_q90.predict(X_test_4h_scaled)
+
+    mae_4h = np.mean(np.abs(y_pred_4h_vol - y_test_4h))
+    coverage_4h = np.mean((y_test_4h >= y_pred_4h_q10) & (y_test_4h <= y_pred_4h_q90))
+    avg_interval_4h = np.mean(y_pred_4h_q90 - y_pred_4h_q10)
+
+    log(f"   📊 4h Test MAE (volatility-scaled): {mae_4h:.4f}")
+    log(f"   📊 4h Prediction Interval Coverage: {coverage_4h:.1%} (target: 80%)")
+    log(f"   📊 4h Average Interval Width: {avg_interval_4h:.4f}")
+
+    # Save 4h Model with quantile models
     model_data_4h = {
         'regressor': model_4h,
+        'quantile_models': {
+            'q10': model_4h_q10,
+            'q90': model_4h_q90
+        },
         'feature_names': selected_features_4h,
         'scaler': scaler_4h,
-        'trained_at': datetime.now().isoformat()
+        'trained_at': datetime.now().isoformat(),
+        'metrics': {
+            'mae': float(mae_4h),
+            'interval_coverage': float(coverage_4h),
+            'avg_interval_width': float(avg_interval_4h)
+        }
     }
     joblib.dump(model_data_4h, 'trained_models/model_4h.pkl')
     log(f"   💾 Saved 4h model to trained_models/model_4h.pkl")
