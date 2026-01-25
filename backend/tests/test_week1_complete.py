@@ -208,7 +208,7 @@ def main():
     print("  6. End-to-end integration")
     
     # Run existing tests
-    from testing.test_week1_improvements import (
+    from tests.test_week1_improvements import (
         test_1_minute_sampling,
         test_enhanced_features,
         test_robust_scaler

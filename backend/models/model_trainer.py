@@ -120,19 +120,20 @@ class GasModelTrainer:
             self.scalers[horizon] = scaler
             
             print(f"✅ Features scaled with RobustScaler (robust to outliers)")
+            horizon_params = self._get_horizon_hyperparams(horizon)
             
             # Week 1 Quick Win #4: Time-series cross-validation for model evaluation
             print(f"📊 Running time-series cross-validation...")
-            cv_scores = self._time_series_cross_validate(X_train, y_train)
+            cv_scores = self._time_series_cross_validate(X_train, y_train, horizon=horizon)
             print(f"   CV R² scores: {cv_scores['r2_mean']:.4f} ± {cv_scores['r2_std']:.4f}")
             
             # Train multiple model types (on scaled features)
-            models = self._train_model_variants(X_train_scaled, y_train, X_test_scaled, y_test)
+            models = self._train_model_variants(X_train_scaled, y_train, X_test_scaled, y_test, horizon=horizon)
             
             # Week 1 Quick Win #5: Train stacking ensemble
             print("\n📊 Training Stacking Ensemble...")
             from models.stacking_ensemble import StackingEnsemble
-            stacking = StackingEnsemble()
+            stacking = StackingEnsemble(base_model_params=horizon_params.get('stacking'))
             stacking.train(X_train_scaled, y_train, X_test_scaled, y_test)
             
             # Evaluate stacking ensemble
@@ -169,19 +170,59 @@ class GasModelTrainer:
         
         return results
     
-    def _train_model_variants(self, X_train, y_train, X_test, y_test):
+    def _get_horizon_hyperparams(self, horizon):
+        """Return horizon-specific hyperparameters for tree-based models."""
+        configs = {
+            '1h': {
+                'random_forest': {'n_estimators': 200, 'max_depth': 10},
+                'gradient_boosting': {'n_estimators': 180, 'max_depth': 3},
+                'lightgbm': {'n_estimators': 300, 'max_depth': 6, 'num_leaves': 31},
+                'xgboost': {'n_estimators': 280, 'max_depth': 6},
+                'stacking': {
+                    'random_forest': {'n_estimators': 200, 'max_depth': 10},
+                    'gradient_boosting': {'n_estimators': 180, 'max_depth': 3},
+                },
+                'cv_random_forest': {'n_estimators': 60, 'max_depth': 8},
+            },
+            '4h': {
+                'random_forest': {'n_estimators': 100, 'max_depth': 15},
+                'gradient_boosting': {'n_estimators': 100, 'max_depth': 5},
+                'lightgbm': {'n_estimators': 200, 'max_depth': 10, 'num_leaves': 31},
+                'xgboost': {'n_estimators': 200, 'max_depth': 10},
+                'stacking': {
+                    'random_forest': {'n_estimators': 100, 'max_depth': 15},
+                    'gradient_boosting': {'n_estimators': 100, 'max_depth': 5},
+                },
+                'cv_random_forest': {'n_estimators': 50, 'max_depth': 10},
+            },
+            '24h': {
+                'random_forest': {'n_estimators': 80, 'max_depth': 20},
+                'gradient_boosting': {'n_estimators': 80, 'max_depth': 6},
+                'lightgbm': {'n_estimators': 120, 'max_depth': 14, 'num_leaves': 63},
+                'xgboost': {'n_estimators': 120, 'max_depth': 14},
+                'stacking': {
+                    'random_forest': {'n_estimators': 80, 'max_depth': 20},
+                    'gradient_boosting': {'n_estimators': 80, 'max_depth': 6},
+                },
+                'cv_random_forest': {'n_estimators': 40, 'max_depth': 12},
+            },
+        }
+        return configs.get(horizon, configs['4h'])
+
+    def _train_model_variants(self, X_train, y_train, X_test, y_test, horizon='4h'):
         """
         Train multiple model architectures
         
         Note: X_train and X_test are already scaled with RobustScaler
         """
         models = []
+        horizon_params = self._get_horizon_hyperparams(horizon)
         
         # 1. Random Forest
         print("\n📊 Training Random Forest...")
         rf = RandomForestRegressor(
-            n_estimators=100,
-            max_depth=15,
+            n_estimators=horizon_params['random_forest']['n_estimators'],
+            max_depth=horizon_params['random_forest']['max_depth'],
             min_samples_split=5,
             min_samples_leaf=2,
             random_state=42,
@@ -197,8 +238,8 @@ class GasModelTrainer:
         # 2. Gradient Boosting
         print("📊 Training Gradient Boosting...")
         gb = GradientBoostingRegressor(
-            n_estimators=100,
-            max_depth=5,
+            n_estimators=horizon_params['gradient_boosting']['n_estimators'],
+            max_depth=horizon_params['gradient_boosting']['max_depth'],
             learning_rate=0.1,
             random_state=42
         )
@@ -224,10 +265,10 @@ class GasModelTrainer:
             print("📊 Training LightGBM...")
             import lightgbm as lgb
             lgbm = lgb.LGBMRegressor(
-                n_estimators=200,
-                max_depth=10,
+                n_estimators=horizon_params['lightgbm']['n_estimators'],
+                max_depth=horizon_params['lightgbm']['max_depth'],
                 learning_rate=0.05,
-                num_leaves=31,
+                num_leaves=horizon_params['lightgbm']['num_leaves'],
                 min_child_samples=20,
                 subsample=0.8,
                 colsample_bytree=0.8,
@@ -255,8 +296,8 @@ class GasModelTrainer:
             print("📊 Training XGBoost...")
             import xgboost as xgb
             xgb_model = xgb.XGBRegressor(
-                n_estimators=200,
-                max_depth=10,
+                n_estimators=horizon_params['xgboost']['n_estimators'],
+                max_depth=horizon_params['xgboost']['max_depth'],
                 learning_rate=0.05,
                 min_child_weight=3,
                 subsample=0.8,
@@ -305,7 +346,7 @@ class GasModelTrainer:
             'directional_accuracy': directional_accuracy
         }
     
-    def _time_series_cross_validate(self, X, y, n_splits=5):
+    def _time_series_cross_validate(self, X, y, horizon='4h', n_splits=5):
         """
         Week 1 Quick Win #4: Time-series cross-validation
         
@@ -321,13 +362,15 @@ class GasModelTrainer:
             Dictionary with mean and std of CV scores
         """
         tscv = TimeSeriesSplit(n_splits=n_splits)
+        horizon_params = self._get_horizon_hyperparams(horizon)
+        cv_params = horizon_params.get('cv_random_forest', {'n_estimators': 50, 'max_depth': 10})
         
         # Test with a simple model to get CV scores
         pipeline = Pipeline([
             ('scaler', RobustScaler()),
             ('model', RandomForestRegressor(
-                n_estimators=50,  # Smaller for faster CV
-                max_depth=10,
+                n_estimators=cv_params['n_estimators'],  # Smaller for faster CV
+                max_depth=cv_params['max_depth'],
                 random_state=42,
                 n_jobs=-1
             ))

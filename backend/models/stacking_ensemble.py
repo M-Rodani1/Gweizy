@@ -30,25 +30,31 @@ class StackingEnsemble:
     2. Meta-learner (Ridge) learns to combine base model predictions optimally
     """
     
-    def __init__(self):
+    def __init__(self, base_model_params=None):
+        base_model_params = base_model_params or {}
+        rf_params = base_model_params.get('random_forest', {})
+        gb_params = base_model_params.get('gradient_boosting', {})
+        ridge_params = base_model_params.get('ridge', {})
+        meta_params = base_model_params.get('meta_learner', {})
+
         self.base_models = {
             'random_forest': RandomForestRegressor(
-                n_estimators=100,
-                max_depth=15,
-                min_samples_split=5,
-                min_samples_leaf=2,
+                n_estimators=rf_params.get('n_estimators', 100),
+                max_depth=rf_params.get('max_depth', 15),
+                min_samples_split=rf_params.get('min_samples_split', 5),
+                min_samples_leaf=rf_params.get('min_samples_leaf', 2),
                 random_state=42,
                 n_jobs=-1
             ),
             'gradient_boosting': GradientBoostingRegressor(
-                n_estimators=100,
-                max_depth=5,
-                learning_rate=0.1,
+                n_estimators=gb_params.get('n_estimators', 100),
+                max_depth=gb_params.get('max_depth', 5),
+                learning_rate=gb_params.get('learning_rate', 0.1),
                 random_state=42
             ),
-            'ridge': Ridge(alpha=1.0, random_state=42)
+            'ridge': Ridge(alpha=ridge_params.get('alpha', 1.0), random_state=42)
         }
-        self.meta_learner = Ridge(alpha=0.1, random_state=42)
+        self.meta_learner = Ridge(alpha=meta_params.get('alpha', 0.1), random_state=42)
         self.scaler = RobustScaler()
         self.trained = False
         self.meta_scaler = RobustScaler()  # For meta-features

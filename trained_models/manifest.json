@@ -1,0 +1,74 @@
+{
+  "version": "20260125_011800_e6b6157e619b",
+  "training_timestamp": "2026-01-25T01:18:00.078427",
+  "data_info": {
+    "samples": 3910,
+    "date_range": {
+      "start": "2026-01-21 04:41:00",
+      "end": "2026-01-25 01:17:00"
+    },
+    "data_hash": "e6b6157e619b",
+    "features_count": 183
+  },
+  "config": {
+    "embargo_gap": 24,
+    "hyperparameter_tuning": false,
+    "tuning_iterations": 0,
+    "adaptive_thresholds": {
+      "normal": 0.0137065,
+      "elevated": 0.0735858
+    }
+  },
+  "models": {
+    "24h_regressor": {
+      "filename": "model_24h.pkl",
+      "size_bytes": 1693866,
+      "size_mb": 1.62
+    },
+    "4h_regressor": {
+      "filename": "model_4h.pkl",
+      "size_bytes": 528378,
+      "size_mb": 0.5
+    },
+    "1h_classifier": {
+      "filename": "model_1h.pkl",
+      "size_bytes": 1234262,
+      "size_mb": 1.18
+    },
+    "spike_1h": {
+      "filename": "spike_detector_1h.pkl",
+      "size_bytes": 4530069,
+      "size_mb": 4.32
+    },
+    "spike_4h": {
+      "filename": "spike_detector_4h.pkl",
+      "size_bytes": 4565797,
+      "size_mb": 4.35
+    },
+    "spike_24h": {
+      "filename": "spike_detector_24h.pkl",
+      "size_bytes": 4063059,
+      "size_mb": 3.87
+    }
+  },
+  "spike_detector_metrics": {
+    "1h": {
+      "accuracy_val": 0.4868073878627968,
+      "accuracy_test": 0.535064935064935,
+      "f1_score_val": 0.5086685367974683,
+      "f1_score_test": 0.5348548471306098
+    },
+    "4h": {
+      "accuracy_val": 0.5096952908587258,
+      "accuracy_test": 0.47275204359673023,
+      "f1_score_val": 0.5170990106033193,
+      "f1_score_test": 0.4898145696179033
+    },
+    "24h": {
+      "accuracy_val": 0.23029045643153526,
+      "accuracy_test": 0.3117408906882591,
+      "f1_score_val": 0.29519530482463285,
+      "f1_score_test": 0.36527829327151135
+    }
+  }
+}
