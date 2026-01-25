@@ -46,7 +46,7 @@ def _looks_like_torch_pickle(path: str) -> bool:
     """Heuristic for legacy torch pickles (non-zip)."""
     try:
         with open(path, 'rb') as f:
-            head = f.read(2048)
+            head = f.read(8192)
         return b'torch' in head or b'PYTORCH' in head
     except Exception:
         return False
@@ -136,45 +136,44 @@ def get_dqn_agent(chain_id: int = 8453):
 
             for model_path in existing_paths:
                 is_torch = _is_torch_checkpoint(model_path) or _looks_like_torch_pickle(model_path)
-                if is_torch and not TORCH_AVAILABLE:
-                    logger.warning(
-                        f"Found PyTorch checkpoint at {model_path} but torch is not available. Skipping."
-                    )
-                    continue
+
+                # Decide loader order to avoid numpy touching torch artifacts.
+                loader_order = []
+                if is_torch:
+                    if TORCH_AVAILABLE:
+                        loader_order = ['torch']
+                    else:
+                        logger.warning(
+                            f"Found PyTorch checkpoint at {model_path} but torch is not available. Skipping."
+                        )
+                        continue
+                else:
+                    loader_order = ['torch', 'numpy'] if TORCH_AVAILABLE else ['numpy']
 
                 try:
                     agent = None
-                    if TORCH_AVAILABLE:
-                        torch_agent = _load_torch_agent(model_path, state_dim=state_dim, action_dim=action_dim)
-                        if torch_agent is not None:
-                            agent = torch_agent
-                            logger.debug("Using PyTorch DQN agent")
-                        elif is_torch:
-                            logger.warning(f"Failed to initialize PyTorch agent for {model_path}.")
-                            continue
+                    for loader in loader_order:
+                        if loader == 'torch':
+                            torch_agent = _load_torch_agent(
+                                model_path, state_dim=state_dim, action_dim=action_dim
+                            )
+                            if torch_agent is not None:
+                                agent = torch_agent
+                                logger.debug("Using PyTorch DQN agent")
+                                break
+                        else:
+                            agent = NumpyDQNAgent(
+                                state_dim=state_dim,
+                                action_dim=action_dim,
+                                hidden_dims=[64, 64]  # Match training configuration
+                            )
+                            agent.load(model_path)
+                            logger.debug("Using numpy DQN agent")
+                            break
 
                     if agent is None:
-                        agent = NumpyDQNAgent(
-                            state_dim=state_dim,
-                            action_dim=action_dim,
-                            hidden_dims=[64, 64]  # Match training configuration
-                        )
-                        try:
-                            agent.load(model_path)
-                        except pickle.UnpicklingError as e:
-                            # Likely a torch legacy checkpoint; try torch loader if available.
-                            if TORCH_AVAILABLE:
-                                torch_agent = _load_torch_agent(
-                                    model_path, state_dim=state_dim, action_dim=action_dim
-                                )
-                                if torch_agent is not None:
-                                    agent = torch_agent
-                                    logger.debug("Recovered using PyTorch DQN agent after pickle error")
-                                else:
-                                    raise e
-                            else:
-                                raise e
-                        logger.debug("Using numpy DQN agent")
+                        logger.warning(f"Failed to initialize DQN agent for {model_path}.")
+                        continue
 
                     # Cache the agent for this chain
                     _chain_agents[chain_id] = agent
@@ -210,6 +209,11 @@ def get_dqn_agent(chain_id: int = 8453):
             _chain_agents[chain_id] = None
             _chain_agents_loaded[chain_id] = True
             return None
+    except pickle.UnpicklingError as e:
+        logger.warning(f"Failed to load DQN agent for chain {chain_id}: {e}")
+        _chain_agents[chain_id] = None
+        _chain_agents_loaded[chain_id] = True
+        return None
     except Exception as e:
         logger.error(f"Failed to load DQN agent for chain {chain_id}: {e}")
         import traceback
