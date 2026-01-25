@@ -1,67 +1,24 @@
-/**
- * Analytics and error monitoring setup
- * Placeholder for analytics integration (e.g., Google Analytics, Sentry)
- */
+let sentryRef: any = null;
 
-import { featureFlags } from './featureFlags';
+export const setSentryRef = (sentry: any) => {
+  sentryRef = sentry;
+};
 
-/**
- * Initialize analytics
- */
-export function initAnalytics(): void {
-  if (!featureFlags.isEnabled('ANALYTICS_ENABLED')) {
-    return;
+type AnalyticsPayload = Record<string, string | number | boolean | null | undefined>;
+
+export const trackEvent = (event: string, payload: AnalyticsPayload = {}) => {
+  const data = { event, ...payload };
+
+  if (sentryRef?.captureMessage) {
+    sentryRef.captureMessage(event, {
+      level: 'info',
+      tags: payload,
+      extra: payload
+    });
+  } else if ((window as any).Sentry?.captureMessage) {
+    (window as any).Sentry.captureMessage(event, { level: 'info', tags: payload, extra: payload });
+  } else {
+    // eslint-disable-next-line no-console
+    console.debug('[analytics]', data);
   }
-
-  // TODO: Initialize analytics service (e.g., Google Analytics, Mixpanel)
-  console.log('Analytics initialized');
-}
-
-/**
- * Track page view
- */
-export function trackPageView(path: string): void {
-  if (!featureFlags.isEnabled('ANALYTICS_ENABLED')) {
-    return;
-  }
-
-  // TODO: Track page view
-  console.log('Page view:', path);
-}
-
-/**
- * Track event
- */
-export function trackEvent(eventName: string, properties?: Record<string, any>): void {
-  if (!featureFlags.isEnabled('ANALYTICS_ENABLED')) {
-    return;
-  }
-
-  // TODO: Track event
-  console.log('Event:', eventName, properties);
-}
-
-/**
- * Track error
- */
-export function trackError(error: Error, context?: Record<string, any>): void {
-  // Always track errors, even if analytics is disabled
-  console.error('Error tracked:', error, context);
-
-  // TODO: Send to error monitoring service (e.g., Sentry)
-  // if (window.Sentry) {
-  //   window.Sentry.captureException(error, { extra: context });
-  // }
-}
-
-/**
- * Set user properties
- */
-export function setUserProperties(properties: Record<string, any>): void {
-  if (!featureFlags.isEnabled('ANALYTICS_ENABLED')) {
-    return;
-  }
-
-  // TODO: Set user properties
-  console.log('User properties:', properties);
-}
+};

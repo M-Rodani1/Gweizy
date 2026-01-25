@@ -15,6 +15,7 @@ import {
 import { fetchGlobalStats } from '../src/api/gasApi';
 import Logo from '../src/components/branding/Logo';
 import { Button, Badge, Stat, Card } from '../src/components/ui';
+import { trackEvent } from '../src/utils/analytics';
 
 const Landing: React.FC = () => {
   const [stats, setStats] = useState({
@@ -59,10 +60,10 @@ const Landing: React.FC = () => {
               <Badge variant="accent" icon={<Trophy size={14} />}>Hackathon Winner</Badge>
             </div>
             <div className="landing-nav-links">
-              <Link to="/pricing" className="btn btn-ghost">Pricing</Link>
-              <Link to="/app">
-                <Button variant="primary" size="lg">Launch AI Pilot</Button>
-              </Link>
+                <Link to="/pricing" className="btn btn-ghost" onClick={() => trackEvent('cta_click', { source: 'landing_nav', cta: 'pricing' })}>Pricing</Link>
+                <Link to="/app" onClick={() => trackEvent('cta_click', { source: 'landing_nav', cta: 'launch_pilot' })}>
+                  <Button variant="primary" size="lg">Launch AI Pilot</Button>
+                </Link>
             </div>
           </div>
         </div>
@@ -93,10 +94,10 @@ const Landing: React.FC = () => {
               </p>
 
               <div className="flex flex-wrap gap-[var(--space-md)] mb-[var(--space-2xl)]">
-                <Link to="/app">
+                <Link to="/app" onClick={() => trackEvent('cta_click', { source: 'hero', cta: 'launch_pilot' })}>
                   <Button size="lg">Launch AI Pilot</Button>
                 </Link>
-                <a href="#how-it-works">
+                <a href="#how-it-works" onClick={() => trackEvent('cta_click', { source: 'hero', cta: 'see_how' })}>
                   <Button variant="secondary" size="lg">See How It Works</Button>
                 </a>
               </div>

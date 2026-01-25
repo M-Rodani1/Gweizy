@@ -146,6 +146,11 @@ const GasAlertSettings: React.FC<GasAlertSettingsProps> = ({ currentGas, walletA
         setAlerts([data.alert, ...alerts]);
         setShowCreateForm(false);
         resetForm();
+        trackEvent('alert_created', {
+          method: notificationMethod,
+          type: alertType,
+          threshold: values.thresholdGwei
+        });
       }
     } catch (error) {
       console.error('Failed to create alert:', error);
@@ -166,6 +171,7 @@ const GasAlertSettings: React.FC<GasAlertSettingsProps> = ({ currentGas, walletA
         setAlerts(alerts.map(a =>
           a.id === alertId ? { ...a, is_active: !currentStatus } : a
         ));
+        trackEvent('alert_toggled', { alertId, active: !currentStatus });
       }
     } catch (error) {
       console.error('Failed to toggle alert:', error);

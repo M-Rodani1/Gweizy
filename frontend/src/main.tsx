@@ -9,6 +9,7 @@ import { SchedulerProvider } from './contexts/SchedulerContext';
 import { PreferencesProvider } from './contexts/PreferencesContext';
 import { OfflineIndicator } from './components/OfflineIndicator';
 import { registerServiceWorker } from './utils/registerSW';
+import { setSentryRef } from './utils/analytics';
 import './index.css';
 
 // Initialize Sentry AFTER React is loaded to avoid initialization issues
@@ -29,6 +30,7 @@ if (sentryDsn) {
       replaysOnErrorSampleRate: 1.0,
       environment: import.meta.env.MODE
     });
+    setSentryRef(Sentry);
   }).catch(() => {
     // Sentry failed to load - continue without it
     console.warn('Sentry initialization failed - continuing without error tracking');

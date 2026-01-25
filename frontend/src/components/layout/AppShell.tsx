@@ -4,6 +4,7 @@ import { LayoutDashboard, BarChart3, Settings2, BookOpen } from 'lucide-react';
 import StickyHeader from '../StickyHeader';
 import { useChain } from '../../contexts/ChainContext';
 import { checkHealth } from '../../api/gasApi';
+import { trackEvent } from '../../utils/analytics';
 
 type NavItem = {
   label: string;
@@ -71,6 +72,9 @@ const AppShell: React.FC<AppShellProps> = ({ children, activePath }) => {
                   }`}
                   aria-current={active ? 'page' : undefined}
                   role="link"
+                  onClick={() => {
+                    trackEvent('nav_click', { destination: to, from: currentPath });
+                  }}
                 >
                   <div className="flex items-center gap-3">
                     <Icon className={`w-5 h-5 ${active ? 'text-cyan-300' : 'text-gray-400 group-hover:text-gray-200'}`} />
