@@ -1,24 +1,33 @@
 import React, { useState, useEffect } from 'react';
 
 const ThemeToggle: React.FC = () => {
-  // Initialize state from localStorage or default to dark
-  const [isDark, setIsDark] = useState(() => {
+  const getPreferred = () => {
+    if (typeof window === 'undefined') return true;
     const savedTheme = localStorage.getItem('theme');
-    if (savedTheme === 'light') {
-      document.documentElement.classList.add('light-mode');
-      return false;
-    }
-    return true;
-  });
+    if (savedTheme === 'light') return false;
+    if (savedTheme === 'dark') return true;
+    return !window.matchMedia('(prefers-color-scheme: light)').matches;
+  };
+
+  const [isDark, setIsDark] = useState<boolean>(true);
 
   useEffect(() => {
-    // Ensure theme is applied on mount
-    const savedTheme = localStorage.getItem('theme');
-    if (savedTheme === 'light') {
-      document.documentElement.classList.add('light-mode');
-    } else {
-      document.documentElement.classList.remove('light-mode');
-    }
+    const initial = getPreferred();
+    setIsDark(initial);
+    document.documentElement.classList.toggle('light-mode', !initial);
+
+    // Listen for OS preference changes when user has not overridden
+    const mql = window.matchMedia('(prefers-color-scheme: light)');
+    const handler = (event: MediaQueryListEvent) => {
+      const savedTheme = localStorage.getItem('theme');
+      if (!savedTheme) {
+        const useDark = !event.matches;
+        setIsDark(useDark);
+        document.documentElement.classList.toggle('light-mode', !useDark);
+      }
+    };
+    mql.addEventListener('change', handler);
+    return () => mql.removeEventListener('change', handler);
   }, []);
 
   const toggleTheme = () => {

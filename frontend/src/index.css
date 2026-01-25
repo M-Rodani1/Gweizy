@@ -169,6 +169,14 @@ button, a, [role="button"] {
   transition: all 0.2s ease-in-out;
 }
 
+.btn-reset {
+  border: none;
+  background: none;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+}
+
 /* ===== ACCESSIBILITY ===== */
 
 /* Better focus states for accessibility */

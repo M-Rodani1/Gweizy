@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { fetchGlobalStats } from '../src/api/gasApi';
 import Logo from '../src/components/branding/Logo';
+import { Button, Badge, Stat, Card } from '../src/components/ui';
 
 const Landing: React.FC = () => {
   const [stats, setStats] = useState({
@@ -55,14 +56,13 @@ const Landing: React.FC = () => {
               <span className="text-[1.1rem] font-semibold tracking-[-0.01em]">
                 Gweizy
               </span>
-              <span className="badge badge-accent flex items-center gap-1">
-                <Trophy size={14} />
-                Hackathon Winner
-              </span>
+              <Badge variant="accent" icon={<Trophy size={14} />}>Hackathon Winner</Badge>
             </div>
             <div className="landing-nav-links">
               <Link to="/pricing" className="btn btn-ghost">Pricing</Link>
-              <Link to="/app" className="btn btn-primary btn-lg">Launch AI Pilot</Link>
+              <Link to="/app">
+                <Button variant="primary" size="lg">Launch AI Pilot</Button>
+              </Link>
             </div>
           </div>
         </div>
@@ -75,10 +75,9 @@ const Landing: React.FC = () => {
 
             {/* Left: Hero Content */}
             <div>
-              <div className="badge badge-accent mb-[var(--space-lg)] inline-flex items-center gap-[0.35rem]">
-                <Trophy size={14} />
+              <Badge variant="accent" className="mb-[var(--space-lg)] inline-flex items-center gap-[0.35rem]" icon={<Trophy size={14} />}>
                 Coinbase 2025 Hackathon Winner
-              </div>
+              </Badge>
 
               <h1 className="hero-title mb-[var(--space-lg)]">
                 <span className="text-[var(--accent)]">AI Transaction Pilot</span>{' '}
@@ -94,34 +93,19 @@ const Landing: React.FC = () => {
               </p>
 
               <div className="flex flex-wrap gap-[var(--space-md)] mb-[var(--space-2xl)]">
-                <Link to="/app" className="btn btn-primary btn-lg">
-                  Launch AI Pilot
+                <Link to="/app">
+                  <Button size="lg">Launch AI Pilot</Button>
                 </Link>
-                <a href="#how-it-works" className="btn btn-secondary btn-lg">
-                  See How It Works
+                <a href="#how-it-works">
+                  <Button variant="secondary" size="lg">See How It Works</Button>
                 </a>
               </div>
 
               {/* Trust Indicators */}
               <div className="landing-stats-row">
-                <div className="landing-stat">
-                  <div className="landing-stat-value">
-                    {statsLoading ? '...' : `$${stats.total_saved_k}K+`}
-                  </div>
-                  <div className="landing-stat-label">Gas Saved</div>
-                </div>
-                <div className="landing-stat">
-                  <div className="landing-stat-value">
-                    {statsLoading ? '...' : `${stats.accuracy_percent}%`}
-                  </div>
-                  <div className="landing-stat-label">Accuracy</div>
-                </div>
-                <div className="landing-stat">
-                  <div className="landing-stat-value">
-                    {statsLoading ? '...' : `${stats.predictions_k}K+`}
-                  </div>
-                  <div className="landing-stat-label">Predictions</div>
-                </div>
+                <Stat label="Gas Saved" value={statsLoading ? '...' : `$${stats.total_saved_k}K+`} helper="vs peak hours" trend="up" />
+                <Stat label="Accuracy" value={statsLoading ? '...' : `${stats.accuracy_percent}%`} helper="rolling 30d" />
+                <Stat label="Predictions" value={statsLoading ? '...' : `${stats.predictions_k}K+`} helper="served" />
               </div>
             </div>
 
@@ -142,20 +126,20 @@ const Landing: React.FC = () => {
                 <div className="browser-content">
                   {/* Mini KPI Cards */}
                   <div className="grid grid-cols-2 gap-[var(--space-md)] mb-[var(--space-lg)]">
-                    <div className="card p-[var(--space-md)]">
+                    <Card padding="sm">
                       <div className="text-[0.75rem] text-[var(--text-muted)] mb-[var(--space-xs)]">Current Gas</div>
                       <div className="text-[1.5rem] font-bold">0.0048 gwei</div>
-                      <span className="badge badge-success mt-[var(--space-xs)] text-[0.625rem]">
+                      <Badge variant="success" className="mt-[var(--space-xs)] text-[0.625rem]">
                         <span className="status-dot success"></span> Low
-                      </span>
-                    </div>
-                    <div className="card p-[var(--space-md)]">
+                      </Badge>
+                    </Card>
+                    <Card padding="sm">
                       <div className="text-[0.75rem] text-[var(--text-muted)] mb-[var(--space-xs)]">1h Forecast</div>
                       <div className="text-[1.5rem] font-bold">0.0052 gwei</div>
-                      <span className="badge badge-warning mt-[var(--space-xs)] text-[0.625rem]">
+                      <Badge variant="warning" className="mt-[var(--space-xs)] text-[0.625rem]">
                         <span className="status-dot warning"></span> Rising
-                      </span>
-                    </div>
+                      </Badge>
+                    </Card>
                   </div>
 
                   {/* Mini Chart Placeholder */}

@@ -1,19 +1,7 @@
-// UI Components - centralized exports
-export { Card, CardHeader, CardContent, CardFooter } from './Card';
-export { Button, IconButton } from './Button';
-export { Modal, ModalHeader, ModalBody, ModalFooter } from './Modal';
-export { default as CollapsibleSection } from './CollapsibleSection';
-export { default as ConfidenceRing } from './ConfidenceRing';
-export { default as ConfidenceBar } from './ConfidenceBar';
-export { default as NetworkPulse } from './NetworkPulse';
-export { default as Sparkline } from './Sparkline';
-export { default as ThemeToggle } from './ThemeToggle';
-export { default as VirtualizedList } from './VirtualizedList';
-export {
-  default as Skeleton,
-  SkeletonCard,
-  SkeletonList,
-  SkeletonMetrics,
-  SkeletonChart,
-  SkeletonTable,
-} from './Skeleton';
+export { Button } from './Button';
+export { Card } from './Card';
+export { Badge } from './Badge';
+export { Stat } from './Stat';
+export { Pill } from './Pill';
+export { Chip } from './Chip';
+export { SectionHeader } from './SectionHeader';
