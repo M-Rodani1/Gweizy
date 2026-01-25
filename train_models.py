@@ -1914,9 +1914,84 @@ log(f"\n{'='*60}")
 log("🎉 TRAINING COMPLETE!")
 log(f"{'='*60}\n")
 
+# ==============================================================================
+# MODEL REGISTRY: Save training manifest with versioning
+# ==============================================================================
+import hashlib
+import json
+
+def compute_data_hash(df, sample_size=1000):
+    """Compute a hash of the data for versioning"""
+    sample = df.head(sample_size).to_json()
+    return hashlib.md5(sample.encode()).hexdigest()[:12]
+
+log("📋 Creating model registry manifest...")
+
+# Generate unique version based on timestamp and data hash
+data_hash = compute_data_hash(df)
+version_id = f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_{data_hash}"
+
+# Build manifest
+manifest = {
+    'version': version_id,
+    'training_timestamp': datetime.now().isoformat(),
+    'data_info': {
+        'samples': len(df),
+        'date_range': {
+            'start': str(df['timestamp'].min()),
+            'end': str(df['timestamp'].max())
+        },
+        'data_hash': data_hash,
+        'features_count': X.shape[1] if 'X' in dir() else 0
+    },
+    'config': {
+        'embargo_gap': EMBARGO_GAP,
+        'hyperparameter_tuning': TUNE_HYPERPARAMS,
+        'tuning_iterations': TUNING_ITERATIONS if TUNE_HYPERPARAMS else 0,
+        'adaptive_thresholds': {
+            'normal': float(NORMAL_THRESHOLD),
+            'elevated': float(ELEVATED_THRESHOLD)
+        }
+    },
+    'models': {}
+}
+
+# Add model info
+model_files = [
+    ('model_24h.pkl', '24h_regressor'),
+    ('model_4h.pkl', '4h_regressor'),
+    ('model_1h.pkl', '1h_classifier'),
+    ('spike_detector_1h.pkl', 'spike_1h'),
+    ('spike_detector_4h.pkl', 'spike_4h'),
+    ('spike_detector_24h.pkl', 'spike_24h')
+]
+
+for filename, model_name in model_files:
+    filepath = f'trained_models/{filename}'
+    if os.path.exists(filepath):
+        file_size = os.path.getsize(filepath)
+        manifest['models'][model_name] = {
+            'filename': filename,
+            'size_bytes': file_size,
+            'size_mb': round(file_size / (1024 * 1024), 2)
+        }
+
+# Add spike detector metrics if available
+if spike_results:
+    manifest['spike_detector_metrics'] = spike_results
+
+# Save manifest
+manifest_path = 'trained_models/manifest.json'
+with open(manifest_path, 'w') as f:
+    json.dump(manifest, f, indent=2, default=str)
+
+log(f"   ✅ Saved manifest to {manifest_path}")
+log(f"   📌 Version: {version_id}")
+log(f"   📊 Models registered: {len(manifest['models'])}")
+
 # Print training summary across all horizons
 if results:
-    log("📊 Training Summary:")
+    log("\n📊 Training Summary:")
     for h in ['1h', '4h', '24h']:
         if h in results:
             r = results[h]
@@ -1927,5 +2002,8 @@ if results:
             overfitting_gap = r.get('overfitting_gap', 1)
             status = '✅' if overfitting_gap < 0.1 else ('⚠️' if overfitting_gap < 0.2 else '❌')
             log(f"      Overfitting Gap: {overfitting_gap:.4f} {status}")
-    
-    log(f"\n{'='*60}\n")
+
+log(f"\n{'='*60}")
+log(f"📁 All models saved to: trained_models/")
+log(f"📋 Manifest: trained_models/manifest.json")
+log(f"{'='*60}\n")
