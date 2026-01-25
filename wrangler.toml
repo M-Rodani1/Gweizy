@@ -10,7 +10,7 @@ id = "c0a5b66e1c9342b286e47d709d6f9158"
 # Cron triggers for automated maintenance
 [triggers]
 crons = [
-  "*/10 * * * *",    # Keep Railway backend alive (every 10 minutes)
+  "*/5 * * * *",     # Collect gas data (every 5 minutes) - also keeps backend alive
   # "0 2 * * SUN",     # Retrain models weekly (DISABLED - manual retraining only)
   "0 */6 * * *",     # Health check every 6 hours
   "15 * * * *",      # Update prediction accuracy (hourly at :15)

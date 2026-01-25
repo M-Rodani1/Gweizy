@@ -20,9 +20,6 @@ const CACHE_DURATIONS = {
   default: 120        // 2 minutes - fallback for unknown endpoints
 };
 
-// Keep-alive configuration
-const KEEP_ALIVE_INTERVAL = 600000; // 10 minutes (in milliseconds)
-let lastKeepAlive = 0;
 
 export default {
   async fetch(request, env, ctx) {
@@ -183,10 +180,10 @@ export default {
 
     console.log(`[CRON] Triggered at ${cronTime.toISOString()}`);
 
-    // Every 10 minutes: Keep Railway backend alive
-    if (minute % 10 === 0) {
-      console.log('[CRON] Running keep-alive ping');
-      ctx.waitUntil(keepRenderAlive(env, true));
+    // Every 5 minutes: Collect gas data (also keeps backend alive)
+    if (minute % 5 === 0) {
+      console.log('[CRON] Collecting gas data');
+      ctx.waitUntil(collectGasData(env));
     }
 
     // Sunday 2 AM: Retrain models
@@ -216,35 +213,34 @@ export default {
 };
 
 /**
- * Keep Railway backend alive by pinging health endpoint
+ * Collect gas data by calling /current endpoint (also keeps backend alive)
+ * This stores the current gas price in Railway's database for validation
  */
-async function keepRenderAlive(env, force = false) {
-  const now = Date.now();
-
-  // Only ping every 10 minutes
-  if (!force && now - lastKeepAlive < KEEP_ALIVE_INTERVAL) {
-    return;
-  }
-
+async function collectGasData(env) {
   try {
-    const response = await fetch(`${BACKEND_API}/health`, {
+    const response = await fetch(`${BACKEND_API}/current?chain=base`, {
       method: 'GET',
       headers: {
-        'User-Agent': 'Cloudflare-Worker-KeepAlive/1.0'
+        'User-Agent': 'Cloudflare-Worker-Collector/1.0'
       }
     });
 
     if (response.ok) {
-      lastKeepAlive = now;
-      console.log('Keep-alive ping successful');
+      const data = await response.json();
+      console.log(`[COLLECT] ✅ Gas price: ${data.current_gas?.toFixed(4)} gwei`);
 
-      // Store last ping time in KV
-      await env.GAS_CACHE.put('last_keepalive', now.toString(), {
+      // Store last collection time in KV
+      await env.GAS_CACHE.put('last_collection', JSON.stringify({
+        timestamp: new Date().toISOString(),
+        gas_price: data.current_gas
+      }), {
         expirationTtl: 3600 // 1 hour
       });
+    } else {
+      console.error('[COLLECT] ❌ Failed:', response.status);
     }
   } catch (error) {
-    console.error('Keep-alive ping failed:', error);
+    console.error('[COLLECT] Error:', error);
   }
 }
 
