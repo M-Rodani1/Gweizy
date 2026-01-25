@@ -879,6 +879,161 @@ results = {}
 # Only train models for horizons with sufficient data
 # horizons_to_train = available_horizons if 'available_horizons' in locals() else ['1h', '4h', '24h']
 
+# Global embargo gap constant
+EMBARGO_GAP = 24
+
+# ==============================================================================
+# PHASE 0: Train 24h Regressor (Long-term Trend Setter)
+# ==============================================================================
+horizon_24h = '24h'
+log(f"\n{'='*60}")
+log(f"🎯 PHASE 0: Training 24h Regressor (Long-term Trend)")
+log(f"{'='*60}")
+
+# Prepare 24h Targets
+if horizon_24h not in targets or horizon_24h not in available_horizons:
+    log(f"⚠️  Skipping 24h Regressor - Insufficient data for 24h horizon")
+    model_24h = None
+    selected_features_24h = []
+    scaler_24h = None
+else:
+    y_volatility_24h = targets[horizon_24h]['volatility_scaled_return']
+    y_price_24h = targets[horizon_24h]['target_price']
+
+    # Align X and y (remove NaNs)
+    valid_idx_24h = ~(X.isna().any(axis=1) | y_volatility_24h.isna())
+    X_24h = X[valid_idx_24h]
+    y_24h = y_volatility_24h[valid_idx_24h]
+
+    log(f"   Valid samples (24h): {len(X_24h):,}")
+
+    if len(X_24h) < 500:
+        log(f"   ⚠️  Insufficient samples for 24h model (need 500+), skipping")
+        model_24h = None
+        selected_features_24h = []
+        scaler_24h = None
+    else:
+        # Feature Selection for 24h
+        log(f"   🔍 Feature selection for 24h...")
+        X_24h_selected, selected_features_24h = select_features(X_24h, y_24h, len(X_24h), verbose=True)
+
+        # Train/Val/Test Split with Embargo Gap
+        n_total_24h = len(X_24h_selected)
+        train_end_24h = int(n_total_24h * 0.8) - EMBARGO_GAP
+        test_start_24h = int(n_total_24h * 0.8)
+
+        X_train_val_24h = X_24h_selected.iloc[:train_end_24h]
+        X_test_24h = X_24h_selected.iloc[test_start_24h:]
+        y_train_val_24h = y_24h.iloc[:train_end_24h]
+        y_test_24h = y_24h.iloc[test_start_24h:]
+
+        log(f"   📊 Train/Test split with {EMBARGO_GAP}-sample embargo gap")
+        log(f"      Train: {len(X_train_val_24h):,}, Embargo: {EMBARGO_GAP}, Test: {len(X_test_24h):,}")
+
+        # Train 24h Model (deeper trees for longer patterns)
+        log(f"   🚀 Training LightGBM Regressor for 24h...")
+        scaler_24h = RobustScaler()
+        X_train_val_24h_scaled = scaler_24h.fit_transform(X_train_val_24h)
+        X_test_24h_scaled = scaler_24h.transform(X_test_24h)
+
+        model_24h = lgb.LGBMRegressor(
+            n_estimators=300, max_depth=5, learning_rate=0.01, num_leaves=31,
+            objective='huber', alpha=0.95, random_state=42, n_jobs=-1, verbose=-1
+        )
+        model_24h.fit(X_train_val_24h_scaled, y_train_val_24h)
+
+        # Evaluate 24h
+        y_pred_24h_vol = model_24h.predict(X_test_24h_scaled)
+        mae_24h = np.mean(np.abs(y_pred_24h_vol - y_test_24h))
+        log(f"   📊 24h Test MAE (volatility-scaled): {mae_24h:.4f}")
+
+        # Save 24h Model
+        model_data_24h = {
+            'regressor': model_24h,
+            'feature_names': selected_features_24h,
+            'scaler': scaler_24h,
+            'trained_at': datetime.now().isoformat()
+        }
+        joblib.dump(model_data_24h, 'trained_models/model_24h.pkl')
+        log(f"   💾 Saved 24h model to trained_models/model_24h.pkl")
+
+# ==============================================================================
+# PHASE 0.5: Inject 24h Trend Signal (if model available)
+# ==============================================================================
+log(f"\n{'='*60}")
+log(f"💉 PHASE 0.5: Injecting 24h Trend Signal")
+log(f"{'='*60}")
+
+if model_24h is not None and len(selected_features_24h) > 0:
+    # Generate OOF predictions for 24h signal (same approach as 4h)
+    X_for_24h_pred = X[selected_features_24h]
+
+    trend_signal_24h = np.full(len(X), np.nan)
+
+    valid_idx_24h_bool = ~(X[selected_features_24h].isna().any(axis=1) | targets[horizon_24h]['volatility_scaled_return'].isna())
+    valid_indices_24h = np.where(valid_idx_24h_bool)[0]
+
+    n_valid_24h = len(valid_indices_24h)
+    train_end_idx_24h = int(n_valid_24h * 0.8) - EMBARGO_GAP
+    test_start_idx_24h = int(n_valid_24h * 0.8)
+    train_indices_24h = valid_indices_24h[:train_end_idx_24h]
+    test_indices_24h = valid_indices_24h[test_start_idx_24h:]
+
+    log(f"   📊 Train samples: {len(train_indices_24h):,}, Embargo: {EMBARGO_GAP}, Test samples: {len(test_indices_24h):,}")
+
+    # OOF predictions for training data
+    log(f"   🔄 Generating Out-of-Fold predictions for training data...")
+    X_train_for_oof_24h = X_for_24h_pred.iloc[train_indices_24h]
+    y_train_for_oof_24h = targets[horizon_24h]['volatility_scaled_return'].iloc[train_indices_24h]
+
+    tscv_oof_24h = TimeSeriesSplit(n_splits=5)
+    oof_predictions_24h = np.full(len(train_indices_24h), np.nan)
+
+    for fold_idx, (train_fold_idx, val_fold_idx) in enumerate(tscv_oof_24h.split(X_train_for_oof_24h)):
+        X_fold_train = X_train_for_oof_24h.iloc[train_fold_idx]
+        y_fold_train = y_train_for_oof_24h.iloc[train_fold_idx]
+        X_fold_val = X_train_for_oof_24h.iloc[val_fold_idx]
+
+        fold_scaler = RobustScaler()
+        X_fold_train_scaled = fold_scaler.fit_transform(X_fold_train)
+        X_fold_val_scaled = fold_scaler.transform(X_fold_val)
+
+        fold_model = lgb.LGBMRegressor(
+            n_estimators=300, max_depth=5, learning_rate=0.01, num_leaves=31,
+            objective='huber', alpha=0.95, random_state=42, n_jobs=-1, verbose=-1
+        )
+        fold_model.fit(X_fold_train_scaled, y_fold_train)
+        oof_predictions_24h[val_fold_idx] = fold_model.predict(X_fold_val_scaled)
+
+        log(f"      Fold {fold_idx + 1}/5: Train={len(train_fold_idx)}, Val={len(val_fold_idx)}")
+
+    for i, idx in enumerate(train_indices_24h):
+        if not np.isnan(oof_predictions_24h[i]):
+            trend_signal_24h[idx] = oof_predictions_24h[i]
+
+    # Test predictions using final model
+    log(f"   🎯 Generating predictions for test data using final model...")
+    X_test_for_pred_24h = X_for_24h_pred.iloc[test_indices_24h]
+    X_test_scaled_24h = scaler_24h.transform(X_test_for_pred_24h)
+    test_predictions_24h = model_24h.predict(X_test_scaled_24h)
+
+    for i, idx in enumerate(test_indices_24h):
+        trend_signal_24h[idx] = test_predictions_24h[i]
+
+    trend_signal_24h = np.nan_to_num(trend_signal_24h, nan=0.0)
+
+    X = X.copy()
+    X['trend_signal_24h'] = trend_signal_24h
+
+    valid_preds_24h = trend_signal_24h[trend_signal_24h != 0]
+    if len(valid_preds_24h) > 0:
+        log(f"   ✅ Added 'trend_signal_24h' feature (OOF leak-free)")
+        log(f"      Range: {valid_preds_24h.min():.4f} to {valid_preds_24h.max():.4f}")
+        log(f"      Mean: {valid_preds_24h.mean():.4f}, Std: {valid_preds_24h.std():.4f}")
+else:
+    log(f"   ⚠️  Skipping 24h trend injection (model not available)")
+    X['trend_signal_24h'] = 0
+
 # ==============================================================================
 # PHASE 1: Train 4h Regressor (Trend Setter)
 # ==============================================================================
@@ -906,11 +1061,7 @@ else:
     log(f"   🔍 Feature selection for 4h...")
     X_4h_selected, selected_features_4h = select_features(X_4h, y_4h, len(X_4h), verbose=True)
     
-    # Train/Val/Test Split with Embargo Gap
-    # Embargo gap prevents look-ahead bias from lag features and rolling windows
-    # Use 24 samples (~24 time periods after tick-bar filtering) as buffer
-    EMBARGO_GAP = 24
-
+    # Train/Val/Test Split with Embargo Gap (using global EMBARGO_GAP)
     n_total_4h = len(X_4h_selected)
     train_end_4h = int(n_total_4h * 0.8) - EMBARGO_GAP  # End training before embargo
     test_start_4h = int(n_total_4h * 0.8)  # Test starts after embargo
