@@ -1,5 +1,6 @@
 [phases.setup]
-nixPkgs = ["python311", "gcc", "libgomp"]
+nixPkgs = ["python311", "gcc", "gfortran"]
+aptPkgs = ["libgomp1"]
 
 [phases.install]
 cmds = [
