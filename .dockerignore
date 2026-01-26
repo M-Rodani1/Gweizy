@@ -1,0 +1,30 @@
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv
+venv
+ENV
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# Frontend (not needed for backend container)
+frontend/node_modules
+frontend/dist
+frontend/.cache
+
+# Misc
+*.log
+.DS_Store
+*.md
+!README.md
