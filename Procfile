@@ -1,2 +1,2 @@
-web: echo "=== RUNTIME DIAGNOSTIC ===" && echo "Current LD_LIBRARY_PATH: $LD_LIBRARY_PATH" && echo "Searching for libgomp..." && find /nix/store -name 'libgomp.so.1' 2>/dev/null | head -5 && for d in /nix/store/*/lib; do [ -f "$d/libgomp.so.1" ] && echo "Found libgomp in: $d" && export LD_LIBRARY_PATH="$d:$LD_LIBRARY_PATH" && break; done; echo "Final LD_LIBRARY_PATH: $LD_LIBRARY_PATH" && cd backend && gunicorn app:app --bind 0.0.0.0:$PORT --workers 2 --threads 2 --timeout 120
-worker: for d in /nix/store/*/lib; do [ -f "$d/libgomp.so.1" ] && export LD_LIBRARY_PATH="$d:$LD_LIBRARY_PATH" && break; done; cd backend && python3 worker.py
+web: cd backend && bash start.sh
+worker: cd backend && python3 worker.py
