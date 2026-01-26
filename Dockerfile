@@ -20,6 +20,9 @@ RUN pip install --no-cache-dir -r backend/requirements.txt
 # Copy the rest of the application
 COPY . /app
 
+# Make startup script executable
+RUN chmod +x /app/railway_start.sh
+
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
 ENV PORT=8080
@@ -30,6 +33,8 @@ RUN mkdir -p /data
 # Expose port
 EXPOSE 8080
 
-# Start command
-WORKDIR /app/backend
-CMD ["gunicorn", "app:app", "--bind", "0.0.0.0:8080", "--workers", "2", "--threads", "2", "--timeout", "120"]
+# Working directory stays at /app so railway_start.sh can be found
+WORKDIR /app
+
+# Default command (Railway may override with railway_start.sh)
+CMD ["bash", "railway_start.sh"]
