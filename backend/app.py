@@ -59,6 +59,16 @@ if sentry_dsn:
         event_level=logging.ERROR  # Send ERROR and above to Sentry as events
     )
 
+    def filter_sentry_events(event, hint):
+        """Filter out expected exceptions that aren't real errors."""
+        if 'exc_info' in hint:
+            exc_type, exc_value, tb = hint['exc_info']
+            # StopIteration is used by websocket libraries for control flow
+            # when handling gunicorn WebSocket upgrades - not an actual error
+            if exc_type is StopIteration:
+                return None
+        return event
+
     sentry_sdk.init(
         dsn=sentry_dsn,
         integrations=[
@@ -71,6 +81,9 @@ if sentry_dsn:
         traces_sample_rate=0.1,      # 10% performance monitoring
         profiles_sample_rate=0.1,    # 10% profiling
         environment='production' if not Config.DEBUG else 'development',
+
+        # Filter out expected exceptions (like WebSocket StopIteration)
+        before_send=filter_sentry_events,
 
         # Error capture settings - ALL errors should be captured
         sample_rate=1.0,             # 100% of errors (default, but explicit)
