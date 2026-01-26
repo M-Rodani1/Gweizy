@@ -13,6 +13,7 @@ import { useEthPrice } from '../src/hooks/useEthPrice';
 import { fetchHybridPrediction } from '../src/api/gasApi';
 import { HybridPrediction } from '../types';
 import AppShell from '../src/components/layout/AppShell';
+import { SectionErrorBoundary } from '../src/components/SectionErrorBoundary';
 
 // Lazy load analytics components
 const GasPriceGraph = lazy(() => import('../src/components/GasPriceGraph'));
@@ -66,125 +67,145 @@ const Analytics: React.FC = () => {
         <DriftAlertBanner />
 
         {/* Model Health Overview */}
-        <section className="mb-8">
-          <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-            <Activity className="w-4 h-4 text-cyan-400" />
-            Model Health
-          </h2>
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2">
-              <AccuracyMetricsCard />
+        <SectionErrorBoundary sectionName="Model Health">
+          <section className="mb-8">
+            <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+              <Activity className="w-4 h-4 text-cyan-400" />
+              Model Health
+            </h2>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2">
+                <AccuracyMetricsCard />
+              </div>
+              <div>
+                <ApiStatusPanel />
+              </div>
             </div>
-            <div>
-              <ApiStatusPanel />
-            </div>
-          </div>
-        </section>
+          </section>
+        </SectionErrorBoundary>
 
         {/* Accuracy Trends */}
-        <section className="mb-8">
-          <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-            <TrendingUp className="w-4 h-4 text-cyan-400" />
-            Accuracy Trends
-          </h2>
-          <AccuracyHistoryChart />
-        </section>
+        <SectionErrorBoundary sectionName="Accuracy Trends">
+          <section className="mb-8">
+            <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+              <TrendingUp className="w-4 h-4 text-cyan-400" />
+              Accuracy Trends
+            </h2>
+            <AccuracyHistoryChart />
+          </section>
+        </SectionErrorBoundary>
 
         {/* Feature Analysis */}
-        <section className="mb-8">
-          <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-            <Brain className="w-4 h-4 text-cyan-400" />
-            Feature Analysis
-          </h2>
-          <FeatureImportanceChart />
-        </section>
+        <SectionErrorBoundary sectionName="Feature Analysis">
+          <section className="mb-8">
+            <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+              <Brain className="w-4 h-4 text-cyan-400" />
+              Feature Analysis
+            </h2>
+            <FeatureImportanceChart />
+          </section>
+        </SectionErrorBoundary>
 
         {/* Predictions Section */}
-        <section className="mb-8">
-          <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-cyan-400" />
-            ML Predictions
-          </h2>
-          <Suspense fallback={<CardSkeleton rows={4} />}>
-            <PredictionCards hybridData={hybridData} />
-          </Suspense>
-        </section>
+        <SectionErrorBoundary sectionName="ML Predictions">
+          <section className="mb-8">
+            <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-cyan-400" />
+              ML Predictions
+            </h2>
+            <Suspense fallback={<CardSkeleton rows={4} />}>
+              <PredictionCards hybridData={hybridData} />
+            </Suspense>
+          </section>
+        </SectionErrorBoundary>
 
         {/* Charts Section */}
-        <section className="mb-8">
-          <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-            <TrendingUp className="w-4 h-4 text-cyan-400" />
-            Price Charts
-          </h2>
-          <div className="grid grid-cols-1 gap-6">
-            <Suspense fallback={<ChartSkeleton height={250} />}>
-              <GasPriceGraph />
-            </Suspense>
-          </div>
-        </section>
+        <SectionErrorBoundary sectionName="Price Charts">
+          <section className="mb-8">
+            <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+              <TrendingUp className="w-4 h-4 text-cyan-400" />
+              Price Charts
+            </h2>
+            <div className="grid grid-cols-1 gap-6">
+              <Suspense fallback={<ChartSkeleton height={250} />}>
+                <GasPriceGraph />
+              </Suspense>
+            </div>
+          </section>
+        </SectionErrorBoundary>
 
         {/* Weekly Heatmap */}
-        <section className="mb-8">
-          <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-            <Grid3X3 className="w-4 h-4 text-cyan-400" />
-            Weekly Patterns
-          </h2>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <HourlyHeatmap />
-            <Suspense fallback={<CardSkeleton rows={3} />}>
-              <BestTimeWidget currentGas={currentGas} />
-            </Suspense>
-          </div>
-        </section>
+        <SectionErrorBoundary sectionName="Weekly Patterns">
+          <section className="mb-8">
+            <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+              <Grid3X3 className="w-4 h-4 text-cyan-400" />
+              Weekly Patterns
+            </h2>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <HourlyHeatmap />
+              <Suspense fallback={<CardSkeleton rows={3} />}>
+                <BestTimeWidget currentGas={currentGas} />
+              </Suspense>
+            </div>
+          </section>
+        </SectionErrorBoundary>
 
         {/* Pattern Analysis */}
-        <section className="mb-8">
-          <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-            <Calendar className="w-4 h-4 text-cyan-400" />
-            Pattern Analysis
-          </h2>
-          <Suspense fallback={<HeatmapSkeleton />}>
-            <GasPatternHeatmap />
-          </Suspense>
-        </section>
+        <SectionErrorBoundary sectionName="Pattern Analysis">
+          <section className="mb-8">
+            <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+              <Calendar className="w-4 h-4 text-cyan-400" />
+              Pattern Analysis
+            </h2>
+            <Suspense fallback={<HeatmapSkeleton />}>
+              <GasPatternHeatmap />
+            </Suspense>
+          </section>
+        </SectionErrorBoundary>
 
         {/* Model Performance */}
-        <section className="mb-8">
-          <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-            <Target className="w-4 h-4 text-cyan-400" />
-            Model Performance
-          </h2>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Suspense fallback={<CardSkeleton rows={4} />}>
-              <ModelAccuracy />
-            </Suspense>
-            <Suspense fallback={<CardSkeleton rows={4} />}>
-              <ValidationMetricsDashboard />
-            </Suspense>
-          </div>
-        </section>
+        <SectionErrorBoundary sectionName="Model Performance">
+          <section className="mb-8">
+            <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+              <Target className="w-4 h-4 text-cyan-400" />
+              Model Performance
+            </h2>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Suspense fallback={<CardSkeleton rows={4} />}>
+                <ModelAccuracy />
+              </Suspense>
+              <Suspense fallback={<CardSkeleton rows={4} />}>
+                <ValidationMetricsDashboard />
+              </Suspense>
+            </div>
+          </section>
+        </SectionErrorBoundary>
 
         {/* Network Intelligence */}
-        <section className="mb-8">
-          <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-            <Brain className="w-4 h-4 text-cyan-400" />
-            Network Intelligence
-          </h2>
-          <Suspense fallback={<CardSkeleton rows={5} />}>
-            <NetworkIntelligencePanel />
-          </Suspense>
-        </section>
+        <SectionErrorBoundary sectionName="Network Intelligence">
+          <section className="mb-8">
+            <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+              <Brain className="w-4 h-4 text-cyan-400" />
+              Network Intelligence
+            </h2>
+            <Suspense fallback={<CardSkeleton rows={5} />}>
+              <NetworkIntelligencePanel />
+            </Suspense>
+          </section>
+        </SectionErrorBoundary>
 
         {/* Historical Data */}
-        <section className="mb-8">
-          <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-            <ClipboardList className="w-4 h-4 text-cyan-400" />
-            Historical Data
-          </h2>
-          <Suspense fallback={<ChartSkeleton height={300} />}>
-            <GasPriceTable />
-          </Suspense>
-        </section>
+        <SectionErrorBoundary sectionName="Historical Data">
+          <section className="mb-8">
+            <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+              <ClipboardList className="w-4 h-4 text-cyan-400" />
+              Historical Data
+            </h2>
+            <Suspense fallback={<ChartSkeleton height={300} />}>
+              <GasPriceTable />
+            </Suspense>
+          </section>
+        </SectionErrorBoundary>
 
         {/* Footer */}
         <footer className="mt-12 py-6 text-center border-t border-gray-800">
