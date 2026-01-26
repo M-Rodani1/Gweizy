@@ -1,14 +1,14 @@
 [phases.setup]
-nixPkgs = ["python311", "gcc", "gfortran"]
-aptPkgs = ["libgomp1"]
+nixPkgs = ["python311", "gcc"]
 
 [phases.install]
 cmds = [
+  "echo '=== Installing libgomp ==='",
+  "apt-get update && apt-get install -y libgomp1 || echo 'apt not available, checking nix'",
+  "find /nix/store -name 'libgomp.so*' 2>/dev/null | head -5 || echo 'No libgomp in nix store'",
   "echo '=== DIAGNOSTIC: Checking current directory ==='",
   "pwd",
   "ls -la",
-  "echo '=== DIAGNOSTIC: Checking if .venv exists ==='",
-  "ls -la .venv 2>&1 || echo 'No .venv found'",
   "echo '=== DIAGNOSTIC: Removing old .venv ==='",
   "rm -rf .venv",
   "echo '=== DIAGNOSTIC: Creating new .venv ==='",
@@ -16,11 +16,8 @@ cmds = [
   "echo '=== DIAGNOSTIC: Upgrading pip ==='",
   ".venv/bin/pip install --no-cache-dir --upgrade pip",
   "echo '=== DIAGNOSTIC: Installing requirements ==='",
-  "echo 'Requirements file contents:'",
-  "cat backend/requirements.txt",
-  "echo '=== DIAGNOSTIC: Starting pip install ==='",
   ".venv/bin/pip install --no-cache-dir -r backend/requirements.txt",
-  "echo '=== DIAGNOSTIC: Verifying installations ==='",
-  ".venv/bin/pip list | grep -E '(sentry|flask-socketio|simple-websocket)'",
+  "echo '=== DIAGNOSTIC: Verifying libgomp ==='",
+  "ldd .venv/lib/python*/site-packages/lightgbm/lib_lightgbm.so 2>/dev/null | grep -i gomp || echo 'LightGBM library check'",
   "echo '=== DIAGNOSTIC: Complete ==='",
 ]

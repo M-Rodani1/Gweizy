@@ -1,2 +1,2 @@
-web: cd backend && gunicorn app:app --bind 0.0.0.0:$PORT --workers 2 --threads 2 --timeout 120
-worker: cd backend && python3 worker.py
+web: export LD_LIBRARY_PATH="/usr/lib/x86_64-linux-gnu:$(find /nix/store -name 'libgomp.so.1' -exec dirname {} \; 2>/dev/null | head -1):$LD_LIBRARY_PATH" && cd backend && gunicorn app:app --bind 0.0.0.0:$PORT --workers 2 --threads 2 --timeout 120
+worker: export LD_LIBRARY_PATH="/usr/lib/x86_64-linux-gnu:$(find /nix/store -name 'libgomp.so.1' -exec dirname {} \; 2>/dev/null | head -1):$LD_LIBRARY_PATH" && cd backend && python3 worker.py
