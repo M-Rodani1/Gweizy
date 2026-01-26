@@ -478,7 +478,7 @@ else:
 
 # Initialize SocketIO for WebSocket support (if available)
 if SOCKETIO_AVAILABLE:
-    socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
+    socketio = SocketIO(app, cors_allowed_origins="*", async_mode='gevent')
     app.socketio = socketio
     logger.info("WebSocket support enabled")
 
