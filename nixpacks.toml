@@ -1,23 +1,18 @@
 [phases.setup]
-nixPkgs = ["python311", "gcc"]
+nixPkgs = ["python311", "gcc", "gccStdenv"]
 
 [phases.install]
 cmds = [
-  "echo '=== Installing libgomp ==='",
-  "apt-get update && apt-get install -y libgomp1 || echo 'apt not available, checking nix'",
-  "find /nix/store -name 'libgomp.so*' 2>/dev/null | head -5 || echo 'No libgomp in nix store'",
-  "echo '=== DIAGNOSTIC: Checking current directory ==='",
-  "pwd",
-  "ls -la",
-  "echo '=== DIAGNOSTIC: Removing old .venv ==='",
+  "echo '=== Finding libgomp ==='",
+  "find /nix/store -name 'libgomp.so*' 2>/dev/null | head -10",
+  "export LIBGOMP_PATH=$(dirname $(find /nix/store -name 'libgomp.so.1' 2>/dev/null | head -1))",
+  "echo 'LIBGOMP_PATH='$LIBGOMP_PATH",
+  "echo $LIBGOMP_PATH > /tmp/libgomp_path.txt",
   "rm -rf .venv",
-  "echo '=== DIAGNOSTIC: Creating new .venv ==='",
   "python -m venv .venv",
-  "echo '=== DIAGNOSTIC: Upgrading pip ==='",
   ".venv/bin/pip install --no-cache-dir --upgrade pip",
-  "echo '=== DIAGNOSTIC: Installing requirements ==='",
   ".venv/bin/pip install --no-cache-dir -r backend/requirements.txt",
-  "echo '=== DIAGNOSTIC: Verifying libgomp ==='",
-  "ldd .venv/lib/python*/site-packages/lightgbm/lib_lightgbm.so 2>/dev/null | grep -i gomp || echo 'LightGBM library check'",
-  "echo '=== DIAGNOSTIC: Complete ==='",
 ]
+
+[variables]
+LD_LIBRARY_PATH = "/nix/store"
