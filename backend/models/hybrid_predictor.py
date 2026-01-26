@@ -10,7 +10,7 @@ Strategy:
 
 import numpy as np
 import pandas as pd
-import pickle
+import joblib
 import os
 import logging
 from datetime import datetime, timedelta
@@ -124,8 +124,7 @@ class HybridPredictor:
                         break
 
                 if detector_path and os.path.exists(detector_path):
-                    with open(detector_path, 'rb') as f:
-                        self.spike_detectors[horizon] = pickle.load(f)
+                    self.spike_detectors[horizon] = joblib.load(detector_path)
                     logger.info(f"✓ Loaded spike detector for {horizon} from {detector_path}")
                 else:
                     # Debug level - expected during initial setup before training
