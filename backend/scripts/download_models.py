@@ -78,33 +78,54 @@ def main():
     print("Downloading ML Models from GitHub Releases")
     print("=" * 70)
 
-    # Determine model directory
-    # Try backend/models/saved_models first, then models/saved_models
+    # Determine model directories
+    # Primary: /data/models (Railway persistent storage)
+    # Fallback: backend/models/saved_models or models/saved_models
+    model_dirs = []
+
+    # Priority 1: Railway persistent storage
+    if os.path.exists('/data'):
+        persistent_dir = '/data/models'
+        os.makedirs(persistent_dir, exist_ok=True)
+        model_dirs.append(persistent_dir)
+        print(f"Primary target: {persistent_dir} (persistent storage)")
+
+    # Priority 2: Local development paths
     if os.path.exists('backend/models'):
-        models_dir = 'backend/models/saved_models'
+        local_dir = 'backend/models/saved_models'
+        os.makedirs(local_dir, exist_ok=True)
+        model_dirs.append(local_dir)
     elif os.path.exists('models'):
-        models_dir = 'models/saved_models'
-    else:
+        local_dir = 'models/saved_models'
+        os.makedirs(local_dir, exist_ok=True)
+        model_dirs.append(local_dir)
+
+    if not model_dirs:
         print("Error: Cannot find models directory")
         sys.exit(1)
 
-    print(f"Target directory: {models_dir}")
-    os.makedirs(models_dir, exist_ok=True)
+    print(f"Target directories: {model_dirs}")
 
-    # Download each model
+    # Download each model to all target directories
     success_count = 0
     for model in MODELS:
-        destination = os.path.join(models_dir, model['name'])
+        model_success = False
 
-        # Skip if already exists
-        if os.path.exists(destination):
-            size_mb = os.path.getsize(destination) / (1024 * 1024)
-            print(f"\n✓ {model['name']} already exists ({size_mb:.1f} MB)")
-            success_count += 1
-            continue
+        for models_dir in model_dirs:
+            destination = os.path.join(models_dir, model['name'])
 
-        print(f"\n{model['name']}:")
-        if download_file(model['url'], destination, model['size_mb']):
+            # Skip if already exists in this directory
+            if os.path.exists(destination):
+                size_mb = os.path.getsize(destination) / (1024 * 1024)
+                print(f"✓ {model['name']} exists in {models_dir} ({size_mb:.1f} MB)")
+                model_success = True
+                continue
+
+            print(f"\n{model['name']} -> {models_dir}:")
+            if download_file(model['url'], destination, model['size_mb']):
+                model_success = True
+
+        if model_success:
             success_count += 1
 
     print("\n" + "=" * 70)
