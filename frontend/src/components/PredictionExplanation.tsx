@@ -163,7 +163,7 @@ const PredictionExplanation: React.FC<PredictionExplanationProps> = ({
         <Lightbulb className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
         <div className="text-sm text-gray-300">
           {loading ? (
-            <span className="text-gray-500">Analyzing prediction...</span>
+            <span className="text-gray-500">Analysing prediction...</span>
           ) : explanation?.llm_explanation || (
             <span className="text-gray-500">Explanation unavailable</span>
           )}
@@ -194,7 +194,7 @@ const PredictionExplanation: React.FC<PredictionExplanationProps> = ({
         {loading ? (
           <div className="flex items-center gap-2 text-gray-400">
             <RefreshCw className="w-4 h-4 animate-spin" />
-            <span className="text-sm">Analyzing prediction factors...</span>
+            <span className="text-sm">Analysing prediction factors...</span>
           </div>
         ) : (
           <p className="text-sm text-gray-200 leading-relaxed">

@@ -15,9 +15,9 @@ const ShareResults: React.FC<ShareResultsProps> = ({ savings, savingsPercent, pe
     : 'https://basegasoptimizer.com';
 
   const shareText = {
-    twitter: `I saved ${savingsPercent.toFixed(0)}% on @base gas fees this ${period}! Saved $${savings.toFixed(2)} using Base Gas Optimizer 💰\n\n${shareUrl}`,
-    linkedin: `I've been optimizing my Base network gas fees using Base Gas Optimizer. Saved ${savingsPercent.toFixed(0)}% ($${savings.toFixed(2)}) this ${period} by timing my transactions better.\n\n${shareUrl}`,
-    generic: `I saved ${savingsPercent.toFixed(0)}% on Base gas fees! Check out Base Gas Optimizer: ${shareUrl}`
+    twitter: `I saved ${savingsPercent.toFixed(0)}% on @base gas fees this ${period}! Saved $${savings.toFixed(2)} using Base Gas Optimiser 💰\n\n${shareUrl}`,
+    linkedin: `I've been optimising my Base network gas fees using Base Gas Optimiser. Saved ${savingsPercent.toFixed(0)}% ($${savings.toFixed(2)}) this ${period} by timing my transactions better.\n\n${shareUrl}`,
+    generic: `I saved ${savingsPercent.toFixed(0)}% on Base gas fees! Check out Base Gas Optimiser: ${shareUrl}`
   };
 
   const handleCopyLink = async () => {
@@ -155,4 +155,3 @@ const ShareResults: React.FC<ShareResultsProps> = ({ savings, savingsPercent, pe
 };
 
 export default ShareResults;
-

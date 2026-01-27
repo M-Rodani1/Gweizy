@@ -1,6 +1,6 @@
 /**
  * Personalized Recommendations Component
- * Shows personalized gas optimization recommendations based on user transaction history
+ * Shows personalized gas optimisation recommendations based on user transaction history
  */
 import React, { useState, useEffect } from 'react';
 import { useChain } from '../contexts/ChainContext';
@@ -87,7 +87,7 @@ const PersonalizedRecommendations: React.FC<PersonalizedRecommendationsProps> = 
   if (loading) {
     return (
       <div className="bg-gray-800 rounded-lg p-6">
-        <LoadingSpinner message="Analyzing your transaction patterns..." />
+        <LoadingSpinner message="Analysing your transaction patterns..." />
       </div>
     );
   }

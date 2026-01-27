@@ -83,7 +83,7 @@ export const SectionHeaders: StoryObj = {
       <SectionHeader
         eyebrow="Overview"
         title="AI Transaction Pilot"
-        description="Live optimization powered by DQN models."
+        description="Live optimisation powered by DQN models."
         action={<Button size="sm" variant="outline">Docs</Button>}
       />
       <SectionHeader

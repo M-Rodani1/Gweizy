@@ -14,7 +14,7 @@ const TOUR_STEPS: TourStep[] = [
   {
     id: 'welcome',
     title: 'Welcome to Gweizy!',
-    description: 'Your AI-powered gas optimization assistant. Let me show you around.',
+    description: 'Your AI-powered gas optimisation assistant. Let me show you around.',
     target: 'body',
     position: 'bottom',
     icon: <Sparkles className="w-5 h-5 text-cyan-400" />
@@ -46,7 +46,7 @@ const TOUR_STEPS: TourStep[] = [
   {
     id: 'profile',
     title: 'Your Profile',
-    description: 'Customize your strategy, default transaction type, and urgency preferences here.',
+    description: 'Customise your strategy, default transaction type, and urgency preferences here.',
     target: '[data-tour="profile"]',
     position: 'top',
     icon: <Settings2 className="w-5 h-5 text-emerald-400" />

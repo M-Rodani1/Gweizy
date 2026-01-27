@@ -117,7 +117,7 @@ const SocialProof: React.FC = () => {
           </div>
           <div className="flex items-center gap-1.5">
             <span className="text-green-400">✓</span>
-            <span>Base Network Optimized</span>
+            <span>Base Network Optimised</span>
           </div>
           <div className="flex items-center gap-1.5">
             <span className="text-green-400">✓</span>

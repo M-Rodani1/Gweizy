@@ -132,7 +132,7 @@ const UserTransactionHistory: React.FC<UserTransactionHistoryProps> = ({ address
 
           <div className="mt-4 pt-4 border-t border-gray-700">
             <div className="flex items-center justify-between">
-              <span className="text-lg font-semibold text-gray-300">📈 Savings if optimized:</span>
+              <span className="text-lg font-semibold text-gray-300">📈 Savings if optimised:</span>
               <span className="text-2xl font-bold text-green-400">
                 {data.savings_percentage !== undefined && data.savings_percentage !== null ? data.savings_percentage.toFixed(0) : '0'}%
               </span>

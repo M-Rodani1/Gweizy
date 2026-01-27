@@ -159,7 +159,7 @@ const TransactionPilot: React.FC<TransactionPilotProps> = ({ ethPrice = 3000 }) 
       case 'SUBMIT_HIGH':
         return `Priority ${txShortLabel}`;
       default:
-        return `Analyze ${txShortLabel}`;
+        return `Analyse ${txShortLabel}`;
     }
   };
 
@@ -209,7 +209,7 @@ const TransactionPilot: React.FC<TransactionPilotProps> = ({ ethPrice = 3000 }) 
         return {
           gradient: 'from-gray-500 to-gray-600',
           cardClass: '',
-          text: 'Analyzing...',
+          text: 'Analysing...',
           subtext: 'Getting recommendation',
           buttonText: 'Wait',
           buttonClass: 'bg-gray-500',
@@ -347,7 +347,7 @@ const TransactionPilot: React.FC<TransactionPilotProps> = ({ ethPrice = 3000 }) 
           </div>
           <div>
             <h2 className="text-lg font-bold text-white">AI Transaction Pilot</h2>
-            <p className="text-xs text-gray-400">DQN Neural Network • Real-time optimization</p>
+            <p className="text-xs text-gray-400">DQN Neural Network • Real-time optimisation</p>
           </div>
         </div>
         <div className="text-right">
@@ -423,7 +423,7 @@ const TransactionPilot: React.FC<TransactionPilotProps> = ({ ethPrice = 3000 }) 
               <div className="text-center">
                 <div className="w-12 h-12 border-3 border-gray-600 border-t-cyan-400 rounded-full animate-spin mx-auto mb-4" />
                 <div className="text-gray-400">
-                  {loadingState === 'timeout' ? 'Still analyzing... (complex calculation)' : 'Analyzing network...'}
+                  {loadingState === 'timeout' ? 'Still analysing... (complex calculation)' : 'Analysing network...'}
                 </div>
                 {retryCount > 0 && (
                   <div className="text-xs text-gray-500 mt-2">Attempt {retryCount + 1}</div>
@@ -466,7 +466,7 @@ const TransactionPilot: React.FC<TransactionPilotProps> = ({ ethPrice = 3000 }) 
                   {loading ? (
                     <>
                       <RefreshCw className="w-4 h-4 animate-spin" />
-                      Analyzing...
+                      Analysing...
                     </>
                   ) : (
                     <>

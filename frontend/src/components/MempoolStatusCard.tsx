@@ -248,7 +248,7 @@ const MempoolStatusCard: React.FC = () => {
 
       {/* Additional Stats */}
       <div className="flex items-center justify-between text-xs text-gray-500 pt-2 border-t border-gray-700">
-        <span>{interpretation?.trend_description || 'Analyzing...'}</span>
+        <span>{interpretation?.trend_description || 'Analysing...'}</span>
         <span>
           {data.status === 'active' ? (
             <span className="flex items-center gap-1">

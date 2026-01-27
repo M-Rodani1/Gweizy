@@ -222,7 +222,7 @@ const GasWasteCalculator: React.FC<GasWasteCalculatorProps> = ({ walletAddress }
           <div className="bg-gray-800/50 rounded p-3">
             <div className="text-sm text-gray-400 mb-1">If you used our predictions:</div>
             <div className="text-xl font-bold text-green-400">${formatUSD(results.optimizedGasCost)}</div>
-            <div className="text-xs text-gray-500">Optimized gas cost</div>
+            <div className="text-xs text-gray-500">Optimised gas cost</div>
           </div>
         </div>
 

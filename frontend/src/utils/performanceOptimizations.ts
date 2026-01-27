@@ -1,5 +1,5 @@
 /**
- * Performance optimization utilities for the Gweizy app
+ * Performance optimisation utilities for the Gweizy app
  */
 
 /**

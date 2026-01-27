@@ -1,6 +1,6 @@
 /**
  * Memoized version of RelativePriceIndicator
- * Optimized to prevent unnecessary re-renders
+ * Optimised to prevent unnecessary re-renders
  */
 
 import React, { memo } from 'react';

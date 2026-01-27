@@ -23,7 +23,7 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete }) => {
 
   const steps = [
     {
-      title: "Welcome to Base Gas Optimizer! 👋",
+      title: "Welcome to Base Gas Optimiser! 👋",
       component: <WelcomeStep />,
       description: "Let's get you set up to start saving money. This will take less than 2 minutes."
     },
@@ -129,7 +129,7 @@ const WelcomeStep = () => (
   <div className="text-center py-8">
     <div className="text-6xl mb-6">⚡</div>
     <p className="text-lg text-gray-300">
-      Base Gas Optimizer uses AI to predict optimal transaction times,
+      Base Gas Optimiser uses AI to predict optimal transaction times,
       helping you save up to 65% on gas fees.
     </p>
   </div>
@@ -326,4 +326,3 @@ const SuccessStep = () => (
 );
 
 export default OnboardingFlow;
-
