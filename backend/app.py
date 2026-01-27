@@ -172,6 +172,16 @@ def create_app():
     except Exception as e:
         logger.warning(f"Could not run database migration on startup: {e}")
         # Don't fail startup if migration fails - it can be run manually via endpoint
+
+    # Migrate spike detector models from pickle to joblib format (one-time migration)
+    try:
+        from scripts.migrate_models_to_joblib import run_migration_if_needed
+        if run_migration_if_needed():
+            logger.info("Model format migration check completed")
+        else:
+            logger.warning("Model format migration had issues - models may need manual update")
+    except Exception as e:
+        logger.warning(f"Could not run model format migration: {e}")
     
     # Handle OPTIONS preflight requests explicitly
     @app.before_request

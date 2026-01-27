@@ -12,26 +12,28 @@ import urllib.request
 import hashlib
 
 # GitHub release URL for model files
-GITHUB_REPO = "M-Rodani1/basegasfeesML"
-RELEASE_TAG = "models-v1.0"
+GITHUB_REPO = "M-Rodani1/Gweizy"
+RELEASE_TAG = "models-v1.1"  # Updated to joblib format
 BASE_URL = f"https://github.com/{GITHUB_REPO}/releases/download/{RELEASE_TAG}"
 
 # Model files to download
+# Note: v1.1 models are fallback models (~0.8MB each), trained on synthetic data
+# They will be replaced with larger production models when trained on real data
 MODELS = [
     {
         'name': 'spike_detector_1h.pkl',
         'url': f'{BASE_URL}/spike_detector_1h.pkl',
-        'size_mb': 99
+        'size_mb': 1  # Fallback model, ~0.8MB
     },
     {
         'name': 'spike_detector_4h.pkl',
         'url': f'{BASE_URL}/spike_detector_4h.pkl',
-        'size_mb': 83
+        'size_mb': 1  # Fallback model, ~0.8MB
     },
     {
         'name': 'spike_detector_24h.pkl',
         'url': f'{BASE_URL}/spike_detector_24h.pkl',
-        'size_mb': 31
+        'size_mb': 1  # Fallback model, ~0.8MB
     }
 ]
 
