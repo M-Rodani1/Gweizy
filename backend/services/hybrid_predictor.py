@@ -19,12 +19,15 @@ class HybridPredictor:
         # Load models on initialization
         self.load_models()
         
-        # Database connection for Railway (PostgreSQL) or Local (SQLite)
-        self.db_url = os.getenv("DATABASE_URL", "sqlite:///gas_data.db")
+        # Database connection - use same config as DatabaseManager
+        # Use /data for persistent storage on Railway, fallback to local for development
+        self.db_url = os.getenv("DATABASE_URL",
+                                "sqlite:////data/gas_data.db" if os.path.exists('/data')
+                                else "sqlite:///gas_data.db")
         # Fix for SQLAlchemy requiring postgresql:// instead of postgres://
         if self.db_url and self.db_url.startswith("postgres://"):
             self.db_url = self.db_url.replace("postgres://", "postgresql://", 1)
-            
+
         self.engine = create_engine(self.db_url)
 
     def load_models(self):
