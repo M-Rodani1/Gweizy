@@ -392,26 +392,55 @@ def current_gas():
 @cached(ttl=60)  # Cache for 1 minute
 def eth_price():
     """Proxy endpoint for ETH price from CoinGecko (avoids CORS issues)"""
+    import requests
+    from requests.adapters import HTTPAdapter
+    from urllib3.util.retry import Retry
+
+    # Configure retry strategy for transient errors
+    retry_strategy = Retry(
+        total=3,
+        backoff_factor=0.5,
+        status_forcelist=[429, 500, 502, 503, 504],
+        allowed_methods=["GET"],
+        raise_on_status=False
+    )
+
+    session = requests.Session()
+    adapter = HTTPAdapter(max_retries=retry_strategy)
+    session.mount("https://", adapter)
+
     try:
-        import requests
-        response = requests.get(
+        response = session.get(
             'https://api.coingecko.com/api/v3/simple/price',
             params={
                 'ids': 'ethereum',
                 'vs_currencies': 'usd',
                 'include_24hr_change': 'true'
             },
-            timeout=10
+            headers={
+                'User-Agent': 'Gweizy/1.0',
+                'Accept': 'application/json'
+            },
+            timeout=(5, 10)  # (connect timeout, read timeout)
         )
 
         if response.ok:
             data = response.json()
             return jsonify(data), 200
         else:
+            logger.warning(f"CoinGecko API returned status {response.status_code}")
             return jsonify({'error': 'Failed to fetch ETH price'}), response.status_code
+    except requests.exceptions.ConnectionError as e:
+        logger.warning(f"Connection error fetching ETH price (will retry on next request): {e}")
+        return jsonify({'error': 'ETH price service temporarily unavailable'}), 503
+    except requests.exceptions.Timeout as e:
+        logger.warning(f"Timeout fetching ETH price: {e}")
+        return jsonify({'error': 'ETH price request timed out'}), 504
     except Exception as e:
         logger.error(f"Error fetching ETH price: {e}")
         return jsonify({'error': str(e)}), 500
+    finally:
+        session.close()
 
 
 @api_bp.route('/historical', methods=['GET'])
