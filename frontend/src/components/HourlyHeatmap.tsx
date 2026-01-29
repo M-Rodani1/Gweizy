@@ -38,10 +38,11 @@ const HourlyHeatmap: React.FC = () => {
       }
 
       const result = await response.json();
-      if (result.success && result.data?.hourly) {
+      const hourlyData = result.data?.hourly;
+
+      if (result.success && Array.isArray(hourlyData) && hourlyData.length > 0) {
         // Transform API data into heatmap format
         const cells: HeatmapCell[] = [];
-        const hourlyData = result.data.hourly;
 
         // Generate cells for each day/hour combination
         DAYS.forEach((_, dayIdx) => {
@@ -56,6 +57,13 @@ const HourlyHeatmap: React.FC = () => {
             });
           });
         });
+
+        // Only proceed if we have valid cells
+        if (cells.length === 0) {
+          setData(generateMockData());
+          setIsFallback(true);
+          return;
+        }
 
         const gweiValues = cells.map(c => c.avgGwei);
         const minGwei = Math.min(...gweiValues);
