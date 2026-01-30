@@ -113,9 +113,11 @@ class Config:
     
     # Database
     # Use /data for persistent storage on Railway, fallback to local for development
+    # Use absolute path locally to prevent database splits when running from different directories
+    _LOCAL_DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'gas_data.db')
     DATABASE_URL = os.getenv('DATABASE_URL',
                             'sqlite:////data/gas_data.db' if os.path.exists('/data')
-                            else 'sqlite:///gas_data.db')
+                            else f'sqlite:///{_LOCAL_DB_PATH}')
     
     # Model Storage
     # Use /data/models for persistent storage on Railway, fallback to local for development
