@@ -6,9 +6,15 @@ import numpy as np
 import pickle
 import os
 import logging
+import sys
 from typing import List, Tuple, Optional
 from collections import deque
 import random
+
+# Add parent directory to path for imports
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+
+from utils.safe_model_loader import safe_load, UnsafePathError
 
 logger = logging.getLogger(__name__)
 
@@ -740,9 +746,12 @@ class DQNAgent:
             pickle.dump(data, f)
 
     def load(self, path: str):
-        """Load agent from file."""
-        with open(path, 'rb') as f:
-            data = pickle.load(f)
+        """Load agent from file with path validation."""
+        try:
+            data = safe_load(path, prefer_joblib=True, validate_path=True)
+        except UnsafePathError as e:
+            logger.error(f"Security: Blocked loading DQN agent from {path}: {e}")
+            raise
 
         data_dueling = bool(data.get('dueling', False))
         if data_dueling and not all(k in data for k in ('value_weights', 'value_biases', 'advantage_weights', 'advantage_biases')):

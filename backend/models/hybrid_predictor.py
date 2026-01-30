@@ -10,11 +10,11 @@ Strategy:
 
 import numpy as np
 import pandas as pd
-import joblib
-import pickle
 import os
 import logging
 from datetime import datetime, timedelta
+
+from utils.safe_model_loader import safe_load, UnsafePathError
 
 logger = logging.getLogger(__name__)
 
@@ -125,14 +125,18 @@ class HybridPredictor:
                         break
 
                 if detector_path and os.path.exists(detector_path):
-                    # Try joblib first (preferred), fall back to pickle for legacy files
+                    # Use safe model loader with path validation
                     try:
-                        self.spike_detectors[horizon] = joblib.load(detector_path)
-                    except (KeyError, ValueError, pickle.UnpicklingError) as load_err:
-                        logger.debug(f"joblib.load failed for {horizon}, trying pickle: {load_err}")
-                        with open(detector_path, 'rb') as f:
-                            self.spike_detectors[horizon] = pickle.load(f)
-                    logger.info(f"✓ Loaded spike detector for {horizon} from {detector_path}")
+                        self.spike_detectors[horizon] = safe_load(
+                            detector_path,
+                            prefer_joblib=True,
+                            validate_path=True
+                        )
+                        logger.info(f"✓ Loaded spike detector for {horizon} from {detector_path}")
+                    except UnsafePathError as path_err:
+                        logger.error(f"Security: Blocked loading spike detector from {detector_path}: {path_err}")
+                    except Exception as load_err:
+                        logger.warning(f"Failed to load spike detector for {horizon}: {load_err}")
                 else:
                     # Debug level - expected during initial setup before training
                     logger.debug(f"Spike detector not found for {horizon}")

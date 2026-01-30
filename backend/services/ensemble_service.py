@@ -20,6 +20,7 @@ import threading
 import json
 
 from utils.logger import logger
+from utils.safe_model_loader import safe_load, UnsafePathError
 
 
 @dataclass
@@ -108,11 +109,19 @@ class ProductionEnsembleService:
                 )
 
                 if os.path.exists(ensemble_path):
-                    # Load saved ensemble
-                    import pickle
-                    with open(ensemble_path, 'rb') as f:
-                        self.ensemble = pickle.load(f)
-                    logger.info(f"Loaded pre-trained ensemble from {ensemble_path}")
+                    # Load saved ensemble with path validation
+                    try:
+                        self.ensemble = safe_load(
+                            ensemble_path,
+                            prefer_joblib=True,
+                            validate_path=True
+                        )
+                        logger.info(f"Loaded pre-trained ensemble from {ensemble_path}")
+                    except UnsafePathError as path_err:
+                        logger.error(f"Security: Blocked loading ensemble from {ensemble_path}: {path_err}")
+                        self.load_error = str(path_err)
+                        self.is_loaded = True
+                        return False
                 else:
                     # Load individual agents into ensemble
                     config = EnsembleConfig(n_agents=3, num_episodes=0)

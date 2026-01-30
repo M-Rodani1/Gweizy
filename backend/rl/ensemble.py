@@ -15,6 +15,8 @@ import pickle
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from utils.safe_model_loader import safe_load, UnsafePathError
+
 from rl.data_loader import GasDataLoader
 from rl.environment import GasOptimizationEnv
 from rl.rewards import RewardConfig
@@ -464,9 +466,12 @@ class EnsembleDQN:
         print(f"Ensemble saved to {filepath}")
 
     def load(self, filepath: str):
-        """Load ensemble from file."""
-        with open(filepath, 'rb') as f:
-            data = pickle.load(f)
+        """Load ensemble from file with path validation."""
+        try:
+            data = safe_load(filepath, prefer_joblib=True, validate_path=True)
+        except UnsafePathError as e:
+            print(f"Security: Blocked loading ensemble from {filepath}: {e}")
+            raise
 
         self.config = EnsembleConfig(**data['config'])
         self.agent_metadata = data['agent_metadata']
