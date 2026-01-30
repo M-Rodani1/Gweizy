@@ -368,3 +368,75 @@ def error_handlers(app):
         capture_exception(error, {'error_type': '503_unavailable'})
         response = jsonify({'error': 'Service temporarily unavailable'})
         return add_cors_headers(response), 503
+
+
+# =============================================================================
+# Admin Authentication
+# =============================================================================
+
+from functools import wraps
+
+
+def require_admin_auth(f):
+    """
+    Decorator to require admin API key authentication.
+
+    Checks for X-Admin-API-Key header and validates against ADMIN_API_KEY config.
+    In DEBUG mode without ADMIN_API_KEY set, authentication is bypassed with a warning.
+
+    Usage:
+        @app.route('/admin/endpoint', methods=['POST'])
+        @require_admin_auth
+        def admin_endpoint():
+            ...
+    """
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        from flask import request, jsonify
+
+        admin_key = Config.ADMIN_API_KEY
+
+        # If no admin key configured
+        if not admin_key:
+            if Config.DEBUG:
+                # Allow in debug mode but log warning
+                logger.warning(
+                    f"Admin endpoint accessed without auth (DEBUG mode): {request.path} - "
+                    "Set ADMIN_API_KEY env var for production"
+                )
+                return f(*args, **kwargs)
+            else:
+                # In production, block if no key configured
+                logger.error(f"Admin endpoint blocked - ADMIN_API_KEY not configured: {request.path}")
+                response = jsonify({
+                    'error': 'Admin authentication not configured',
+                    'message': 'Contact administrator to configure ADMIN_API_KEY'
+                })
+                return add_cors_headers(response), 503
+
+        # Check for API key in header
+        provided_key = request.headers.get('X-Admin-API-Key')
+
+        if not provided_key:
+            logger.warning(f"Admin endpoint accessed without API key: {request.path}")
+            response = jsonify({
+                'error': 'Unauthorized',
+                'message': 'X-Admin-API-Key header required'
+            })
+            return add_cors_headers(response), 401
+
+        # Validate API key (constant-time comparison to prevent timing attacks)
+        import hmac
+        if not hmac.compare_digest(provided_key, admin_key):
+            logger.warning(f"Invalid admin API key used for: {request.path}")
+            response = jsonify({
+                'error': 'Unauthorized',
+                'message': 'Invalid API key'
+            })
+            return add_cors_headers(response), 401
+
+        # Authentication successful
+        logger.info(f"Admin endpoint authenticated: {request.path}")
+        return f(*args, **kwargs)
+
+    return decorated_function

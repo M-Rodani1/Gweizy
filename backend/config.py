@@ -137,6 +137,11 @@ class Config:
     MODEL_PATH = 'models/gas_predictor.pkl'
     RETRAIN_INTERVAL = 86400  # 24 hours
     
+    # Admin Authentication
+    # API key required for admin endpoints (retraining, rollback, reset metrics)
+    # Generate with: python -c "import secrets; print(secrets.token_urlsafe(32))"
+    ADMIN_API_KEY = os.getenv('ADMIN_API_KEY', '')
+
     # Notifications
     SMTP_SERVER = os.getenv('SMTP_SERVER', '')
     SMTP_PORT = int(os.getenv('SMTP_PORT', '587'))

@@ -12,6 +12,7 @@ Endpoints for managing automated model retraining:
 from flask import Blueprint, jsonify, request
 from utils.model_retrainer import ModelRetrainer
 from utils.logger import logger
+from api.middleware import require_admin_auth
 from datetime import datetime
 import time
 import os
@@ -112,6 +113,7 @@ def get_retraining_status():
 
 
 @retraining_bp.route('/retraining/trigger', methods=['POST'])
+@require_admin_auth
 def trigger_retraining():
     """
     Manually trigger model retraining
@@ -122,16 +124,12 @@ def trigger_retraining():
             "force": true | false
         }
 
+    Requires admin authentication (X-Admin-API-Key header).
+
     Returns:
         Retraining results
-
-    Note: This endpoint should be protected with authentication in production
     """
     try:
-        # TODO: Add authentication check
-        # if not is_admin(request):
-        #     return jsonify({'error': 'Unauthorized'}), 401
-
         data = request.get_json() or {}
         model_type = data.get('model_type', 'all')
         force = data.get('force', False)
@@ -208,6 +206,7 @@ def get_retraining_history():
 
 
 @retraining_bp.route('/retraining/rollback', methods=['POST'])
+@require_admin_auth
 def rollback_models():
     """
     Rollback to a previous model backup
@@ -217,16 +216,12 @@ def rollback_models():
             "backup_path": "/path/to/backup"
         }
 
+    Requires admin authentication (X-Admin-API-Key header).
+
     Returns:
         Rollback status
-
-    Note: This endpoint should be protected with authentication in production
     """
     try:
-        # TODO: Add authentication check
-        # if not is_admin(request):
-        #     return jsonify({'error': 'Unauthorized'}), 401
-
         data = request.get_json()
 
         if not data or 'backup_path' not in data:

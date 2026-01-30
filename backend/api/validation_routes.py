@@ -9,6 +9,7 @@ from flask import Blueprint, jsonify, request
 from utils.prediction_validator import PredictionValidator
 from utils.logger import logger
 from api.cache import cached
+from api.middleware import require_admin_auth
 from datetime import datetime
 
 validation_bp = Blueprint('validation', __name__)
@@ -169,6 +170,7 @@ def trigger_validation():
 
 
 @validation_bp.route('/validation/metrics/daily', methods=['POST'])
+@require_admin_auth
 def save_daily_metrics():
     """
     Save daily aggregated metrics
@@ -176,13 +178,9 @@ def save_daily_metrics():
     This should be called daily (via cron or scheduler) to save
     performance metrics for trending analysis.
 
-    Requires admin authentication in production.
+    Requires admin authentication (X-Admin-API-Key header).
     """
     try:
-        # TODO: Add authentication check
-        # if not is_admin(request):
-        #     return jsonify({'error': 'Unauthorized'}), 401
-
         results = validator.save_daily_metrics()
 
         return jsonify(results), 200
@@ -244,6 +242,7 @@ def log_prediction():
 
 # Admin endpoint to get detailed validation logs
 @validation_bp.route('/validation/logs', methods=['GET'])
+@require_admin_auth
 def get_validation_logs():
     """
     Get detailed prediction logs for debugging
@@ -253,12 +252,12 @@ def get_validation_logs():
         - validated: Filter by validation status (true/false)
         - horizon: Filter by horizon
 
+    Requires admin authentication (X-Admin-API-Key header).
+
     Returns:
         List of prediction logs
     """
     try:
-        # TODO: Add authentication in production
-
         limit = int(request.args.get('limit', 100))
         validated_filter = request.args.get('validated', None)
         horizon_filter = request.args.get('horizon', None)
