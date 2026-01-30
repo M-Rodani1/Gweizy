@@ -519,49 +519,59 @@ else:
 
 # Start data collection with socketio after both are initialized
 use_worker_process = os.getenv('USE_WORKER_PROCESS', 'false').lower() == 'true'
+enable_collection = os.getenv('ENABLE_DATA_COLLECTION', 'true').lower() == 'true'
+
+logger.info(f"Data collection config: USE_WORKER_PROCESS={use_worker_process}, DEBUG={Config.DEBUG}, ENABLE_DATA_COLLECTION={enable_collection}")
 
 if not use_worker_process:
-    if not Config.DEBUG or os.getenv('ENABLE_DATA_COLLECTION', 'true').lower() == 'true':
+    if not Config.DEBUG or enable_collection:
         websocket_status = "with WebSocket support" if SOCKETIO_AVAILABLE else "without WebSocket"
         logger.info(f"Starting data collection in background threads {websocket_status}")
 
         # Import here to avoid circular dependency
         def start_collection_with_socketio():
-            from services.gas_collector_service import GasCollectorService
-            from services.onchain_collector_service import OnChainCollectorService
-
-            logger.info("="*60)
-            logger.info("STARTING BACKGROUND DATA COLLECTION")
-            logger.info(f"Collection interval: {Config.COLLECTION_INTERVAL} seconds")
-            logger.info("="*60)
-
-            gas_service = GasCollectorService(Config.COLLECTION_INTERVAL, socketio=socketio if SOCKETIO_AVAILABLE else None)
-            onchain_service = OnChainCollectorService(Config.COLLECTION_INTERVAL)
-
-            gas_thread = threading.Thread(target=gas_service.start, name="GasCollector", daemon=True)
-            gas_thread.start()
-            logger.info("✓ Gas price collection started")
-
-            onchain_thread = threading.Thread(target=onchain_service.start, name="OnChainCollector", daemon=True)
-            onchain_thread.start()
-            logger.info("✓ On-chain features collection started")
-
-            # Start mempool collector for leading indicators
             try:
-                from data.mempool_collector import get_mempool_collector, is_collector_ready
-                mempool_collector = get_mempool_collector(timeout=5.0)
-                if mempool_collector:
-                    mempool_collector.start_background_collection()
-                    logger.info("✓ Mempool data collection started")
-                else:
-                    logger.warning("Mempool collector initialization pending - will retry on first request")
+                from services.gas_collector_service import GasCollectorService
+                from services.onchain_collector_service import OnChainCollectorService
+
+                logger.info("="*60)
+                logger.info("STARTING BACKGROUND DATA COLLECTION")
+                logger.info(f"Collection interval: {Config.COLLECTION_INTERVAL} seconds")
+                logger.info("="*60)
+
+                gas_service = GasCollectorService(Config.COLLECTION_INTERVAL, socketio=socketio if SOCKETIO_AVAILABLE else None)
+                onchain_service = OnChainCollectorService(Config.COLLECTION_INTERVAL)
+
+                gas_thread = threading.Thread(target=gas_service.start, name="GasCollector", daemon=True)
+                gas_thread.start()
+                logger.info("✓ Gas price collection started")
+
+                onchain_thread = threading.Thread(target=onchain_service.start, name="OnChainCollector", daemon=True)
+                onchain_thread.start()
+                logger.info("✓ On-chain features collection started")
+
+                # Start mempool collector for leading indicators
+                try:
+                    from data.mempool_collector import get_mempool_collector, is_collector_ready
+                    mempool_collector = get_mempool_collector(timeout=5.0)
+                    if mempool_collector:
+                        mempool_collector.start_background_collection()
+                        logger.info("✓ Mempool data collection started")
+                    else:
+                        logger.warning("Mempool collector initialization pending - will retry on first request")
+                except Exception as e:
+                    logger.warning(f"Could not start mempool collector: {e}")
+
+                logger.info("="*60)
             except Exception as e:
-                logger.warning(f"Could not start mempool collector: {e}")
+                logger.error(f"CRITICAL: Failed to start data collection: {e}")
+                import traceback
+                logger.error(traceback.format_exc())
 
-            logger.info("="*60)
-
-        collection_thread = threading.Thread(target=start_collection_with_socketio, daemon=True)
+        # Use non-daemon thread to ensure collection survives gunicorn worker lifecycle
+        collection_thread = threading.Thread(target=start_collection_with_socketio, name="CollectionStarter", daemon=False)
         collection_thread.start()
+        logger.info("Collection starter thread launched")
         
         # Start automated retraining scheduler
         try:
