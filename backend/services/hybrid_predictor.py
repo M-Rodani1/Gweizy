@@ -108,12 +108,18 @@ class HybridPredictor:
             df[f'gas_ma_{window}'] = df['gas_price'].rolling(window).mean()
             df[f'gas_std_{window}'] = df['gas_price'].rolling(window).std()
             df[f'gas_min_{window}'] = df['gas_price'].rolling(window).min()
-            
+
             # Volatility-normalized features (Important for 4h model)
             rolling_std = df[f'gas_std_{window}']
             rolling_mean = df[f'gas_ma_{window}']
             df[f'price_zscore_{window}'] = (df['gas_price'] - rolling_mean) / (rolling_std + 1e-8)
             df[f'price_rel_mean_{window}'] = df['gas_price'] / (rolling_mean + 1e-8)
+
+            # Mean reversion features (required by model)
+            df[f'distance_from_mean_{window}'] = df['gas_price'] - rolling_mean
+            df[f'mean_reversion_{window}'] = -df[f'distance_from_mean_{window}'] / (rolling_std + 1e-8)
+            df[f'detrended_{window}'] = df['gas_price'] - rolling_mean
+            df[f'price_ma_ratio_{window}'] = df['gas_price'] / (rolling_mean + 1e-8)
 
         # 4. Micro-structure
         if 'base_fee' in df.columns:
