@@ -141,9 +141,17 @@ const HourlyHeatmap: React.FC = () => {
   const getCellColor = (gwei: number): string => {
     if (!data) return 'bg-gray-800';
 
-    const normalized = (gwei - data.minGwei) / (data.maxGwei - data.minGwei);
+    // Handle edge cases: NaN, undefined, or zero range
+    if (!Number.isFinite(gwei) || !Number.isFinite(data.minGwei) || !Number.isFinite(data.maxGwei)) {
+      return 'bg-gray-800';
+    }
 
-    if (normalized < 0.2) return 'bg-green-500';
+    const range = data.maxGwei - data.minGwei;
+    if (range <= 0) return 'bg-green-500'; // All values are the same
+
+    const normalized = (gwei - data.minGwei) / range;
+
+    if (!Number.isFinite(normalized) || normalized < 0.2) return 'bg-green-500';
     if (normalized < 0.4) return 'bg-green-400/70';
     if (normalized < 0.6) return 'bg-yellow-400/60';
     if (normalized < 0.8) return 'bg-orange-400/70';
@@ -179,14 +187,27 @@ const HourlyHeatmap: React.FC = () => {
     );
   }
 
+  // Helper to safely format gwei values
+  const safeGwei = (value: number | undefined): string => {
+    if (value === undefined || value === null || !Number.isFinite(value)) return '0.000000';
+    return value.toFixed(6);
+  };
+
   // Generate screen reader summary
   const heatmapSummary = useMemo(() => {
     if (!data) return 'Loading heatmap data';
 
+    const bestDay = data.bestTime?.day ?? 0;
+    const bestHour = data.bestTime?.hour ?? 0;
+    const bestGwei = safeGwei(data.bestTime?.gwei);
+    const worstDay = data.worstTime?.day ?? 0;
+    const worstHour = data.worstTime?.hour ?? 0;
+    const worstGwei = safeGwei(data.worstTime?.gwei);
+
     return `Weekly gas price heatmap showing patterns for each hour of each day. ` +
-      `Best time to transact: ${DAYS[data.bestTime.day]} at ${formatHour(data.bestTime.hour)} with average ${data.bestTime.gwei.toFixed(6)} gwei. ` +
-      `Worst time: ${DAYS[data.worstTime.day]} at ${formatHour(data.worstTime.hour)} with average ${data.worstTime.gwei.toFixed(6)} gwei. ` +
-      `Gas prices range from ${data.minGwei.toFixed(6)} to ${data.maxGwei.toFixed(6)} gwei.`;
+      `Best time to transact: ${DAYS[bestDay]} at ${formatHour(bestHour)} with average ${bestGwei} gwei. ` +
+      `Worst time: ${DAYS[worstDay]} at ${formatHour(worstHour)} with average ${worstGwei} gwei. ` +
+      `Gas prices range from ${safeGwei(data.minGwei)} to ${safeGwei(data.maxGwei)} gwei.`;
   }, [data]);
 
   return (
