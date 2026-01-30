@@ -121,6 +121,10 @@ class HybridPredictor:
             df[f'detrended_{window}'] = df['gas_price'] - rolling_mean
             df[f'price_ma_ratio_{window}'] = df['gas_price'] / (rolling_mean + 1e-8)
 
+            # Trend strength features (required by 1h model)
+            price_change = df['gas_price'].diff(window)
+            df[f'trend_strength_{window}'] = price_change / (rolling_std + 1e-8)
+
         # 4. Micro-structure
         if 'base_fee' in df.columns:
             df['gas_base_divergence'] = df['gas_price'] - df['base_fee']
