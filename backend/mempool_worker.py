@@ -297,8 +297,8 @@ class BlockHeaderWorker:
                     if self.ws:
                         try:
                             await self.ws.ping()
-                        except:
-                            pass
+                        except Exception:
+                            pass  # Ping failed, connection will be retried
                     continue
                 except websockets.exceptions.ConnectionClosed:
                     logger.warning("⚠️  WebSocket connection closed")
@@ -338,8 +338,8 @@ class BlockHeaderWorker:
                 if self.ws:
                     try:
                         await self.ws.close()
-                    except:
-                        pass
+                    except Exception:
+                        pass  # WebSocket already closed
                     self.ws = None
                 
                 self.running = False
@@ -357,8 +357,8 @@ class BlockHeaderWorker:
                 if self.ws:
                     try:
                         await self.ws.close()
-                    except:
-                        pass
+                    except Exception:
+                        pass  # WebSocket already closed
                 break
             except Exception as e:
                 logger.error(f"❌ Unexpected error in run loop: {e}")
@@ -366,8 +366,8 @@ class BlockHeaderWorker:
                 if self.ws:
                     try:
                         await self.ws.close()
-                    except:
-                        pass
+                    except Exception:
+                        pass  # WebSocket already closed
                 await asyncio.sleep(reconnect_delay)
                 reconnect_delay = min(reconnect_delay * 2, 60)
 

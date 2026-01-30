@@ -119,12 +119,12 @@ class AutonomousPipeline:
                                 timestamps.append(datetime.fromisoformat(ts.replace('Z', '+00:00')))
                             else:
                                 timestamps.append(datetime.strptime(ts, '%Y-%m-%d'))
-                        except:
+                        except (ValueError, TypeError):
                             try:
                                 from dateutil import parser
                                 timestamps.append(parser.parse(ts))
-                            except:
-                                pass
+                            except (ValueError, TypeError, ImportError):
+                                pass  # Skip unparseable timestamps
                     elif isinstance(ts, datetime):
                         timestamps.append(ts)
                 

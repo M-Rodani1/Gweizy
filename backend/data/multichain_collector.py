@@ -91,8 +91,8 @@ class MultiChainGasCollector:
                 if w3.is_connected():
                     self._web3_instances[chain_id] = w3
                     return w3
-            except:
-                pass
+            except Exception:
+                pass  # RPC connection failed
         
         return self._web3_instances.get(chain_id)
     

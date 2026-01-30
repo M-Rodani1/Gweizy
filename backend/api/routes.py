@@ -118,8 +118,8 @@ def load_models():
                     # Try old loading method
                     try:
                         models[horizon] = GasModelTrainer.load_model(horizon)
-                    except:
-                        pass
+                    except Exception as e:
+                        logger.debug(f"Could not load model for {horizon} using old method: {e}")
             
             # Load global feature names if available
             feature_names_path = os.path.join(models_dir, 'feature_names.pkl')
@@ -179,8 +179,8 @@ def reload_models():
         try:
             clear_cache()
             logger.info("✅ Cleared prediction cache")
-        except:
-            pass
+        except Exception as e:
+            logger.debug(f"Could not clear cache: {e}")
     else:
         logger.error(f"❌ Failed to reload models: {result.get('error')}")
     return result
@@ -466,7 +466,7 @@ def historical():
                 from dateutil import parser
                 try:
                     timestamp = parser.parse(timestamp)
-                except:
+                except (ValueError, TypeError):
                     timestamp = datetime.now()
             elif not isinstance(timestamp, datetime):
                 timestamp = datetime.now()
@@ -647,7 +647,7 @@ def get_predictions():
                     if isinstance(timestamp, str):
                         try:
                             dt = parser.parse(timestamp)
-                        except:
+                        except (ValueError, TypeError):
                             dt = datetime.now()
                     else:
                         dt = timestamp if hasattr(timestamp, 'hour') else datetime.now()
@@ -768,7 +768,7 @@ def get_predictions():
                         try:
                             dt = parser.parse(timestamp)
                             time_str = dt.strftime('%H:%M')
-                        except:
+                        except (ValueError, TypeError):
                             time_str = timestamp[:5] if len(timestamp) > 5 else timestamp
                     else:
                         time_str = str(timestamp)[:5]
@@ -854,7 +854,7 @@ def get_predictions():
                         from dateutil import parser
                         dt = parser.parse(timestamp)
                         time_str = dt.strftime('%H:%M')
-                    except:
+                    except (ValueError, TypeError):
                         time_str = timestamp[:5] if len(timestamp) > 5 else timestamp
                 else:
                     time_str = str(timestamp)[:5]
@@ -901,7 +901,7 @@ def get_predictions():
                         from dateutil import parser
                         dt = parser.parse(timestamp)
                         time_str = dt.strftime('%H:%M')
-                    except:
+                    except (ValueError, TypeError):
                         time_str = timestamp[:5] if len(timestamp) > 5 else timestamp
                 else:
                     time_str = str(timestamp)[:5]
@@ -1137,7 +1137,7 @@ def get_predictions():
                     try:
                         dt = parser.parse(timestamp)
                         time_str = dt.strftime('%H:%M')
-                    except:
+                    except (ValueError, TypeError):
                         time_str = timestamp[:5] if len(timestamp) > 5 else timestamp
                 else:
                     time_str = str(timestamp)[:5]
@@ -1190,7 +1190,7 @@ def get_predictions():
                     try:
                         dt = parser.parse(timestamp)
                         time_str = dt.strftime('%H:%M')
-                    except:
+                    except (ValueError, TypeError):
                         time_str = timestamp[:5] if len(timestamp) > 5 else timestamp
                 else:
                     time_str = str(timestamp)[:5]
@@ -1252,7 +1252,7 @@ def explain_prediction(horizon):
             if isinstance(timestamp, str):
                 try:
                     dt = parser.parse(timestamp)
-                except:
+                except (ValueError, TypeError):
                     dt = datetime.now()
             else:
                 dt = timestamp if hasattr(timestamp, 'hour') else datetime.now()
@@ -1292,7 +1292,7 @@ def explain_prediction(horizon):
             # Get feature names from the features DataFrame
             try:
                 feature_names = list(features.columns)
-            except:
+            except (AttributeError, TypeError):
                 try:
                     # Create a sample DataFrame to get feature columns
                     import pandas as pd
@@ -1892,7 +1892,7 @@ def get_pattern_analysis():
             if isinstance(timestamp, str):
                 try:
                     dt = parser.parse(timestamp)
-                except:
+                except (ValueError, TypeError):
                     dt = datetime.now()
             else:
                 dt = timestamp if hasattr(timestamp, 'hour') else datetime.now()

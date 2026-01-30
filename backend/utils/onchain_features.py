@@ -300,8 +300,8 @@ class OnChainFeatureExtractor:
             # Pending transaction count (27% variance explained!)
             try:
                 pending_count = self.w3.eth.get_block_transaction_count('pending')
-            except:
-                pending_count = 0  # Fallback if not supported
+            except Exception:
+                pending_count = 0  # Fallback if not supported by node
 
             # Unique addresses (senders and receivers)
             senders = set()

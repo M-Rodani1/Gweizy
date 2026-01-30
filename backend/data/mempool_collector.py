@@ -148,8 +148,8 @@ class MempoolCollector:
             try:
                 if w3.is_connected():
                     return w3
-            except:
-                continue
+            except Exception:
+                continue  # Connection check failed, try next
         return None
 
     def collect_snapshot(self) -> Optional[MempoolSnapshot]:
@@ -254,8 +254,8 @@ class MempoolCollector:
                     try:
                         block = w3.eth.get_block(block_num, full_transactions=True)
                         pending_txs.extend(block.transactions)
-                    except:
-                        continue
+                    except Exception:
+                        continue  # Block may not be available
 
         except Exception as e:
             logger.debug(f"Error getting pending txs: {e}")

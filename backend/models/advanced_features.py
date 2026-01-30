@@ -100,7 +100,7 @@ def create_advanced_features(df):
                 return 0
             try:
                 return np.polyfit(np.arange(len(x)), x, 1)[0]
-            except:
+            except (np.linalg.LinAlgError, ValueError):
                 return 0
         
         df[f'trend_strength_{window}'] = df['gas_price'].rolling(window).apply(calc_trend, raw=False)
@@ -231,7 +231,7 @@ def create_advanced_features(df):
                     return 0
                 try:
                     return pd.Series(x).autocorr(lag=lag_val) if not pd.isna(pd.Series(x).autocorr(lag=lag_val)) else 0
-                except:
+                except (ValueError, TypeError):
                     return 0
             
             df[f'autocorr_{lag}'] = df['gas_price'].rolling(window=50, min_periods=lag+1).apply(

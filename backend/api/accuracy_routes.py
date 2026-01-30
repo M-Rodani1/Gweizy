@@ -603,7 +603,7 @@ def get_feature_importance():
                 # Fallback: convert to string or native type
                 try:
                     return int(obj) if isinstance(obj, (np.integer, np.int64, np.int32)) else float(obj) if isinstance(obj, (np.floating, np.float64, np.float32)) else str(obj)
-                except:
+                except (ValueError, TypeError):
                     return str(obj)
         
         importance_records = convert_to_native(importance_records)

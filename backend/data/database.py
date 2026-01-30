@@ -457,8 +457,8 @@ class DatabaseManager:
                         try:
                             conn.execute(text("CREATE INDEX IF NOT EXISTS idx_gas_prices_chain_id ON gas_prices(chain_id)"))
                             conn.commit()
-                        except:
-                            pass  # Index may already exist
+                        except Exception as e:
+                            logger.debug(f"Index creation skipped (may already exist): {e}")
                     except Exception as e:
                         logger.warning(f"Could not add chain_id to gas_prices (may already exist): {e}")
                         conn.rollback()
@@ -473,8 +473,8 @@ class DatabaseManager:
                     logger.warning(f"Could not update NULL chain_id values: {e}")
                     try:
                         conn.rollback()
-                    except:
-                        pass
+                    except Exception as e:
+                        logger.debug(f"Rollback failed (transaction may have already ended): {e}")
             
             # Migrate predictions table
             if 'predictions' in inspector.get_table_names():
@@ -490,8 +490,8 @@ class DatabaseManager:
                         try:
                             conn.execute(text("CREATE INDEX IF NOT EXISTS idx_predictions_chain_id ON predictions(chain_id)"))
                             conn.commit()
-                        except:
-                            pass  # Index may already exist
+                        except Exception as e:
+                            logger.debug(f"Index creation skipped (may already exist): {e}")
                     except Exception as e:
                         logger.warning(f"Could not add chain_id to predictions (may already exist): {e}")
                         conn.rollback()
@@ -506,8 +506,8 @@ class DatabaseManager:
                     logger.warning(f"Could not update NULL chain_id values in predictions: {e}")
                     try:
                         conn.rollback()
-                    except:
-                        pass
+                    except Exception as e:
+                        logger.debug(f"Rollback failed (transaction may have already ended): {e}")
 
     def get_connection(self):
         """Get raw database connection for custom queries"""

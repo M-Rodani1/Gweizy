@@ -86,7 +86,8 @@ class MonitoringService:
                     try:
                         metrics = tracker.get_current_metrics(horizon)
                         accuracy_metrics[horizon] = metrics
-                    except:
+                    except Exception as e:
+                        logger.debug(f"Could not get accuracy metrics for {horizon}: {e}")
                         accuracy_metrics[horizon] = None
             else:
                 accuracy_metrics = {'1h': None, '4h': None, '24h': None}
@@ -98,7 +99,8 @@ class MonitoringService:
                     try:
                         drift = tracker.check_drift(horizon)
                         drift_status[horizon] = drift
-                    except:
+                    except Exception as e:
+                        logger.debug(f"Could not check drift for {horizon}: {e}")
                         drift_status[horizon] = None
             else:
                 drift_status = {'1h': None, '4h': None, '24h': None}
@@ -132,12 +134,14 @@ class MonitoringService:
             # Get recent data counts
             try:
                 recent_gas = db.get_historical_data(hours=24, chain_id=8453)
-            except:
+            except Exception as e:
+                logger.debug(f"Could not get recent gas data: {e}")
                 recent_gas = []
             
             try:
                 recent_onchain = db.get_onchain_features(hours=24, chain_id=8453)
-            except:
+            except Exception as e:
+                logger.debug(f"Could not get recent onchain data: {e}")
                 recent_onchain = []
             
             # Calculate data quality metrics
@@ -245,7 +249,8 @@ class MonitoringService:
                         if not active:
                             models_loaded = False
                             break
-                    except:
+                    except Exception as e:
+                        logger.debug(f"Could not get active version for {horizon}: {e}")
                         models_loaded = False
                         break
             else:
@@ -265,8 +270,8 @@ class MonitoringService:
                         if drift and drift.get('drift_detected'):
                             has_drift = True
                             break
-                    except:
-                        pass
+                    except Exception as e:
+                        logger.debug(f"Could not check drift for {horizon} in health check: {e}")
             
             overall_status = 'healthy'
             if not models_loaded:

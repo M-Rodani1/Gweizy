@@ -54,7 +54,8 @@ class PersonalizationService:
                 total_gas_paid += tx.get('gas_cost_eth', 0)
                 if tx.get('saved_by_waiting'):
                     total_potential_savings += tx['saved_by_waiting']
-            except:
+            except (KeyError, ValueError, TypeError) as e:
+                logger.debug(f"Error processing transaction: {e}")
                 continue
         
         # Find most common transaction times
@@ -185,8 +186,8 @@ class PersonalizationService:
                         else:
                             optimal_time = ts
                         break
-                    except:
-                        pass
+                    except (ValueError, TypeError, ImportError) as e:
+                        logger.debug(f"Error parsing optimal time: {e}")
             
             # Calculate savings
             gas_cost_eth = (gas_price_gwei * gas_used) / 1e9

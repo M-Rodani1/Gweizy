@@ -113,7 +113,7 @@ class PredictionExplainer:
         # Simple method: compare prediction when each feature is set to mean
         try:
             base_pred = self.model.predict(X_array)[0]
-        except:
+        except (ValueError, IndexError):
             base_pred = self.model.predict(X_array.reshape(1, -1))[0]
         
         importances = {}
@@ -130,7 +130,7 @@ class PredictionExplainer:
                 # Predict with modified features
                 try:
                     modified_pred = self.model.predict(X_modified)[0]
-                except:
+                except (ValueError, IndexError):
                     modified_pred = self.model.predict(X_modified.reshape(1, -1))[0]
                 
                 # Importance = change in prediction
@@ -149,7 +149,7 @@ class PredictionExplainer:
                         'importance': 0.0,
                         'impact': 'neutral'
                     }
-                except:
+                except (ValueError, TypeError, IndexError):
                     importances[feature_name] = {
                         'value': 0.0,
                         'importance': 0.0,
@@ -189,7 +189,7 @@ class PredictionExplainer:
             
             current_hour = int(X_array[0, hour_idx]) if hour_idx is not None and hour_idx < X_array.shape[1] else datetime.now().hour
             current_day = int(X_array[0, day_idx]) if day_idx is not None and day_idx < X_array.shape[1] else datetime.now().weekday()
-        except:
+        except (ValueError, TypeError, IndexError):
             current_hour = datetime.now().hour
             current_day = datetime.now().weekday()
         
@@ -202,7 +202,7 @@ class PredictionExplainer:
                     from dateutil import parser
                     try:
                         timestamp = parser.parse(timestamp_str)
-                    except:
+                    except (ValueError, TypeError):
                         timestamp = datetime.now()
                 else:
                     timestamp = timestamp_str if hasattr(timestamp_str, 'hour') else datetime.now()
@@ -406,7 +406,7 @@ Your explanation:"""
             
             if len(X_array.shape) == 1:
                 X_array = X_array.reshape(1, -1)
-        except:
+        except (ValueError, TypeError, AttributeError):
             return context
         
         # Get feature indices

@@ -109,8 +109,8 @@ class HybridPredictor:
                     from config import Config
                     if hasattr(Config, 'MODELS_DIR') and os.path.exists(Config.MODELS_DIR):
                         possible_paths.append(os.path.join(Config.MODELS_DIR, f'spike_detector_{horizon}.pkl'))
-                except:
-                    pass
+                except (ImportError, AttributeError):
+                    pass  # Config not available
                 
                 # Priority 3: Original paths (fallback)
                 possible_paths.extend([
