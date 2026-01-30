@@ -1,0 +1,77 @@
+{
+  "training_timestamp": "2026-01-30T23:17:21.183367",
+  "total_samples": 2768,
+  "date_range": "2026-01-22 02:31:00 to 2026-01-24 23:30:00",
+  "num_segments_used": 7,
+  "features": {
+    "total": 59,
+    "1h_specific": 56,
+    "4h_specific": 59
+  },
+  "baselines": {
+    "1h": {
+      "naive_mae": 0.1104975026758678,
+      "mean_mae": 0.0985859725928594,
+      "drift_mae": 0.2064673804726308,
+      "best": 0.0985859725928594
+    },
+    "4h": {
+      "naive_mae": 0.11346183003942449,
+      "mean_mae": 0.0954045589314631,
+      "best": 0.0954045589314631
+    }
+  },
+  "models": {
+    "1h": {
+      "name": "Huber",
+      "r2": -0.1471588219627875,
+      "mae": 0.03999852463934197,
+      "vs_baseline": "+59.4%",
+      "improvement_pct": 59.427772950490656,
+      "actual_horizon": "1 hour",
+      "training_strategy": "simpler models with strong regularization (Ridge, ElasticNet, Huber)",
+      "directional_accuracy": 0.49547920433996384
+    },
+    "4h": {
+      "name": "RandomForest",
+      "r2": -0.09632343404310495,
+      "mae": 0.04420767794467198,
+      "vs_baseline": "+53.7%",
+      "improvement_pct": 53.66292927738393,
+      "actual_horizon": "4 hours",
+      "training_strategy": "full model suite with hyperparameter tuning",
+      "directional_accuracy": 0.5135623869801085
+    },
+    "24h": {
+      "name": "RandomForest",
+      "r2": -0.09632343404310495,
+      "mae": 0.04420767794467198,
+      "vs_baseline": "+53.7%",
+      "improvement_pct": 53.66292927738393,
+      "actual_horizon": "4 hours (labeled as 24h due to data limitations)",
+      "training_strategy": "same as 4h model",
+      "directional_accuracy": 0.5135623869801085
+    }
+  },
+  "direction_models": {
+    "1h": {
+      "accuracy": 0.6732851985559567,
+      "f1_score": 0.6659771273650282
+    },
+    "4h": {
+      "accuracy": 0.6678700361010831,
+      "f1_score": 0.6595221279767826
+    }
+  },
+  "improvements_applied": [
+    "Micro-features (5min, 15min, 30min) for 1h prediction",
+    "Time features (hour, day, peak hours)",
+    "Simpler models (Ridge, ElasticNet, Huber) for 1h",
+    "Hyperparameter tuning (RandomizedSearchCV) for 4h",
+    "Class-weighted direction classification",
+    "Confidence scoring based on tree variance",
+    "Percentage-based direction thresholds (2%)",
+    "Drift baseline comparison",
+    "Stricter correlation filtering (0.90)"
+  ]
+}
