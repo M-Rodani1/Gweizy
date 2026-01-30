@@ -554,12 +554,13 @@ _mempool_collector: Optional[MempoolCollector] = None
 _collector_initializing: bool = False
 
 
-def get_mempool_collector(timeout: float = 5.0) -> Optional[MempoolCollector]:
+def get_mempool_collector(timeout: float = 5.0, snapshot_interval: int = 30) -> Optional[MempoolCollector]:
     """
     Get or create the global mempool collector.
 
     Args:
         timeout: Max time to wait for initialization (default 5s)
+        snapshot_interval: Seconds between snapshots (default 30)
 
     Returns:
         MempoolCollector instance or None if not ready
@@ -575,7 +576,7 @@ def get_mempool_collector(timeout: float = 5.0) -> Optional[MempoolCollector]:
 
     try:
         _collector_initializing = True
-        _mempool_collector = MempoolCollector(rpc_timeout=timeout)
+        _mempool_collector = MempoolCollector(rpc_timeout=timeout, snapshot_interval=snapshot_interval)
         return _mempool_collector
     except Exception as e:
         logger.error(f"Failed to initialize mempool collector: {e}")

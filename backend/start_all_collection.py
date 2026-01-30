@@ -103,13 +103,16 @@ def start_normal_collection():
 def start_mempool_collection():
     """Start mempool data collection"""
     global mempool_collector
-    
+
     logger.info("="*80)
     logger.info("STARTING MEMPOOL DATA COLLECTION")
     logger.info("="*80)
-    
+
+    # Use MEMPOOL_INTERVAL or fall back to COLLECTION_INTERVAL
+    mempool_interval = int(os.getenv('MEMPOOL_INTERVAL', os.getenv('COLLECTION_INTERVAL', 30)))
+
     try:
-        mempool_collector = get_mempool_collector(timeout=10.0)
+        mempool_collector = get_mempool_collector(timeout=10.0, snapshot_interval=mempool_interval)
         if mempool_collector:
             mempool_collector.start_background_collection()
             logger.info("✓ Mempool data collection started")
