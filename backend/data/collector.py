@@ -72,8 +72,25 @@ class BaseGasCollector:
                     continue
                     
             except Exception as e:
-                logger.error(f"Error fetching gas from RPC: {e}")
-                capture_exception(e, {'source': 'rpc_fetch', 'attempt': attempt + 1})
+                # Check if it's a transient network error (don't report to Sentry)
+                error_str = str(e).lower()
+                is_transient = any(x in error_str for x in [
+                    'response ended prematurely',
+                    'connection reset',
+                    'connection refused',
+                    'timed out',
+                    'timeout',
+                    'chunkedencodingerror',
+                    'remotedisconnected',
+                    'connectionerror'
+                ])
+
+                if is_transient:
+                    logger.warning(f"Transient network error from RPC (attempt {attempt + 1}): {e}")
+                else:
+                    logger.error(f"Error fetching gas from RPC: {e}")
+                    capture_exception(e, {'source': 'rpc_fetch', 'attempt': attempt + 1})
+
                 self.rpc_manager.record_failure(current_rpc)
                 last_exception = e
                 # Try next RPC if available
