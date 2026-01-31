@@ -366,8 +366,20 @@ class AutonomousPipeline:
             current_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
             script_path = os.path.join(current_dir, "scripts", "retrain_models_simple.py")
             
-            logger.warning("Automated training is disabled. Please use notebooks/train_models_colab.ipynb")
-            raise NotImplementedError("Training must be done via Google Colab notebook: notebooks/train_models_colab.ipynb")
+            # Training is disabled on server - must be done via Colab
+            logger.info("📓 Automated training is disabled. Use notebooks/train_all_models.ipynb in Google Colab")
+            return {
+                'success': False,
+                'error': 'Training disabled on server. Use Google Colab notebook: notebooks/train_all_models.ipynb',
+                'instructions': [
+                    '1. Upload backend/gas_data.db to Colab',
+                    '2. Run notebooks/train_all_models.ipynb',
+                    '3. Download gweizy_models.zip',
+                    '4. Extract to backend/models/saved_models/',
+                    '5. Push to GitHub (Railway auto-deploys)'
+                ],
+                'timestamp': datetime.now().isoformat()
+            }
             
             if False:  # Disabled
                 logger.info(f"Running ML training script: {script_path}")
@@ -710,14 +722,14 @@ class AutonomousPipeline:
             if decision.should_train:
                 logger.info(f"🤖 Training Decision: {decision.priority.upper()} priority - {decision.reason}")
                 logger.info(f"   Estimated duration: {decision.estimated_duration_minutes} minutes")
-                
-                # Trigger training
-                result = self.trigger_training()
-                
-                if result.get('success'):
-                    logger.info("✅ Autonomous training cycle completed successfully")
-                else:
-                    logger.error(f"❌ Autonomous training cycle failed: {result.get('error')}")
+
+                # Training is done manually via Colab - just log suggestion
+                logger.info("📓 Training should be done via Google Colab notebook:")
+                logger.info("   notebooks/train_all_models.ipynb")
+                logger.info("   Upload backend/gas_data.db, run all cells, download models")
+
+                # Mark that we've notified (don't spam logs every cycle)
+                self.last_training_time = datetime.now()
             else:
                 logger.debug(f"⏸️  No training needed: {decision.reason}")
                 
