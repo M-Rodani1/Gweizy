@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { AlertTriangle, X, RefreshCw, TrendingDown } from 'lucide-react';
+import { AlertTriangle, X, TrendingDown, ExternalLink } from 'lucide-react';
 import { API_CONFIG, getApiUrl } from '../config/api';
 
 interface DriftInfo {
@@ -22,8 +22,6 @@ const DriftAlertBanner: React.FC<DriftAlertBannerProps> = ({
   const [shouldRetrain, setShouldRetrain] = useState(false);
   const [dismissed, setDismissed] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [retraining, setRetraining] = useState(false);
-  const [retrainStatus, setRetrainStatus] = useState<'idle' | 'success' | 'error'>('idle');
 
   const checkDrift = async () => {
     try {
@@ -71,35 +69,6 @@ const DriftAlertBanner: React.FC<DriftAlertBannerProps> = ({
     onDismiss?.();
   };
 
-  const handleTriggerRetrain = async () => {
-    if (retraining) return;
-
-    setRetraining(true);
-    setRetrainStatus('idle');
-
-    try {
-      const response = await fetch(getApiUrl('/retraining/simple'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
-      });
-
-      if (response.ok) {
-        setRetrainStatus('success');
-        // Auto-dismiss after successful retrain
-        setTimeout(() => {
-          setDismissed(true);
-          onDismiss?.();
-        }, 3000);
-      } else {
-        setRetrainStatus('error');
-      }
-    } catch (err) {
-      setRetrainStatus('error');
-    } finally {
-      setRetraining(false);
-    }
-  };
-
   // Don't show if dismissed, loading, or no drift detected
   if (dismissed || loading || (driftData.length === 0 && !shouldRetrain)) {
     return null;
@@ -139,7 +108,7 @@ const DriftAlertBanner: React.FC<DriftAlertBannerProps> = ({
 
             <p className="text-sm text-gray-300 mt-1">
               {shouldRetrain
-                ? 'Prediction accuracy has degraded significantly. Retraining is recommended for optimal performance.'
+                ? 'Prediction accuracy has degraded. Retrain models using the Colab notebook.'
                 : `Performance drift detected in ${driftData.map(d => d.horizon).join(', ')} predictions.`}
             </p>
 
@@ -170,34 +139,15 @@ const DriftAlertBanner: React.FC<DriftAlertBannerProps> = ({
                 View Details
               </button>
               {shouldRetrain && (
-                <button
-                  onClick={handleTriggerRetrain}
-                  disabled={retraining}
-                  className={`text-xs px-3 py-2 min-h-[36px] text-white rounded-lg transition-colors flex items-center gap-1 ${
-                    retraining
-                      ? 'bg-purple-500/50 cursor-wait'
-                      : retrainStatus === 'success'
-                        ? 'bg-emerald-500'
-                        : retrainStatus === 'error'
-                          ? 'bg-red-500'
-                          : 'bg-purple-500/80 hover:bg-purple-500'
-                  }`}
+                <a
+                  href="https://colab.research.google.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs px-3 py-2 min-h-[36px] bg-purple-500/80 hover:bg-purple-500 text-white rounded-lg transition-colors flex items-center gap-1"
                 >
-                  <RefreshCw className={`w-3 h-3 ${retraining ? 'animate-spin' : ''}`} />
-                  <span className="hidden xs:inline">
-                    {retraining
-                      ? 'Retraining...'
-                      : retrainStatus === 'success'
-                        ? 'Retrained!'
-                        : retrainStatus === 'error'
-                          ? 'Failed - Retry'
-                          : 'Trigger Retrain'
-                    }
-                  </span>
-                  <span className="xs:hidden">
-                    {retraining ? '...' : retrainStatus === 'success' ? '✓' : retrainStatus === 'error' ? '!' : 'Retrain'}
-                  </span>
-                </button>
+                  <ExternalLink className="w-3 h-3" />
+                  <span>Open Colab Notebook</span>
+                </a>
               )}
             </div>
           </div>

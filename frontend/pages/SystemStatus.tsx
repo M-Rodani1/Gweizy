@@ -5,7 +5,7 @@ import { SectionErrorBoundary } from '../src/components/SectionErrorBoundary';
 import ApiStatusPanel from '../src/components/ApiStatusPanel';
 import MempoolStatusCard from '../src/components/MempoolStatusCard';
 import AccuracyMetricsCard from '../src/components/AccuracyMetricsCard';
-import ModelTrainingPanel from '../src/components/ModelTrainingPanel';
+import ModelHealthCard from '../src/components/ModelHealthCard';
 import AccuracyMetricsDashboard from '../src/components/AccuracyMetricsDashboard';
 import AppShell from '../src/components/layout/AppShell';
 import { useChain } from '../src/contexts/ChainContext';
@@ -48,8 +48,8 @@ const SystemStatus: React.FC = () => {
           <SectionErrorBoundary sectionName="Model Accuracy">
             <AccuracyMetricsCard />
           </SectionErrorBoundary>
-          <SectionErrorBoundary sectionName="Model Training">
-            <ModelTrainingPanel />
+          <SectionErrorBoundary sectionName="Model Health">
+            <ModelHealthCard />
           </SectionErrorBoundary>
         </div>
 

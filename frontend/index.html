@@ -98,12 +98,8 @@
       (function() {
         const API_BASE = 'https://basegasfeesml-production.up.railway.app/api';
 
-        // Preload data quality info for faster initial render
+        // Preload critical data for faster initial render
         window.__INITIAL_DATA__ = {
-          dataQuality: fetch(API_BASE + '/retraining/check-data')
-            .then(r => r.ok ? r.json() : null)
-            .catch(() => null),
-
           // Preload current gas price
           gasPrice: fetch('https://mainnet.base.org', {
             method: 'POST',
