@@ -16,7 +16,7 @@ from api.base_config import base_config_bp
 from api.stats import stats_bp
 from api.validation_routes import validation_bp
 from api.onchain_routes import onchain_bp
-from api.retraining_routes import retraining_bp
+# Training removed - use notebooks/train_all_models.ipynb
 from api.farcaster_routes import farcaster_bp
 from api.cron_routes import cron_bp
 from api.analytics_routes import analytics_bp
@@ -25,11 +25,11 @@ from api.agent_routes import agent_bp
 from api.multichain_routes import multichain_bp
 from api.accuracy_routes import accuracy_bp
 from api.personalization_routes import personalization_bp
-from api.retraining_automated_routes import automated_retraining_bp
+# Training removed - use notebooks/train_all_models.ipynb instead
 from api.model_versioning_routes import versioning_bp
 from api.monitoring_routes import monitoring_bp
 from api.mempool_routes import mempool_bp
-from api.resilient_training_routes import resilient_training_bp
+# retraining_bp removed
 from api.middleware import limiter, error_handlers, log_request, setup_request_id
 from config import Config
 from utils.logger import logger, log_error_with_context
@@ -140,7 +140,6 @@ def create_app():
     app.register_blueprint(stats_bp, url_prefix='/api')
     app.register_blueprint(validation_bp, url_prefix='/api')
     app.register_blueprint(onchain_bp, url_prefix='/api')
-    app.register_blueprint(retraining_bp, url_prefix='/api')
     app.register_blueprint(farcaster_bp, url_prefix='/api')
     app.register_blueprint(cron_bp, url_prefix='/api')
     app.register_blueprint(analytics_bp, url_prefix='/api/analytics')
@@ -152,15 +151,7 @@ def create_app():
     app.register_blueprint(versioning_bp, url_prefix='/api/versioning')
     app.register_blueprint(monitoring_bp, url_prefix='/api/monitoring')
     app.register_blueprint(mempool_bp, url_prefix='/api')
-    app.register_blueprint(automated_retraining_bp, url_prefix='/api')
-    app.register_blueprint(resilient_training_bp)  # Routes at /api/training/*
-    
-    # Register autonomous pipeline routes
-    try:
-        from api.autonomous_pipeline_routes import autonomous_pipeline_bp
-        app.register_blueprint(autonomous_pipeline_bp, url_prefix='/api')
-    except Exception as e:
-        logger.warning(f"Failed to register autonomous pipeline routes: {e}")
+    # Training routes removed - use notebooks/train_all_models.ipynb for all training
     app.register_blueprint(base_config_bp)  # No prefix - serves at root for /config.json
     
     # Run database migrations on startup
@@ -265,12 +256,6 @@ def create_app():
                     'network_state': '/api/onchain/network-state',
                     'block_features': '/api/onchain/block-features/<block_number>',
                     'congestion_history': '/api/onchain/congestion-history'
-                },
-                'retraining': {
-                    'status': '/api/retraining/status',
-                    'trigger': '/api/retraining/trigger (POST)',
-                    'history': '/api/retraining/history',
-                    'check_data': '/api/retraining/check-data'
                 },
                 'analytics': {
                     'dashboard': '/api/analytics/dashboard',
@@ -573,66 +558,8 @@ if not use_worker_process:
         collection_thread.start()
         logger.info("Collection starter thread launched")
         
-        # Start automated retraining scheduler
-        try:
-            from services.automated_retraining import get_retraining_service
-            retraining_service = get_retraining_service()
-            retraining_service.start_scheduler()
-            logger.info("✓ Automated retraining scheduler started")
-        except Exception as e:
-            logger.warning(f"Failed to start automated retraining scheduler: {e}")
-        
-        # Start autonomous ML pipeline (unified data collection + training)
-        try:
-            from services.autonomous_pipeline import get_autonomous_pipeline
-            autonomous_pipeline = get_autonomous_pipeline()
-            autonomous_pipeline.start()
-            logger.info("✓ Autonomous ML pipeline started")
-        except Exception as e:
-            logger.warning(f"Failed to start autonomous pipeline: {e}")
-            import traceback
-            logger.warning(traceback.format_exc())
-        
-        # Check if model training is requested via environment variable
-        train_models = os.getenv('TRAIN_MODELS', 'false').lower() == 'true'
-        if train_models:
-            def trigger_model_training():
-                """Trigger model training using resilient training service."""
-                import time
-                # Wait a bit for services to fully initialize
-                time.sleep(10)
-                
-                logger.info("="*70)
-                logger.info("🚀 MODEL TRAINING TRIGGERED VIA TRAIN_MODELS ENV VAR")
-                logger.info("="*70)
-                logger.info("   Using resilient training service with graceful shutdown")
-                logger.info("="*70)
-                
-                try:
-                    from services.resilient_training import get_resilient_training_service
-                    service = get_resilient_training_service()
-                    
-                    # Start training in background (non-daemon thread so it can complete)
-                    result = service.start_training(background=True, force=False)
-                    
-                    if result.get('success'):
-                        logger.info(f"✓ {result.get('message', 'Training started')}")
-                        logger.info("   Training runs in background - check /api/training/status for progress")
-                    else:
-                        logger.warning(f"⚠️  Could not start training: {result.get('error')}")
-                        if result.get('status'):
-                            logger.info(f"   Status: {result.get('status')}")
-                        
-                except Exception as e:
-                    logger.error(f"❌ Failed to trigger model training: {e}")
-                    import traceback
-                    logger.error(traceback.format_exc())
-                
-                logger.info("="*70)
-            
-            training_thread = threading.Thread(target=trigger_model_training, name="ModelTrainingTrigger", daemon=True)
-            training_thread.start()
-            logger.info("✓ Model training trigger started (TRAIN_MODELS=true)")
+        # Training removed - use notebooks/train_all_models.ipynb instead
+        # All model training now happens in the Colab notebook
 
         # Start automatic model rollback service
         try:

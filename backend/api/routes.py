@@ -8,7 +8,7 @@ from data.collector import BaseGasCollector
 from data.multichain_collector import MultiChainGasCollector
 from data.database import DatabaseManager
 from models.feature_engineering import GasFeatureEngineer
-from models.model_trainer import GasModelTrainer
+# model_trainer removed - training done via notebooks/train_all_models.ipynb
 from models.accuracy_tracker import get_tracker
 from utils.base_scanner import BaseScanner
 from utils.logger import logger, log_error_with_context
@@ -115,11 +115,7 @@ def load_models():
                             'metrics': {}
                         }
                 else:
-                    # Try old loading method
-                    try:
-                        models[horizon] = GasModelTrainer.load_model(horizon)
-                    except Exception as e:
-                        logger.debug(f"Could not load model for {horizon} using old method: {e}")
+                    logger.debug(f"Model file not found for {horizon}")
             
             # Load global feature names if available
             feature_names_path = os.path.join(models_dir, 'feature_names.pkl')

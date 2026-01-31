@@ -23,101 +23,12 @@ accuracy_tracker = get_tracker()
 @cron_bp.route('/cron/retrain', methods=['POST'])
 def cron_retrain_models():
     """
-    Triggered by Cloudflare Worker cron weekly (Sunday 2 AM)
-    Retrains models with latest data
+    Disabled - model training now done via notebooks/train_all_models.ipynb
     """
-    try:
-        logger.info("=" * 60)
-        logger.info("[CRON RETRAIN] Weekly retraining triggered")
-        logger.info("=" * 60)
-
-        # Get trigger info
-        data = request.get_json() or {}
-        trigger_source = data.get('trigger', 'unknown')
-        timestamp = data.get('timestamp', datetime.now().isoformat())
-
-        logger.info(f"Trigger source: {trigger_source}")
-        logger.info(f"Timestamp: {timestamp}")
-
-        # Check if we have enough data
-        from sqlalchemy import func
-        from data.database import GasPrice, OnChainFeatures
-        session = db._get_session()
-
-        try:
-            gas_count = session.query(func.count()).select_from(GasPrice).scalar()
-            onchain_count = session.query(func.count()).select_from(OnChainFeatures).scalar()
-
-            logger.info(f"Data available: {gas_count} gas prices, {onchain_count} onchain features")
-
-            # Need minimum data for retraining
-            if gas_count < 1000:
-                logger.warning(f"Insufficient gas price data: {gas_count} < 1000")
-                return jsonify({
-                    "success": False,
-                    "message": "Insufficient data for retraining",
-                    "gas_prices": gas_count,
-                    "required": 1000
-                }), 400
-
-            # Run training script
-            script_path = os.path.join(
-                os.path.dirname(os.path.dirname(__file__)),
-                'scripts',
-                'train_with_current_data.py'
-            )
-
-            logger.info(f"Running training script: {script_path}")
-
-            result = subprocess.run(
-                ['python3', script_path],
-                capture_output=True,
-                text=True,
-                timeout=1800  # 30 minute timeout
-            )
-
-            if result.returncode == 0:
-                logger.info("✅ Model retraining completed successfully")
-                logger.info(f"Output: {result.stdout[-500:]}")  # Last 500 chars
-
-                return jsonify({
-                    "success": True,
-                    "message": "Models retrained successfully",
-                    "timestamp": datetime.now().isoformat(),
-                    "data_used": {
-                        "gas_prices": gas_count,
-                        "onchain_features": onchain_count
-                    }
-                })
-            else:
-                logger.error("❌ Model retraining failed")
-                logger.error(f"Error: {result.stderr}")
-
-                return jsonify({
-                    "success": False,
-                    "message": "Retraining failed",
-                    "error": result.stderr[-500:]  # Last 500 chars
-                }), 500
-
-        finally:
-            session.close()
-
-    except subprocess.TimeoutExpired:
-        logger.error("❌ Retraining timed out (30 minutes)")
-        return jsonify({
-            "success": False,
-            "message": "Retraining timed out"
-        }), 500
-
-    except Exception as e:
-        logger.error(f"❌ Error during retraining: {e}")
-        logger.error(traceback.format_exc())
-
-        return jsonify({
-            "success": False,
-            "message": "Internal error during retraining",
-            "error": str(e)
-        }), 500
+    return jsonify({
+        "success": False,
+        "message": "Automated retraining disabled. Use notebooks/train_all_models.ipynb for training."
+    }), 400
 
 
 @cron_bp.route('/cron/health-check', methods=['POST'])
