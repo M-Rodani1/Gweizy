@@ -1,12 +1,10 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Activity, ServerCog, ShieldCheck } from 'lucide-react';
+import { ServerCog, ShieldCheck } from 'lucide-react';
 import { SectionErrorBoundary } from '../src/components/SectionErrorBoundary';
 import ApiStatusPanel from '../src/components/ApiStatusPanel';
 import MempoolStatusCard from '../src/components/MempoolStatusCard';
-import AccuracyMetricsCard from '../src/components/AccuracyMetricsCard';
-import ModelHealthCard from '../src/components/ModelHealthCard';
-import AccuracyMetricsDashboard from '../src/components/AccuracyMetricsDashboard';
+import ModelMetricsPanel from '../src/components/ModelMetricsPanel';
 import AppShell from '../src/components/layout/AppShell';
 import { useChain } from '../src/contexts/ChainContext';
 
@@ -44,33 +42,8 @@ const SystemStatus: React.FC = () => {
           </SectionErrorBoundary>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <SectionErrorBoundary sectionName="Model Accuracy">
-            <AccuracyMetricsCard />
-          </SectionErrorBoundary>
-          <SectionErrorBoundary sectionName="Model Health">
-            <ModelHealthCard />
-          </SectionErrorBoundary>
-        </div>
-
-        <SectionErrorBoundary sectionName="Accuracy Dashboard">
-          <div
-            className="rounded-2xl border border-gray-800 bg-gray-900/60 p-4 focus-card"
-            role="article"
-            aria-label="Model accuracy dashboard"
-            tabIndex={0}
-          >
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2 text-white font-semibold">
-                <Activity className="w-4 h-4 text-cyan-400" />
-                Accuracy Dashboard
-              </div>
-              <a href="/docs#model-accuracy" className="text-sm text-cyan-300 hover:text-cyan-100">
-                Learn more
-              </a>
-            </div>
-            <AccuracyMetricsDashboard />
-          </div>
+        <SectionErrorBoundary sectionName="Model Metrics">
+          <ModelMetricsPanel />
         </SectionErrorBoundary>
 
         <footer className="pt-6 border-t border-gray-800">

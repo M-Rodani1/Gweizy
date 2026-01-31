@@ -1,12 +1,12 @@
 import React, { lazy, Suspense, useState, useEffect } from 'react';
-import { Brain, Calendar, ClipboardList, Sparkles, Target, TrendingUp, Activity, Grid3X3 } from 'lucide-react';
+import { Brain, Calendar, ClipboardList, Sparkles, TrendingUp, Activity, Grid3X3 } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import AccuracyMetricsCard from '../src/components/AccuracyMetricsCard';
 import FeatureImportanceChart from '../src/components/FeatureImportanceChart';
 import AccuracyHistoryChart from '../src/components/AccuracyHistoryChart';
 import DriftAlertBanner from '../src/components/DriftAlertBanner';
 import ApiStatusPanel from '../src/components/ApiStatusPanel';
 import HourlyHeatmap from '../src/components/HourlyHeatmap';
+import ModelMetricsPanel from '../src/components/ModelMetricsPanel';
 import { CardSkeleton, ChartSkeleton, HeatmapSkeleton } from '../src/components/SkeletonLoader';
 import { useChain } from '../src/contexts/ChainContext';
 import { useEthPrice } from '../src/hooks/useEthPrice';
@@ -19,8 +19,6 @@ import { SectionErrorBoundary } from '../src/components/SectionErrorBoundary';
 const GasPriceGraph = lazy(() => import('../src/components/GasPriceGraph'));
 const GasPatternHeatmap = lazy(() => import('../src/components/GasPatternHeatmap'));
 const PredictionCards = lazy(() => import('../src/components/PredictionCards'));
-const ModelAccuracy = lazy(() => import('../src/components/ModelAccuracy'));
-const ValidationMetricsDashboard = lazy(() => import('../src/components/ValidationMetricsDashboard'));
 const NetworkIntelligencePanel = lazy(() => import('../src/components/NetworkIntelligencePanel'));
 const BestTimeWidget = lazy(() => import('../src/components/BestTimeWidget'));
 const GasPriceTable = lazy(() => import('../src/components/GasPriceTable'));
@@ -71,11 +69,11 @@ const Analytics: React.FC = () => {
           <section className="mb-8">
             <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
               <Activity className="w-4 h-4 text-cyan-400" />
-              Model Health
+              Model Health & Metrics
             </h2>
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <div className="lg:col-span-2">
-                <AccuracyMetricsCard />
+                <ModelMetricsPanel />
               </div>
               <div>
                 <ApiStatusPanel />
@@ -160,24 +158,6 @@ const Analytics: React.FC = () => {
             <Suspense fallback={<HeatmapSkeleton />}>
               <GasPatternHeatmap />
             </Suspense>
-          </section>
-        </SectionErrorBoundary>
-
-        {/* Model Performance */}
-        <SectionErrorBoundary sectionName="Model Performance">
-          <section className="mb-8">
-            <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-              <Target className="w-4 h-4 text-cyan-400" />
-              Model Performance
-            </h2>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <Suspense fallback={<CardSkeleton rows={4} />}>
-                <ModelAccuracy />
-              </Suspense>
-              <Suspense fallback={<CardSkeleton rows={4} />}>
-                <ValidationMetricsDashboard />
-              </Suspense>
-            </div>
           </section>
         </SectionErrorBoundary>
 
