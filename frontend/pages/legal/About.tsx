@@ -74,8 +74,8 @@ const About: React.FC = () => {
             <div className="bg-gray-800 border border-amber-500/30 rounded-lg p-6">
               <h3 className="text-xl font-bold text-amber-400 mb-2">🔄 Continuous Improvement</h3>
               <p className="text-gray-300">
-                Our models retrain daily with new data, continuously improving predictions. We track
-                accuracy metrics and adjust our approach based on real-world performance.
+                We continuously monitor model performance and retrain when accuracy degrades. Our
+                accuracy tracking system alerts us when models need updating to maintain prediction quality.
               </p>
             </div>
           </div>

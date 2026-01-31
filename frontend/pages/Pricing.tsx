@@ -90,7 +90,7 @@ const Pricing: React.FC = () => {
     },
     {
       question: 'How accurate are the predictions?',
-      answer: 'Our ML models achieve 75-80% directional accuracy (predicting if gas will go up or down) and explain 70%+ of gas price variance. We\'re constantly improving accuracy by retraining models with fresh data.'
+      answer: 'Our ML models achieve 75-80% directional accuracy (predicting if gas will go up or down) and explain 70%+ of gas price variance. We continuously monitor performance and retrain models when needed to maintain accuracy.'
     }
   ];
 
