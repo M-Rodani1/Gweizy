@@ -663,6 +663,45 @@ class AccuracyTracker:
 
         return should_retrain, reasons
 
+    def get_recent_metrics(self, window_size: int = 100) -> List[Dict]:
+        """
+        Get recent prediction metrics as a list of dicts.
+
+        Used by automated_retraining.py to check accuracy trends.
+
+        Args:
+            window_size: Number of recent predictions to return
+
+        Returns:
+            List of dicts with 'mae' key for each prediction
+        """
+        metrics_list = []
+
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                rows = conn.execute('''
+                    SELECT timestamp, predicted, actual, error
+                    FROM predictions
+                    WHERE actual IS NOT NULL
+                    ORDER BY timestamp DESC
+                    LIMIT ?
+                ''', (window_size,)).fetchall()
+
+                # Reverse to get chronological order
+                for row in reversed(rows):
+                    if row[3] is not None:  # error is not None
+                        metrics_list.append({
+                            'timestamp': row[0],
+                            'predicted': row[1],
+                            'actual': row[2],
+                            'mae': abs(row[3])
+                        })
+
+        except Exception as e:
+            logger.warning(f"Could not get recent metrics: {e}")
+
+        return metrics_list
+
     def get_summary(self) -> Dict[str, Any]:
         """Get summary of accuracy tracking status."""
         summary = {}
