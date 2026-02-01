@@ -1,16 +1,25 @@
 {
-  "training_timestamp": "2026-02-01T17:01:05.665945",
-  "total_samples": 14864,
-  "date_range": "2026-01-20 18:59:30 to 2026-02-01 16:54:00",
+  "training_timestamp": "2026-02-01T21:05:00.127789",
+  "total_samples": 15357,
+  "training_samples": 8640,
+  "holdout_samples": 5760,
+  "date_range": "2026-01-20 18:59:30 to 2026-02-01 21:00:30",
   "resampling": "30-second intervals",
+  "selection_method": "holdout-based",
+  "configuration": {
+    "target_transform": "log",
+    "use_rolling_window": true,
+    "rolling_window_days": 3,
+    "auto_adapt_on_shift": true,
+    "distribution_shift_detected": true,
+    "shift_magnitude": 6.116142440348216
+  },
   "features": {
-    "total": 29,
+    "count": 24,
     "list": [
       "hour",
-      "minute",
       "hour_sin",
       "hour_cos",
-      "is_peak_hours",
       "eth_log",
       "eth_zscore_4h",
       "gas_eth_corr_1h",
@@ -19,19 +28,16 @@
       "gas_lag_5min",
       "gas_lag_15min",
       "gas_lag_30min",
-      "gas_lag_60min",
       "gas_lag_1h",
       "gas_lag_4h",
       "gas_mean_1h",
       "gas_std_1h",
-      "gas_median_1h",
       "gas_cv_1h",
       "gas_mean_2h",
       "gas_mean_4h",
       "momentum_1h",
       "momentum_pct_2h",
       "trend_1h_4h",
-      "ema_trend_short",
       "gas_zscore_1h",
       "is_spike",
       "is_high_gas"
@@ -39,47 +45,92 @@
   },
   "baselines": {
     "1h": {
-      "naive_mae": 0.4225979143710681,
-      "mean_mae": 0.3709071157555289,
-      "best": 0.3709071157555289
+      "naive_mae": 0.14767940885526262,
+      "mean_mae": 0.08226501640134122,
+      "best": 0.08226501640134122,
+      "holdout_naive_mae": 0.5990948404312904,
+      "holdout_mean_mae": 0.28458881601101427,
+      "holdout_best": 0.28458881601101427
     },
     "4h": {
-      "naive_mae": 0.4104785091263346,
-      "mean_mae": 0.3637887147520846,
-      "best": 0.3637887147520846
+      "naive_mae": 0.14085398697998633,
+      "mean_mae": 0.06617271462746935,
+      "best": 0.06617271462746935,
+      "holdout_naive_mae": 0.5868668520500363,
+      "holdout_mean_mae": 0.2746748406877258,
+      "holdout_best": 0.2746748406877258
     }
   },
   "models": {
     "1h": {
-      "name": "Huber",
-      "mae": 0.27979838647249095,
-      "improvement_pct": 24.56375879914077,
-      "passed_baseline": 1,
-      "is_fallback": false
+      "name": "RF",
+      "mae": 0.24685793285378652,
+      "improvement_pct": -200.07644032969742,
+      "vs_holdout_baseline_pct": 13.258034411221372,
+      "passed_baseline": true,
+      "is_fallback": false,
+      "cv_mae": 0.10661334026937878,
+      "calibration": {
+        "quantile_coverage": 0.6770833333333334,
+        "conformal_coverage": 0.7997685185185185,
+        "scaled_coverage": 0.8067129629629629,
+        "conformal_width": 0.03892503844364778
+      }
     },
     "4h": {
-      "name": "Huber",
-      "mae": 0.2786842699501904,
-      "improvement_pct": 23.393921073085323,
-      "passed_baseline": 1,
-      "is_fallback": false
+      "name": "GBM",
+      "mae": 0.25624110747695505,
+      "improvement_pct": -287.2307625877347,
+      "vs_holdout_baseline_pct": 6.711110913768695,
+      "passed_baseline": true,
+      "is_fallback": false,
+      "cv_mae": 0.10281160656490056,
+      "calibration": {
+        "quantile_coverage": 0.7077546296296297,
+        "conformal_coverage": 0.7997685185185185,
+        "scaled_coverage": 0.8408564814814815,
+        "conformal_width": 0.021688872724093432
+      }
     },
     "24h": {
-      "name": "Huber",
-      "mae": 0.12968204186186813,
-      "improvement_pct": 64.35237361603036,
-      "passed_baseline": 1,
-      "is_fallback": false
+      "name": "GBM (4h fallback)",
+      "mae": 0.25624110747695505,
+      "improvement_pct": -287.2307625877347,
+      "vs_holdout_baseline_pct": 6.711110913768695,
+      "passed_baseline": true,
+      "is_fallback": true
+    }
+  },
+  "regime_models": {
+    "1h": {
+      "normal": {
+        "mae": 0.24234030596600373,
+        "n_samples": 8176
+      }
+    },
+    "4h": {
+      "normal": {
+        "mae": 0.2594148034877523,
+        "n_samples": 8176
+      }
     }
   },
   "direction_models": {
     "1h": {
-      "accuracy": 0.6229397914564413,
-      "f1_score": 0.6526112709887635
+      "accuracy": 0.671875,
+      "f1_score": 0.6626114232351722,
+      "baseline_accuracy": 0.5182291666666666,
+      "improvement_vs_baseline": 29.648241206030164,
+      "model_name": "GBM",
+      "is_binary": true
     },
     "4h": {
-      "accuracy": 0.6071308442650521,
-      "f1_score": 0.6235430466076329
+      "accuracy": 0.6963541666666667,
+      "f1_score": 0.6796932904313953,
+      "baseline_accuracy": 0.5619791666666667,
+      "improvement_vs_baseline": 23.91102873030584,
+      "model_name": "GBM",
+      "is_binary": true
     }
   }
 }
