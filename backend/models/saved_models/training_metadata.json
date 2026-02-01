@@ -1,77 +1,85 @@
 {
-  "training_timestamp": "2026-01-30T23:17:21.183367",
-  "total_samples": 2768,
-  "date_range": "2026-01-22 02:31:00 to 2026-01-24 23:30:00",
-  "num_segments_used": 7,
+  "training_timestamp": "2026-02-01T17:01:05.665945",
+  "total_samples": 14864,
+  "date_range": "2026-01-20 18:59:30 to 2026-02-01 16:54:00",
+  "resampling": "30-second intervals",
   "features": {
-    "total": 59,
-    "1h_specific": 56,
-    "4h_specific": 59
+    "total": 29,
+    "list": [
+      "hour",
+      "minute",
+      "hour_sin",
+      "hour_cos",
+      "is_peak_hours",
+      "eth_log",
+      "eth_zscore_4h",
+      "gas_eth_corr_1h",
+      "util_mean_1h",
+      "util_mean_2h",
+      "gas_lag_5min",
+      "gas_lag_15min",
+      "gas_lag_30min",
+      "gas_lag_60min",
+      "gas_lag_1h",
+      "gas_lag_4h",
+      "gas_mean_1h",
+      "gas_std_1h",
+      "gas_median_1h",
+      "gas_cv_1h",
+      "gas_mean_2h",
+      "gas_mean_4h",
+      "momentum_1h",
+      "momentum_pct_2h",
+      "trend_1h_4h",
+      "ema_trend_short",
+      "gas_zscore_1h",
+      "is_spike",
+      "is_high_gas"
+    ]
   },
   "baselines": {
     "1h": {
-      "naive_mae": 0.1104975026758678,
-      "mean_mae": 0.0985859725928594,
-      "drift_mae": 0.2064673804726308,
-      "best": 0.0985859725928594
+      "naive_mae": 0.4225979143710681,
+      "mean_mae": 0.3709071157555289,
+      "best": 0.3709071157555289
     },
     "4h": {
-      "naive_mae": 0.11346183003942449,
-      "mean_mae": 0.0954045589314631,
-      "best": 0.0954045589314631
+      "naive_mae": 0.4104785091263346,
+      "mean_mae": 0.3637887147520846,
+      "best": 0.3637887147520846
     }
   },
   "models": {
     "1h": {
       "name": "Huber",
-      "r2": -0.1471588219627875,
-      "mae": 0.03999852463934197,
-      "vs_baseline": "+59.4%",
-      "improvement_pct": 59.427772950490656,
-      "actual_horizon": "1 hour",
-      "training_strategy": "simpler models with strong regularization (Ridge, ElasticNet, Huber)",
-      "directional_accuracy": 0.49547920433996384
+      "mae": 0.27979838647249095,
+      "improvement_pct": 24.56375879914077,
+      "passed_baseline": 1,
+      "is_fallback": false
     },
     "4h": {
-      "name": "RandomForest",
-      "r2": -0.09632343404310495,
-      "mae": 0.04420767794467198,
-      "vs_baseline": "+53.7%",
-      "improvement_pct": 53.66292927738393,
-      "actual_horizon": "4 hours",
-      "training_strategy": "full model suite with hyperparameter tuning",
-      "directional_accuracy": 0.5135623869801085
+      "name": "Huber",
+      "mae": 0.2786842699501904,
+      "improvement_pct": 23.393921073085323,
+      "passed_baseline": 1,
+      "is_fallback": false
     },
     "24h": {
-      "name": "RandomForest",
-      "r2": -0.09632343404310495,
-      "mae": 0.04420767794467198,
-      "vs_baseline": "+53.7%",
-      "improvement_pct": 53.66292927738393,
-      "actual_horizon": "4 hours (labeled as 24h due to data limitations)",
-      "training_strategy": "same as 4h model",
-      "directional_accuracy": 0.5135623869801085
+      "name": "Huber",
+      "mae": 0.12968204186186813,
+      "improvement_pct": 64.35237361603036,
+      "passed_baseline": 1,
+      "is_fallback": false
     }
   },
   "direction_models": {
     "1h": {
-      "accuracy": 0.6732851985559567,
-      "f1_score": 0.6659771273650282
+      "accuracy": 0.6229397914564413,
+      "f1_score": 0.6526112709887635
     },
     "4h": {
-      "accuracy": 0.6678700361010831,
-      "f1_score": 0.6595221279767826
+      "accuracy": 0.6071308442650521,
+      "f1_score": 0.6235430466076329
     }
-  },
-  "improvements_applied": [
-    "Micro-features (5min, 15min, 30min) for 1h prediction",
-    "Time features (hour, day, peak hours)",
-    "Simpler models (Ridge, ElasticNet, Huber) for 1h",
-    "Hyperparameter tuning (RandomizedSearchCV) for 4h",
-    "Class-weighted direction classification",
-    "Confidence scoring based on tree variance",
-    "Percentage-based direction thresholds (2%)",
-    "Drift baseline comparison",
-    "Stricter correlation filtering (0.90)"
-  ]
+  }
 }
