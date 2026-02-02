@@ -1,10 +1,9 @@
 {
-  "training_timestamp": "2026-02-01T21:05:00.127789",
-  "total_samples": 15357,
+  "training_timestamp": "2026-02-02T01:32:21.862605",
+  "total_samples": 15889,
   "training_samples": 8640,
   "holdout_samples": 5760,
-  "date_range": "2026-01-20 18:59:30 to 2026-02-01 21:00:30",
-  "resampling": "30-second intervals",
+  "date_range": "2026-01-20 18:59:30 to 2026-02-02 01:26:30",
   "selection_method": "holdout-based",
   "configuration": {
     "target_transform": "log",
@@ -12,10 +11,13 @@
     "rolling_window_days": 3,
     "auto_adapt_on_shift": true,
     "distribution_shift_detected": true,
-    "shift_magnitude": 6.116142440348216
+    "shift_magnitude": 4.002596860879395,
+    "feature_pruning_enabled": true,
+    "asymmetric_loss_enabled": true,
+    "asymmetric_alpha": 0.6
   },
   "features": {
-    "count": 24,
+    "count": 21,
     "list": [
       "hour",
       "hour_sin",
@@ -30,11 +32,8 @@
       "gas_lag_30min",
       "gas_lag_1h",
       "gas_lag_4h",
-      "gas_mean_1h",
-      "gas_std_1h",
       "gas_cv_1h",
       "gas_mean_2h",
-      "gas_mean_4h",
       "momentum_1h",
       "momentum_pct_2h",
       "trend_1h_4h",
@@ -45,92 +44,851 @@
   },
   "baselines": {
     "1h": {
-      "naive_mae": 0.14767940885526262,
-      "mean_mae": 0.08226501640134122,
-      "best": 0.08226501640134122,
-      "holdout_naive_mae": 0.5990948404312904,
-      "holdout_mean_mae": 0.28458881601101427,
-      "holdout_best": 0.28458881601101427
+      "naive_mae": 0.15974383745730625,
+      "mean_mae": 0.09649100441136949,
+      "best": 0.09649100441136949,
+      "holdout_naive_mae": 0.6304060346786733,
+      "holdout_mean_mae": 0.2863790897730099,
+      "holdout_best": 0.2863790897730099
     },
     "4h": {
-      "naive_mae": 0.14085398697998633,
-      "mean_mae": 0.06617271462746935,
-      "best": 0.06617271462746935,
-      "holdout_naive_mae": 0.5868668520500363,
-      "holdout_mean_mae": 0.2746748406877258,
-      "holdout_best": 0.2746748406877258
+      "naive_mae": 0.1546775799571639,
+      "mean_mae": 0.0855165414496388,
+      "best": 0.0855165414496388,
+      "holdout_naive_mae": 0.6250832049333835,
+      "holdout_mean_mae": 0.2705261296460427,
+      "holdout_best": 0.2705261296460427
     }
   },
   "models": {
     "1h": {
-      "name": "RF",
-      "mae": 0.24685793285378652,
-      "improvement_pct": -200.07644032969742,
-      "vs_holdout_baseline_pct": 13.258034411221372,
+      "name": "GBM-Asym",
+      "mae": 0.2529599775994131,
+      "improvement_pct": -160.92099522623644,
+      "vs_holdout_baseline_pct": 12.086706744723775,
       "passed_baseline": true,
       "is_fallback": false,
-      "cv_mae": 0.10661334026937878,
+      "has_shap": true,
+      "has_dynamic_ensemble": true,
+      "n_features": 20,
+      "cv_mae": 0.06383587012611108,
+      "asymmetric_loss": 0.13814860209849483,
       "calibration": {
-        "quantile_coverage": 0.6770833333333334,
-        "conformal_coverage": 0.7997685185185185,
-        "scaled_coverage": 0.8067129629629629,
-        "conformal_width": 0.03892503844364778
+        "quantile_coverage": 0.7523148148148148,
+        "conformal_coverage": 0.8032407407407407,
+        "time_adaptive_coverage": 0.9149305555555556,
+        "conformal_width": 0.13653089612533723,
+        "time_period_calibration": {
+          "night": {
+            "mae": 0.03985954833143692,
+            "std": 0.10972350320542396,
+            "multiplier": 1.0,
+            "coverage_at_base": 0.9216867469879518,
+            "n_samples": 498
+          },
+          "afternoon": {
+            "mae": 0.20104910580818194,
+            "std": 0.42687686127133817,
+            "multiplier": 2.4070419662139484,
+            "coverage_at_base": 0.7018633540372671,
+            "n_samples": 161
+          },
+          "evening": {
+            "mae": 0.105045667845355,
+            "std": 0.18756006289101915,
+            "multiplier": 1.1033727227922734,
+            "coverage_at_base": 0.7633302151543498,
+            "n_samples": 1069
+          }
+        },
+        "regime_breakdown": {
+          "normal": {
+            "n_samples": 5297,
+            "mae": 0.25151944739986215,
+            "std": 0.35036963929470744,
+            "conformal_coverage": 0.46346988861619787,
+            "adaptive_coverage": 0.5593732301302624,
+            "target_coverage": 0.8,
+            "calibrated": 0
+          },
+          "elevated": {
+            "n_samples": 237,
+            "mae": 0.2779208080615651,
+            "std": 0.40813036218143817,
+            "conformal_coverage": 0.4810126582278481,
+            "adaptive_coverage": 0.5527426160337553,
+            "target_coverage": 0.8,
+            "calibrated": 0
+          },
+          "spike": {
+            "n_samples": 226,
+            "mae": 0.2605474627653056,
+            "std": 0.3859364365111389,
+            "conformal_coverage": 0.4911504424778761,
+            "adaptive_coverage": 0.5707964601769911,
+            "target_coverage": 0.8,
+            "calibrated": 0
+          }
+        },
+        "time_breakdown": {
+          "night": {
+            "n_samples": 1518,
+            "mae": 0.20610337538014603,
+            "conformal_coverage": 0.525691699604743,
+            "adaptive_coverage": 0.525691699604743,
+            "calibrated": 0
+          },
+          "morning": {
+            "n_samples": 1440,
+            "mae": 0.18349136109707193,
+            "conformal_coverage": 0.4652777777777778,
+            "adaptive_coverage": 0.4652777777777778,
+            "calibrated": 0
+          },
+          "afternoon": {
+            "n_samples": 1362,
+            "mae": 0.3522120961213518,
+            "conformal_coverage": 0.3869309838472834,
+            "adaptive_coverage": 0.73568281938326,
+            "calibrated": 1
+          },
+          "evening": {
+            "n_samples": 1440,
+            "mae": 0.27794730017256486,
+            "conformal_coverage": 0.4756944444444444,
+            "adaptive_coverage": 0.5229166666666667,
+            "calibrated": 0
+          }
+        },
+        "warnings": [
+          "normal regime under-covered: 46.3% (target 80%)",
+          "elevated regime under-covered: 48.1% (target 80%)",
+          "spike regime under-covered: 49.1% (target 80%)",
+          "night period under-covered: 52.6% (target 80%)",
+          "morning period under-covered: 46.5% (target 80%)",
+          "afternoon period under-covered: 38.7% (target 80%)",
+          "evening period under-covered: 47.6% (target 80%)"
+        ]
       }
     },
     "4h": {
-      "name": "GBM",
-      "mae": 0.25624110747695505,
-      "improvement_pct": -287.2307625877347,
-      "vs_holdout_baseline_pct": 6.711110913768695,
+      "name": "GBM-Asym",
+      "mae": 0.22808299794916903,
+      "improvement_pct": -167.88749318510108,
+      "vs_holdout_baseline_pct": 15.317563058409577,
       "passed_baseline": true,
       "is_fallback": false,
-      "cv_mae": 0.10281160656490056,
+      "has_shap": true,
+      "has_dynamic_ensemble": true,
+      "n_features": 21,
+      "cv_mae": 0.04754923097907504,
+      "asymmetric_loss": 0.13196252537977501,
       "calibration": {
-        "quantile_coverage": 0.7077546296296297,
+        "quantile_coverage": 0.37094907407407407,
         "conformal_coverage": 0.7997685185185185,
-        "scaled_coverage": 0.8408564814814815,
-        "conformal_width": 0.021688872724093432
+        "time_adaptive_coverage": 0.9103009259259259,
+        "conformal_width": 0.06478525335578422,
+        "time_period_calibration": {
+          "night": {
+            "mae": 0.04665339985907599,
+            "std": 0.12747995939789836,
+            "multiplier": 1.0,
+            "coverage_at_base": 0.8775100401606426,
+            "n_samples": 498
+          },
+          "afternoon": {
+            "mae": 0.003652716096238207,
+            "std": 0.005245851258169965,
+            "multiplier": 1.0,
+            "coverage_at_base": 1.0,
+            "n_samples": 161
+          },
+          "evening": {
+            "mae": 0.07283606773598703,
+            "std": 0.16735332328794167,
+            "multiplier": 1.3501825672521806,
+            "coverage_at_base": 0.7333956969130028,
+            "n_samples": 1069
+          }
+        },
+        "regime_breakdown": {
+          "normal": {
+            "n_samples": 5297,
+            "mae": 0.2293165157959321,
+            "std": 0.37335544698869083,
+            "conformal_coverage": 0.2984708325467246,
+            "adaptive_coverage": 0.32018123466112897,
+            "target_coverage": 0.8,
+            "calibrated": 0
+          },
+          "elevated": {
+            "n_samples": 237,
+            "mae": 0.20032549928593363,
+            "std": 0.2699826124986223,
+            "conformal_coverage": 0.3333333333333333,
+            "adaptive_coverage": 0.35864978902953587,
+            "target_coverage": 0.8,
+            "calibrated": 0
+          },
+          "spike": {
+            "n_samples": 226,
+            "mae": 0.22828026851944802,
+            "std": 0.3537680235792515,
+            "conformal_coverage": 0.3185840707964602,
+            "adaptive_coverage": 0.3185840707964602,
+            "target_coverage": 0.8,
+            "calibrated": 0
+          }
+        },
+        "time_breakdown": {
+          "night": {
+            "n_samples": 1518,
+            "mae": 0.18047847802869135,
+            "conformal_coverage": 0.30764163372859027,
+            "adaptive_coverage": 0.30764163372859027,
+            "calibrated": 0
+          },
+          "morning": {
+            "n_samples": 1440,
+            "mae": 0.1765267840008341,
+            "conformal_coverage": 0.36180555555555555,
+            "adaptive_coverage": 0.36180555555555555,
+            "calibrated": 0
+          },
+          "afternoon": {
+            "n_samples": 1362,
+            "mae": 0.3194680590277329,
+            "conformal_coverage": 0.19089574155653452,
+            "adaptive_coverage": 0.19089574155653452,
+            "calibrated": 0
+          },
+          "evening": {
+            "n_samples": 1440,
+            "mae": 0.24338727304353264,
+            "conformal_coverage": 0.33611111111111114,
+            "adaptive_coverage": 0.4201388888888889,
+            "calibrated": 0
+          }
+        },
+        "warnings": [
+          "normal regime under-covered: 29.8% (target 80%)",
+          "elevated regime under-covered: 33.3% (target 80%)",
+          "spike regime under-covered: 31.9% (target 80%)",
+          "night period under-covered: 30.8% (target 80%)",
+          "morning period under-covered: 36.2% (target 80%)",
+          "afternoon period under-covered: 19.1% (target 80%)",
+          "evening period under-covered: 33.6% (target 80%)"
+        ]
       }
     },
     "24h": {
-      "name": "GBM (4h fallback)",
-      "mae": 0.25624110747695505,
-      "improvement_pct": -287.2307625877347,
-      "vs_holdout_baseline_pct": 6.711110913768695,
+      "name": "GBM-Asym (4h fallback)",
+      "mae": 0.22808299794916903,
+      "improvement_pct": -167.88749318510108,
+      "vs_holdout_baseline_pct": 15.317563058409577,
       "passed_baseline": true,
-      "is_fallback": true
+      "is_fallback": true,
+      "has_shap": false,
+      "has_dynamic_ensemble": false,
+      "n_features": 21
     }
   },
   "regime_models": {
     "1h": {
       "normal": {
-        "mae": 0.24234030596600373,
-        "n_samples": 8176
+        "mae": 0.24952688725686464,
+        "n_samples": 8165,
+        "n_features": 19
       }
     },
     "4h": {
       "normal": {
-        "mae": 0.2594148034877523,
-        "n_samples": 8176
+        "mae": 0.22835720209243998,
+        "n_samples": 8165,
+        "n_features": 24
       }
     }
   },
   "direction_models": {
     "1h": {
-      "accuracy": 0.671875,
-      "f1_score": 0.6626114232351722,
-      "baseline_accuracy": 0.5182291666666666,
-      "improvement_vs_baseline": 29.648241206030164,
-      "model_name": "GBM",
+      "accuracy": 0.6826388888888889,
+      "f1_score": 0.681297509684899,
+      "baseline_accuracy": 0.5135416666666667,
+      "improvement_vs_baseline": 32.92765382014875,
+      "model_name": "LogReg",
       "is_binary": true
     },
     "4h": {
-      "accuracy": 0.6963541666666667,
-      "f1_score": 0.6796932904313953,
-      "baseline_accuracy": 0.5619791666666667,
-      "improvement_vs_baseline": 23.91102873030584,
+      "accuracy": 0.7036458333333333,
+      "f1_score": 0.703271172276393,
+      "baseline_accuracy": 0.5628472222222223,
+      "improvement_vs_baseline": 25.015422578655134,
       "model_name": "GBM",
       "is_binary": true
+    }
+  },
+  "spike_forecast_models": {
+    "1h": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1_score": 0.0,
+      "auc": 0.5,
+      "optimal_threshold": 0.5,
+      "percentile": null,
+      "spike_rate_train": 0.0,
+      "spike_rate_test": 0.0,
+      "has_model": false
+    },
+    "4h": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1_score": 0.0,
+      "auc": 0.5,
+      "optimal_threshold": 0.5,
+      "percentile": null,
+      "spike_rate_train": 0.0,
+      "spike_rate_test": 0.0,
+      "has_model": false
+    }
+  },
+  "error_analysis": {
+    "1h": {
+      "mean_error": 0.12422130398936106,
+      "std_error": 0.41734480113056693,
+      "mae": 0.2529599775994131,
+      "median_ae": 0.14710515560667872,
+      "max_error": 2.97391752633566,
+      "p95_error": 0.9307366562614742,
+      "p99_error": 1.8582980033295087,
+      "regime_errors": {
+        "normal": 0.25151944739986215,
+        "elevated": 0.2779208080615651,
+        "spike": 0.2605474627653056
+      },
+      "regime_bias": {
+        "normal": {
+          "bias": 0.12209177134192889,
+          "std": 0.4136599037016104,
+          "n_samples": 5297
+        },
+        "elevated": {
+          "bias": 0.15559559011245855,
+          "std": 0.46861538645834183,
+          "n_samples": 237
+        },
+        "spike": {
+          "bias": 0.1412320501056187,
+          "std": 0.4437177271682062,
+          "n_samples": 226
+        }
+      },
+      "time_errors": {
+        "night": 0.20610337538014603,
+        "morning": 0.18349136109707193,
+        "afternoon": 0.3522120961213518,
+        "evening": 0.27794730017256486
+      },
+      "time_bias": {
+        "night": {
+          "bias": 0.08678207515201251,
+          "std": 0.3055155524854096,
+          "n_samples": 1518
+        },
+        "morning": {
+          "bias": -0.01093433122536995,
+          "std": 0.291304400138132,
+          "n_samples": 1440
+        },
+        "afternoon": {
+          "bias": 0.23646194341403481,
+          "std": 0.5639275156957145,
+          "n_samples": 1362
+        },
+        "evening": {
+          "bias": 0.19268318814762647,
+          "std": 0.41990127779330516,
+          "n_samples": 1440
+        }
+      },
+      "rolling_bias": {
+        "overall_bias": 0.12422130398936106,
+        "recent_bias": 0.06271084161763811,
+        "bias_trend": -0.20693187090474463,
+        "window_size": 240
+      },
+      "error_correlations": {
+        "hour": 0.13579946977937896,
+        "hour_cos": -0.006403038706427827,
+        "eth_log": -0.0055493113931484915,
+        "eth_zscore_4h": -0.08235940348505826,
+        "gas_eth_corr_1h": 0.019652763079140045
+      }
+    },
+    "4h": {
+      "mean_error": 0.14418635284580913,
+      "std_error": 0.40910191096380355,
+      "mae": 0.22808299794916903,
+      "median_ae": 0.10305245785754452,
+      "max_error": 3.5351021500344038,
+      "p95_error": 0.9125742996072914,
+      "p99_error": 1.8347676045831431,
+      "regime_errors": {
+        "normal": 0.2293165157959321,
+        "elevated": 0.20032549928593363,
+        "spike": 0.22828026851944802
+      },
+      "regime_bias": {
+        "normal": {
+          "bias": 0.14428189249059364,
+          "std": 0.41371861175470925,
+          "n_samples": 5297
+        },
+        "elevated": {
+          "bias": 0.13368722445697168,
+          "std": 0.30846173625383605,
+          "n_samples": 237
+        },
+        "spike": {
+          "bias": 0.15295723749063617,
+          "std": 0.3922598360802623,
+          "n_samples": 226
+        }
+      },
+      "time_errors": {
+        "night": 0.18047847802869135,
+        "morning": 0.1765267840008341,
+        "afternoon": 0.3194680590277329,
+        "evening": 0.24338727304353264
+      },
+      "time_bias": {
+        "night": {
+          "bias": 0.09714507777794482,
+          "std": 0.2831929877486149,
+          "n_samples": 1518
+        },
+        "morning": {
+          "bias": 0.0787369211280397,
+          "std": 0.35876756353640665,
+          "n_samples": 1440
+        },
+        "afternoon": {
+          "bias": 0.2312933486689266,
+          "std": 0.554457023459822,
+          "n_samples": 1362
+        },
+        "evening": {
+          "bias": 0.17683642848158698,
+          "std": 0.3880353345262312,
+          "n_samples": 1440
+        }
+      },
+      "rolling_bias": {
+        "overall_bias": 0.14418635284580913,
+        "recent_bias": -0.08961097030292707,
+        "bias_trend": -0.03976630919293369,
+        "window_size": 240
+      },
+      "error_correlations": {
+        "hour": 0.08775690120983994,
+        "hour_sin": -0.1273567687980394,
+        "hour_cos": -0.08219659322522199,
+        "eth_log": 0.1218676326135609,
+        "eth_zscore_4h": -0.023088949422067555
+      }
+    }
+  },
+  "bias_correction": {
+    "1h": {
+      "overall": 0.12422130398936106,
+      "recent": 0.06271084161763811,
+      "trend": -0.20693187090474463,
+      "by_regime": {
+        "normal": {
+          "bias": 0.12209177134192889,
+          "std": 0.4136599037016104,
+          "n_samples": 5297
+        },
+        "elevated": {
+          "bias": 0.15559559011245855,
+          "std": 0.46861538645834183,
+          "n_samples": 237
+        },
+        "spike": {
+          "bias": 0.1412320501056187,
+          "std": 0.4437177271682062,
+          "n_samples": 226
+        }
+      },
+      "by_time": {
+        "night": {
+          "bias": 0.08678207515201251,
+          "std": 0.3055155524854096,
+          "n_samples": 1518
+        },
+        "morning": {
+          "bias": -0.01093433122536995,
+          "std": 0.291304400138132,
+          "n_samples": 1440
+        },
+        "afternoon": {
+          "bias": 0.23646194341403481,
+          "std": 0.5639275156957145,
+          "n_samples": 1362
+        },
+        "evening": {
+          "bias": 0.19268318814762647,
+          "std": 0.41990127779330516,
+          "n_samples": 1440
+        }
+      },
+      "should_correct": true
+    },
+    "4h": {
+      "overall": 0.14418635284580913,
+      "recent": -0.08961097030292707,
+      "trend": -0.03976630919293369,
+      "by_regime": {
+        "normal": {
+          "bias": 0.14428189249059364,
+          "std": 0.41371861175470925,
+          "n_samples": 5297
+        },
+        "elevated": {
+          "bias": 0.13368722445697168,
+          "std": 0.30846173625383605,
+          "n_samples": 237
+        },
+        "spike": {
+          "bias": 0.15295723749063617,
+          "std": 0.3922598360802623,
+          "n_samples": 226
+        }
+      },
+      "by_time": {
+        "night": {
+          "bias": 0.09714507777794482,
+          "std": 0.2831929877486149,
+          "n_samples": 1518
+        },
+        "morning": {
+          "bias": 0.0787369211280397,
+          "std": 0.35876756353640665,
+          "n_samples": 1440
+        },
+        "afternoon": {
+          "bias": 0.2312933486689266,
+          "std": 0.554457023459822,
+          "n_samples": 1362
+        },
+        "evening": {
+          "bias": 0.17683642848158698,
+          "std": 0.3880353345262312,
+          "n_samples": 1440
+        }
+      },
+      "should_correct": true
+    }
+  },
+  "time_calibration": {
+    "1h": {
+      "night": {
+        "mae": 0.03985954833143692,
+        "std": 0.10972350320542396,
+        "multiplier": 1.0,
+        "coverage_at_base": 0.9216867469879518,
+        "n_samples": 498
+      },
+      "afternoon": {
+        "mae": 0.20104910580818194,
+        "std": 0.42687686127133817,
+        "multiplier": 2.4070419662139484,
+        "coverage_at_base": 0.7018633540372671,
+        "n_samples": 161
+      },
+      "evening": {
+        "mae": 0.105045667845355,
+        "std": 0.18756006289101915,
+        "multiplier": 1.1033727227922734,
+        "coverage_at_base": 0.7633302151543498,
+        "n_samples": 1069
+      }
+    },
+    "4h": {
+      "night": {
+        "mae": 0.04665339985907599,
+        "std": 0.12747995939789836,
+        "multiplier": 1.0,
+        "coverage_at_base": 0.8775100401606426,
+        "n_samples": 498
+      },
+      "afternoon": {
+        "mae": 0.003652716096238207,
+        "std": 0.005245851258169965,
+        "multiplier": 1.0,
+        "coverage_at_base": 1.0,
+        "n_samples": 161
+      },
+      "evening": {
+        "mae": 0.07283606773598703,
+        "std": 0.16735332328794167,
+        "multiplier": 1.3501825672521806,
+        "coverage_at_base": 0.7333956969130028,
+        "n_samples": 1069
+      }
+    },
+    "24h": {
+      "night": {
+        "mae": 0.04665339985907599,
+        "std": 0.12747995939789836,
+        "multiplier": 1.0,
+        "coverage_at_base": 0.8775100401606426,
+        "n_samples": 498
+      },
+      "afternoon": {
+        "mae": 0.003652716096238207,
+        "std": 0.005245851258169965,
+        "multiplier": 1.0,
+        "coverage_at_base": 1.0,
+        "n_samples": 161
+      },
+      "evening": {
+        "mae": 0.07283606773598703,
+        "std": 0.16735332328794167,
+        "multiplier": 1.3501825672521806,
+        "coverage_at_base": 0.7333956969130028,
+        "n_samples": 1069
+      }
+    }
+  },
+  "regime_calibration": {
+    "1h": {
+      "overall": {
+        "coverage_80": {
+          "target": 0.8,
+          "actual": 0.8,
+          "interval_width": 0.3006604908426244,
+          "calibrated": 1
+        },
+        "coverage_90": {
+          "target": 0.9,
+          "actual": 0.9,
+          "interval_width": 0.5886493305594902,
+          "calibrated": 1
+        },
+        "coverage_95": {
+          "target": 0.95,
+          "actual": 0.95,
+          "interval_width": 0.9307366562614742,
+          "calibrated": 1
+        }
+      },
+      "by_regime": {
+        "normal": {
+          "n_samples": 5297,
+          "mae": 0.25151944739986215,
+          "std": 0.35036963929470744,
+          "conformal_coverage": 0.46346988861619787,
+          "adaptive_coverage": 0.5593732301302624,
+          "target_coverage": 0.8,
+          "calibrated": 0
+        },
+        "elevated": {
+          "n_samples": 237,
+          "mae": 0.2779208080615651,
+          "std": 0.40813036218143817,
+          "conformal_coverage": 0.4810126582278481,
+          "adaptive_coverage": 0.5527426160337553,
+          "target_coverage": 0.8,
+          "calibrated": 0
+        },
+        "spike": {
+          "n_samples": 226,
+          "mae": 0.2605474627653056,
+          "std": 0.3859364365111389,
+          "conformal_coverage": 0.4911504424778761,
+          "adaptive_coverage": 0.5707964601769911,
+          "target_coverage": 0.8,
+          "calibrated": 0
+        }
+      },
+      "by_time": {
+        "night": {
+          "n_samples": 1518,
+          "mae": 0.20610337538014603,
+          "conformal_coverage": 0.525691699604743,
+          "adaptive_coverage": 0.525691699604743,
+          "calibrated": 0
+        },
+        "morning": {
+          "n_samples": 1440,
+          "mae": 0.18349136109707193,
+          "conformal_coverage": 0.4652777777777778,
+          "adaptive_coverage": 0.4652777777777778,
+          "calibrated": 0
+        },
+        "afternoon": {
+          "n_samples": 1362,
+          "mae": 0.3522120961213518,
+          "conformal_coverage": 0.3869309838472834,
+          "adaptive_coverage": 0.73568281938326,
+          "calibrated": 1
+        },
+        "evening": {
+          "n_samples": 1440,
+          "mae": 0.27794730017256486,
+          "conformal_coverage": 0.4756944444444444,
+          "adaptive_coverage": 0.5229166666666667,
+          "calibrated": 0
+        }
+      },
+      "warnings": [
+        "normal regime under-covered: 46.3% (target 80%)",
+        "elevated regime under-covered: 48.1% (target 80%)",
+        "spike regime under-covered: 49.1% (target 80%)",
+        "night period under-covered: 52.6% (target 80%)",
+        "morning period under-covered: 46.5% (target 80%)",
+        "afternoon period under-covered: 38.7% (target 80%)",
+        "evening period under-covered: 47.6% (target 80%)"
+      ]
+    },
+    "4h": {
+      "overall": {
+        "coverage_80": {
+          "target": 0.8,
+          "actual": 0.8,
+          "interval_width": 0.29175061082605114,
+          "calibrated": 1
+        },
+        "coverage_90": {
+          "target": 0.9,
+          "actual": 0.9,
+          "interval_width": 0.561081135186619,
+          "calibrated": 1
+        },
+        "coverage_95": {
+          "target": 0.95,
+          "actual": 0.95,
+          "interval_width": 0.9125742996072914,
+          "calibrated": 1
+        }
+      },
+      "by_regime": {
+        "normal": {
+          "n_samples": 5297,
+          "mae": 0.2293165157959321,
+          "std": 0.37335544698869083,
+          "conformal_coverage": 0.2984708325467246,
+          "adaptive_coverage": 0.32018123466112897,
+          "target_coverage": 0.8,
+          "calibrated": 0
+        },
+        "elevated": {
+          "n_samples": 237,
+          "mae": 0.20032549928593363,
+          "std": 0.2699826124986223,
+          "conformal_coverage": 0.3333333333333333,
+          "adaptive_coverage": 0.35864978902953587,
+          "target_coverage": 0.8,
+          "calibrated": 0
+        },
+        "spike": {
+          "n_samples": 226,
+          "mae": 0.22828026851944802,
+          "std": 0.3537680235792515,
+          "conformal_coverage": 0.3185840707964602,
+          "adaptive_coverage": 0.3185840707964602,
+          "target_coverage": 0.8,
+          "calibrated": 0
+        }
+      },
+      "by_time": {
+        "night": {
+          "n_samples": 1518,
+          "mae": 0.18047847802869135,
+          "conformal_coverage": 0.30764163372859027,
+          "adaptive_coverage": 0.30764163372859027,
+          "calibrated": 0
+        },
+        "morning": {
+          "n_samples": 1440,
+          "mae": 0.1765267840008341,
+          "conformal_coverage": 0.36180555555555555,
+          "adaptive_coverage": 0.36180555555555555,
+          "calibrated": 0
+        },
+        "afternoon": {
+          "n_samples": 1362,
+          "mae": 0.3194680590277329,
+          "conformal_coverage": 0.19089574155653452,
+          "adaptive_coverage": 0.19089574155653452,
+          "calibrated": 0
+        },
+        "evening": {
+          "n_samples": 1440,
+          "mae": 0.24338727304353264,
+          "conformal_coverage": 0.33611111111111114,
+          "adaptive_coverage": 0.4201388888888889,
+          "calibrated": 0
+        }
+      },
+      "warnings": [
+        "normal regime under-covered: 29.8% (target 80%)",
+        "elevated regime under-covered: 33.3% (target 80%)",
+        "spike regime under-covered: 31.9% (target 80%)",
+        "night period under-covered: 30.8% (target 80%)",
+        "morning period under-covered: 36.2% (target 80%)",
+        "afternoon period under-covered: 19.1% (target 80%)",
+        "evening period under-covered: 33.6% (target 80%)"
+      ]
+    }
+  },
+  "feature_pruning": {
+    "1h": {
+      "original_count": 24,
+      "pruned_count": 20,
+      "removed": [
+        "gas_cv_1h",
+        "gas_mean_2h",
+        "gas_zscore_1h",
+        "hour_sin"
+      ]
+    },
+    "4h": {
+      "original_count": 24,
+      "pruned_count": 21,
+      "removed": [
+        "gas_mean_1h",
+        "gas_std_1h",
+        "gas_mean_4h"
+      ]
+    }
+  },
+  "backtest_results": {},
+  "retraining_recommendations": {
+    "1h": {
+      "should_retrain": true,
+      "signals": [
+        "Distribution shift detected (magnitude: 4.00)",
+        "Systematic bias: 0.1242",
+        "High P99 error: 1.8583 (3x MAE)"
+      ],
+      "urgency": "high"
+    },
+    "4h": {
+      "should_retrain": true,
+      "signals": [
+        "Distribution shift detected (magnitude: 4.00)",
+        "Systematic bias: 0.1442",
+        "High P99 error: 1.8348 (3x MAE)"
+      ],
+      "urgency": "high"
+    },
+    "24h": {
+      "should_retrain": true,
+      "signals": [
+        "Distribution shift detected (magnitude: 4.00)"
+      ],
+      "urgency": "medium"
     }
   }
 }
