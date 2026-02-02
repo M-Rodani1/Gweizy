@@ -45,6 +45,16 @@ backend/models/saved_models/*
 !backend/models/saved_models/.gitkeep
 # Spike detectors are small enough (2MB) for now
 !backend/models/saved_models/spike_detector*.pkl
+# Additional model files
+!backend/models/saved_models/quantile_*.pkl
+!backend/models/saved_models/regime_detector.pkl
+!backend/models/saved_models/feature_importance.json
+!backend/models/saved_models/training_metadata.json
+!backend/models/saved_models/spike_forecast_*.pkl
+!backend/models/saved_models/regime_models/
+!backend/models/saved_models/regime_models/*.pkl
+!backend/models/saved_models/time_models/
+!backend/models/saved_models/time_models/*.pkl
 backend/gas_data.db
 
 # Editor directories and files
