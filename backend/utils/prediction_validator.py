@@ -460,6 +460,211 @@ class PredictionValidator:
             session.close()
 
 
+class OnlineBiasTracker:
+    """
+    Tracks prediction bias in real-time and computes corrections.
+
+    This class monitors the difference between predictions and actual values
+    over a rolling window and provides bias corrections that can be applied
+    at inference time.
+    """
+
+    def __init__(self, window_hours: int = 24, max_correction: float = 0.15):
+        """
+        Initialize bias tracker.
+
+        Args:
+            window_hours: Rolling window size in hours for bias calculation
+            max_correction: Maximum allowed bias correction (as fraction of prediction)
+        """
+        self.window_hours = window_hours
+        self.max_correction = max_correction
+        self.db = DatabaseManager()
+
+    def get_current_bias(
+        self,
+        horizon: str,
+        time_period: str = None
+    ) -> Dict:
+        """
+        Calculate current bias from recent validated predictions.
+
+        Args:
+            horizon: Prediction horizon ('1h', '4h', '24h')
+            time_period: Optional time period filter ('night', 'morning', 'afternoon', 'evening')
+
+        Returns:
+            Dict with bias statistics and recommended correction
+        """
+        session = self.db._get_session()
+        try:
+            cutoff = datetime.now() - timedelta(hours=self.window_hours)
+
+            # Get validated predictions
+            query = session.query(PredictionLog).filter(
+                PredictionLog.validated == True,
+                PredictionLog.validated_at >= cutoff,
+                PredictionLog.horizon == horizon
+            )
+
+            predictions = query.all()
+
+            if len(predictions) < 10:
+                return {
+                    'horizon': horizon,
+                    'time_period': time_period,
+                    'has_enough_data': False,
+                    'sample_size': len(predictions),
+                    'bias': 0.0,
+                    'correction': 0.0,
+                    'should_apply': False
+                }
+
+            # Filter by time period if specified
+            if time_period:
+                period_hours = {
+                    'night': (0, 6),
+                    'morning': (6, 12),
+                    'afternoon': (12, 18),
+                    'evening': (18, 24)
+                }
+                if time_period in period_hours:
+                    start_h, end_h = period_hours[time_period]
+                    predictions = [
+                        p for p in predictions
+                        if start_h <= p.target_time.hour < end_h
+                    ]
+
+            if len(predictions) < 5:
+                return {
+                    'horizon': horizon,
+                    'time_period': time_period,
+                    'has_enough_data': False,
+                    'sample_size': len(predictions),
+                    'bias': 0.0,
+                    'correction': 0.0,
+                    'should_apply': False
+                }
+
+            # Calculate bias: mean(predicted - actual)
+            # Positive bias = predictions too high, need to subtract
+            # Negative bias = predictions too low, need to add
+            errors = [(p.predicted_gas - p.actual_gas) for p in predictions]
+            mean_bias = np.mean(errors)
+            std_bias = np.std(errors)
+            mean_actual = np.mean([p.actual_gas for p in predictions])
+
+            # Relative bias as fraction of mean actual
+            relative_bias = mean_bias / mean_actual if mean_actual > 0 else 0
+
+            # Calculate correction (opposite of bias, capped)
+            correction = -mean_bias
+            correction = max(-self.max_correction * mean_actual,
+                           min(correction, self.max_correction * mean_actual))
+
+            # Only apply correction if bias is statistically significant
+            # (bias > 1 std error and relative bias > 5%)
+            std_error = std_bias / np.sqrt(len(predictions))
+            should_apply = (abs(mean_bias) > std_error and abs(relative_bias) > 0.05)
+
+            return {
+                'horizon': horizon,
+                'time_period': time_period,
+                'has_enough_data': True,
+                'sample_size': len(predictions),
+                'bias': float(mean_bias),
+                'relative_bias': float(relative_bias),
+                'std_bias': float(std_bias),
+                'correction': float(correction),
+                'should_apply': should_apply,
+                'mean_actual': float(mean_actual),
+                'calculated_at': datetime.now().isoformat()
+            }
+
+        finally:
+            session.close()
+
+    def get_all_bias_corrections(self) -> Dict:
+        """
+        Get bias corrections for all horizons and time periods.
+
+        Returns:
+            Nested dict of corrections by horizon and time period
+        """
+        corrections = {}
+
+        for horizon in ['1h', '4h', '24h']:
+            corrections[horizon] = {
+                'overall': self.get_current_bias(horizon),
+                'by_period': {}
+            }
+
+            for period in ['night', 'morning', 'afternoon', 'evening']:
+                corrections[horizon]['by_period'][period] = self.get_current_bias(
+                    horizon, time_period=period
+                )
+
+        return corrections
+
+    def apply_bias_correction(
+        self,
+        prediction: float,
+        horizon: str,
+        hour: int = None
+    ) -> Tuple[float, Dict]:
+        """
+        Apply bias correction to a prediction.
+
+        Args:
+            prediction: Raw prediction value
+            horizon: Prediction horizon
+            hour: Hour of day for time-period specific correction (optional)
+
+        Returns:
+            Tuple of (corrected_prediction, correction_info)
+        """
+        # Determine time period from hour
+        time_period = None
+        if hour is not None:
+            if 0 <= hour < 6:
+                time_period = 'night'
+            elif 6 <= hour < 12:
+                time_period = 'morning'
+            elif 12 <= hour < 18:
+                time_period = 'afternoon'
+            else:
+                time_period = 'evening'
+
+        # Try time-period specific correction first
+        if time_period:
+            bias_info = self.get_current_bias(horizon, time_period)
+            if bias_info['should_apply']:
+                corrected = prediction + bias_info['correction']
+                return corrected, {
+                    'applied': True,
+                    'type': 'time_period',
+                    'period': time_period,
+                    'correction': bias_info['correction'],
+                    'original': prediction,
+                    'corrected': corrected
+                }
+
+        # Fall back to overall correction
+        bias_info = self.get_current_bias(horizon)
+        if bias_info['should_apply']:
+            corrected = prediction + bias_info['correction']
+            return corrected, {
+                'applied': True,
+                'type': 'overall',
+                'correction': bias_info['correction'],
+                'original': prediction,
+                'corrected': corrected
+            }
+
+        # No correction needed
+        return prediction, {'applied': False, 'original': prediction}
+
+
 # Scheduler integration
 def scheduled_validation_job():
     """

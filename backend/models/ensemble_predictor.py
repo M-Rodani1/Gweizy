@@ -19,6 +19,7 @@ from typing import Dict, List, Optional, Tuple, Any
 from datetime import datetime, timedelta
 import logging
 import os
+import json
 
 logger = logging.getLogger(__name__)
 
@@ -60,6 +61,11 @@ class EnsemblePredictor:
         self.stacking_ensembles = {}  # Per-horizon
         self.loaded = False
 
+        # Tail risk caps from training (±3σ bounds)
+        self.tail_risk_caps = {}
+        self.monitoring_config = {}
+        self.bias_tracker = None
+
         # Track recent accuracy for dynamic weighting
         self.recent_accuracy = {
             'hybrid': {'1h': None, '4h': None, '24h': None},
@@ -70,9 +76,75 @@ class EnsemblePredictor:
         # Track prediction disagreement for confidence adjustment
         self.prediction_history = []
 
+    def _load_tail_risk_caps(self):
+        """Load tail risk caps from training metadata."""
+        try:
+            metadata_paths = [
+                os.path.join(self.models_dir, 'training_metadata.json'),
+                '/data/models/training_metadata.json',
+                'models/saved_models/training_metadata.json'
+            ]
+
+            for path in metadata_paths:
+                if os.path.exists(path):
+                    with open(path, 'r') as f:
+                        metadata = json.load(f)
+
+                    if 'tail_risk_caps' in metadata:
+                        self.tail_risk_caps = metadata['tail_risk_caps']
+                        logger.info(f"Loaded tail risk caps for horizons: {list(self.tail_risk_caps.keys())}")
+
+                    if 'monitoring_config' in metadata:
+                        self.monitoring_config = metadata['monitoring_config']
+                        logger.info("Loaded monitoring config")
+
+                    break
+        except Exception as e:
+            logger.debug(f"Could not load tail risk caps: {e}")
+
+    def _apply_tail_risk_cap(self, prediction: float, horizon: str) -> float:
+        """Apply tail risk capping to prediction (±3σ from training mean)."""
+        if horizon not in self.tail_risk_caps:
+            return prediction
+
+        caps = self.tail_risk_caps[horizon]
+        lower = caps.get('lower_cap', 0)
+        upper = caps.get('upper_cap', float('inf'))
+
+        # Also use global caps as safety net
+        global_lower = caps.get('global_lower', 0)
+        global_upper = caps.get('global_upper', float('inf'))
+
+        # Use more conservative of the two bounds
+        effective_lower = max(lower, global_lower * 0.8)  # Allow 20% below global
+        effective_upper = min(upper, global_upper * 1.2)  # Allow 20% above global
+
+        original = prediction
+        capped = max(effective_lower, min(prediction, effective_upper))
+
+        if capped != original:
+            logger.debug(f"Tail risk cap applied for {horizon}: {original:.4f} -> {capped:.4f}")
+
+        return capped
+
     def load_models(self) -> bool:
         """Load all component models."""
         success = False
+
+        # Load tail risk caps from training metadata
+        self._load_tail_risk_caps()
+
+        # Initialize online bias tracker if monitoring is enabled
+        if self.monitoring_config.get('enable_online_bias', False):
+            try:
+                from utils.prediction_validator import OnlineBiasTracker
+                self.bias_tracker = OnlineBiasTracker(
+                    window_hours=self.monitoring_config.get('bias_window_hours', 24),
+                    max_correction=self.monitoring_config.get('max_bias_correction', 0.15)
+                )
+                logger.info("Initialized online bias tracker")
+            except Exception as e:
+                logger.debug(f"Could not initialize bias tracker: {e}")
 
         # Load hybrid predictor
         try:
@@ -238,6 +310,26 @@ class EnsemblePredictor:
         # Combine predictions with weighted average
         ensemble_prediction = self._weighted_average(individual_predictions, weights)
 
+        # Apply tail risk capping (±3σ from training mean)
+        ensemble_prediction = self._apply_tail_risk_cap(ensemble_prediction, horizon)
+
+        # Apply online bias correction if available
+        bias_correction_info = None
+        if self.bias_tracker:
+            try:
+                # Get hour from recent data if available
+                hour = None
+                if hasattr(recent_data.index, 'hour'):
+                    hour = recent_data.index[-1].hour
+                elif 'timestamp' in recent_data.columns:
+                    hour = recent_data['timestamp'].iloc[-1].hour
+
+                ensemble_prediction, bias_correction_info = self.bias_tracker.apply_bias_correction(
+                    ensemble_prediction, horizon, hour
+                )
+            except Exception as e:
+                logger.debug(f"Bias correction failed for {horizon}: {e}")
+
         # Calculate adaptive confidence interval
         confidence, interval = self._calculate_confidence_interval(
             individual_predictions,
@@ -266,6 +358,10 @@ class EnsemblePredictor:
                 'is_congested': mempool_status.get('is_congested', False),
                 'gas_momentum': mempool_status.get('gas_momentum', 0)
             }
+
+        # Add bias correction info if applied
+        if bias_correction_info and bias_correction_info.get('applied'):
+            result['bias_correction'] = bias_correction_info
 
         return result
 
