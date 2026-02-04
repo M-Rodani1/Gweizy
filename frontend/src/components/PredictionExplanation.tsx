@@ -17,6 +17,8 @@ interface ExplanationData {
     increasing_factors: Factor[];
     decreasing_factors: Factor[];
     similar_cases: Array<{ timestamp: string; gas_price: number; similarity: number }>;
+    classification?: string;
+    classification_confidence?: number;
   };
   prediction: number;
   current_gas: number;
@@ -76,8 +78,18 @@ const PredictionExplanation: React.FC<PredictionExplanationProps> = ({
     const isWeekend = now.getDay() === 0 || now.getDay() === 6;
 
     let explanation = '';
+    let classification = 'Normal';
     const increasing: Factor[] = [];
     const decreasing: Factor[] = [];
+
+    // Determine classification based on prediction
+    if (pred > current * 1.15) {
+      classification = 'Spike';
+    } else if (pred > current * 1.05) {
+      classification = 'Elevated';
+    } else {
+      classification = 'Normal';
+    }
 
     if (direction === 'drop') {
       if (isWeekend) {
@@ -127,6 +139,13 @@ const PredictionExplanation: React.FC<PredictionExplanationProps> = ({
       explanation = `Gas is expected to stay relatively stable around ${pred.toFixed(4)} gwei with minimal change expected.`;
     }
 
+    // Add classification context
+    if (classification === 'Spike') {
+      explanation += ` Market conditions suggest ${classification.toLowerCase()} activity with prices expected in high percentile ranges.`;
+    } else if (classification === 'Elevated') {
+      explanation += ` Gas prices are predicted to be elevated (50-85th percentile). Consider waiting if your transaction is not urgent.`;
+    }
+
     return {
       llm_explanation: explanation,
       technical_explanation: explanation,
@@ -134,7 +153,9 @@ const PredictionExplanation: React.FC<PredictionExplanationProps> = ({
         feature_importance: {},
         increasing_factors: increasing,
         decreasing_factors: decreasing,
-        similar_cases: []
+        similar_cases: [],
+        classification,
+        classification_confidence: 0.7
       },
       prediction: pred,
       current_gas: current
@@ -234,6 +255,29 @@ const PredictionExplanation: React.FC<PredictionExplanationProps> = ({
 
           {showDetails && (
             <div className="mt-3 space-y-3 animate-in fade-in slide-in-from-top-2 duration-200">
+              {/* Classification section */}
+              {explanation.technical_details.classification && (
+                <div>
+                  <div className={`text-xs mb-2 flex items-center gap-1 font-semibold ${
+                    explanation.technical_details.classification === 'Spike' ? 'text-red-400' :
+                    explanation.technical_details.classification === 'Elevated' ? 'text-amber-400' :
+                    'text-green-400'
+                  }`}>
+                    {explanation.technical_details.classification === 'Spike' && '🔴'}
+                    {explanation.technical_details.classification === 'Elevated' && '🟡'}
+                    {explanation.technical_details.classification === 'Normal' && '🟢'}
+                    Classification: {explanation.technical_details.classification}
+                  </div>
+                  <p className="text-xs text-gray-400">
+                    {explanation.technical_details.classification === 'Spike'
+                      ? 'Prices in very high percentile (85%+). Market volatility is significant.'
+                      : explanation.technical_details.classification === 'Elevated'
+                      ? 'Prices in elevated range (50-85 percentile). Consider waiting if possible.'
+                      : 'Prices in normal range (0-50 percentile). Good time to transact.'}
+                  </p>
+                </div>
+              )}
+
               {/* Factors pushing down */}
               {explanation.technical_details.decreasing_factors.length > 0 && (
                 <div>
