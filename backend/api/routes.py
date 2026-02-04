@@ -671,60 +671,8 @@ def get_predictions():
                 if 'gas_price' not in df.columns or len(df) == 0:
                     raise ValueError("Invalid DataFrame format for hybrid predictor")
 
-                # Try ensemble predictor first (combines hybrid + stacking + statistical)
+                # Use hybrid predictor (faster than ensemble for real-time responses)
                 try:
-                    from models.ensemble_predictor import get_ensemble_predictor
-                    ensemble = get_ensemble_predictor()
-                    ensemble_preds = ensemble.predict(df)
-
-                    # Also get hybrid predictions for classification info
-                    hybrid_preds = hybrid_predictor.predict(df)
-
-                    # Format for API response - use ensemble predictions with hybrid classification
-                    prediction_data = {}
-                    for horizon in ['1h', '4h', '24h']:
-                        if horizon not in ensemble_preds:
-                            continue
-
-                        ens_pred = ensemble_preds[horizon]
-                        hybrid_pred = hybrid_preds.get(horizon, {})
-                        classification = hybrid_pred.get('classification', {
-                            'class': 'normal',
-                            'emoji': '🟢',
-                            'color': 'green',
-                            'confidence': ens_pred['confidence'],
-                            'probabilities': {'normal': 0.8, 'elevated': 0.15, 'spike': 0.05}
-                        })
-                        alert = hybrid_pred.get('alert', {'show_alert': False, 'message': '', 'severity': 'normal'})
-                        recommendation = hybrid_pred.get('recommendation', {'action': 'transact', 'message': 'Good time to transact'})
-
-                        prediction_data[horizon] = [{
-                            'time': horizon,
-                            'predictedGwei': ens_pred['ensemble_prediction'],
-                            'lowerBound': ens_pred['confidence_interval'][0],
-                            'upperBound': ens_pred['confidence_interval'][1],
-                            'confidence': ens_pred['confidence'],
-                            'confidenceLevel': classification.get('class', 'normal'),
-                            'confidenceEmoji': classification.get('emoji', '🟢'),
-                            'confidenceColor': classification.get('color', 'green'),
-                            'classification': {
-                                'class': classification.get('class', 'normal'),
-                                'emoji': classification.get('emoji', '🟢'),
-                                'probabilities': classification.get('probabilities', {})
-                            },
-                            'alert': alert,
-                            'recommendation': recommendation,
-                            'ensemble_info': {
-                                'individual_predictions': ens_pred['individual_predictions'],
-                                'model_weights': ens_pred['model_weights']
-                            }
-                        }]
-
-                    logger.info(f"Ensemble predictions generated - 1h: {prediction_data.get('1h', [{}])[0].get('predictedGwei', 'N/A'):.6f} gwei")
-
-                except Exception as ensemble_err:
-                    logger.warning(f"Ensemble predictor failed, using hybrid only: {ensemble_err}")
-                    # Fallback to hybrid-only predictions
                     hybrid_preds = hybrid_predictor.predict(df)
 
                     if not hybrid_preds or len(hybrid_preds) == 0:
@@ -755,6 +703,10 @@ def get_predictions():
                             'alert': alert,
                             'recommendation': recommendation
                         }]
+
+                except Exception as hybrid_err:
+                    logger.warning(f"Hybrid predictor failed: {hybrid_err}")
+                    raise
 
                 # Format historical data for graph
                 historical = []
@@ -793,19 +745,19 @@ def get_predictions():
                 # Determine model type for info
                 model_type = 'ensemble' if 'ensemble_info' in prediction_data.get('1h', [{}])[0] else 'hybrid'
 
-                # Get pattern matching insights
+                # Get pattern matching insights (disabled for performance)
                 pattern_data = None
-                try:
-                    from models.pattern_matcher import get_pattern_matcher
-                    pattern_matcher = get_pattern_matcher()
-
-                    # Use df that's already been created for predictions
-                    matches = pattern_matcher.find_similar_patterns(df, df)
-                    if matches:
-                        current_price = current.get('current_gas', 0.01)
-                        pattern_data = pattern_matcher.predict_from_patterns(matches, current_price)
-                except Exception as pattern_err:
-                    logger.debug(f"Pattern matching unavailable: {pattern_err}")
+                # Pattern matching is resource-intensive; skip for real-time responses
+                # Uncomment to enable:
+                # try:
+                #     from models.pattern_matcher import get_pattern_matcher
+                #     pattern_matcher = get_pattern_matcher()
+                #     matches = pattern_matcher.find_similar_patterns(df, df)
+                #     if matches:
+                #         current_price = current.get('current_gas', 0.01)
+                #         pattern_data = pattern_matcher.predict_from_patterns(matches, current_price)
+                # except Exception as pattern_err:
+                #     logger.debug(f"Pattern matching unavailable: {pattern_err}")
 
                 response = {
                     'chain_id': chain_id,
