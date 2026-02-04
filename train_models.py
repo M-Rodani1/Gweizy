@@ -481,6 +481,74 @@ for window in [12, 24]:
     rolling_corr_price_mom = price.rolling(window=window*2, min_periods=1).corr(mom)
     df[f'corr_price_mom_{window}'] = rolling_corr_price_mom.fillna(0)
 
+# ===== TIER 1 IMPROVEMENTS: Advanced Interaction Features =====
+log("   Adding TIER 1 advanced interaction features...")
+
+# 1. Price × Volatility × Time (captures time-dependent volatility effects)
+for window in [6, 12, 24]:
+    vol = df['gas_price'].rolling(window=window, min_periods=1).std()
+    # Weight by hour to capture different dynamics at different times
+    hour_weight = np.abs(np.sin(2 * np.pi * df['hour'] / 24))  # 0 at midnight, 1 at noon
+    df[f'price_vol_hour_interact_{window}'] = vol * hour_weight
+
+    # Also capture hour × price directly (captures price magnitude dependence on time)
+    df[f'price_hour_interact_{window}'] = df['gas_price'] * hour_weight
+
+# 2. Momentum × Regime (captures different behavior in different market states)
+for window in [6, 12, 24]:
+    mom = df['gas_price'] - df['gas_price'].shift(window)
+    vol = df['gas_price'].rolling(window=window, min_periods=1).std()
+
+    # Regime detection: high vol = volatile regime, low vol = stable regime
+    vol_ma = vol.rolling(window=12, min_periods=1).mean()
+    regime = (vol > vol_ma).astype(float)  # 1 = volatile regime, 0 = stable regime
+
+    df[f'momentum_regime_interact_{window}'] = mom * (regime * 2 - 1)  # ±momentum based on regime
+
+# 3. Mean-Reversion Pressure × Volatility (captures mean-reversion strength)
+for window in [6, 12, 24]:
+    # Mean reversion signal: distance from moving average
+    ma = df['gas_price'].rolling(window=window, min_periods=1).mean()
+    mean_rev_pressure = (ma - df['gas_price']) / (df['gas_price'] + 1e-8)  # Positive when price below MA
+
+    vol = df['gas_price'].rolling(window=window, min_periods=1).std()
+    df[f'mean_rev_pressure_vol_{window}'] = mean_rev_pressure * vol
+
+# 4. EIP-1559 Pressure × Time-of-Day (captures demand cycles)
+if 'base_fee' in df.columns:
+    for window in [6, 12, 24]:
+        # Pressure: how much base fee changed
+        pressure = df['base_fee'].pct_change(window).fillna(0)
+        hour_weight = np.abs(np.sin(2 * np.pi * df['hour'] / 24))
+        df[f'pressure_hour_interact_{window}'] = pressure * hour_weight
+
+# 5. Volatility Regime Features (smoothed regimes for stability)
+vol_ma_24h = df['gas_price'].rolling(window=24, min_periods=1).std().rolling(window=6, min_periods=1).mean()
+df['vol_regime_smooth'] = (df['gas_price'].rolling(window=24, min_periods=1).std() / (vol_ma_24h + 1e-8))
+
+# 6. Multi-Scale Momentum Divergence (captures contradictory signals across timeframes)
+for w1, w2 in [(6, 12), (12, 24)]:
+    mom1 = df['gas_price'] - df['gas_price'].shift(w1)
+    mom2 = df['gas_price'] - df['gas_price'].shift(w2)
+    df[f'momentum_divergence_{w1}_{w2}'] = (mom1 - mom2) / (np.abs(mom2) + 1e-8)
+
+# 7. Acceleration × Volatility (captures strength of moves)
+for window in [6, 12, 24]:
+    mom1 = df['gas_price'] - df['gas_price'].shift(window)
+    mom2 = df['gas_price'].shift(window) - df['gas_price'].shift(2*window)
+    accel = mom1 - mom2  # Acceleration = change in momentum
+    vol = df['gas_price'].rolling(window=window, min_periods=1).std()
+    df[f'accel_vol_interact_{window}'] = accel * vol
+
+# 8. Cross-Feature Interactions (base fee × momentum)
+if 'base_fee' in df.columns:
+    for window in [6, 12, 24]:
+        mom = df['gas_price'] - df['gas_price'].shift(window)
+        base_mom = df['base_fee'] - df['base_fee'].shift(window)
+        df[f'gas_base_momentum_interact_{window}'] = mom * base_mom
+
+log(f"   ✅ Added {8} new advanced interaction feature groups")
+
 # Advanced: Trend decomposition features
 for window in [12, 24, 48]:
     price = df['gas_price']
@@ -654,10 +722,67 @@ for name, target_data in targets.items():
 if not available_horizons:
     raise ValueError(f"Not enough data for any horizon! Minimum {min_samples_needed} samples needed.")
 
+# ===== TIER 1 IMPROVEMENTS: Add Meta-Features =====
+log("\n🔧 Adding TIER 1 meta-features for model uncertainty...")
+
+# Meta-features: Track recent prediction errors and confidence for ensemble
+# These will be recomputed for each horizon
+def create_meta_features(df_data, window=12):
+    """
+    Create meta-features that capture model uncertainty and confidence signals.
+    These are added to the feature set for ensemble learning.
+    """
+    meta_df = pd.DataFrame(index=df_data.index)
+
+    # 1. Recent volatility (uncertainty level)
+    price = df_data['gas_price'] if 'gas_price' in df_data.columns else df_data.iloc[:, 0]
+    for w in [6, 12, 24]:
+        meta_df[f'meta_vol_{w}'] = price.rolling(window=w, min_periods=1).std()
+
+    # 2. Recent trend consistency (how stable is the trend)
+    for w in [6, 12, 24]:
+        returns = price.pct_change()
+        consistency = (returns > 0).rolling(window=w, min_periods=1).mean()  # % of positive returns
+        # Convert to deviation from 50% (50% = no trend, 0% or 100% = strong trend)
+        meta_df[f'meta_trend_strength_{w}'] = np.abs(consistency - 0.5) * 2
+
+    # 3. Recent prediction difficulty (using price changes as proxy for "prediction error")
+    for w in [6, 12, 24]:
+        price_changes = price.pct_change(w).abs()
+        # Use rolling max to detect recent difficulty spikes
+        meta_df[f'meta_difficulty_{w}'] = price_changes.rolling(window=w, min_periods=1).max()
+
+    # 4. Recency weighting (recent data points should have higher weight)
+    meta_df['meta_recency'] = np.linspace(0.5, 1.0, len(meta_df))  # Increases over time
+
+    # 5. Consecutive high/low periods (captures regime changes)
+    for w in [6, 12]:
+        returns = price.pct_change()
+        positive_streak = (returns > 0).rolling(window=w, min_periods=1).sum()
+        negative_streak = (returns <= 0).rolling(window=w, min_periods=1).sum()
+        meta_df[f'meta_streak_{w}'] = np.maximum(positive_streak, negative_streak) / w
+
+    # 6. Model confidence signal (inverse of uncertainty)
+    for w in [12, 24]:
+        vol = price.rolling(window=w, min_periods=1).std()
+        vol_ma = vol.rolling(window=12, min_periods=1).mean()
+        # Low vol relative to MA = high confidence
+        meta_df[f'meta_confidence_{w}'] = 1.0 - np.clip(vol / (vol_ma + 1e-8), 0, 1)
+
+    return meta_df
+
+# Create meta-features from raw data before feature selection
+meta_features = create_meta_features(df)
+
 # Select feature columns
 exclude_cols = ['timestamp', 'block_number', 'time_diff']  # Exclude time_diff to prevent dtype errors
 feature_cols = [c for c in df.columns if c not in exclude_cols]
 X = df[feature_cols].copy()
+
+# Add meta-features to X
+for col in meta_features.columns:
+    if col not in X.columns:
+        X[col] = meta_features[col].fillna(0)
 
 # CRITICAL: Ensure X has no NaN (fill any remaining NaN with 0)
 # This is essential after tick bar filtering which might create gaps
@@ -1069,6 +1194,55 @@ else:
         )
         model_24h_q90.fit(X_train_val_24h_scaled, y_train_val_24h)
 
+        # ===== TIER 1: Ensemble Stacking for 24h =====
+        log(f"   🎭 Training TIER 1 ensemble stack (24h)...")
+        from sklearn.linear_model import Ridge, ElasticNet, HuberRegressor
+        from sklearn.ensemble import VotingRegressor
+
+        try:
+            # Train diverse base learners for ensemble
+            base_model_lgbm = model_24h  # Already trained LightGBM (Huber)
+
+            ridge_24h = Ridge(alpha=1.0, random_state=42)
+            ridge_24h.fit(X_train_val_24h_scaled, y_train_val_24h)
+
+            elastic_24h = ElasticNet(alpha=0.5, l1_ratio=0.8, random_state=42, max_iter=5000)
+            elastic_24h.fit(X_train_val_24h_scaled, y_train_val_24h)
+
+            huber_24h = HuberRegressor(epsilon=1.35, alpha=0.01, max_iter=500)  # Fixed: removed random_state
+            huber_24h.fit(X_train_val_24h_scaled, y_train_val_24h)
+
+            # Create voting ensemble with different weights for base learners
+            ensemble_24h = VotingRegressor([
+                ('lgbm', base_model_lgbm),
+                ('ridge', ridge_24h),
+                ('elastic', elastic_24h),
+                ('huber', huber_24h)
+            ], weights=[0.4, 0.3, 0.2, 0.1])  # LightGBM has highest weight
+
+            # Predictions from ensemble (for visualization, doesn't need fitting)
+            ensemble_24h_preds = (
+                0.4 * model_24h.predict(X_test_24h_scaled) +
+                0.3 * ridge_24h.predict(X_test_24h_scaled) +
+                0.2 * elastic_24h.predict(X_test_24h_scaled) +
+                0.1 * huber_24h.predict(X_test_24h_scaled)
+            )
+
+            log(f"      ✅ Ensemble trained with 4 base learners (LGBM, Ridge, ElasticNet, Huber)")
+            model_24h_ensemble = {
+                'ensemble': ensemble_24h,
+                'predictions': ensemble_24h_preds,
+                'base_models': {
+                    'lgbm': model_24h,
+                    'ridge': ridge_24h,
+                    'elastic': elastic_24h,
+                    'huber': huber_24h
+                }
+            }
+        except Exception as e:
+            log(f"      ⚠️  Ensemble training failed: {e} - using single model")
+            model_24h_ensemble = None
+
         # Evaluate 24h
         y_pred_24h_vol = model_24h.predict(X_test_24h_scaled)
         y_pred_24h_q10 = model_24h_q10.predict(X_test_24h_scaled)
@@ -1083,16 +1257,18 @@ else:
         log(f"   📊 24h Prediction Interval Coverage: {coverage_24h:.1%} (target: 80%)")
         log(f"   📊 24h Average Interval Width: {avg_interval_24h:.4f}")
 
-        # Save 24h Model with quantile models
+        # Save 24h Model with quantile models and ensemble
         model_data_24h = {
             'regressor': model_24h,
             'quantile_models': {
                 'q10': model_24h_q10,
                 'q90': model_24h_q90
             },
+            'ensemble': model_24h_ensemble if model_24h_ensemble else None,  # TIER 1: Include ensemble
             'feature_names': selected_features_24h,
             'scaler': scaler_24h,
             'trained_at': datetime.now().isoformat(),
+            'model_version': 'v17_tier1_ensemble',  # Mark as v17 with Tier 1 improvements
             'metrics': {
                 'mae': float(mae_24h),
                 'interval_coverage': float(coverage_24h),
@@ -1255,6 +1431,55 @@ else:
     )
     model_4h_q90.fit(X_train_val_4h_scaled, y_train_val_4h)
 
+    # ===== TIER 1: Ensemble Stacking for 4h =====
+    log(f"   🎭 Training TIER 1 ensemble stack (4h)...")
+    from sklearn.linear_model import Ridge, ElasticNet, HuberRegressor
+    from sklearn.ensemble import VotingRegressor
+
+    try:
+        # Train diverse base learners for ensemble
+        base_model_lgbm_4h = model_4h  # Already trained LightGBM (Huber)
+
+        ridge_4h = Ridge(alpha=1.0, random_state=42)
+        ridge_4h.fit(X_train_val_4h_scaled, y_train_val_4h)
+
+        elastic_4h = ElasticNet(alpha=0.5, l1_ratio=0.8, random_state=42, max_iter=5000)
+        elastic_4h.fit(X_train_val_4h_scaled, y_train_val_4h)
+
+        huber_4h = HuberRegressor(epsilon=1.35, alpha=0.01, max_iter=500)  # Fixed: removed random_state
+        huber_4h.fit(X_train_val_4h_scaled, y_train_val_4h)
+
+        # Create voting ensemble with different weights
+        ensemble_4h = VotingRegressor([
+            ('lgbm', model_4h),
+            ('ridge', ridge_4h),
+            ('elastic', elastic_4h),
+            ('huber', huber_4h)
+        ], weights=[0.4, 0.3, 0.2, 0.1])
+
+        # Ensemble predictions
+        ensemble_4h_preds = (
+            0.4 * model_4h.predict(X_test_4h_scaled) +
+            0.3 * ridge_4h.predict(X_test_4h_scaled) +
+            0.2 * elastic_4h.predict(X_test_4h_scaled) +
+            0.1 * huber_4h.predict(X_test_4h_scaled)
+        )
+
+        log(f"      ✅ Ensemble trained with 4 base learners (LGBM, Ridge, ElasticNet, Huber)")
+        model_4h_ensemble = {
+            'ensemble': ensemble_4h,
+            'predictions': ensemble_4h_preds,
+            'base_models': {
+                'lgbm': model_4h,
+                'ridge': ridge_4h,
+                'elastic': elastic_4h,
+                'huber': huber_4h
+            }
+        }
+    except Exception as e:
+        log(f"      ⚠️  Ensemble training failed: {e} - using single model")
+        model_4h_ensemble = None
+
     # Evaluate 4h
     y_pred_4h_vol = model_4h.predict(X_test_4h_scaled)
     y_pred_4h_q10 = model_4h_q10.predict(X_test_4h_scaled)
@@ -1268,16 +1493,18 @@ else:
     log(f"   📊 4h Prediction Interval Coverage: {coverage_4h:.1%} (target: 80%)")
     log(f"   📊 4h Average Interval Width: {avg_interval_4h:.4f}")
 
-    # Save 4h Model with quantile models
+    # Save 4h Model with quantile models and ensemble
     model_data_4h = {
         'regressor': model_4h,
         'quantile_models': {
             'q10': model_4h_q10,
             'q90': model_4h_q90
         },
+        'ensemble': model_4h_ensemble if model_4h_ensemble else None,  # TIER 1: Include ensemble
         'feature_names': selected_features_4h,
         'scaler': scaler_4h,
         'trained_at': datetime.now().isoformat(),
+        'model_version': 'v17_tier1_ensemble',  # Mark as v17 with Tier 1 improvements
         'metrics': {
             'mae': float(mae_4h),
             'interval_coverage': float(coverage_4h),
@@ -1490,6 +1717,33 @@ else:
     )
     model_1h.fit(X_train_1h_scaled, y_train_1h)
 
+# ===== TIER 1: Ensemble Stacking for 1h Classifier =====
+log(f"   🎭 Training TIER 1 ensemble stack (1h classifier)...")
+from sklearn.ensemble import GradientBoostingClassifier
+try:
+    # Train diverse base learners for ensemble
+    gb_1h = GradientBoostingClassifier(
+        n_estimators=150, learning_rate=0.01, max_depth=5,
+        random_state=42, verbose=0
+    )
+    gb_1h.fit(X_train_1h_scaled, y_train_1h)
+
+    # Ensemble predictions (voting)
+    ensemble_proba_1h = (
+        0.6 * model_1h.predict_proba(X_test_1h_scaled) +
+        0.4 * gb_1h.predict_proba(X_test_1h_scaled)
+    )
+
+    log(f"      ✅ Ensemble trained with 2 base learners (LightGBM, GradientBoosting)")
+    model_1h_ensemble = {
+        'lgbm': model_1h,
+        'gb': gb_1h,
+        'predictions': ensemble_proba_1h
+    }
+except Exception as e:
+    log(f"      ⚠️  Ensemble training failed: {e} - using single model")
+    model_1h_ensemble = None
+
 # Evaluate with Probability Gating (updated for 5 classes)
 y_proba_1h = model_1h.predict_proba(X_test_1h_scaled)
 
@@ -1598,10 +1852,12 @@ print(confusion_matrix(y_test_1h, y_pred_1h))
 # Save 1h Model
 model_data_1h = {
     'classifier': model_1h,
+    'ensemble': model_1h_ensemble if model_1h_ensemble else None,  # TIER 1: Include ensemble
     'feature_names': selected_features_1h,
     'scaler': scaler_1h,
     'trained_at': datetime.now().isoformat(),
     'model_type': 'hybrid_classifier_5class',
+    'model_version': 'v17_tier1_ensemble',  # Mark as v17 with Tier 1 improvements
     'num_classes': NUM_CLASSES_1H,
     'class_names': CLASS_NAMES_1H,
     'inference_config': {
