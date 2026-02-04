@@ -27,7 +27,7 @@ const SystemStatus: React.FC = () => {
             <div>
               <h1 className="text-2xl font-bold text-white">System Status</h1>
               <p className="text-gray-400 text-sm">
-                API health, mempool signals, and model performance for {selectedChain.name}
+                API health, mempool signals, and model performance metrics
               </p>
             </div>
           </div>
@@ -49,7 +49,7 @@ const SystemStatus: React.FC = () => {
         <footer className="pt-6 border-t border-gray-800">
           <div className="flex items-center gap-2 text-xs text-gray-500">
             <ShieldCheck className="w-4 h-4" />
-            <span>Real-time monitoring across chains • Updated every 60s</span>
+            <span>Real-time monitoring • Mempool: 30s • API & Metrics: 60s refresh</span>
           </div>
         </footer>
       </div>

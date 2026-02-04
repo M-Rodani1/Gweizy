@@ -45,12 +45,14 @@ const ApiStatusPanel: React.FC = () => {
 
       if (agentRes.ok) {
         const agentData = await agentRes.json();
-        const agentLoaded = agentData?.status?.loaded ?? agentData?.status?.is_loaded ?? true;
+        // Check if agent is loaded - dqn_loaded is the actual response field
+        const agentLoaded = agentData?.dqn_loaded ?? true;
+        const modelType = agentData?.model_type ?? 'Unknown';
         nextItems[1] = {
           key: 'agent',
           label: 'AI Agent',
           status: agentLoaded ? 'online' : 'degraded',
-          detail: agentLoaded ? 'Recommendations online' : 'Fallback to live gas'
+          detail: agentLoaded ? `${modelType} agent online` : 'Fallback to heuristic'
         };
       } else {
         nextItems[1] = { key: 'agent', label: 'AI Agent', status: 'offline', detail: 'Agent unreachable' };
@@ -74,9 +76,9 @@ const ApiStatusPanel: React.FC = () => {
       }
 
       if (patternsRes.ok) {
-        nextItems[3] = { key: 'patterns', label: 'Patterns', status: 'online', detail: 'Heatmaps up to date' };
+        nextItems[3] = { key: 'patterns', label: 'Patterns', status: 'online', detail: 'Hourly & daily patterns ready' };
       } else if (patternsRes.status === 404 || patternsRes.status === 503) {
-        nextItems[3] = { key: 'patterns', label: 'Patterns', status: 'degraded', detail: 'Using fallback data' };
+        nextItems[3] = { key: 'patterns', label: 'Patterns', status: 'degraded', detail: 'Using cached patterns' };
       } else {
         nextItems[3] = { key: 'patterns', label: 'Patterns', status: 'offline', detail: 'Patterns unavailable' };
       }

@@ -339,6 +339,19 @@ const ModelMetricsPanel: React.FC<ModelMetricsPanelProps> = ({
                 </div>
               )}
 
+              {/* Validation Latency Info */}
+              <div className="p-4 bg-blue-500/10 border border-blue-500/30 rounded-xl">
+                <div className="flex items-start gap-3">
+                  <Activity className="w-5 h-5 text-blue-400 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="text-sm text-blue-300 font-medium">About Metrics</p>
+                    <p className="text-xs text-gray-400 mt-1">
+                      Predictions are validated after their horizon passes (≈80% of time). 1h metrics update ~48 min later, 4h after ~3.2 hrs, 24h after ~19 hrs.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
               {/* Colab Training Info */}
               <div className="p-4 bg-purple-500/10 border border-purple-500/30 rounded-xl">
                 <div className="flex items-start gap-3">
@@ -543,7 +556,7 @@ const ModelMetricsPanel: React.FC<ModelMetricsPanelProps> = ({
 
           {/* Footer */}
           <div className="mt-4 pt-4 border-t border-gray-800/50 flex items-center justify-between text-xs text-gray-500">
-            <span>Last updated: {lastUpdated || '--'}</span>
+            <span>Checked: {lastUpdated || '--'} (metrics may be delayed)</span>
             <span>Auto-refresh: 1 min</span>
           </div>
         </div>
