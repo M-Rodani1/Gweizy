@@ -73,15 +73,15 @@ class HybridPredictor:
     def generate_features(self, df):
         """Replicates training feature engineering exactly"""
         if df.empty: return None
-        
+
         df = df.copy().sort_values('timestamp').reset_index(drop=True)
-        
+
         # --- minimal feature set required by models ---
         # 1. Time
         df['hour'] = df['timestamp'].dt.hour
         df['hour_sin'] = np.sin(2 * np.pi * df['hour'] / 24)
         df['hour_cos'] = np.cos(2 * np.pi * df['hour'] / 24)
-        
+
         # 2. Pressure / EIP-1559
         if 'utilization' in df.columns and df['utilization'].notna().any():
             df['utilization'] = df['utilization'].fillna(50.0)  # Default to 50% if missing
@@ -99,11 +99,11 @@ class HybridPredictor:
             df['pressure_acceleration'] = 0.0
             for window in [10, 30, 60]:
                 df[f'pressure_cum_{window}m'] = 0.0
-        
+
         # 3. Rolling Stats & Lags
         for lag in [1, 2, 3, 6, 12, 24]:
             df[f'gas_lag_{lag}'] = df['gas_price'].shift(lag)
-            
+
         for window in [6, 12, 24, 48]:
             df[f'gas_ma_{window}'] = df['gas_price'].rolling(window).mean()
             df[f'gas_std_{window}'] = df['gas_price'].rolling(window).std()
@@ -135,14 +135,32 @@ class HybridPredictor:
             vol = df['gas_price'].rolling(window).std()
             mom = df['gas_price'] - df['gas_price'].shift(window)
             price_level = df['gas_price'] / (df['gas_price'].rolling(window*2).mean() + 1e-8)
-            
+
             df[f'vol_momentum_interact_{window}'] = vol * mom.abs()
             df[f'price_vol_interact_{window}'] = price_level * vol
+
+        # 6. Mean-Reversion Pressure × Volatility (required by 4h model)
+        for window in [6, 12, 24]:
+            ma = df['gas_price'].rolling(window=window, min_periods=1).mean()
+            mean_rev_pressure = (ma - df['gas_price']) / (df['gas_price'] + 1e-8)  # Positive when price below MA
+            vol = df['gas_price'].rolling(window=window, min_periods=1).std()
+            df[f'mean_rev_pressure_vol_{window}'] = mean_rev_pressure * vol
+
+        # 7. Trend signal placeholder - we inject trend_signal_4h from model,
+        # trend_signal_24h would require a 24h model which we don't have at inference
+        df['trend_signal_24h'] = 0.0
+
+        # 8. Price band features for 1h model
+        for window in [6, 12, 24]:
+            rolling_mean = df['gas_price'].rolling(window=window, min_periods=1).mean()
+            rolling_std = df['gas_price'].rolling(window=window, min_periods=1).std()
+            df[f'price_band_high_{window}'] = rolling_mean + (2 * rolling_std)
+            df[f'price_band_low_{window}'] = rolling_mean - (2 * rolling_std)
 
         # Fill NaNs
         numeric_cols = df.select_dtypes(include=[np.number]).columns
         df[numeric_cols] = df[numeric_cols].fillna(0)
-        
+
         return df.iloc[[-1]] # Return only the current state row
 
     def predict(self):
