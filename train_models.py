@@ -957,9 +957,9 @@ print("✅ Enhanced feature selection function defined")
 from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
 from sklearn.linear_model import Ridge, ElasticNet, SGDRegressor
 from sklearn.preprocessing import RobustScaler
-from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score, confusion_matrix, classification_report, accuracy_score
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score, confusion_matrix, classification_report, accuracy_score, f1_score, precision_recall_fscore_support
 from sklearn.model_selection import RandomizedSearchCV, TimeSeriesSplit, cross_val_predict
-from sklearn.base import clone
+from sklearn.base import clone, BaseEstimator, ClassifierMixin
 import joblib
 
 # Try importing LightGBM
@@ -1472,6 +1472,589 @@ class ModelMonitor:
             'total_predictions': len(self.predictions),
             'last_update': datetime.now().isoformat()
         }
+
+
+# ===== PHASE 3a: TIER 1 SPIKE DETECTION REDESIGN =====
+
+def optimize_multiclass_thresholds(y_true, y_proba):
+    """
+    Optimize decision thresholds for multi-class spike detection.
+    Handles all three classes: Normal (0), Elevated (1), Spike (2).
+
+    Strategy:
+    - For each sample, predict class with highest probability
+    - But apply minimum confidence threshold per class to avoid low-confidence predictions
+    - Aim to maximize macro-average F1 across all three classes
+
+    Args:
+        y_true: True labels
+        y_proba: Predicted probabilities (N x 3)
+
+    Returns:
+        (best_thresholds, best_f1, metrics)
+    """
+    from sklearn.metrics import f1_score
+
+    best_f1 = 0
+    best_thresholds = [0.33, 0.33, 0.33]  # One threshold per class
+    all_metrics = []
+
+    # Try different threshold combinations
+    # Each class gets a minimum confidence requirement
+    for normal_thresh in [0.3, 0.35, 0.4, 0.45]:
+        for elevated_thresh in [0.25, 0.3, 0.35]:
+            for spike_thresh in [0.25, 0.3, 0.35, 0.4]:
+                # Get argmax predictions
+                y_pred = np.argmax(y_proba, axis=1)
+
+                # Apply confidence thresholds: if max probability < threshold, predict default (normal=0)
+                for i in range(len(y_pred)):
+                    max_prob = y_proba[i, y_pred[i]]
+
+                    if y_pred[i] == 0 and max_prob < normal_thresh:
+                        y_pred[i] = 0  # Stays normal but uncertain
+                    elif y_pred[i] == 1 and max_prob < elevated_thresh:
+                        y_pred[i] = 0  # Revert to normal if below threshold
+                    elif y_pred[i] == 2 and max_prob < spike_thresh:
+                        y_pred[i] = 0  # Revert to normal if below threshold
+
+                # Calculate macro F1 (average across all classes)
+                f1_macro = f1_score(y_true, y_pred, average='macro', zero_division=0)
+                f1_weighted = f1_score(y_true, y_pred, average='weighted', zero_division=0)
+
+                metrics = {
+                    'thresholds': [normal_thresh, elevated_thresh, spike_thresh],
+                    'f1_macro': f1_macro,
+                    'f1_weighted': f1_weighted,
+                    'predictions': y_pred.copy()
+                }
+                all_metrics.append(metrics)
+
+                # Prefer macro F1 (equal weight to all classes)
+                if f1_macro > best_f1:
+                    best_f1 = f1_macro
+                    best_thresholds = [normal_thresh, elevated_thresh, spike_thresh]
+
+    return best_thresholds, best_f1, all_metrics
+
+
+def optimize_spike_threshold(y_true, y_proba, spike_class_idx=2):
+    """
+    Find optimal decision threshold for spike class detection.
+    Uses conservative approach: only shift from default 0.5 if significant F1 improvement.
+
+    Args:
+        y_true: True labels
+        y_proba: Predicted probabilities (N x num_classes)
+        spike_class_idx: Index of spike class in y_proba
+
+    Returns:
+        (best_threshold, best_f1, threshold_metrics)
+    """
+    from sklearn.metrics import f1_score, precision_recall_curve
+
+    # Get spike probabilities
+    spike_proba = y_proba[:, spike_class_idx]
+    is_spike_true = (y_true == spike_class_idx).astype(int)
+
+    # Baseline: default threshold of 0.5
+    baseline_pred = (spike_proba > 0.5).astype(int)
+    baseline_f1 = f1_score(is_spike_true, baseline_pred, zero_division=0)
+
+    best_f1 = baseline_f1
+    best_threshold = 0.5
+    threshold_metrics = []
+
+    # Test thresholds only within reasonable range (0.4-0.65)
+    # Much narrower than before to avoid extreme false positives
+    for threshold in np.arange(0.4, 0.7, 0.05):
+        y_pred_spike = (spike_proba > threshold).astype(int)
+
+        if y_pred_spike.sum() == 0:  # No spikes predicted
+            continue
+
+        f1 = f1_score(is_spike_true, y_pred_spike, zero_division=0)
+        precision = (y_pred_spike & is_spike_true).sum() / max(y_pred_spike.sum(), 1)
+        recall = (y_pred_spike & is_spike_true).sum() / max(is_spike_true.sum(), 1)
+
+        threshold_metrics.append({
+            'threshold': threshold,
+            'f1': f1,
+            'precision': precision,
+            'recall': recall
+        })
+
+        # Only update if F1 improvement is substantial (>5% relative improvement)
+        if f1 > best_f1 * 1.05:
+            best_f1 = f1
+            best_threshold = threshold
+
+    return best_threshold, best_f1, threshold_metrics
+
+
+def apply_smote_oversampling(X_train, y_train, sampling_strategy=None):
+    """
+    Apply SMOTE with stratified strategy: boost spike more than elevated.
+
+    Strategy:
+    - Spike (class 2): oversample to 80% of normal class
+    - Elevated (class 1): oversample to 50% of normal class
+    - Normal (class 0): majority class, keep as-is
+
+    Args:
+        X_train: Training features
+        y_train: Training labels
+        sampling_strategy: Dict mapping class to desired ratio (None = balanced approach above)
+
+    Returns:
+        (X_resampled, y_resampled)
+    """
+    try:
+        from imblearn.over_sampling import SMOTE
+
+        # Count class distribution
+        unique, counts = np.unique(y_train, return_counts=True)
+        class_dist = dict(zip(unique, counts))
+
+        log(f"      Class distribution before SMOTE: {class_dist}")
+
+        # Get majority class count
+        majority_count = max(counts)
+
+        # Stratified oversampling: spike gets 80%, elevated gets 70% of majority
+        # SMOTE can't reduce, so we ensure target >= current count
+        if sampling_strategy is None:
+            sampling_strategy = {}
+            for cls, count in class_dist.items():
+                if cls == 0:  # Normal (majority)
+                    continue
+                elif cls == 2:  # Spike
+                    target = int(majority_count * 0.8)  # 80% of normal
+                    sampling_strategy[cls] = max(target, count)  # At least current count
+                elif cls == 1:  # Elevated
+                    target = int(majority_count * 0.7)  # 70% of normal (improved from 50%)
+                    sampling_strategy[cls] = max(target, count)  # At least current count
+
+        log(f"      SMOTE strategy: {sampling_strategy}")
+
+        # Apply SMOTE with stratified strategy
+        smote = SMOTE(sampling_strategy=sampling_strategy, random_state=42, k_neighbors=3)
+        X_resampled, y_resampled = smote.fit_resample(X_train, y_train)
+
+        # Verify resampling
+        unique_after, counts_after = np.unique(y_resampled, return_counts=True)
+        class_dist_after = dict(zip(unique_after, counts_after))
+
+        log(f"      Class distribution after SMOTE: {class_dist_after}")
+        log(f"      Samples added: {len(X_resampled) - len(X_train)}")
+
+        return X_resampled, y_resampled
+    except ImportError:
+        log(f"      ⚠️  SMOTE not available (imblearn missing), skipping oversampling")
+        return X_train, y_train
+
+
+def create_anomaly_ensemble(X_train, y_train, X_val, y_val, spike_class_idx=2):
+    """
+    Create ensemble of anomaly detectors for spike detection.
+    Treats spike class as anomaly, trains on non-spike samples.
+
+    Args:
+        X_train: Training features
+        y_train: Training labels
+        X_val: Validation features
+        y_val: Validation labels
+        spike_class_idx: Index of spike class
+
+    Returns:
+        dict with anomaly models and predictions
+    """
+    try:
+        from sklearn.ensemble import IsolationForest
+        from sklearn.neighbors import LocalOutlierFactor
+        from sklearn.svm import OneClassSVM
+
+        # Train on non-spike samples (normal behavior)
+        mask_normal = y_train != spike_class_idx
+        X_normal = X_train[mask_normal]
+
+        log(f"      Training anomaly ensemble on {X_normal.shape[0]} normal samples...")
+
+        # 1. Isolation Forest
+        iso_forest = IsolationForest(
+            contamination=0.1,
+            random_state=42,
+            n_estimators=100
+        )
+        iso_forest.fit(X_normal)
+        iso_scores_val = iso_forest.score_samples(X_val)
+        iso_pred_val = (iso_forest.predict(X_val) == -1).astype(int)  # -1 = anomaly
+
+        # 2. Local Outlier Factor
+        lof = LocalOutlierFactor(
+            n_neighbors=20,
+            contamination=0.1,
+            novelty=True
+        )
+        lof.fit(X_normal)
+        lof_scores_val = lof.score_samples(X_val)
+        lof_pred_val = (lof.predict(X_val) == -1).astype(int)
+
+        # 3. One-Class SVM
+        try:
+            ocsvm = OneClassSVM(
+                kernel='rbf',
+                gamma='auto',
+                nu=0.1
+            )
+            ocsvm.fit(X_normal)
+            ocsvm_scores_val = ocsvm.decision_function(X_val)
+            ocsvm_pred_val = (ocsvm.predict(X_val) == -1).astype(int)
+            has_ocsvm = True
+        except Exception as e:
+            log(f"      ⚠️  One-Class SVM failed: {e}")
+            ocsvm = None
+            ocsvm_scores_val = None
+            ocsvm_pred_val = None
+            has_ocsvm = False
+
+        # Voting ensemble
+        anomaly_votes = iso_pred_val + lof_pred_val
+        if has_ocsvm:
+            anomaly_votes += ocsvm_pred_val
+            vote_threshold = 2  # 2 out of 3
+        else:
+            vote_threshold = 1.5  # >1 out of 2
+
+        ensemble_anomaly_pred = (anomaly_votes > vote_threshold).astype(int)
+
+        # Evaluate
+        is_spike_true = (y_val == spike_class_idx).astype(int)
+        ensemble_f1 = f1_score(is_spike_true, ensemble_anomaly_pred, zero_division=0)
+
+        log(f"      ✅ Anomaly ensemble F1: {ensemble_f1:.4f}")
+
+        return {
+            'isolation_forest': iso_forest,
+            'lof': lof,
+            'ocsvm': ocsvm if has_ocsvm else None,
+            'ensemble_pred_val': ensemble_anomaly_pred,
+            'ensemble_f1': ensemble_f1,
+            'has_ocsvm': has_ocsvm,
+            'vote_threshold': vote_threshold
+        }
+    except Exception as e:
+        log(f"      ⚠️  Anomaly ensemble failed: {e}")
+        return None
+
+
+class CostSensitiveSpikeLearner:
+    """
+    Per-class cost-sensitive learning with different penalties for spike vs elevated.
+    Adjusts sample weights to penalize misclassifications, with spike > elevated > normal.
+    """
+
+    def __init__(self, base_model, spike_weight_multiplier=5.0, elevated_weight_multiplier=2.0):
+        """
+        Args:
+            base_model: Base classifier
+            spike_weight_multiplier: Penalty for spike misclassification
+            elevated_weight_multiplier: Penalty for elevated misclassification (less than spike)
+        """
+        self.base_model = base_model
+        self.spike_weight_multiplier = spike_weight_multiplier
+        self.elevated_weight_multiplier = elevated_weight_multiplier
+        self.original_weights = None
+        self.adjusted_weights = None
+
+    def compute_adjusted_weights(self, y_train, original_weights=None):
+        """
+        Increase weights for spike and elevated classes.
+        Spike gets spike_weight_multiplier, elevated gets elevated_weight_multiplier.
+
+        Args:
+            y_train: Training labels
+            original_weights: Initial sample weights (default: uniform)
+
+        Returns:
+            adjusted_weights array
+        """
+        if original_weights is None:
+            adjusted_weights = np.ones(len(y_train))
+        else:
+            adjusted_weights = original_weights.copy()
+
+        # Apply per-class multipliers
+        mask_elevated = (y_train == 1)
+        mask_spike = (y_train == 2)
+
+        adjusted_weights[mask_elevated] *= self.elevated_weight_multiplier
+        adjusted_weights[mask_spike] *= self.spike_weight_multiplier
+
+        # Normalize to prevent scale issues
+        adjusted_weights = adjusted_weights / adjusted_weights.mean()
+
+        self.original_weights = original_weights
+        self.adjusted_weights = adjusted_weights
+
+        log(f"      Adjusted weights: min={adjusted_weights.min():.2f}, max={adjusted_weights.max():.2f}, mean={adjusted_weights.mean():.2f}")
+
+        return adjusted_weights
+
+    def fit(self, X_train, y_train, sample_weight=None):
+        """Fit with adjusted weights."""
+        adjusted_weights = self.compute_adjusted_weights(y_train, sample_weight)
+        self.base_model.fit(X_train, y_train, sample_weight=adjusted_weights)
+        return self
+
+    def predict(self, X):
+        """Predict using base model."""
+        return self.base_model.predict(X)
+
+    def predict_proba(self, X):
+        """Predict probabilities using base model."""
+        return self.base_model.predict_proba(X)
+
+
+class HierarchicalSpikeBinaryClassifier(BaseEstimator, ClassifierMixin):
+    """
+    Two-level hierarchical classifier for spike detection.
+
+    Level 1: Binary classifier - "Normal (0) vs Not-Normal (1+2)"
+    Level 2: Binary classifier - "Elevated (1) vs Spike (2)" (only on Not-Normal predictions)
+
+    Advantages:
+    - Reduces class imbalance at each level
+    - Easier to learn distinct boundaries
+    - Solves the "Elevated class collapse" problem
+    """
+
+    def __init__(self):
+        self.level1_model = None  # Normal vs Not-Normal
+        self.level2_model = None  # Elevated vs Spike
+        self.level1_proba = None
+        self.level2_proba = None
+
+    def fit(self, X_train, y_train, X_val, y_val, sample_weights=None):
+        """
+        Train both levels of hierarchy.
+
+        Args:
+            X_train: Training features
+            y_train: Training labels (0=Normal, 1=Elevated, 2=Spike)
+            X_val: Validation features
+            y_val: Validation labels
+            sample_weights: Sample weights for training
+        """
+        log(f"      Training hierarchical classifier (Level 1 + Level 2)...")
+
+        # ===== LEVEL 1: Normal vs Not-Normal =====
+        log(f"         Level 1: Training Normal vs Not-Normal binary classifier...")
+
+        # Create binary labels for level 1: 0=Normal, 1=Not-Normal (Elevated+Spike)
+        y_train_l1 = (y_train != 0).astype(int)
+        y_val_l1 = (y_val != 0).astype(int)
+
+        # Reweight for level 1: penalize false negatives (missing anomalies)
+        if sample_weights is not None:
+            l1_weights = sample_weights.copy()
+            # Increase weight for Not-Normal samples
+            l1_weights[y_train_l1 == 1] *= 2.0
+            l1_weights = l1_weights / l1_weights.mean()
+        else:
+            l1_weights = None
+
+        # Train level 1
+        self.level1_model = xgb.XGBClassifier(
+            n_estimators=150,
+            max_depth=5,
+            learning_rate=0.1,
+            subsample=0.8,
+            colsample_bytree=0.8,
+            random_state=42,
+            eval_metric='logloss',
+            use_label_encoder=False,
+            verbosity=0
+        )
+        self.level1_model.fit(X_train, y_train_l1, sample_weight=l1_weights)
+
+        # Evaluate level 1
+        l1_pred_val = self.level1_model.predict(X_val)
+        l1_f1 = f1_score(y_val_l1, l1_pred_val, zero_division=0)
+        log(f"         Level 1 Val F1: {l1_f1:.4f} (detecting anomalies)")
+
+        # ===== LEVEL 2: Elevated vs Spike (only on Not-Normal samples) =====
+        log(f"         Level 2: Training Elevated vs Spike binary classifier (on anomalies only)...")
+
+        # Filter to only Not-Normal samples
+        mask_anomaly = (y_train != 0)
+        X_train_l2 = X_train[mask_anomaly]
+        y_train_l2_orig = y_train[mask_anomaly]
+
+        if len(X_train_l2) > 10:  # Need sufficient samples
+            # Create binary labels for level 2: 0=Elevated, 1=Spike
+            y_train_l2 = (y_train_l2_orig == 2).astype(int)
+
+            # Reweight for level 2: penalize spike misclassification more
+            if sample_weights is not None:
+                l2_weights = sample_weights[mask_anomaly].copy()
+                # Heavily penalize spike misclassification
+                l2_weights[y_train_l2 == 1] *= 3.0
+                l2_weights = l2_weights / l2_weights.mean()
+            else:
+                l2_weights = None
+
+            # Train level 2
+            self.level2_model = xgb.XGBClassifier(
+                n_estimators=150,
+                max_depth=5,
+                learning_rate=0.1,
+                subsample=0.8,
+                colsample_bytree=0.8,
+                random_state=42,
+                eval_metric='logloss',
+                use_label_encoder=False,
+                verbosity=0
+            )
+            self.level2_model.fit(X_train_l2, y_train_l2, sample_weight=l2_weights)
+
+            # Evaluate level 2
+            mask_anomaly_val = (y_val != 0)
+            if mask_anomaly_val.sum() > 0:
+                X_val_l2 = X_val[mask_anomaly_val]
+                y_val_l2_orig = y_val[mask_anomaly_val]
+                y_val_l2 = (y_val_l2_orig == 2).astype(int)
+
+                l2_pred_val = self.level2_model.predict(X_val_l2)
+                l2_f1 = f1_score(y_val_l2, l2_pred_val, zero_division=0)
+                log(f"         Level 2 Val F1: {l2_f1:.4f} (distinguishing Elevated vs Spike)")
+
+    def predict(self, X, level1_threshold=0.5):
+        """
+        Predict labels using hierarchical classifier.
+
+        Args:
+            X: Features
+            level1_threshold: Probability threshold for Level 1 (default 0.5)
+
+        Returns:
+        - 0 for Normal
+        - 1 for Elevated
+        - 2 for Spike
+        """
+        # Level 1: Normal vs Not-Normal (use probability-based threshold)
+        l1_proba = self.level1_model.predict_proba(X)
+        prob_anomaly = l1_proba[:, 1]  # Probability of Not-Normal
+
+        # Initialize predictions as Normal
+        predictions = np.zeros(len(X), dtype=int)
+
+        # Use configurable threshold
+        mask_anomaly = (prob_anomaly > level1_threshold)
+
+        if mask_anomaly.sum() > 0 and self.level2_model is not None:
+            X_anomaly = X[mask_anomaly]
+            l2_pred = self.level2_model.predict(X_anomaly)
+
+            # Convert Level 2 predictions: 0=Elevated(1), 1=Spike(2)
+            predictions[mask_anomaly] = l2_pred + 1  # +1 to shift from [0,1] to [1,2]
+
+        return predictions
+
+    def predict_proba(self, X, level1_threshold=0.5):
+        """
+        Predict probabilities for all three classes.
+
+        Args:
+            X: Features
+            level1_threshold: Probability threshold for Level 1 (default 0.5)
+
+        Returns: N x 3 array with probabilities for [Normal, Elevated, Spike]
+        """
+        # Level 1: Get probability of Not-Normal
+        l1_proba = self.level1_model.predict_proba(X)
+        prob_normal = l1_proba[:, 0]  # P(Normal)
+        prob_anomaly = l1_proba[:, 1]  # P(Not-Normal) = P(Elevated or Spike)
+
+        # Initialize probabilities
+        prob_elevated = np.zeros(len(X))
+        prob_spike = np.zeros(len(X))
+
+        # Use configurable threshold
+        mask_anomaly = (prob_anomaly > level1_threshold)
+
+        if mask_anomaly.sum() > 0 and self.level2_model is not None:
+            X_anomaly = X[mask_anomaly]
+            l2_proba = self.level2_model.predict_proba(X_anomaly)
+
+            # Distribute anomaly probability between Elevated and Spike
+            prob_elevated[mask_anomaly] = prob_anomaly[mask_anomaly] * l2_proba[:, 0]
+            prob_spike[mask_anomaly] = prob_anomaly[mask_anomaly] * l2_proba[:, 1]
+
+        # For below-threshold samples, weight toward normal
+        mask_below_threshold = (prob_anomaly <= level1_threshold)
+        prob_normal[mask_below_threshold] = prob_normal[mask_below_threshold] + prob_anomaly[mask_below_threshold]
+
+        # Stack into 3-class probability matrix
+        proba = np.column_stack([prob_normal, prob_elevated, prob_spike])
+
+        # Normalize to sum to 1
+        proba_sum = proba.sum(axis=1, keepdims=True)
+        proba = proba / (proba_sum + 1e-10)
+
+        return proba
+
+    def optimize_level1_threshold(self, X_val, y_val):
+        """
+        Find optimal Level 1 threshold for best overall performance.
+
+        Tests thresholds from 0.4 to 0.7 and returns the one with highest macro F1.
+
+        Returns: (best_threshold, best_macro_f1, results_dict)
+        """
+        best_threshold = 0.5
+        best_macro_f1 = 0
+        threshold_results = []
+
+        log(f"         Optimizing Level 1 threshold on validation set...")
+
+        for threshold in np.arange(0.4, 0.75, 0.05):
+            # Get predictions with this threshold
+            y_pred_val = self.predict(X_val, level1_threshold=threshold)
+
+            # Calculate metrics
+            macro_f1 = f1_score(y_val, y_pred_val, average='macro', zero_division=0)
+            weighted_f1 = f1_score(y_val, y_pred_val, average='weighted', zero_division=0)
+
+            # Per-class metrics
+            from sklearn.metrics import precision_recall_fscore_support
+            precision, recall, f1, _ = precision_recall_fscore_support(
+                y_val, y_pred_val, average=None, zero_division=0
+            )
+
+            result = {
+                'threshold': threshold,
+                'macro_f1': macro_f1,
+                'weighted_f1': weighted_f1,
+                'recall': recall,  # [normal, elevated, spike]
+                'precision': precision
+            }
+            threshold_results.append(result)
+
+            # Update best if macro F1 improved
+            if macro_f1 > best_macro_f1:
+                best_macro_f1 = macro_f1
+                best_threshold = threshold
+
+        # Log results
+        log(f"         Threshold optimization results:")
+        for r in threshold_results:
+            log(f"            Threshold {r['threshold']:.2f}: Macro F1={r['macro_f1']:.4f}, Weighted F1={r['weighted_f1']:.4f}")
+            log(f"               Recall: Normal={r['recall'][0]:.3f}, Elevated={r['recall'][1]:.3f}, Spike={r['recall'][2]:.3f}")
+
+        log(f"         ✅ Best threshold: {best_threshold:.2f} (Macro F1: {best_macro_f1:.4f})")
+
+        return best_threshold, best_macro_f1, threshold_results
 
 
 # Default hyperparameters (used when tuning is disabled) - IMPROVED with stronger regularization
@@ -2510,6 +3093,28 @@ for horizon in ['1h', '4h', '24h']:
     # Compute sample weights for class balancing
     sample_weights = np.array([class_weight_dict_remapped[y] for y in y_train_spike_remapped])
 
+    # ===== PHASE 3a: TIER 1 SPIKE DETECTION REDESIGN =====
+    # Step 1: Apply SMOTE oversampling for better class balance
+    log(f"   🎯 Phase 3a: Tier 1 Spike Detection Improvements")
+    log(f"   Step 1: Applying SMOTE oversampling...")
+    X_train_smote, y_train_smote = apply_smote_oversampling(
+        X_train_spike.values, y_train_spike_remapped.values
+    )
+
+    # Recompute sample weights for SMOTE-augmented data
+    sample_weights_smote = np.array([class_weight_dict_remapped[y] for y in y_train_smote])
+
+    # Enhance weights for spike and elevated classes using per-class cost-sensitive learning
+    log(f"   Step 2: Applying per-class cost-sensitive learning (spike: 5x, elevated: 2x)...")
+    cost_learner = CostSensitiveSpikeLearner(
+        base_model=None,
+        spike_weight_multiplier=5.0,
+        elevated_weight_multiplier=2.0
+    )
+    sample_weights_final = cost_learner.compute_adjusted_weights(
+        y_train_smote, original_weights=sample_weights_smote
+    )
+
     # ===== PHASE 2: SPIKE DETECTION ENSEMBLE =====
     spike_ensemble_result = None
     if USE_SPIKE_ENSEMBLE and len(X_train_spike) > 100:
@@ -2521,25 +3126,18 @@ for horizon in ['1h', '4h', '24h']:
             horizon=horizon
         )
 
-    # Train XGBoost or GradientBoosting classifier with class balancing
+    # Train hierarchical binary classifiers with SMOTE + cost-sensitive learning
+    log(f"   Training hierarchical binary classifiers (Level 1: Normal vs Anomaly, Level 2: Elevated vs Spike)...")
     if XGBOOST_AVAILABLE:
-        log(f"   Training XGBoost classifier with class balancing...")
-        model_spike = xgb.XGBClassifier(
-            n_estimators=200,
-            max_depth=5,
-            min_child_weight=3,
-            learning_rate=0.1,
-            subsample=0.8,
-            colsample_bytree=0.8,
-            scale_pos_weight=1,  # Will use sample_weight instead
-            random_state=42,
-            eval_metric='mlogloss',
-            use_label_encoder=False
+        hierarchical_model = HierarchicalSpikeBinaryClassifier()
+        hierarchical_model.fit(
+            X_train_smote, y_train_smote,
+            X_val_spike.values, y_val_spike_remapped.values,
+            sample_weights=sample_weights_final
         )
-        # Use sample weights for class balancing (already computed above)
-        model_spike.fit(X_train_spike, y_train_spike_remapped, sample_weight=sample_weights)
+        model_spike = hierarchical_model
     else:
-        log(f"   Training GradientBoosting classifier with class balancing...")
+        log(f"   ⚠️  XGBoost required for hierarchical classifier, falling back to standard classifier...")
         model_spike = GradientBoostingClassifier(
             n_estimators=200,
             max_depth=5,
@@ -2549,21 +3147,69 @@ for horizon in ['1h', '4h', '24h']:
             random_state=42,
             verbose=0
         )
-        # Use sample weights for class balancing (use remapped classes)
-        sample_weights = np.array([class_weight_dict_remapped[y] for y in y_train_spike_remapped])
-        model_spike.fit(X_train_spike, y_train_spike_remapped, sample_weight=sample_weights)
-    
+        model_spike.fit(X_train_smote, y_train_smote, sample_weight=sample_weights_final)
+
     # Calibrate the classifier for better probability estimates
-    log(f"   Calibrating classifier for better probability estimates...")
-    calibrated_model = CalibratedClassifierCV(model_spike, method='isotonic', cv=3)
-    calibrated_model.fit(X_train_spike, y_train_spike_remapped, sample_weight=sample_weights)
+    if isinstance(model_spike, HierarchicalSpikeBinaryClassifier):
+        # For hierarchical model, skip calibration (too complex for multi-level hierarchy)
+        log(f"   Using hierarchical model predictions directly (skipping calibration)...")
+        calibrated_model = model_spike
+    else:
+        log(f"   Calibrating classifier for better probability estimates...")
+        calibrated_model = CalibratedClassifierCV(model_spike, method='isotonic', cv=3)
+        calibrated_model.fit(X_train_spike, y_train_spike_remapped, sample_weight=sample_weights)
     
     # Evaluate on validation and test sets (use remapped classes)
     y_pred_val_remapped = calibrated_model.predict(X_val_spike)
     y_pred_test_remapped = calibrated_model.predict(X_test_spike)
     y_proba_val = calibrated_model.predict_proba(X_val_spike)
     y_proba_test = calibrated_model.predict_proba(X_test_spike)
-    
+
+    # ===== PHASE 3a: Step 3 - THRESHOLD OPTIMIZATION =====
+    if isinstance(model_spike, HierarchicalSpikeBinaryClassifier):
+        log(f"   Step 3: Optimizing hierarchical Level 1 threshold...")
+        best_threshold, best_f1, threshold_results = model_spike.optimize_level1_threshold(
+            X_val_spike.values, y_val_spike_remapped.values
+        )
+
+        # Use optimized threshold for predictions
+        y_pred_val_optimized = model_spike.predict(X_val_spike.values, level1_threshold=best_threshold)
+        y_pred_test_optimized = model_spike.predict(X_test_spike.values, level1_threshold=best_threshold)
+
+        y_pred_val_remapped = y_pred_val_optimized
+        y_pred_test_remapped = y_pred_test_optimized
+    else:
+        log(f"   Step 3: Using simple argmax predictions...")
+        if len(np.unique(y_val_spike_remapped)) >= 2:
+            # Use argmax without reverting to normal - preserve minority class predictions
+            y_pred_val_optimized = np.argmax(y_proba_val, axis=1)
+            y_pred_test_optimized = np.argmax(y_proba_test, axis=1)
+
+            # Calculate macro F1 for all three classes
+            f1_macro = f1_score(y_val_spike_remapped.values, y_pred_val_optimized, average='macro', zero_division=0)
+            f1_weighted = f1_score(y_val_spike_remapped.values, y_pred_val_optimized, average='weighted', zero_division=0)
+
+            log(f"      Validation Macro F1: {f1_macro:.4f}, Weighted F1: {f1_weighted:.4f}")
+
+            # Use argmax predictions for remapping
+            y_pred_val_remapped = y_pred_val_optimized
+            y_pred_test_remapped = y_pred_test_optimized
+            best_threshold = 0.33  # Default equal threshold
+        else:
+            log(f"      ⚠️  Insufficient classes for predictions")
+            best_threshold = 0.33
+
+    # ===== PHASE 3a: Step 4 - ANOMALY ENSEMBLE =====
+    log(f"   Step 4: Training anomaly detection ensemble...")
+    anomaly_ensemble = create_anomaly_ensemble(
+        X_train_spike.values, y_train_spike_remapped.values,
+        X_val_spike.values, y_val_spike_remapped.values,
+        spike_class_idx=max(np.unique(y_train_spike_remapped))
+    )
+
+    if anomaly_ensemble:
+        log(f"      ✅ Anomaly ensemble trained and ready for inference")
+
     # Remap predictions back to original class labels
     reverse_mapping = {new_cls: old_cls for old_cls, new_cls in class_mapping.items()}
     y_pred_val = np.array([reverse_mapping.get(pred, pred) for pred in y_pred_val_remapped])
@@ -2609,6 +3255,7 @@ for horizon in ['1h', '4h', '24h']:
         'model': calibrated_model,  # Save calibrated model
         'base_model': model_spike,  # Also save base model for reference
         'ensemble': spike_ensemble_result if spike_ensemble_result else None,  # PHASE 2: Spike ensemble
+        'anomaly_ensemble': anomaly_ensemble if anomaly_ensemble else None,  # PHASE 3a: Anomaly ensemble
         'feature_names': spike_feature_names,
         'metrics': {
             'accuracy_val': accuracy_val,
@@ -2621,14 +3268,30 @@ for horizon in ['1h', '4h', '24h']:
         'class_weights': class_weight_dict,
         'is_calibrated': True,
         'has_ensemble': spike_ensemble_result is not None,  # PHASE 2: Flag for ensemble
-        'model_version': 'v17_phase2_ensemble' if spike_ensemble_result else 'v17_tier1',
-        'model_type': 'XGBoost' if XGBOOST_AVAILABLE else 'GradientBoosting',
+        'has_anomaly_ensemble': anomaly_ensemble is not None,  # PHASE 3a: Flag for anomaly ensemble
+        'has_hierarchical_classifier': isinstance(model_spike, HierarchicalSpikeBinaryClassifier),  # PHASE 3a: Hierarchical
+        'model_version': 'v19_tier1_hierarchical',  # PHASE 3a: Updated version with hierarchical
+        'model_type': 'HierarchicalBinary' if isinstance(model_spike, HierarchicalSpikeBinaryClassifier) else ('XGBoost' if XGBOOST_AVAILABLE else 'GradientBoosting'),
         'trained_at': datetime.now().isoformat(),
         # Adaptive thresholds for inference
         'thresholds': {
             'normal_threshold': float(NORMAL_THRESHOLD),
             'elevated_threshold': float(ELEVATED_THRESHOLD),
+            'spike_threshold': float(best_threshold) if 'best_threshold' in locals() else 0.5,
             'percentiles_used': {'normal': 0.50, 'elevated': 0.85}
+        },
+        # PHASE 3a: Training improvements applied
+        'training_improvements': {
+            'hierarchical_classification': isinstance(model_spike, HierarchicalSpikeBinaryClassifier),
+            'hierarchical_levels': {
+                'level_1': 'Normal vs Not-Normal (Elevated+Spike)',
+                'level_2': 'Elevated vs Spike (only on not-normal predictions)'
+            } if isinstance(model_spike, HierarchicalSpikeBinaryClassifier) else None,
+            'smote_applied': True,
+            'smote_strategy': 'stratified (spike:80%, elevated:70% of normal)',
+            'cost_sensitive_learning': True,
+            'cost_weights': {'elevated': 2.0, 'spike': 5.0},
+            'anomaly_ensemble': anomaly_ensemble is not None
         }
     }
     
