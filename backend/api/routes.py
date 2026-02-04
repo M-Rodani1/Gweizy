@@ -550,11 +550,18 @@ def gas_patterns():
         daily = []
         for day in range(7):
             samples = daily_groups[day]
-            if samples:
-                avg_gwei = sum(samples) / len(samples)
-                min_gwei = min(samples)
-                max_gwei = max(samples)
+            if samples and len(samples) > 0:
+                try:
+                    avg_gwei = sum(samples) / len(samples)
+                    min_gwei = min(samples)
+                    max_gwei = max(samples)
+                except (ValueError, TypeError):
+                    # Fallback in case of calculation error
+                    avg_gwei = overall_avg
+                    min_gwei = overall_avg
+                    max_gwei = overall_avg
             else:
+                # Use overall average for missing days
                 avg_gwei = overall_avg
                 min_gwei = overall_avg
                 max_gwei = overall_avg
@@ -566,10 +573,11 @@ def gas_patterns():
                 'max_gwei': round(max_gwei, 8)
             })
 
-        cheapest_hour = min(hourly, key=lambda h: h['avg_gwei'])['hour']
-        most_expensive_hour = max(hourly, key=lambda h: h['avg_gwei'])['hour']
-        cheapest_day = min(daily, key=lambda d: d['avg_gwei'])['day']
-        most_expensive_day = max(daily, key=lambda d: d['avg_gwei'])['day']
+        # Get cheapest/most expensive hours and days (with safety checks)
+        cheapest_hour = min(hourly, key=lambda h: h['avg_gwei'])['hour'] if hourly else 0
+        most_expensive_hour = max(hourly, key=lambda h: h['avg_gwei'])['hour'] if hourly else 23
+        cheapest_day = min(daily, key=lambda d: d['avg_gwei'])['day'] if daily else 0
+        most_expensive_day = max(daily, key=lambda d: d['avg_gwei'])['day'] if daily else 6
 
         return jsonify({
             'success': True,

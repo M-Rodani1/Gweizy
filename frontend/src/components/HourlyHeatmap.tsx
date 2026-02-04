@@ -34,6 +34,7 @@ const HourlyHeatmap: React.FC = () => {
       if (!response.ok) {
         setData(generateMockData());
         setIsFallback(true);
+        setLoading(false);
         return;
       }
 
@@ -41,49 +42,73 @@ const HourlyHeatmap: React.FC = () => {
       const hourlyData = result.data?.hourly;
 
       if (result.success && Array.isArray(hourlyData) && hourlyData.length > 0) {
-        // Transform API data into heatmap format
-        const cells: HeatmapCell[] = [];
+        try {
+          // Transform API data into heatmap format
+          const cells: HeatmapCell[] = [];
 
-        // Generate cells for each day/hour combination
-        DAYS.forEach((_, dayIdx) => {
-          hourlyData.forEach((h: { hour: number; avg_gwei: number; sample_count: number }) => {
-            // Add variation by day (weekends are cheaper)
-            const dayMultiplier = dayIdx >= 5 ? 0.75 : 1 + (Math.random() * 0.1);
-            cells.push({
-              day: dayIdx,
-              hour: h.hour,
-              avgGwei: h.avg_gwei * dayMultiplier,
-              count: h.sample_count
+          // Generate cells for each day/hour combination
+          DAYS.forEach((_, dayIdx) => {
+            hourlyData.forEach((h: any) => {
+              const hour = h?.hour;
+              const avgGwei = h?.avg_gwei;
+              const sampleCount = h?.sample_count;
+
+              // Skip invalid entries
+              if (hour === undefined || !Number.isFinite(avgGwei) || !sampleCount) {
+                return;
+              }
+
+              // Add variation by day (weekends are cheaper)
+              const dayMultiplier = dayIdx >= 5 ? 0.75 : 1 + (Math.random() * 0.1);
+              cells.push({
+                day: dayIdx,
+                hour,
+                avgGwei: avgGwei * dayMultiplier,
+                count: sampleCount
+              });
             });
           });
-        });
 
-        // Only proceed if we have valid cells
-        if (cells.length === 0) {
+          // Only proceed if we have valid cells
+          if (cells.length === 0) {
+            setData(generateMockData());
+            setIsFallback(true);
+            setLoading(false);
+            return;
+          }
+
+          const gweiValues = cells.map(c => c.avgGwei).filter(v => Number.isFinite(v));
+          if (gweiValues.length === 0) {
+            setData(generateMockData());
+            setIsFallback(true);
+            setLoading(false);
+            return;
+          }
+
+          const minGwei = Math.min(...gweiValues);
+          const maxGwei = Math.max(...gweiValues);
+          const bestCell = cells.reduce((min, c) => c.avgGwei < min.avgGwei ? c : min);
+          const worstCell = cells.reduce((max, c) => c.avgGwei > max.avgGwei ? c : max);
+
+          setData({
+            cells,
+            minGwei,
+            maxGwei,
+            bestTime: { day: bestCell.day, hour: bestCell.hour, gwei: bestCell.avgGwei },
+            worstTime: { day: worstCell.day, hour: worstCell.hour, gwei: worstCell.avgGwei }
+          });
+          setIsFallback(false);
+        } catch (transformError) {
+          console.error('Error transforming heatmap data:', transformError);
           setData(generateMockData());
           setIsFallback(true);
-          return;
         }
-
-        const gweiValues = cells.map(c => c.avgGwei);
-        const minGwei = Math.min(...gweiValues);
-        const maxGwei = Math.max(...gweiValues);
-        const bestCell = cells.reduce((min, c) => c.avgGwei < min.avgGwei ? c : min);
-        const worstCell = cells.reduce((max, c) => c.avgGwei > max.avgGwei ? c : max);
-
-        setData({
-          cells,
-          minGwei,
-          maxGwei,
-          bestTime: { day: bestCell.day, hour: bestCell.hour, gwei: bestCell.avgGwei },
-          worstTime: { day: worstCell.day, hour: worstCell.hour, gwei: worstCell.avgGwei }
-        });
-        setIsFallback(false);
       } else {
         setData(generateMockData());
         setIsFallback(true);
       }
-    } catch {
+    } catch (err) {
+      console.error('Error fetching heatmap data:', err);
       setData(generateMockData());
       setIsFallback(true);
     } finally {
