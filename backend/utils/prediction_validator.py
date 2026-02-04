@@ -18,7 +18,7 @@ from sqlalchemy import Column, Integer, Float, String, DateTime, Boolean, func
 from sqlalchemy.ext.declarative import declarative_base
 from data.database import DatabaseManager, Base, GasPrice
 import numpy as np
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 import json
 
 
