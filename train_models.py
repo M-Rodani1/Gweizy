@@ -143,12 +143,13 @@ if 'tx_count' in df.columns:
 df_grouped = df.groupby('minute').agg(agg_dict).reset_index()
 df_grouped.rename(columns={'minute': 'timestamp'}, inplace=True)
 
-# CRITICAL: Drop rows where gas_price changes by less than 1% compared to previous row
-# This filters out "silence" - we only want to train on actual market movements
+# CRITICAL: Drop rows where gas_price changes by less than 0.2% compared to previous row
+# IMPROVED: Relaxed from 1.0% to 0.2% to include stable periods in training (was causing distribution bias)
+# Keep full data to avoid excluding stable market conditions that appear in production
 df_grouped = df_grouped.sort_values('timestamp').reset_index(drop=True)
 df_grouped['price_pct_change'] = df_grouped['gas_price'].pct_change().abs() * 100
-# Keep first row (no previous to compare) and rows with >1% change
-df_grouped = df_grouped[(df_grouped['price_pct_change'].isna()) | (df_grouped['price_pct_change'] >= 1.0)]
+# Keep first row (no previous to compare) and rows with >0.2% change (much more lenient)
+df_grouped = df_grouped[(df_grouped['price_pct_change'].isna()) | (df_grouped['price_pct_change'] >= 0.2)]
 df_grouped = df_grouped.drop(columns=['price_pct_change'])
 
 log(f"   Raw samples: {raw_len:,} → After tick bar filtering: {len(df_grouped):,} rows")
