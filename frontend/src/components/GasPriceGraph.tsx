@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback, memo } from 'react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Area, ComposedChart } from 'recharts';
+import { XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Area, ComposedChart } from 'recharts';
 import { GraphDataPoint } from '../../types';
 import { fetchPredictions, fetchCurrentGas } from '../api/gasApi';
 import LoadingSpinner from './LoadingSpinner';
@@ -114,9 +114,6 @@ const GasPriceGraph: React.FC = () => {
   const chartSummary = useMemo(() => {
     if (data.length === 0) return 'No data available';
 
-    const actualPrices = data
-      .map(d => d?.gwei)
-      .filter((value): value is number => typeof value === 'number' && Number.isFinite(value));
     const predictions = data
       .map(d => d?.predictedGwei)
       .filter((value): value is number => typeof value === 'number' && Number.isFinite(value));

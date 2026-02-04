@@ -85,7 +85,7 @@ const ExecuteTransactionModal: React.FC<ExecuteTransactionModalProps> = ({
     touched,
     getFieldProps,
     validateAll,
-    reset: resetForm,
+    reset: _resetForm,
     setValues
   } = useFormValidation(validationSchema);
 

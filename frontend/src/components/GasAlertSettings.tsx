@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Bell, Plus, Trash2, Power, Check, X, BellOff, BellRing, AlertCircle } from 'lucide-react';
+import { Bell, Plus, Trash2, Power, X, BellOff, BellRing, AlertCircle } from 'lucide-react';
 import { API_CONFIG, getApiUrl } from '../config/api';
+import { trackEvent } from '../utils/analytics';
 import {
   isNotificationSupported,
   getNotificationPermission,

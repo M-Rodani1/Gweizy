@@ -28,5 +28,7 @@
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true,
     "forceConsistentCasingInFileNames": true
-  }
+  },
+  "include": ["src", "types.ts"],
+  "exclude": ["node_modules", "dist"]
 }

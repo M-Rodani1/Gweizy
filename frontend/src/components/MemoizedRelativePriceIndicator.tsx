@@ -3,7 +3,7 @@
  * Optimised to prevent unnecessary re-renders
  */
 
-import React, { memo } from 'react';
+import { memo } from 'react';
 import RelativePriceIndicator from './RelativePriceIndicator';
 
 interface MemoizedRelativePriceIndicatorProps {

@@ -1,4 +1,4 @@
-import React, { memo } from 'react';
+import { memo } from 'react';
 
 // Memoized skeleton components to prevent unnecessary re-renders
 export const CardSkeleton = memo(() => (

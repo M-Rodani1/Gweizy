@@ -5,7 +5,7 @@
 import React, { useState, useEffect } from 'react';
 import { useChain } from '../contexts/ChainContext';
 import { getApiUrl } from '../config/api';
-import { Clock, TrendingDown, TrendingUp, Target, DollarSign } from 'lucide-react';
+import { Clock, TrendingUp, Target, DollarSign } from 'lucide-react';
 import LoadingSpinner from './LoadingSpinner';
 
 interface PersonalizedRecommendationsProps {

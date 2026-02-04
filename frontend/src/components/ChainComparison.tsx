@@ -4,7 +4,7 @@
  */
 import React, { useState, useEffect } from 'react';
 import { fetchPredictions } from '../api/gasApi';
-import { SUPPORTED_CHAINS, getChainById } from '../config/chains';
+import { SUPPORTED_CHAINS } from '../config/chains';
 import { useChain } from '../contexts/ChainContext';
 import LoadingSpinner from './LoadingSpinner';
 

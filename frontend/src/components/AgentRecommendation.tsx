@@ -24,7 +24,7 @@ interface AgentRecommendationProps {
   currentGas?: number;
 }
 
-const AgentRecommendation: React.FC<AgentRecommendationProps> = ({ currentGas = 0 }) => {
+const AgentRecommendation: React.FC<AgentRecommendationProps> = ({ currentGas: _currentGas = 0 }) => {
   const [recommendation, setRecommendation] = useState<AgentResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

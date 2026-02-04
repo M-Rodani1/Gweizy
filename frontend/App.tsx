@@ -26,6 +26,7 @@ const usePrefetchDashboard = () => {
       }, 2000);
       return () => clearTimeout(timer);
     }
+    return undefined;
   }, [location.pathname]);
 };
 

@@ -30,7 +30,7 @@ interface HeatmapData {
 const GasPatternHeatmap: React.FC = () => {
   const [data, setData] = useState<HeatmapData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [_error, _setError] = useState<string | null>(null);
   const [view, setView] = useState<'hourly' | 'daily'>('hourly');
   const [isFallback, setIsFallback] = useState(false);
 

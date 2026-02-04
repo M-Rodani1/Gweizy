@@ -4,6 +4,7 @@ interface CollapsibleSectionProps {
   title: string;
   icon?: React.ReactNode;
   defaultOpen?: boolean;
+  defaultExpanded?: boolean; // Alias for defaultOpen
   badge?: string | number;
   children: React.ReactNode;
 }
@@ -12,10 +13,11 @@ const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
   title,
   icon,
   defaultOpen = false,
+  defaultExpanded,
   badge,
   children
 }) => {
-  const [isOpen, setIsOpen] = useState(defaultOpen);
+  const [isOpen, setIsOpen] = useState(defaultExpanded ?? defaultOpen);
 
   return (
     <div className="bg-gray-800/50 border border-gray-700 rounded-xl overflow-hidden">

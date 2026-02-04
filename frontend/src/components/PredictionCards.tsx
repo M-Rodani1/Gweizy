@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback, useMemo, memo } from 'react';
-import { fetchPredictions, fetchCurrentGas, fetchHybridPrediction } from '../api/gasApi';
+import React, { useState, useEffect, useCallback, memo } from 'react';
+import { fetchPredictions, fetchCurrentGas } from '../api/gasApi';
 import { useChain } from '../contexts/ChainContext';
 import LoadingSpinner from './LoadingSpinner';
 import ConfidenceBar from './ui/ConfidenceBar';
@@ -124,10 +124,11 @@ const PredictionCards: React.FC<PredictionCardsProps> = ({ hybridData }) => {
               normalizedProbs = probabilities as { wait: number; normal: number; urgent: number };
             } else if ('normal' in probabilities && 'elevated' in probabilities && 'spike' in probabilities) {
               // Map: normal -> normal, elevated -> wait, spike -> urgent
+              const probs = probabilities as { normal?: number; elevated?: number; spike?: number };
               normalizedProbs = {
-                wait: probabilities.elevated || 0,
-                normal: probabilities.normal || 0,
-                urgent: probabilities.spike || 0,
+                wait: probs.elevated ?? 0,
+                normal: probs.normal ?? 0,
+                urgent: probs.spike ?? 0,
               };
             }
           }

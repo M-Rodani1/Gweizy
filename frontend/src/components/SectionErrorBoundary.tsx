@@ -5,7 +5,7 @@
  * from breaking the entire page. Shows a compact error UI with retry option.
  */
 
-import React, { Component, ReactNode, ErrorInfo } from 'react';
+import { Component, ReactNode, ErrorInfo } from 'react';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
 import * as Sentry from '@sentry/react';
 
