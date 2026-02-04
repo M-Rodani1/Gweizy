@@ -66,6 +66,15 @@ const PredictionCards: React.FC<PredictionCardsProps> = ({ hybridData }) => {
     }
   }, []);
 
+  // Determine classification state from probabilities
+  const getClassificationState = useCallback((probs: { wait: number; normal: number; urgent: number } | undefined) => {
+    if (!probs) return null;
+    const max = Math.max(probs.wait, probs.normal, probs.urgent);
+    if (probs.urgent === max && probs.urgent > 0.3) return 'spike';
+    if (probs.wait === max && probs.wait > 0.3) return 'elevated';
+    return 'normal';
+  }, []);
+
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
@@ -142,12 +151,15 @@ const PredictionCards: React.FC<PredictionCardsProps> = ({ hybridData }) => {
           let color: 'red' | 'green' | 'yellow';
           let icon: string;
           let recommendation: string;
+          const classifState = getClassificationState(normalizedProbs);
 
-          // Update recommendation based on confidence
+          // Update recommendation based on confidence and classification
           if (predicted < current * 0.9) {
             color = 'red';
             icon = '';
-            if (confidenceLevel === 'high') {
+            if (classifState === 'elevated') {
+              recommendation = `Gas prices are elevated (50-85th percentile). Consider delaying if possible. Expected to drop ${Math.abs(changePercent).toFixed(0)}%.`;
+            } else if (confidenceLevel === 'high') {
               recommendation = `Gas expected to drop significantly. Wait ${horizon} before transacting.`;
             } else if (confidenceLevel === 'medium') {
               recommendation = `Gas likely to drop, but prediction has moderate uncertainty. Consider waiting.`;
@@ -157,11 +169,19 @@ const PredictionCards: React.FC<PredictionCardsProps> = ({ hybridData }) => {
           } else if (predicted > current * 1.1) {
             color = 'green';
             icon = '';
-            recommendation = `Gas expected to rise. Consider transacting now.`;
+            if (classifState === 'spike') {
+              recommendation = `Spike detected! Gas prices spiking above normal levels. Transact immediately if possible.`;
+            } else {
+              recommendation = `Gas expected to rise. Consider transacting now.`;
+            }
           } else {
             color = 'yellow';
             icon = '';
-            recommendation = `Gas expected to remain stable. No urgent action needed.`;
+            if (classifState === 'elevated') {
+              recommendation = `Gas prices are elevated and stable. No urgent action, but consider waiting for lower prices.`;
+            } else {
+              recommendation = `Gas expected to remain stable. No urgent action needed.`;
+            }
           }
 
           newCards.push({
@@ -240,6 +260,25 @@ const PredictionCards: React.FC<PredictionCardsProps> = ({ hybridData }) => {
               BEST TIME
             </div>
           )}
+
+          {/* Classification Badge - Shows Normal/Elevated/Spike */}
+          {(() => {
+            const classifState = getClassificationState(card.probabilities);
+            if (!classifState) return null;
+
+            const badges = {
+              normal: { bg: 'bg-green-500/20', border: 'border-green-500/30', text: 'text-green-400', label: 'Normal' },
+              elevated: { bg: 'bg-amber-500/20', border: 'border-amber-500/30', text: 'text-amber-400', label: 'Elevated' },
+              spike: { bg: 'bg-red-500/20', border: 'border-red-500/30', text: 'text-red-400', label: 'Spike' }
+            };
+
+            const badge = badges[classifState as keyof typeof badges];
+            return (
+              <div className={`absolute -top-3 right-4 ${badge.bg} border ${badge.border} ${badge.text} px-3 py-1 rounded-full text-xs font-bold shadow-lg`}>
+                {badge.label}
+              </div>
+            );
+          })()}
           
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
@@ -437,6 +476,14 @@ const PredictionCards: React.FC<PredictionCardsProps> = ({ hybridData }) => {
                     <li><span className="text-green-400">High confidence:</span> Models strongly agree on prediction</li>
                     <li><span className="text-yellow-400">Medium confidence:</span> Moderate agreement between models</li>
                     <li><span className="text-red-400">Low confidence:</span> High uncertainty - use caution</li>
+                  </ul>
+                </div>
+                <div className="bg-gray-800 rounded-lg p-4">
+                  <h4 className="text-cyan-400 font-semibold mb-2">Classification States</h4>
+                  <ul className="text-gray-300 text-sm space-y-2">
+                    <li><span className="text-green-400">Normal:</span> Gas prices in typical range (0-50th percentile)</li>
+                    <li><span className="text-amber-400">Elevated:</span> Gas prices elevated (50-85th percentile) - consider waiting if possible</li>
+                    <li><span className="text-red-400">Spike:</span> Gas prices spiking (85th+ percentile) - transact immediately if needed</li>
                   </ul>
                 </div>
                 <div className="bg-gray-800 rounded-lg p-4">
