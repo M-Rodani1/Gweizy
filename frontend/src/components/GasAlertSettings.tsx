@@ -20,7 +20,9 @@ import {
 interface Alert {
   id: number;
   alert_type: string;
-  threshold_gwei: number;
+  threshold_gwei?: number;
+  classification_type?: string;
+  confidence_threshold?: number;
   notification_method: string;
   is_active: boolean;
   last_triggered: string | null;
@@ -41,17 +43,20 @@ const GasAlertSettings: React.FC<GasAlertSettingsProps> = ({ currentGas, walletA
   const previousGasRef = useRef<number | null>(null);
 
   // Form state with separate selects
+  const [alertMode, setAlertMode] = useState<'price' | 'classification'>('price');
   const [alertType, setAlertType] = useState<'below' | 'above'>('below');
+  const [classificationType, setClassificationType] = useState<'elevated' | 'spike'>('elevated');
+  const [confidenceThreshold, setConfidenceThreshold] = useState(70);
   const [notificationMethod, setNotificationMethod] = useState('browser');
 
-  // Dynamic validation schema based on notification method
+  // Dynamic validation schema based on alert mode and notification method
   const validationSchema = useMemo(() => ({
     thresholdGwei: {
       initialValue: '0.001',
-      rules: [
+      rules: alertMode === 'price' ? [
         required('Threshold is required'),
         positiveNumber('Threshold must be a positive number')
-      ]
+      ] : []
     },
     notificationTarget: {
       initialValue: '',
@@ -62,7 +67,7 @@ const GasAlertSettings: React.FC<GasAlertSettingsProps> = ({ currentGas, walletA
         ...(notificationMethod === 'telegram' ? [numericOnly('Chat ID must contain only numbers')] : [])
       ]
     }
-  }), [notificationMethod]);
+  }), [notificationMethod, alertMode]);
 
   const {
     values,
@@ -129,16 +134,25 @@ const GasAlertSettings: React.FC<GasAlertSettingsProps> = ({ currentGas, walletA
     }
 
     try {
+      const alertBody: any = {
+        user_id: userId,
+        notification_method: notificationMethod,
+        notification_target: values.notificationTarget || undefined
+      };
+
+      if (alertMode === 'price') {
+        alertBody.alert_type = alertType;
+        alertBody.threshold_gwei = parseFloat(values.thresholdGwei);
+      } else {
+        alertBody.alert_type = 'classification';
+        alertBody.classification_type = classificationType;
+        alertBody.confidence_threshold = confidenceThreshold;
+      }
+
       const response = await fetch(getApiUrl(API_CONFIG.ENDPOINTS.ALERTS), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          user_id: userId,
-          alert_type: alertType,
-          threshold_gwei: parseFloat(values.thresholdGwei),
-          notification_method: notificationMethod,
-          notification_target: values.notificationTarget || undefined
-        })
+        body: JSON.stringify(alertBody)
       });
 
       const data = await response.json();
@@ -147,10 +161,12 @@ const GasAlertSettings: React.FC<GasAlertSettingsProps> = ({ currentGas, walletA
         setAlerts([data.alert, ...alerts]);
         setShowCreateForm(false);
         resetForm();
+        setAlertMode('price');
+        setConfidenceThreshold(70);
         trackEvent('alert_created', {
           method: notificationMethod,
-          type: alertType,
-          threshold: values.thresholdGwei
+          mode: alertMode,
+          type: alertMode === 'price' ? alertType : classificationType
         });
       }
     } catch (error) {
@@ -341,53 +357,114 @@ const GasAlertSettings: React.FC<GasAlertSettingsProps> = ({ currentGas, walletA
       {/* Create Form */}
       {showCreateForm && (
         <form onSubmit={createAlert} className="mb-6 p-4 bg-slate-700/30 rounded-lg border border-slate-600" aria-label="Create new gas price alert">
+          {/* Alert Mode Selection */}
+          <div className="mb-4">
+            <label htmlFor="alert-mode" className="block text-sm font-medium text-gray-300 mb-2">Alert Mode</label>
+            <select
+              id="alert-mode"
+              value={alertMode}
+              onChange={(e) => {
+                setAlertMode(e.target.value as 'price' | 'classification');
+                resetForm();
+              }}
+              className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+            >
+              <option value="price">Price-Based Alert</option>
+              <option value="classification">Classification-Based Alert</option>
+            </select>
+            <p className="text-xs text-gray-400 mt-1">
+              {alertMode === 'price'
+                ? 'Alert when gas price crosses a threshold'
+                : 'Alert when model detects Elevated or Spike state'}
+            </p>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-            <div>
-              <label htmlFor="alert-type" className="block text-sm font-medium text-gray-300 mb-2">Alert Type</label>
-              <select
-                id="alert-type"
-                value={alertType}
-                onChange={(e) => setAlertType(e.target.value as 'below' | 'above')}
-                className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
-              >
-                <option value="below">Notify when below</option>
-                <option value="above">Notify when above</option>
-              </select>
-            </div>
-            <div>
-              <label htmlFor="threshold-gwei" className="block text-sm font-medium text-gray-300 mb-2">
-                Threshold (gwei)
-                {currentGas > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => setValue('thresholdGwei', getSuggestion())}
-                    className="ml-2 text-xs text-blue-400 hover:text-blue-300 focus:outline-none focus:underline"
-                    aria-label={`Use suggested threshold of ${getSuggestion()} gwei`}
+            {/* Price-Based Fields */}
+            {alertMode === 'price' && (
+              <>
+                <div>
+                  <label htmlFor="alert-type" className="block text-sm font-medium text-gray-300 mb-2">Alert Type</label>
+                  <select
+                    id="alert-type"
+                    value={alertType}
+                    onChange={(e) => setAlertType(e.target.value as 'below' | 'above')}
+                    className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
                   >
-                    Suggest: {getSuggestion()}
-                  </button>
-                )}
-              </label>
-              <input
-                id="threshold-gwei"
-                type="number"
-                step="0.0001"
-                {...getFieldProps('thresholdGwei')}
-                className={`w-full px-3 py-2 bg-slate-800 border rounded-lg text-white focus:outline-none focus:ring-2 transition-colors ${
-                  touched.thresholdGwei && errors.thresholdGwei
-                    ? 'border-red-500 focus:border-red-500 focus:ring-red-500/50'
-                    : 'border-slate-600 focus:border-blue-500 focus:ring-blue-500/50'
-                }`}
-                placeholder="0.001"
-                aria-required="true"
-              />
-              {touched.thresholdGwei && errors.thresholdGwei && (
-                <p id="thresholdGwei-error" className="mt-1 text-xs text-red-400 flex items-center gap-1" role="alert">
-                  <AlertCircle className="w-3 h-3" aria-hidden="true" />
-                  {errors.thresholdGwei}
-                </p>
-              )}
-            </div>
+                    <option value="below">Notify when below</option>
+                    <option value="above">Notify when above</option>
+                  </select>
+                </div>
+                <div>
+                  <label htmlFor="threshold-gwei" className="block text-sm font-medium text-gray-300 mb-2">
+                    Threshold (gwei)
+                    {currentGas > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setValue('thresholdGwei', getSuggestion())}
+                        className="ml-2 text-xs text-blue-400 hover:text-blue-300 focus:outline-none focus:underline"
+                        aria-label={`Use suggested threshold of ${getSuggestion()} gwei`}
+                      >
+                        Suggest: {getSuggestion()}
+                      </button>
+                    )}
+                  </label>
+                  <input
+                    id="threshold-gwei"
+                    type="number"
+                    step="0.0001"
+                    {...getFieldProps('thresholdGwei')}
+                    className={`w-full px-3 py-2 bg-slate-800 border rounded-lg text-white focus:outline-none focus:ring-2 transition-colors ${
+                      touched.thresholdGwei && errors.thresholdGwei
+                        ? 'border-red-500 focus:border-red-500 focus:ring-red-500/50'
+                        : 'border-slate-600 focus:border-blue-500 focus:ring-blue-500/50'
+                    }`}
+                    placeholder="0.001"
+                    aria-required="true"
+                  />
+                  {touched.thresholdGwei && errors.thresholdGwei && (
+                    <p id="thresholdGwei-error" className="mt-1 text-xs text-red-400 flex items-center gap-1" role="alert">
+                      <AlertCircle className="w-3 h-3" aria-hidden="true" />
+                      {errors.thresholdGwei}
+                    </p>
+                  )}
+                </div>
+              </>
+            )}
+
+            {/* Classification-Based Fields */}
+            {alertMode === 'classification' && (
+              <>
+                <div>
+                  <label htmlFor="classification-type" className="block text-sm font-medium text-gray-300 mb-2">When Model Detects</label>
+                  <select
+                    id="classification-type"
+                    value={classificationType}
+                    onChange={(e) => setClassificationType(e.target.value as 'elevated' | 'spike')}
+                    className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                  >
+                    <option value="elevated">Elevated Prices</option>
+                    <option value="spike">Price Spike</option>
+                  </select>
+                </div>
+                <div>
+                  <label htmlFor="confidence-threshold" className="block text-sm font-medium text-gray-300 mb-2">
+                    Minimum Confidence: {confidenceThreshold}%
+                  </label>
+                  <input
+                    id="confidence-threshold"
+                    type="range"
+                    min="0"
+                    max="100"
+                    step="5"
+                    value={confidenceThreshold}
+                    onChange={(e) => setConfidenceThreshold(parseInt(e.target.value))}
+                    className="w-full"
+                  />
+                  <p className="text-xs text-gray-400 mt-1">Alert only when {confidenceThreshold}%+ confident</p>
+                </div>
+              </>
+            )}
           </div>
 
           {/* Notification Method Selection */}
@@ -483,7 +560,15 @@ const GasAlertSettings: React.FC<GasAlertSettingsProps> = ({ currentGas, walletA
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
                     <span className={`font-semibold ${alert.is_active ? 'text-white' : 'text-gray-400'}`}>
-                      {alert.alert_type === 'below' ? '↓ Below' : '↑ Above'} {alert.threshold_gwei.toFixed(4)} gwei
+                      {alert.alert_type === 'classification' ? (
+                        <>
+                          🔔 {alert.classification_type === 'elevated' ? 'Elevated' : 'Spike'} detected ({alert.confidence_threshold}%+ confident)
+                        </>
+                      ) : (
+                        <>
+                          {alert.alert_type === 'below' ? '↓ Below' : '↑ Above'} {alert.threshold_gwei?.toFixed(4)} gwei
+                        </>
+                      )}
                     </span>
                     {alert.is_active && (
                       <span className="px-2 py-0.5 bg-green-500/20 text-green-400 text-xs rounded-full border border-green-500/30">
@@ -507,7 +592,7 @@ const GasAlertSettings: React.FC<GasAlertSettingsProps> = ({ currentGas, walletA
                         ? 'bg-green-500/20 text-green-400 hover:bg-green-500/30 focus:ring-green-500'
                         : 'bg-gray-500/20 text-gray-400 hover:bg-gray-500/30 focus:ring-gray-500'
                     }`}
-                    aria-label={`${alert.is_active ? 'Disable' : 'Enable'} alert for ${alert.alert_type} ${alert.threshold_gwei.toFixed(4)} gwei`}
+                    aria-label={`${alert.is_active ? 'Disable' : 'Enable'} alert`}
                     aria-pressed={alert.is_active}
                   >
                     <Power className="w-4 h-4" aria-hidden="true" />
@@ -515,7 +600,7 @@ const GasAlertSettings: React.FC<GasAlertSettingsProps> = ({ currentGas, walletA
                   <button
                     onClick={() => deleteAlert(alert.id)}
                     className="p-2 bg-red-500/20 text-red-400 hover:bg-red-500/30 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 focus:ring-offset-slate-800"
-                    aria-label={`Delete alert for ${alert.alert_type} ${alert.threshold_gwei.toFixed(4)} gwei`}
+                    aria-label="Delete alert"
                   >
                     <Trash2 className="w-4 h-4" aria-hidden="true" />
                   </button>
