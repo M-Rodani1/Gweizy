@@ -388,14 +388,14 @@ const PredictionCards: React.FC<PredictionCardsProps> = ({ hybridData }) => {
             </div>
           </div>
 
-          {/* Confidence Bar (Hybrid Model Probabilities) - Show in first card or if hybridData provided */}
-          {(card.horizon === '1h' || hybridData) && (
+          {/* Probability Breakdown - Show for all cards */}
+          {(hybridData?.probabilities || card.probabilities) && (
             <div className="mb-4">
-              <div className="text-xs text-gray-400 mb-2 font-medium">Action Probabilities</div>
+              <div className="text-xs text-gray-400 mb-2 font-medium">Classification Probabilities</div>
               {hybridData?.probabilities ? (
-                <ConfidenceBar probs={hybridData.probabilities} />
+                <ConfidenceBar probs={hybridData.probabilities} showLabels="classification" />
               ) : card.probabilities ? (
-                <ConfidenceBar probs={card.probabilities} />
+                <ConfidenceBar probs={card.probabilities} showLabels="classification" />
               ) : (
                 <div className="h-4 bg-gray-800/50 rounded-full animate-pulse mt-4" />
               )}
