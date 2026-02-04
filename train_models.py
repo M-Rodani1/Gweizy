@@ -877,15 +877,15 @@ def tune_lgbm_regressor(X_train, y_train, horizon_name, n_iter=20):
     log(f"   🔍 Tuning hyperparameters for {horizon_name} ({n_iter} iterations)...")
 
     param_distributions = {
-        'n_estimators': [100, 200, 300, 500],
-        'max_depth': [3, 4, 5, 7, 10],
-        'learning_rate': [0.005, 0.01, 0.02, 0.05, 0.1],
-        'num_leaves': [15, 31, 63, 127],
-        'min_child_samples': [10, 20, 30, 50],
-        'subsample': [0.7, 0.8, 0.9, 1.0],
-        'colsample_bytree': [0.7, 0.8, 0.9, 1.0],
-        'reg_alpha': [0, 0.01, 0.1, 1.0],
-        'reg_lambda': [0, 0.01, 0.1, 1.0],
+        'n_estimators': [150, 250, 350],  # IMPROVED: reduced range for stability
+        'max_depth': [3, 4, 5],  # IMPROVED: max depth cap to prevent overfitting
+        'learning_rate': [0.005, 0.01, 0.02],  # IMPROVED: lower LR for conservative training
+        'num_leaves': [15, 31],  # IMPROVED: fewer leaves to reduce model complexity
+        'min_child_samples': [30, 50, 100],  # IMPROVED: more samples per leaf (was 10-50)
+        'subsample': [0.7, 0.8],  # IMPROVED: more aggressive subsampling (was 0.7-1.0)
+        'colsample_bytree': [0.7, 0.8],  # IMPROVED: more feature sampling (was 0.7-1.0)
+        'reg_alpha': [0.1, 0.5, 1.0],  # IMPROVED: stronger L1 regularization (was 0-1.0)
+        'reg_lambda': [0.5, 1.0, 2.0],  # IMPROVED: stronger L2 regularization (was 0-1.0)
     }
 
     base_model = lgb.LGBMRegressor(
@@ -929,15 +929,15 @@ def tune_lgbm_classifier(X_train, y_train, horizon_name, n_iter=20):
     log(f"   🔍 Tuning hyperparameters for {horizon_name} ({n_iter} iterations)...")
 
     param_distributions = {
-        'n_estimators': [100, 200, 300, 500],
-        'max_depth': [3, 5, 7, 10],
-        'learning_rate': [0.01, 0.02, 0.05, 0.1],
-        'num_leaves': [15, 31, 63, 127],
-        'min_child_samples': [10, 20, 30, 50],
-        'subsample': [0.7, 0.8, 0.9, 1.0],
-        'colsample_bytree': [0.7, 0.8, 0.9, 1.0],
-        'reg_alpha': [0, 0.01, 0.1],
-        'reg_lambda': [0, 0.01, 0.1],
+        'n_estimators': [150, 250, 350],  # IMPROVED: reduced range for stability
+        'max_depth': [3, 4, 5],  # IMPROVED: max depth cap to prevent overfitting
+        'learning_rate': [0.01, 0.02, 0.05],  # IMPROVED: more conservative LR
+        'num_leaves': [15, 31],  # IMPROVED: fewer leaves to reduce model complexity
+        'min_child_samples': [30, 50, 100],  # IMPROVED: more samples per leaf (was 10-50)
+        'subsample': [0.7, 0.8],  # IMPROVED: more aggressive subsampling (was 0.7-1.0)
+        'colsample_bytree': [0.7, 0.8],  # IMPROVED: more feature sampling (was 0.7-1.0)
+        'reg_alpha': [0.1, 0.5, 1.0],  # IMPROVED: stronger L1 regularization (was 0-0.1)
+        'reg_lambda': [0.5, 1.0, 2.0],  # IMPROVED: stronger L2 regularization (was 0-0.1)
     }
 
     # Determine number of classes from training data
@@ -967,15 +967,18 @@ def tune_lgbm_classifier(X_train, y_train, horizon_name, n_iter=20):
     return search.best_params_
 
 
-# Default hyperparameters (used when tuning is disabled)
+# Default hyperparameters (used when tuning is disabled) - IMPROVED with stronger regularization
 DEFAULT_PARAMS_24H = {
-    'n_estimators': 300, 'max_depth': 5, 'learning_rate': 0.01, 'num_leaves': 31
+    'n_estimators': 250, 'max_depth': 5, 'learning_rate': 0.01, 'num_leaves': 31,
+    'min_child_samples': 50, 'reg_alpha': 0.5, 'reg_lambda': 1.0  # Added regularization
 }
 DEFAULT_PARAMS_4H = {
-    'n_estimators': 200, 'max_depth': 3, 'learning_rate': 0.01, 'num_leaves': 15
+    'n_estimators': 250, 'max_depth': 4, 'learning_rate': 0.01, 'num_leaves': 15,
+    'min_child_samples': 50, 'reg_alpha': 0.5, 'reg_lambda': 1.0  # Added regularization
 }
 DEFAULT_PARAMS_1H = {
-    'n_estimators': 200, 'max_depth': 5, 'learning_rate': 0.05, 'num_leaves': 31
+    'n_estimators': 250, 'max_depth': 5, 'learning_rate': 0.02, 'num_leaves': 31,
+    'min_child_samples': 50, 'reg_alpha': 0.5, 'reg_lambda': 1.0  # Added regularization
 }
 
 # Only train models for horizons with sufficient data
