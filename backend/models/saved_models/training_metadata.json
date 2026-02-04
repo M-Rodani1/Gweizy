@@ -1,28 +1,32 @@
 {
-  "training_timestamp": "2026-02-02T03:14:40.885438",
-  "total_samples": 16081,
+  "training_timestamp": "2026-02-04T00:32:09.002397",
+  "total_samples": 18500,
   "training_samples": 5760,
   "holdout_samples": 5760,
-  "date_range": "2026-01-20 18:59:30 to 2026-02-02 03:02:30",
+  "date_range": "2026-01-20 18:59:30 to 2026-02-04 00:24:30",
   "selection_method": "holdout-based",
   "configuration": {
     "target_transform": "log",
     "use_rolling_window": true,
     "rolling_window_days": 2,
     "distribution_shift_detected": true,
-    "shift_magnitude": 3.4274147295023107,
+    "shift_magnitude": 2.1029999999999998,
     "feature_pruning_enabled": true,
     "ensemble_blending_enabled": true,
     "regularization_strength": 0.3,
     "time_specific_models_enabled": true
   },
   "features": {
-    "count": 19,
+    "count": 24,
     "list": [
+      "hour",
       "hour_sin",
+      "hour_cos",
       "eth_log",
       "eth_zscore_4h",
       "gas_eth_corr_1h",
+      "util_mean_1h",
+      "util_mean_2h",
       "gas_lag_5min",
       "gas_lag_15min",
       "gas_lag_30min",
@@ -35,6 +39,7 @@
       "gas_mean_4h",
       "momentum_1h",
       "momentum_pct_2h",
+      "trend_1h_4h",
       "gas_zscore_1h",
       "is_spike",
       "is_high_gas"
@@ -42,155 +47,155 @@
   },
   "baselines": {
     "1h": {
-      "naive_mae": 0.14158066420256962,
-      "mean_mae": 0.09395949231225366,
-      "best": 0.09395949231225366,
-      "holdout_naive_mae": 0.6283888125266311,
-      "holdout_mean_mae": 0.29607151603276166,
-      "holdout_best": 0.29607151603276166
+      "naive_mae": 0.5058042550821954,
+      "mean_mae": 0.24713267775466113,
+      "best": 0.24713267775466113,
+      "holdout_naive_mae": 0.6073814852183748,
+      "holdout_mean_mae": 0.2308738186514475,
+      "holdout_best": 0.2308738186514475
     },
     "4h": {
-      "naive_mae": 0.13831951184583133,
-      "mean_mae": 0.08846455104094741,
-      "best": 0.08846455104094741,
-      "holdout_naive_mae": 0.6202971084612308,
-      "holdout_mean_mae": 0.2661547784112901,
-      "holdout_best": 0.2661547784112901
+      "naive_mae": 0.5042613620964365,
+      "mean_mae": 0.24736170753020295,
+      "best": 0.24736170753020295,
+      "holdout_naive_mae": 0.5843298797856932,
+      "holdout_mean_mae": 0.2100982102622584,
+      "holdout_best": 0.2100982102622584
     }
   },
   "models": {
     "1h": {
-      "name": "RF",
-      "mae": 0.24945116322591307,
-      "improvement_pct": -160.57893789273123,
-      "vs_holdout_baseline_pct": 17.304220818871162,
+      "name": "ElasticNet",
+      "mae": 0.23458816725507914,
+      "improvement_pct": 5.131390686758414,
+      "vs_holdout_baseline_pct": -1.5495546068717705,
       "passed_baseline": true,
       "is_fallback": false,
       "is_ensemble": false,
-      "has_bias_correction": false,
+      "has_bias_correction": true,
       "has_time_adaptive": true,
-      "n_features": 15,
+      "n_features": 5,
       "calibration": {
         "conformal_coverage": 0.8,
-        "adaptive_coverage": 0.8270833333333333,
-        "conformal_width": 0.3195374632512282,
+        "adaptive_coverage": 0.8190972222222223,
+        "conformal_width": 0.3040476318453132,
         "time_intervals": {
           "night": {
-            "interval_80": 0.31620322336951223,
-            "interval_90": 0.5032848614177529,
-            "multiplier": 1.0,
-            "mae": 0.21478541360431444,
-            "n_samples": 1518,
-            "actual_coverage_80": 0.7997364953886693
+            "interval_80": 0.3625593957942426,
+            "interval_90": 0.500816091552744,
+            "multiplier": 1.192442755083512,
+            "mae": 0.2385825916264783,
+            "n_samples": 1379,
+            "actual_coverage_80": 0.7998549673676577
           },
           "morning": {
-            "interval_80": 0.21666339402896093,
-            "interval_90": 0.3227832983670145,
+            "interval_80": 0.2122363869535307,
+            "interval_90": 0.39153353758320325,
             "multiplier": 1.0,
-            "mae": 0.16599727473626352,
-            "n_samples": 1440,
+            "mae": 0.17896137384834299,
+            "n_samples": 720,
             "actual_coverage_80": 0.8
           },
           "afternoon": {
-            "interval_80": 0.5015883007502686,
-            "interval_90": 0.8822899732444962,
-            "multiplier": 1.5697323739342186,
-            "mae": 0.34541443108329845,
-            "n_samples": 1362,
-            "actual_coverage_80": 0.7995594713656388
+            "interval_80": 0.34977288194194334,
+            "interval_90": 0.6144152824113914,
+            "multiplier": 1.1503884434787943,
+            "mae": 0.2568978503704005,
+            "n_samples": 1330,
+            "actual_coverage_80": 0.8
           },
           "evening": {
-            "interval_80": 0.36181249334197607,
-            "interval_90": 0.6764693779173171,
-            "multiplier": 1.1323007000825758,
-            "mae": 0.2786832719265543,
-            "n_samples": 1440,
-            "actual_coverage_80": 0.8
+            "interval_80": 0.28067535022857426,
+            "interval_90": 0.5147327576840031,
+            "multiplier": 1.0,
+            "mae": 0.2366778718888471,
+            "n_samples": 2331,
+            "actual_coverage_80": 0.8000858000858001
           }
         },
         "regime_intervals": {
           "normal": {
-            "interval_80": 0.3165556910739663,
-            "interval_90": 0.5853076661973372,
+            "interval_80": 0.2976943409905296,
+            "interval_90": 0.5068635692700874,
             "multiplier": 1.0,
-            "mae": 0.2475945378501969,
-            "n_samples": 5298,
-            "actual_coverage_80": 0.7999244998112496
+            "mae": 0.23298037963815343,
+            "n_samples": 5309,
+            "actual_coverage_80": 0.7999623281220569
           },
           "elevated": {
-            "interval_80": 0.38486295811248067,
-            "interval_90": 0.6330136242233745,
-            "multiplier": 1.2044376712407332,
-            "mae": 0.287620643377652,
-            "n_samples": 237,
-            "actual_coverage_80": 0.7974683544303798
+            "interval_80": 0.4058451216092188,
+            "interval_90": 0.5778709521504334,
+            "multiplier": 1.3348077047865183,
+            "mae": 0.27748063803178347,
+            "n_samples": 223,
+            "actual_coverage_80": 0.7982062780269058
           },
           "spike": {
-            "interval_80": 0.3042298670970858,
-            "interval_90": 0.6450103032944179,
-            "multiplier": 1.0,
-            "mae": 0.2529633163129466,
-            "n_samples": 225,
-            "actual_coverage_80": 0.8
+            "interval_80": 0.3608613231788711,
+            "interval_90": 0.5056892579664602,
+            "multiplier": 1.1868578649626265,
+            "mae": 0.23007379653162918,
+            "n_samples": 228,
+            "actual_coverage_80": 0.7982456140350878
           }
         },
         "calibration_source": "holdout",
         "regime_breakdown": {
           "normal": {
-            "n_samples": 5298,
-            "mae": 0.2475945378501969,
-            "std": 0.3530863745126372,
-            "conformal_coverage": 0.8023782559456398,
-            "adaptive_coverage": 0.8023782559456398,
+            "n_samples": 5309,
+            "mae": 0.23298037963815343,
+            "std": 0.33282530530745,
+            "conformal_coverage": 0.8044829534752307,
+            "adaptive_coverage": 0.8044829534752307,
             "target_coverage": 0.8,
             "calibrated": 1
           },
           "elevated": {
-            "n_samples": 237,
-            "mae": 0.287620643377652,
-            "std": 0.4160239388787533,
-            "conformal_coverage": 0.7468354430379747,
-            "adaptive_coverage": 0.7468354430379747,
+            "n_samples": 223,
+            "mae": 0.27748063803178347,
+            "std": 0.37576211350099414,
+            "conformal_coverage": 0.7354260089686099,
+            "adaptive_coverage": 0.7354260089686099,
             "target_coverage": 0.8,
             "calibrated": 1
           },
           "spike": {
-            "n_samples": 225,
-            "mae": 0.2529633163129466,
-            "std": 0.3875450164307834,
-            "conformal_coverage": 0.8,
-            "adaptive_coverage": 0.8,
+            "n_samples": 228,
+            "mae": 0.23007379653162918,
+            "std": 0.3132621753143104,
+            "conformal_coverage": 0.7587719298245614,
+            "adaptive_coverage": 0.7587719298245614,
             "target_coverage": 0.8,
             "calibrated": 1
           }
         },
         "time_breakdown": {
           "night": {
-            "n_samples": 1518,
-            "mae": 0.21478541360431444,
-            "conformal_coverage": 0.8050065876152833,
-            "adaptive_coverage": 0.8050065876152833,
+            "n_samples": 1379,
+            "mae": 0.2385825916264783,
+            "conformal_coverage": 0.7563451776649747,
+            "adaptive_coverage": 0.7563451776649747,
             "calibrated": 1
           },
           "morning": {
-            "n_samples": 1440,
-            "mae": 0.16599727473626352,
-            "conformal_coverage": 0.8986111111111111,
-            "adaptive_coverage": 0.8986111111111111,
+            "n_samples": 720,
+            "mae": 0.17896137384834299,
+            "conformal_coverage": 0.8694444444444445,
+            "adaptive_coverage": 0.8694444444444445,
             "calibrated": 1
           },
           "afternoon": {
-            "n_samples": 1362,
-            "mae": 0.34541443108329845,
-            "conformal_coverage": 0.7209985315712188,
-            "adaptive_coverage": 0.7209985315712188,
+            "n_samples": 1330,
+            "mae": 0.2568978503704005,
+            "conformal_coverage": 0.7721804511278195,
+            "adaptive_coverage": 0.7721804511278195,
             "calibrated": 1
           },
           "evening": {
-            "n_samples": 1440,
-            "mae": 0.2786832719265543,
-            "conformal_coverage": 0.7708333333333334,
-            "adaptive_coverage": 0.7708333333333334,
+            "n_samples": 2331,
+            "mae": 0.2366778718888471,
+            "conformal_coverage": 0.8202488202488203,
+            "adaptive_coverage": 0.8202488202488203,
             "calibrated": 1
           }
         },
@@ -198,369 +203,419 @@
       }
     },
     "4h": {
-      "name": "GBM-Asym",
-      "mae": 0.2343927374684441,
-      "improvement_pct": -163.16356743997014,
-      "vs_holdout_baseline_pct": 12.529667951573032,
+      "name": "ElasticNet",
+      "mae": 0.20698413750387354,
+      "improvement_pct": 16.323290467826066,
+      "vs_holdout_baseline_pct": 1.4821986129713625,
       "passed_baseline": true,
       "is_fallback": false,
       "is_ensemble": false,
-      "has_bias_correction": false,
+      "has_bias_correction": true,
       "has_time_adaptive": true,
-      "n_features": 19,
+      "n_features": 24,
       "calibration": {
         "conformal_coverage": 0.8,
-        "adaptive_coverage": 0.8463541666666666,
-        "conformal_width": 0.2839186624396129,
+        "adaptive_coverage": 0.8472222222222222,
+        "conformal_width": 0.3038682362984079,
         "time_intervals": {
           "night": {
-            "interval_80": 0.20795464415108236,
-            "interval_90": 0.28206846629590276,
-            "multiplier": 1.0,
-            "mae": 0.14950502453713568,
-            "n_samples": 1518,
-            "actual_coverage_80": 0.7997364953886693
+            "interval_80": 0.5149852451959129,
+            "interval_90": 0.5256161039130274,
+            "multiplier": 1.6947649792858956,
+            "mae": 0.26461403320322757,
+            "n_samples": 1379,
+            "actual_coverage_80": 0.7998549673676577
           },
           "morning": {
-            "interval_80": 0.2133683102214202,
-            "interval_90": 0.32857285466394326,
+            "interval_80": 0.14671709787526993,
+            "interval_90": 0.18723614327433355,
             "multiplier": 1.0,
-            "mae": 0.2069539059227542,
-            "n_samples": 1440,
+            "mae": 0.13376948957830878,
+            "n_samples": 720,
             "actual_coverage_80": 0.8
           },
           "afternoon": {
-            "interval_80": 0.5075176228490851,
-            "interval_90": 0.9475800169128062,
-            "multiplier": 1.787545836149569,
-            "mae": 0.33350952032142156,
-            "n_samples": 1362,
-            "actual_coverage_80": 0.7995594713656388
+            "interval_80": 0.1981923956331216,
+            "interval_90": 0.37629698220300317,
+            "multiplier": 1.0,
+            "mae": 0.1871618531566912,
+            "n_samples": 1330,
+            "actual_coverage_80": 0.8
           },
           "evening": {
-            "interval_80": 0.39901855101825756,
-            "interval_90": 0.695723913217441,
-            "multiplier": 1.4053974035719665,
-            "mae": 0.2575694092807805,
-            "n_samples": 1440,
-            "actual_coverage_80": 0.8
+            "interval_80": 0.27415605222058825,
+            "interval_90": 0.48019970750439206,
+            "multiplier": 1.0,
+            "mae": 0.20681535093963066,
+            "n_samples": 2331,
+            "actual_coverage_80": 0.8000858000858001
           }
         },
         "regime_intervals": {
           "normal": {
-            "interval_80": 0.2833832783790225,
-            "interval_90": 0.5552001332571864,
+            "interval_80": 0.3001768198954959,
+            "interval_90": 0.5145125205667065,
             "multiplier": 1.0,
-            "mae": 0.23634906130764577,
-            "n_samples": 5298,
-            "actual_coverage_80": 0.7999244998112496
+            "mae": 0.20602226155357392,
+            "n_samples": 5309,
+            "actual_coverage_80": 0.7999623281220569
           },
           "elevated": {
-            "interval_80": 0.2646856394030385,
-            "interval_90": 0.47416594520902355,
-            "multiplier": 1.0,
-            "mae": 0.19821096477063976,
-            "n_samples": 237,
-            "actual_coverage_80": 0.7974683544303798
+            "interval_80": 0.40370973179727854,
+            "interval_90": 0.5214390317237584,
+            "multiplier": 1.3285683844915703,
+            "mae": 0.2257453851993994,
+            "n_samples": 223,
+            "actual_coverage_80": 0.7982062780269058
           },
           "spike": {
-            "interval_80": 0.2974619508501755,
-            "interval_90": 0.5864612693869277,
-            "multiplier": 1.0477012968932367,
-            "mae": 0.22643929937639662,
-            "n_samples": 225,
-            "actual_coverage_80": 0.8
+            "interval_80": 0.30880639489258993,
+            "interval_90": 0.5274207236807877,
+            "multiplier": 1.016250986461555,
+            "mae": 0.21103168655667315,
+            "n_samples": 228,
+            "actual_coverage_80": 0.7982456140350878
           }
         },
         "calibration_source": "holdout",
         "regime_breakdown": {
           "normal": {
-            "n_samples": 5298,
-            "mae": 0.23634906130764577,
-            "std": 0.3735141663718974,
-            "conformal_coverage": 0.8006795016987542,
-            "adaptive_coverage": 0.8006795016987542,
+            "n_samples": 5309,
+            "mae": 0.20602226155357392,
+            "std": 0.2843800209060096,
+            "conformal_coverage": 0.8016575626294971,
+            "adaptive_coverage": 0.8016575626294971,
             "target_coverage": 0.8,
             "calibrated": 1
           },
           "elevated": {
-            "n_samples": 237,
-            "mae": 0.19821096477063976,
-            "std": 0.2540394903755267,
-            "conformal_coverage": 0.810126582278481,
-            "adaptive_coverage": 0.810126582278481,
+            "n_samples": 223,
+            "mae": 0.2257453851993994,
+            "std": 0.2453993001620908,
+            "conformal_coverage": 0.7623318385650224,
+            "adaptive_coverage": 0.7623318385650224,
             "target_coverage": 0.8,
             "calibrated": 1
           },
           "spike": {
-            "n_samples": 225,
-            "mae": 0.22643929937639662,
-            "std": 0.35403278010351863,
-            "conformal_coverage": 0.7733333333333333,
-            "adaptive_coverage": 0.7733333333333333,
+            "n_samples": 228,
+            "mae": 0.21103168655667315,
+            "std": 0.27664103335465895,
+            "conformal_coverage": 0.7982456140350878,
+            "adaptive_coverage": 0.7982456140350878,
             "target_coverage": 0.8,
             "calibrated": 1
           }
         },
         "time_breakdown": {
           "night": {
-            "n_samples": 1518,
-            "mae": 0.14950502453713568,
-            "conformal_coverage": 0.8998682476943346,
-            "adaptive_coverage": 0.8998682476943346,
-            "calibrated": 1
-          },
-          "morning": {
-            "n_samples": 1440,
-            "mae": 0.2069539059227542,
-            "conformal_coverage": 0.8798611111111111,
-            "adaptive_coverage": 0.8798611111111111,
-            "calibrated": 1
-          },
-          "afternoon": {
-            "n_samples": 1362,
-            "mae": 0.33350952032142156,
-            "conformal_coverage": 0.6798825256975036,
-            "adaptive_coverage": 0.6798825256975036,
+            "n_samples": 1379,
+            "mae": 0.26461403320322757,
+            "conformal_coverage": 0.6076867295141407,
+            "adaptive_coverage": 0.6076867295141407,
             "calibrated": 0
           },
+          "morning": {
+            "n_samples": 720,
+            "mae": 0.13376948957830878,
+            "conformal_coverage": 0.9527777777777777,
+            "adaptive_coverage": 0.9527777777777777,
+            "calibrated": 0
+          },
+          "afternoon": {
+            "n_samples": 1330,
+            "mae": 0.1871618531566912,
+            "conformal_coverage": 0.8759398496240601,
+            "adaptive_coverage": 0.8759398496240601,
+            "calibrated": 1
+          },
           "evening": {
-            "n_samples": 1440,
-            "mae": 0.2575694092807805,
-            "conformal_coverage": 0.7284722222222222,
-            "adaptive_coverage": 0.7284722222222222,
+            "n_samples": 2331,
+            "mae": 0.20681535093963066,
+            "conformal_coverage": 0.8232518232518232,
+            "adaptive_coverage": 0.8232518232518232,
             "calibrated": 1
           }
         },
         "warnings": [
-          "afternoon period under-covered: 68.0% (target 80%)"
+          "night period under-covered: 60.8% (target 80%)"
         ]
       }
     },
     "24h": {
-      "name": "GBM-Asym (4h fallback)",
-      "mae": 0.2343927374684441,
-      "improvement_pct": -163.16356743997014,
-      "vs_holdout_baseline_pct": 12.529667951573032,
+      "name": "ElasticNet (4h fallback)",
+      "mae": 0.20698413750387354,
+      "improvement_pct": 16.323290467826066,
+      "vs_holdout_baseline_pct": 1.4821986129713625,
       "passed_baseline": true,
       "is_fallback": true,
       "is_ensemble": false,
       "has_bias_correction": false,
       "has_time_adaptive": false,
-      "n_features": 19
+      "n_features": 24
     }
   },
   "time_specific_models": {
     "1h": {
-      "afternoon": {
-        "mae": 0.34268526042768616,
-        "improvement": 0.7901148330870219
+      "night": {
+        "mae": 0.2384618743304703,
+        "improvement": 0.050597696665556254
       }
     },
     "4h": {
-      "evening": {
-        "mae": 0.2551375991050064,
-        "improvement": 0.9441378083540742
+      "night": {
+        "mae": 0.24534010015737498,
+        "improvement": 7.283790966237199
       }
     }
   },
   "regime_models": {
     "1h": {
       "normal": {
-        "mae": 0.24246163934501044,
-        "n_samples": 5448
+        "mae": 0.23293897530006233,
+        "n_samples": 5412
       }
     },
     "4h": {
       "normal": {
-        "mae": 0.23763931115258527,
-        "n_samples": 5448
+        "mae": 0.20597091231017065,
+        "n_samples": 5412
       }
     }
   },
   "direction_models": {
     "1h": {
-      "accuracy": 0.6751736111111111,
-      "f1_score": 0.6678367922814984,
-      "baseline_accuracy": 0.5064236111111111,
-      "improvement_vs_baseline": 33.32190606787795
+      "accuracy": 0.7107638888888889,
+      "f1_score": 0.7100312816321162,
+      "baseline_accuracy": 0.5121527777777778,
+      "improvement_vs_baseline": 38.77966101694915
     },
     "4h": {
-      "accuracy": 0.6979166666666666,
-      "f1_score": 0.696693817054053,
-      "baseline_accuracy": 0.5489583333333333,
-      "improvement_vs_baseline": 27.134724857685004
+      "accuracy": 0.7107638888888889,
+      "f1_score": 0.7093671754436202,
+      "baseline_accuracy": 0.5180555555555556,
+      "improvement_vs_baseline": 37.198391420911506
     }
   },
   "spike_forecast_models": {
     "1h": {
-      "has_model": false,
-      "precision": 0.0,
-      "recall": 0.0,
-      "f1_score": 0.0,
-      "auc": 0.5,
+      "has_model": true,
+      "precision": 0.5618955512572534,
+      "recall": 0.9931623931623932,
+      "f1_score": 0.7177269919703521,
+      "auc": 0.6349694542394033,
       "threshold_config": null
     },
     "4h": {
-      "has_model": false,
-      "precision": 0.0,
-      "recall": 0.0,
-      "f1_score": 0.0,
-      "auc": 0.5,
+      "has_model": true,
+      "precision": 0.9598732840549102,
+      "recall": 0.959063093479637,
+      "f1_score": 0.9594680177327423,
+      "auc": 0.9083718052837839,
+      "threshold_config": null
+    },
+    "2h": {
+      "has_model": true,
+      "precision": 0.8217916746595051,
+      "recall": 0.99581589958159,
+      "f1_score": 0.9004729374671572,
+      "auc": 0.623436779529582,
       "threshold_config": null
     }
   },
   "error_analysis": {
     "1h": {
-      "mean_error": 0.14096418951188433,
-      "std_error": 0.4124041566930809,
-      "mae": 0.24945116322591307,
-      "corrected_mae": 0.2688211073120493,
-      "median_ae": 0.13532667004322485,
-      "max_error": 2.9714707319016163,
-      "p95_error": 0.9028221217592087,
-      "p99_error": 1.8631899868630428,
-      "bias_correction_applied": 0,
+      "mean_error": 0.10551216810891796,
+      "std_error": 0.39423783391908734,
+      "mae": 0.23458816725507914,
+      "corrected_mae": 0.2331864969375385,
+      "median_ae": 0.13804761035988095,
+      "max_error": 3.6254411501994688,
+      "p95_error": 0.8056384558739816,
+      "p99_error": 1.727383986973087,
+      "bias_correction_applied": 1,
       "regime_errors": {
-        "normal": 0.2475945378501969,
-        "elevated": 0.287620643377652,
-        "spike": 0.2529633163129466
+        "normal": 0.23298037963815343,
+        "elevated": 0.27748063803178347,
+        "spike": 0.23007379653162918
       },
       "time_errors": {
-        "night": 0.21478541360431444,
-        "morning": 0.16599727473626352,
-        "afternoon": 0.34541443108329845,
-        "evening": 0.2786832719265543
+        "night": 0.2385825916264783,
+        "morning": 0.17896137384834299,
+        "afternoon": 0.2568978503704005,
+        "evening": 0.2366778718888471
       }
     },
     "4h": {
-      "mean_error": 0.13009797097518724,
-      "std_error": 0.41707136446183957,
-      "mae": 0.2343927374684441,
-      "corrected_mae": 0.24840445837454236,
-      "median_ae": 0.12548160883200743,
-      "max_error": 3.5346953281952245,
-      "p95_error": 0.9150148585276491,
-      "p99_error": 1.874327813396754,
-      "bias_correction_applied": 0,
+      "mean_error": 0.09604613988514718,
+      "std_error": 0.33694705874387737,
+      "mae": 0.20698413750387354,
+      "corrected_mae": 0.19432087433766787,
+      "median_ae": 0.10565037650482331,
+      "max_error": 3.703333117730026,
+      "p95_error": 0.5917682548721837,
+      "p99_error": 1.389116450914309,
+      "bias_correction_applied": 1,
       "regime_errors": {
-        "normal": 0.23634906130764577,
-        "elevated": 0.19821096477063976,
-        "spike": 0.22643929937639662
+        "normal": 0.20602226155357392,
+        "elevated": 0.2257453851993994,
+        "spike": 0.21103168655667315
       },
       "time_errors": {
-        "night": 0.14950502453713568,
-        "morning": 0.2069539059227542,
-        "afternoon": 0.33350952032142156,
-        "evening": 0.2575694092807805
+        "night": 0.26461403320322757,
+        "morning": 0.13376948957830878,
+        "afternoon": 0.1871618531566912,
+        "evening": 0.20681535093963066
       }
     }
   },
   "bias_correction": {
     "1h": {
       "overall": {
-        "bias": 0.14096418951188433,
-        "recent_bias": 0.005884907684025586,
-        "correction": 0.005884907684025586,
+        "bias": 0.10551216810891796,
+        "median_bias": -0.013562382921051816,
+        "recent_bias": 0.022071850761206532,
+        "correction": -0.013562382921051816,
+        "mae": 0.23458816725507914,
         "should_apply": 0
       },
       "by_time": {
         "night": {
-          "bias": 0.10939901045798966,
-          "correction": 0.10939901045798966,
-          "n_samples": 1518,
-          "should_apply": 1
+          "bias": 0.14311581272733293,
+          "median_bias": 0.02669397035630655,
+          "correction": 0.02669397035630655,
+          "mae": 0.2385825916264783,
+          "mae_ratio": 1.01702739067421,
+          "n_samples": 1379,
+          "should_apply": 1,
+          "is_high_error": 0
         },
         "morning": {
-          "bias": 0.05465259197206027,
-          "correction": 0.05465259197206027,
-          "n_samples": 1440,
-          "should_apply": 1
+          "bias": 0.07148362551128688,
+          "median_bias": -0.011182096967580962,
+          "correction": -0.011182096967580962,
+          "mae": 0.17896137384834299,
+          "mae_ratio": 0.7628746835033225,
+          "n_samples": 720,
+          "should_apply": 1,
+          "is_high_error": 0
         },
         "afternoon": {
-          "bias": 0.26350512131359394,
-          "correction": 0.26350512131359394,
-          "n_samples": 1362,
-          "should_apply": 1
+          "bias": 0.13977647038140756,
+          "median_bias": 0.0017394511134200957,
+          "correction": 0.0017394511134200957,
+          "mae": 0.2568978503704005,
+          "mae_ratio": 1.0951014851958112,
+          "n_samples": 1330,
+          "should_apply": 1,
+          "is_high_error": 0
         },
         "evening": {
-          "bias": 0.14464744864190532,
-          "correction": 0.14464744864190532,
-          "n_samples": 1440,
-          "should_apply": 1
+          "bias": 0.07422671238995145,
+          "median_bias": -0.040846702070961804,
+          "correction": -0.040846702070961804,
+          "mae": 0.2366778718888471,
+          "mae_ratio": 1.0089079711829443,
+          "n_samples": 2331,
+          "should_apply": 1,
+          "is_high_error": 0
         }
       },
       "by_regime": {
         "normal": {
-          "bias": 0.138736777872436,
-          "correction": 0.138736777872436,
-          "n_samples": 5298,
+          "bias": 0.10155992012753992,
+          "median_bias": -0.01709499834871281,
+          "correction": -0.01709499834871281,
+          "n_samples": 5309,
           "should_apply": 1
         },
         "elevated": {
-          "bias": 0.1719070215185328,
-          "correction": 0.1719070215185328,
-          "n_samples": 237,
+          "bias": 0.18060812510727542,
+          "median_bias": 0.028222286578420963,
+          "correction": 0.028222286578420963,
+          "n_samples": 223,
           "should_apply": 1
         },
         "spike": {
-          "bias": 0.1608191925350913,
-          "correction": 0.1608191925350913,
-          "n_samples": 225,
+          "bias": 0.1240914932076122,
+          "median_bias": 0.014355959256352704,
+          "correction": 0.014355959256352704,
+          "n_samples": 228,
           "should_apply": 1
         }
       }
     },
     "4h": {
       "overall": {
-        "bias": 0.13009797097518724,
-        "recent_bias": -0.032566076926411655,
-        "correction": -0.032566076926411655,
+        "bias": 0.09604613988514718,
+        "median_bias": -0.018409418599476382,
+        "recent_bias": 0.07530998704004294,
+        "correction": -0.018409418599476382,
+        "mae": 0.20698413750387354,
         "should_apply": 0
       },
       "by_time": {
         "night": {
-          "bias": 0.009448433578557352,
-          "correction": 0.009448433578557352,
-          "n_samples": 1518,
-          "should_apply": 0
+          "bias": 0.20863808980179027,
+          "median_bias": 0.12506798422672644,
+          "correction": 0.12506798422672644,
+          "mae": 0.26461403320322757,
+          "mae_ratio": 1.2784266291820334,
+          "n_samples": 1379,
+          "should_apply": 1,
+          "is_high_error": 1
         },
         "morning": {
-          "bias": 0.030219941655498402,
-          "correction": 0.030219941655498402,
-          "n_samples": 1440,
-          "should_apply": 1
+          "bias": -0.03283272812459526,
+          "median_bias": -0.09861593203392834,
+          "correction": -0.09861593203392834,
+          "mae": 0.13376948957830878,
+          "mae_ratio": 0.6462789428769893,
+          "n_samples": 720,
+          "should_apply": 1,
+          "is_high_error": 0
         },
         "afternoon": {
-          "bias": 0.29461414705893274,
-          "correction": 0.29461414705893274,
-          "n_samples": 1362,
-          "should_apply": 1
+          "bias": 0.042485509765045996,
+          "median_bias": -0.07291459553753502,
+          "correction": -0.07291459553753502,
+          "mae": 0.1871618531566912,
+          "mae_ratio": 0.9042328335580239,
+          "n_samples": 1330,
+          "should_apply": 1,
+          "is_high_error": 0
         },
         "evening": {
-          "bias": 0.20155583775461416,
-          "correction": 0.20155583775461416,
-          "n_samples": 1440,
-          "should_apply": 1
+          "bias": 0.09980595288029881,
+          "median_bias": 0.012674846850848465,
+          "correction": 0.012674846850848465,
+          "mae": 0.20681535093963066,
+          "mae_ratio": 0.9991845434810689,
+          "n_samples": 2331,
+          "should_apply": 1,
+          "is_high_error": 0
         }
       },
       "by_regime": {
         "normal": {
-          "bias": 0.131241723240195,
-          "correction": 0.131241723240195,
-          "n_samples": 5298,
+          "bias": 0.09356311466553068,
+          "median_bias": -0.021711426696986696,
+          "correction": -0.021711426696986696,
+          "n_samples": 5309,
           "should_apply": 1
         },
         "elevated": {
-          "bias": 0.10234454192117651,
-          "correction": 0.10234454192117651,
-          "n_samples": 237,
+          "bias": 0.1288892208319067,
+          "median_bias": 0.030288384626907833,
+          "correction": 0.030288384626907833,
+          "n_samples": 223,
           "should_apply": 1
         },
         "spike": {
-          "bias": 0.13240002957869657,
-          "correction": 0.13240002957869657,
-          "n_samples": 225,
+          "bias": 0.1217407619896067,
+          "median_bias": 0.023518009401243573,
+          "correction": 0.023518009401243573,
+          "n_samples": 228,
           "should_apply": 1
         }
       }
@@ -568,15 +623,15 @@
   },
   "calibration": {
     "1h": {
-      "conformal_width": 0.3195374632512282,
+      "conformal_width": 0.3040476318453132,
       "source": "holdout"
     },
     "4h": {
-      "conformal_width": 0.2839186624396129,
+      "conformal_width": 0.3038682362984079,
       "source": "holdout"
     },
     "24h": {
-      "conformal_width": 0.2839186624396129,
+      "conformal_width": 0.3038682362984079,
       "source": "holdout"
     }
   },
@@ -584,27 +639,28 @@
     "1h": {
       "should_retrain": true,
       "signals": [
-        "Distribution shift detected (magnitude: 3.43)",
-        "Systematic bias: 0.1410",
-        "High P99 error: 1.8632 (3x MAE)"
+        "Model worse than baseline by 1.6%",
+        "Distribution shift detected (magnitude: 2.10)",
+        "Systematic bias: 0.1055",
+        "High P99 error: 1.7274 (3x MAE)"
       ],
       "urgency": "high"
     },
     "4h": {
       "should_retrain": true,
       "signals": [
-        "Distribution shift detected (magnitude: 3.43)",
-        "Systematic bias: 0.1301",
-        "High P99 error: 1.8743 (3x MAE)"
+        "Distribution shift detected (magnitude: 2.10)",
+        "High P99 error: 1.3891 (3x MAE)"
       ],
-      "urgency": "high"
+      "urgency": "medium"
     },
     "24h": {
       "should_retrain": true,
       "signals": [
-        "Distribution shift detected (magnitude: 3.43)"
+        "Distribution shift detected (magnitude: 2.10)"
       ],
       "urgency": "medium"
     }
-  }
+  },
+  "backtest_results": {}
 }
