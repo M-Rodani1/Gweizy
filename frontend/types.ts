@@ -1,5 +1,15 @@
 import React from 'react';
 
+// Bias correction info from backend
+export interface BiasCorrection {
+  applied: boolean;
+  type?: 'time_period' | 'overall';
+  period?: 'night' | 'morning' | 'afternoon' | 'evening';
+  correction?: number;
+  original?: number;
+  corrected?: number;
+}
+
 // Graph data point
 export interface GraphDataPoint {
   time: string;
@@ -12,6 +22,7 @@ export interface GraphDataPoint {
   confidenceEmoji?: string;
   confidenceColor?: string;
   trend_signal_4h?: number; // The "Macro" signal (-1.0 to 1.0)
+  bias_correction?: BiasCorrection;
   classification?: {
     class?: string;
     emoji?: string;

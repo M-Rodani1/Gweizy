@@ -4,6 +4,8 @@ import { useChain } from '../contexts/ChainContext';
 import { fetchPredictions } from '../api/gasApi';
 import { SkeletonForecast } from './ui/Skeleton';
 import AnimatedNumber from './ui/AnimatedNumber';
+import { CorrectionBadge } from './ui/CorrectionBadge';
+import { BiasCorrection } from '../../types';
 
 interface Prediction {
   horizon: '1h' | '4h' | '24h';
@@ -11,6 +13,7 @@ interface Prediction {
   confidence: number;
   direction: 'up' | 'down' | 'stable';
   changePercent: number;
+  biasCorrection?: BiasCorrection;
 }
 
 const CompactForecast: React.FC = () => {
@@ -36,13 +39,15 @@ const CompactForecast: React.FC = () => {
               const predicted = data[0].predictedGwei || 0;
               const confidence = data[0].confidence || 0.5;
               const changePercent = currentGas > 0 ? ((predicted - currentGas) / currentGas) * 100 : 0;
+              const biasCorrection = data[0].bias_correction;
 
               preds.push({
                 horizon,
                 predicted,
                 confidence,
                 direction: changePercent > 5 ? 'up' : changePercent < -5 ? 'down' : 'stable',
-                changePercent
+                changePercent,
+                biasCorrection
               });
             }
           });
@@ -132,8 +137,9 @@ const CompactForecast: React.FC = () => {
 
               <div className="flex items-center gap-4">
                 <div className="text-right">
-                  <div className="font-mono font-bold text-white">
+                  <div className="font-mono font-bold text-white flex items-center justify-end">
                     <AnimatedNumber value={pred.predicted} decimals={4} />
+                    <CorrectionBadge biasCorrection={pred.biasCorrection} />
                   </div>
                   <div className={`text-xs ${getDirectionColor(pred.direction)}`}>
                     {pred.changePercent > 0 ? '+' : ''}
