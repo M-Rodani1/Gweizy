@@ -285,6 +285,11 @@ const PredictionCards: React.FC<PredictionCardsProps> = ({ hybridData }) => {
               <h3 className="text-lg font-semibold text-gray-200">
                 {card.horizon.toUpperCase()} PREDICTION
               </h3>
+              {card.horizon === '24h' && (
+                <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-cyan-500/10 text-cyan-300 border border-cyan-500/30">
+                  Most Reliable
+                </span>
+              )}
               {card.horizon === '4h' && (() => {
                 const trendSignal = card.trendSignal4h ?? hybridData?.trend_signal_4h;
                 if (trendSignal === undefined || trendSignal === null) {
@@ -311,11 +316,14 @@ const PredictionCards: React.FC<PredictionCardsProps> = ({ hybridData }) => {
 
           <div className="mb-4">
             <div className={`text-xl font-bold mb-2 ${getTextColor(card.color)}`}>
-              {card.changePercent < -10
+              {/* Binary action recommendation based on classifier probabilities */}
+              {card.probabilities && (card.probabilities.urgent + card.probabilities.wait) > 0.5
+                ? `WAIT - Consider Delaying`
+                : card.changePercent < -10
                 ? `WAIT - Gas Dropping ${Math.abs(card.changePercent).toFixed(0)}%`
                 : card.changePercent > 10
                 ? `TRANSACT NOW - Gas Rising ${card.changePercent.toFixed(0)}%`
-                : 'NEUTRAL - Gas Stable'}
+                : 'TRANSACT - Good Time'}
             </div>
           </div>
 
@@ -429,6 +437,11 @@ const PredictionCards: React.FC<PredictionCardsProps> = ({ hybridData }) => {
                   {card.confidenceLevel === 'medium' && "Moderate prediction confidence"}
                   {card.confidenceLevel === 'low' && "High uncertainty - prediction less reliable"}
                 </p>
+                {(card.horizon === '1h' || card.horizon === '4h') && (
+                  <p className="text-xs text-gray-500 italic mt-2">
+                    Short-term predictions have higher uncertainty
+                  </p>
+                )}
               </div>
             );
           })()}
@@ -473,9 +486,9 @@ const PredictionCards: React.FC<PredictionCardsProps> = ({ hybridData }) => {
                 <div className="bg-gray-800 rounded-lg p-4">
                   <h4 className="text-cyan-400 font-semibold mb-2">Confidence Levels</h4>
                   <ul className="text-gray-300 text-sm space-y-2">
-                    <li><span className="text-green-400">High confidence:</span> Models strongly agree on prediction</li>
-                    <li><span className="text-yellow-400">Medium confidence:</span> Moderate agreement between models</li>
-                    <li><span className="text-red-400">Low confidence:</span> High uncertainty - use caution</li>
+                    <li><span className="text-green-400">High confidence:</span> Model is confident in this prediction</li>
+                    <li><span className="text-yellow-400">Medium confidence:</span> Moderate prediction certainty</li>
+                    <li><span className="text-red-400">Low confidence:</span> High uncertainty - prediction less reliable</li>
                   </ul>
                 </div>
                 <div className="bg-gray-800 rounded-lg p-4">
