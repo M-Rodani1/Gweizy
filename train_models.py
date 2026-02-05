@@ -677,25 +677,34 @@ for name, steps in horizon_steps.items():
 
     # TARGET A (Classifier): spike_class
     # Classify FUTURE GAS PRICE LEVEL (not direction!) to match hybrid_predictor.py
-    # 0 (Normal): Low gas prices (below 50th percentile)
-    # 1 (Elevated): Medium gas prices (50th-90th percentile)
-    # 2 (Spike): High gas prices (above 90th percentile)
+    # Use IQR-based thresholds for better class separation:
+    # 0 (Normal): Below Q2 (median) - typical/low prices
+    # 1 (Elevated): Q2 to Q3 + 0.5*IQR - moderately high prices
+    # 2 (Spike): Above Q3 + 0.5*IQR - unusually high prices (outliers)
 
-    # Use percentile-based thresholds from the data distribution
     valid_future = future_price.dropna()
     if len(valid_future) > 0:
-        normal_threshold = valid_future.quantile(0.50)  # 50th percentile
-        elevated_threshold = valid_future.quantile(0.90)  # 90th percentile
-        log(f"      Price thresholds for {name}: Normal < {normal_threshold:.4f}, Elevated < {elevated_threshold:.4f}, Spike >= {elevated_threshold:.4f}")
+        q1 = valid_future.quantile(0.25)
+        q2 = valid_future.quantile(0.50)  # median
+        q3 = valid_future.quantile(0.75)
+        iqr = q3 - q1
+
+        # Normal: below median
+        normal_threshold = q2
+        # Spike: above Q3 + 0.5*IQR (less aggressive than 1.5*IQR to catch more spikes)
+        elevated_threshold = q3 + 0.5 * iqr
+
+        log(f"      IQR-based thresholds for {name}: Normal < {normal_threshold:.4f}, Elevated < {elevated_threshold:.4f}, Spike >= {elevated_threshold:.4f}")
+        log(f"      (Q1={q1:.4f}, Q2={q2:.4f}, Q3={q3:.4f}, IQR={iqr:.4f})")
     else:
         # Fallback to fixed thresholds matching hybrid_predictor.py
         normal_threshold = 0.01
         elevated_threshold = 0.05
 
     spike_class = pd.Series(0, index=future_price.index)  # Default to Normal (0)
-    spike_class[future_price >= elevated_threshold] = 2  # Spike (high prices)
+    spike_class[future_price >= elevated_threshold] = 2  # Spike (unusually high)
     spike_class[(future_price >= normal_threshold) & (future_price < elevated_threshold)] = 1  # Elevated
-    spike_class[future_price < normal_threshold] = 0  # Normal (low prices)
+    spike_class[future_price < normal_threshold] = 0  # Normal (below median)
     
     # TARGET B (Regressor): volatility_scaled_return
     # Normalize log-return by rolling mean and std to make small variations comparable
@@ -2865,15 +2874,21 @@ except ImportError:
     XGBOOST_AVAILABLE = False
     log("   ⚠️  XGBoost not available for spike detectors, using GradientBoosting")
 
-# Spike detection thresholds - ADAPTIVE based on price distribution
-# Using percentiles instead of absolute values for network-agnostic classification
-log("\n📊 Computing adaptive spike thresholds from price distribution...")
-# Calculate percentile-based thresholds from the training data
-# Normal: bottom 50% of prices
-# Elevated: 50th-85th percentile
-# Spike: top 15% of prices
-NORMAL_THRESHOLD = df['gas_price'].quantile(0.50)
-ELEVATED_THRESHOLD = df['gas_price'].quantile(0.85)
+# Spike detection thresholds - ADAPTIVE based on IQR for robust outlier detection
+# Using IQR-based thresholds instead of fixed percentiles for better spike detection
+log("\n📊 Computing adaptive spike thresholds from price distribution (IQR-based)...")
+# Calculate IQR-based thresholds from the training data
+# Q1, Q2 (median), Q3 and IQR
+q1_price = df['gas_price'].quantile(0.25)
+q2_price = df['gas_price'].quantile(0.50)  # median
+q3_price = df['gas_price'].quantile(0.75)
+iqr_price = q3_price - q1_price
+# Normal: below median (Q2)
+# Elevated: median to Q3 + 0.5*IQR
+# Spike: above Q3 + 0.5*IQR (mild outliers and beyond)
+NORMAL_THRESHOLD = q2_price
+ELEVATED_THRESHOLD = q3_price + 0.5 * iqr_price
+log(f"   IQR stats: Q1={q1_price:.6f}, Q2={q2_price:.6f}, Q3={q3_price:.6f}, IQR={iqr_price:.6f}")
 log(f"   Adaptive thresholds: Normal < {NORMAL_THRESHOLD:.6f} gwei < Elevated < {ELEVATED_THRESHOLD:.6f} gwei < Spike")
 log(f"   Based on {len(df):,} samples from {df['timestamp'].min()} to {df['timestamp'].max()}")
 
@@ -3117,13 +3132,13 @@ for horizon in ['1h', '4h', '24h']:
     sample_weights_smote = np.array([class_weight_dict_remapped[y] for y in y_train_smote])
 
     # Enhance weights for spike and elevated classes using per-class cost-sensitive learning
-    # Spike is ~10% of data (90th percentile), so 10x weight to balance
-    # Elevated is ~40% of data (50th-90th), so 2.5x weight
-    log(f"   Step 2: Applying per-class cost-sensitive learning (spike: 10x, elevated: 2.5x)...")
+    # Use moderate weights (4x/2x) - let SMOTE handle most of the imbalance
+    # Too high weights cause over-prediction of spike class
+    log(f"   Step 2: Applying per-class cost-sensitive learning (spike: 4x, elevated: 2x)...")
     cost_learner = CostSensitiveSpikeLearner(
         base_model=None,
-        spike_weight_multiplier=10.0,
-        elevated_weight_multiplier=2.5
+        spike_weight_multiplier=4.0,
+        elevated_weight_multiplier=2.0
     )
     sample_weights_final = cost_learner.compute_adjusted_weights(
         y_train_smote, original_weights=sample_weights_smote
@@ -3140,19 +3155,49 @@ for horizon in ['1h', '4h', '24h']:
             horizon=horizon
         )
 
-    # Train hierarchical binary classifiers with SMOTE + cost-sensitive learning
-    log(f"   Training hierarchical binary classifiers (Level 1: Normal vs Anomaly, Level 2: Elevated vs Spike)...")
+    # ===== BINARY CLASSIFICATION: Transact vs Wait =====
+    # Simpler, more actionable approach
+    # Class 0: "Transact" (Normal prices - good time to transact)
+    # Class 1: "Wait" (Elevated + Spike - consider waiting)
+    log(f"   🎯 Training BINARY classifier (Transact vs Wait)...")
+
+    # Create binary targets: 0 = Transact (Normal), 1 = Wait (Elevated or Spike)
+    y_train_binary = (y_train_spike_remapped > 0).astype(int)
+    y_val_binary = (y_val_spike_remapped > 0).astype(int)
+    y_test_binary = (y_test_spike_remapped > 0).astype(int)
+
+    # Also for SMOTE data
+    y_train_smote_binary = (y_train_smote > 0).astype(int)
+
+    log(f"      Binary class distribution (train): Transact={sum(y_train_binary==0)}, Wait={sum(y_train_binary==1)}")
+
+    # Compute balanced class weights
+    binary_class_weights = compute_class_weight('balanced', classes=np.array([0, 1]), y=y_train_binary)
+    binary_weight_dict = dict(zip([0, 1], binary_class_weights))
+
+    # Apply slightly higher weight to "Wait" class to catch more elevated/spike events
+    binary_weight_dict[1] *= 1.5  # 1.5x weight for Wait class
+    sample_weights_binary = np.array([binary_weight_dict[y] for y in y_train_smote_binary])
+    log(f"      Class weights: Transact={binary_weight_dict[0]:.3f}, Wait={binary_weight_dict[1]:.3f}")
+
+    # Train binary classifier
     if XGBOOST_AVAILABLE:
-        hierarchical_model = HierarchicalSpikeBinaryClassifier()
-        hierarchical_model.fit(
-            X_train_smote, y_train_smote,
-            X_val_spike.values, y_val_spike_remapped.values,
-            sample_weights=sample_weights_final
+        import xgboost as xgb
+        model_binary = xgb.XGBClassifier(
+            n_estimators=200,
+            max_depth=5,
+            learning_rate=0.1,
+            min_child_weight=5,
+            subsample=0.8,
+            colsample_bytree=0.8,
+            objective='binary:logistic',
+            random_state=42,
+            use_label_encoder=False,
+            eval_metric='logloss',
+            verbosity=0
         )
-        model_spike = hierarchical_model
     else:
-        log(f"   ⚠️  XGBoost required for hierarchical classifier, falling back to standard classifier...")
-        model_spike = GradientBoostingClassifier(
+        model_binary = GradientBoostingClassifier(
             n_estimators=200,
             max_depth=5,
             min_samples_split=10,
@@ -3161,60 +3206,94 @@ for horizon in ['1h', '4h', '24h']:
             random_state=42,
             verbose=0
         )
-        model_spike.fit(X_train_smote, y_train_smote, sample_weight=sample_weights_final)
 
-    # Calibrate the classifier for better probability estimates
-    if isinstance(model_spike, HierarchicalSpikeBinaryClassifier):
-        # For hierarchical model, skip calibration (too complex for multi-level hierarchy)
-        log(f"   Using hierarchical model predictions directly (skipping calibration)...")
-        calibrated_model = model_spike
-    else:
-        log(f"   Calibrating classifier for better probability estimates...")
-        calibrated_model = CalibratedClassifierCV(model_spike, method='isotonic', cv=3)
-        calibrated_model.fit(X_train_spike, y_train_spike_remapped, sample_weight=sample_weights)
-    
-    # Evaluate on validation and test sets (use remapped classes)
-    y_pred_val_remapped = calibrated_model.predict(X_val_spike)
-    y_pred_test_remapped = calibrated_model.predict(X_test_spike)
-    y_proba_val = calibrated_model.predict_proba(X_val_spike)
-    y_proba_test = calibrated_model.predict_proba(X_test_spike)
+    model_binary.fit(X_train_smote, y_train_smote_binary, sample_weight=sample_weights_binary)
 
-    # ===== PHASE 3a: Step 3 - THRESHOLD OPTIMIZATION =====
-    if isinstance(model_spike, HierarchicalSpikeBinaryClassifier):
-        log(f"   Step 3: Optimizing hierarchical Level 1 threshold...")
-        best_threshold, best_f1, threshold_results = model_spike.optimize_level1_threshold(
-            X_val_spike.values, y_val_spike_remapped.values
-        )
+    # Calibrate for better probability estimates
+    log(f"   Calibrating binary classifier...")
+    calibrated_binary = CalibratedClassifierCV(model_binary, method='isotonic', cv=3)
+    calibrated_binary.fit(X_train_spike, y_train_binary)
 
-        # Use optimized threshold for predictions
-        y_pred_val_optimized = model_spike.predict(X_val_spike.values, level1_threshold=best_threshold)
-        y_pred_test_optimized = model_spike.predict(X_test_spike.values, level1_threshold=best_threshold)
+    # Evaluate binary classifier
+    y_pred_binary_val = calibrated_binary.predict(X_val_spike)
+    y_pred_binary_test = calibrated_binary.predict(X_test_spike)
+    y_proba_binary_val = calibrated_binary.predict_proba(X_val_spike)
+    y_proba_binary_test = calibrated_binary.predict_proba(X_test_spike)
 
-        y_pred_val_remapped = y_pred_val_optimized
-        y_pred_test_remapped = y_pred_test_optimized
-    else:
-        log(f"   Step 3: Using simple argmax predictions...")
-        if len(np.unique(y_val_spike_remapped)) >= 2:
-            # Use argmax without reverting to normal - preserve minority class predictions
-            y_pred_val_optimized = np.argmax(y_proba_val, axis=1)
-            y_pred_test_optimized = np.argmax(y_proba_test, axis=1)
+    binary_acc_val = accuracy_score(y_val_binary, y_pred_binary_val)
+    binary_acc_test = accuracy_score(y_test_binary, y_pred_binary_test)
+    binary_f1_val = f1_score(y_val_binary, y_pred_binary_val, average='weighted')
+    binary_f1_test = f1_score(y_test_binary, y_pred_binary_test, average='weighted')
 
-            # Calculate macro F1 for all three classes
-            f1_macro = f1_score(y_val_spike_remapped.values, y_pred_val_optimized, average='macro', zero_division=0)
-            f1_weighted = f1_score(y_val_spike_remapped.values, y_pred_val_optimized, average='weighted', zero_division=0)
+    # Detailed binary metrics
+    from sklearn.metrics import precision_score, recall_score
+    transact_precision = precision_score(y_test_binary, y_pred_binary_test, pos_label=0, zero_division=0)
+    transact_recall = recall_score(y_test_binary, y_pred_binary_test, pos_label=0, zero_division=0)
+    wait_precision = precision_score(y_test_binary, y_pred_binary_test, pos_label=1, zero_division=0)
+    wait_recall = recall_score(y_test_binary, y_pred_binary_test, pos_label=1, zero_division=0)
 
-            log(f"      Validation Macro F1: {f1_macro:.4f}, Weighted F1: {f1_weighted:.4f}")
+    log(f"      Binary Accuracy: Val={binary_acc_val:.3f}, Test={binary_acc_test:.3f}")
+    log(f"      Binary F1: Val={binary_f1_val:.3f}, Test={binary_f1_test:.3f}")
+    log(f"      Transact: Precision={transact_precision:.3f}, Recall={transact_recall:.3f}")
+    log(f"      Wait: Precision={wait_precision:.3f}, Recall={wait_recall:.3f}")
 
-            # Use argmax predictions for remapping
-            y_pred_val_remapped = y_pred_val_optimized
-            y_pred_test_remapped = y_pred_test_optimized
-            best_threshold = 0.33  # Default equal threshold
-        else:
-            log(f"      ⚠️  Insufficient classes for predictions")
-            best_threshold = 0.33
+    # ===== Map binary predictions to 3-class format for compatibility =====
+    # Use probability to infer severity: high P(Wait) -> Spike, moderate -> Elevated
+    log(f"   Mapping binary to 3-class format using probability thresholds...")
+
+    def binary_to_3class(y_pred_binary, y_proba_binary, spike_threshold=0.7):
+        """
+        Convert binary predictions to 3-class format.
+        - If Transact (0): -> Normal (0)
+        - If Wait (1) and P(Wait) >= spike_threshold: -> Spike (2)
+        - If Wait (1) and P(Wait) < spike_threshold: -> Elevated (1)
+        """
+        n_samples = len(y_pred_binary)
+        y_pred_3class = np.zeros(n_samples, dtype=int)
+        probabilities_3class = np.zeros((n_samples, 3))
+
+        prob_wait = y_proba_binary[:, 1]
+        prob_transact = y_proba_binary[:, 0]
+
+        for i in range(n_samples):
+            if y_pred_binary[i] == 0:  # Transact -> Normal
+                y_pred_3class[i] = 0
+                probabilities_3class[i] = [prob_transact[i], 0.0, 0.0]
+            else:  # Wait -> Elevated or Spike based on probability
+                if prob_wait[i] >= spike_threshold:
+                    y_pred_3class[i] = 2  # Spike
+                    # Distribute probability: most to spike
+                    probabilities_3class[i] = [0.0, prob_wait[i] * 0.2, prob_wait[i] * 0.8]
+                else:
+                    y_pred_3class[i] = 1  # Elevated
+                    # Distribute probability: most to elevated
+                    probabilities_3class[i] = [0.0, prob_wait[i] * 0.7, prob_wait[i] * 0.3]
+
+        return y_pred_3class, probabilities_3class
+
+    # Find optimal spike threshold using validation set
+    best_threshold = 0.7
+    best_f1 = 0
+    for threshold in [0.5, 0.6, 0.7, 0.8, 0.85]:
+        y_pred_3class_val, _ = binary_to_3class(y_pred_binary_val, y_proba_binary_val, threshold)
+        f1 = f1_score(y_val_spike_remapped.values, y_pred_3class_val, average='macro', zero_division=0)
+        if f1 > best_f1:
+            best_f1 = f1
+            best_threshold = threshold
+
+    log(f"      Optimal spike threshold: {best_threshold} (Macro F1: {best_f1:.4f})")
+
+    # Apply to validation and test sets
+    y_pred_val_remapped, y_proba_val = binary_to_3class(y_pred_binary_val, y_proba_binary_val, best_threshold)
+    y_pred_test_remapped, y_proba_test = binary_to_3class(y_pred_binary_test, y_proba_binary_test, best_threshold)
+
+    # Calculate 3-class metrics for reporting
+    f1_macro = f1_score(y_val_spike_remapped.values, y_pred_val_remapped, average='macro', zero_division=0)
+    f1_weighted = f1_score(y_val_spike_remapped.values, y_pred_val_remapped, average='weighted', zero_division=0)
+    log(f"      3-class Validation Macro F1: {f1_macro:.4f}, Weighted F1: {f1_weighted:.4f}")
 
     # ===== PHASE 3a: Step 4 - ANOMALY ENSEMBLE =====
-    log(f"   Step 4: Training anomaly detection ensemble...")
+    log(f"   Step 3: Training anomaly detection ensemble...")
     anomaly_ensemble = create_anomaly_ensemble(
         X_train_spike.values, y_train_spike_remapped.values,
         X_val_spike.values, y_val_spike_remapped.values,
@@ -3264,47 +3343,58 @@ for horizon in ['1h', '4h', '24h']:
             recall = tp / (tp + fn) if (tp + fn) > 0 else 0
             log(f"      {cls_name}: Precision={precision:.3f}, Recall={recall:.3f}")
     
-    # Save spike detector with enhanced metrics and adaptive thresholds
+    # Save spike detector with binary model
     spike_detector_data = {
-        'model': calibrated_model,  # Save calibrated model
-        'base_model': model_spike,  # Also save base model for reference
-        'ensemble': spike_ensemble_result if spike_ensemble_result else None,  # PHASE 2: Spike ensemble
-        'anomaly_ensemble': anomaly_ensemble if anomaly_ensemble else None,  # PHASE 3a: Anomaly ensemble
+        # Binary classifier (Transact vs Wait)
+        'model': calibrated_binary,  # Main model for inference
+        'binary_model': calibrated_binary,  # Explicit reference
+        'base_model': model_binary,  # Uncalibrated base model
+        'ensemble': spike_ensemble_result if spike_ensemble_result else None,
+        'anomaly_ensemble': anomaly_ensemble if anomaly_ensemble else None,
         'feature_names': spike_feature_names,
         'metrics': {
             'accuracy_val': accuracy_val,
             'accuracy_test': accuracy_test,
             'f1_score_val': f1_val,
             'f1_score_test': f1_test,
-            'confusion_matrix': cm.tolist()
+            'confusion_matrix': cm.tolist(),
+            'binary_accuracy_val': binary_acc_val,
+            'binary_accuracy_test': binary_acc_test,
+            'binary_f1_val': binary_f1_val,
+            'binary_f1_test': binary_f1_test,
+            'transact_precision': transact_precision,
+            'transact_recall': transact_recall,
+            'wait_precision': wait_precision,
+            'wait_recall': wait_recall
         },
         'class_distribution': class_counts.to_dict(),
         'class_weights': class_weight_dict,
         'is_calibrated': True,
-        'has_ensemble': spike_ensemble_result is not None,  # PHASE 2: Flag for ensemble
-        'has_anomaly_ensemble': anomaly_ensemble is not None,  # PHASE 3a: Flag for anomaly ensemble
-        'has_hierarchical_classifier': isinstance(model_spike, HierarchicalSpikeBinaryClassifier),  # PHASE 3a: Hierarchical
-        'model_version': 'v19_tier1_hierarchical',  # PHASE 3a: Updated version with hierarchical
-        'model_type': 'HierarchicalBinary' if isinstance(model_spike, HierarchicalSpikeBinaryClassifier) else ('XGBoost' if XGBOOST_AVAILABLE else 'GradientBoosting'),
+        'has_ensemble': spike_ensemble_result is not None,
+        'has_anomaly_ensemble': anomaly_ensemble is not None,
+        'has_hierarchical_classifier': False,
+        'is_binary_classifier': True,  # Flag for binary classification
+        'spike_probability_threshold': best_threshold,  # Threshold for mapping Wait -> Spike vs Elevated
+        'model_version': 'v22_binary',  # Binary classification approach
+        'model_type': 'XGBoost_Binary' if XGBOOST_AVAILABLE else 'GradientBoosting_Binary',
         'trained_at': datetime.now().isoformat(),
         # Adaptive thresholds for inference
         'thresholds': {
             'normal_threshold': float(NORMAL_THRESHOLD),
             'elevated_threshold': float(ELEVATED_THRESHOLD),
-            'spike_threshold': float(best_threshold) if 'best_threshold' in locals() else 0.5,
-            'percentiles_used': {'normal': 0.50, 'elevated': 0.85}
+            'spike_probability_threshold': best_threshold,
+            'percentiles_used': {'normal': 'Q2 (median)', 'elevated': 'Q3 + 0.5*IQR'}
         },
-        # PHASE 3a: Training improvements applied
+        # Training improvements applied
         'training_improvements': {
-            'hierarchical_classification': isinstance(model_spike, HierarchicalSpikeBinaryClassifier),
-            'hierarchical_levels': {
-                'level_1': 'Normal vs Not-Normal (Elevated+Spike)',
-                'level_2': 'Elevated vs Spike (only on not-normal predictions)'
-            } if isinstance(model_spike, HierarchicalSpikeBinaryClassifier) else None,
+            'binary_classification': True,  # Transact vs Wait
+            'hierarchical_classification': False,
+            'direct_3class_classifier': False,
+            'isotonic_calibration': True,
             'smote_applied': True,
-            'smote_strategy': 'stratified (spike:80%, elevated:70% of normal)',
+            'smote_strategy': 'stratified oversampling',
             'cost_sensitive_learning': True,
-            'cost_weights': {'elevated': 2.0, 'spike': 5.0},
+            'cost_weights': {'transact': binary_weight_dict[0], 'wait': binary_weight_dict[1]},
             'anomaly_ensemble': anomaly_ensemble is not None
         }
     }

@@ -252,22 +252,55 @@ class HybridPredictor:
             if not isinstance(detector_data, dict):
                 logger.warning(f"Invalid spike detector format for {horizon}: expected dict, got {type(detector_data)}")
                 continue
-            if 'model' not in detector_data:
-                logger.warning(f"Spike detector for {horizon} missing 'model' key. Available keys: {list(detector_data.keys())}")
-                continue
             if 'feature_names' not in detector_data:
                 logger.warning(f"Spike detector for {horizon} missing 'feature_names' key")
                 continue
 
-            model = detector_data['model']
             feature_names = detector_data['feature_names']
 
             # Prepare features in correct order
             X = latest_features[feature_names].values
 
-            # Get spike classification and probabilities
-            spike_class = model.predict(X)[0]
-            spike_probs = model.predict_proba(X)[0]
+            # Check classifier type
+            is_binary = detector_data.get('is_binary_classifier', False)
+
+            if is_binary:
+                # Binary classifier: Transact (0) vs Wait (1)
+                model = detector_data.get('binary_model') or detector_data.get('model')
+                if model is None:
+                    logger.warning(f"Spike detector for {horizon} missing binary model")
+                    continue
+
+                # Get binary prediction and probabilities
+                binary_proba = model.predict_proba(X)
+                prob_transact = binary_proba[0, 0]
+                prob_wait = binary_proba[0, 1]
+
+                # Get spike threshold from model data (default 0.7)
+                spike_threshold = detector_data.get('spike_probability_threshold', 0.7)
+
+                # Map binary to 3-class:
+                # - Transact -> Normal (0)
+                # - Wait with high prob -> Spike (2)
+                # - Wait with moderate prob -> Elevated (1)
+                if prob_transact > prob_wait:
+                    spike_class = 0  # Normal
+                    spike_probs = np.array([prob_transact, prob_wait * 0.5, prob_wait * 0.5])
+                elif prob_wait >= spike_threshold:
+                    spike_class = 2  # Spike
+                    spike_probs = np.array([prob_transact, prob_wait * 0.2, prob_wait * 0.8])
+                else:
+                    spike_class = 1  # Elevated
+                    spike_probs = np.array([prob_transact, prob_wait * 0.7, prob_wait * 0.3])
+
+            else:
+                # Legacy 3-class model inference
+                if 'model' not in detector_data or detector_data['model'] is None:
+                    logger.warning(f"Spike detector for {horizon} missing 'model' key. Available keys: {list(detector_data.keys())}")
+                    continue
+                model = detector_data['model']
+                spike_class = model.predict(X)[0]
+                spike_probs = model.predict_proba(X)[0]
 
             # Convert class to name
             class_name = self.CLASS_NAMES[int(spike_class)]

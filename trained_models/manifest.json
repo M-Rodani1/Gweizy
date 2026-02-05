@@ -1,6 +1,6 @@
 {
-  "version": "20260204_190704_ca687da5e76d",
-  "training_timestamp": "2026-02-04T19:07:04.436529",
+  "version": "20260205_170220_ca687da5e76d",
+  "training_timestamp": "2026-02-05T17:02:20.674256",
   "data_info": {
     "samples": 10254,
     "date_range": {
@@ -16,7 +16,7 @@
     "tuning_iterations": 0,
     "adaptive_thresholds": {
       "normal": 0.045169,
-      "elevated": 0.3372773999999997
+      "elevated": 0.240124
     }
   },
   "models": {
@@ -37,38 +37,38 @@
     },
     "spike_1h": {
       "filename": "spike_detector_1h.pkl",
-      "size_bytes": 17720853,
-      "size_mb": 16.9
+      "size_bytes": 18440664,
+      "size_mb": 17.59
     },
     "spike_4h": {
       "filename": "spike_detector_4h.pkl",
-      "size_bytes": 17084821,
-      "size_mb": 16.29
+      "size_bytes": 18017192,
+      "size_mb": 17.18
     },
     "spike_24h": {
       "filename": "spike_detector_24h.pkl",
-      "size_bytes": 15999556,
-      "size_mb": 15.26
+      "size_bytes": 16880265,
+      "size_mb": 16.1
     }
   },
   "spike_detector_metrics": {
     "1h": {
-      "accuracy_val": 0.3231376418352245,
-      "accuracy_test": 0.26140264835703775,
-      "f1_score_val": 0.22861027606523163,
-      "f1_score_test": 0.21927094988126064
+      "accuracy_val": 0.3463246176615688,
+      "accuracy_test": 0.3933300637567435,
+      "f1_score_val": 0.276787832732895,
+      "f1_score_test": 0.26332837669579856
     },
     "4h": {
-      "accuracy_val": 0.3269713711702662,
-      "accuracy_test": 0.2381427858212681,
-      "f1_score_val": 0.24678541564761902,
-      "f1_score_test": 0.19172435562126725
+      "accuracy_val": 0.18935208437970869,
+      "accuracy_test": 0.37993010484273587,
+      "f1_score_val": 0.06029200659725522,
+      "f1_score_test": 0.20920897958416934
     },
     "24h": {
-      "accuracy_val": 0.2747001713306682,
-      "accuracy_test": 0.2597844583096994,
-      "f1_score_val": 0.1249493942774502,
-      "f1_score_test": 0.19926381939996793
+      "accuracy_val": 0.4711593375214163,
+      "accuracy_test": 0.4157685762904141,
+      "f1_score_val": 0.30400434249557196,
+      "f1_score_test": 0.36228743683683007
     }
   }
 }
