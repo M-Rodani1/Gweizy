@@ -90,7 +90,9 @@ def is_path_allowed(file_path: str) -> Tuple[bool, str]:
     for allowed_dir in allowed_dirs:
         try:
             resolved_allowed = os.path.realpath(allowed_dir)
-            if resolved_path.startswith(resolved_allowed + os.sep) or resolved_path.startswith(resolved_allowed):
+            # Ensure path is within allowed directory (add os.sep to prevent partial matches)
+            # e.g., /data/models_backup should NOT match /data/models
+            if resolved_path.startswith(resolved_allowed + os.sep) or resolved_path == resolved_allowed:
                 return True, f"Path is within allowed directory: {allowed_dir}"
         except (OSError, ValueError):
             continue

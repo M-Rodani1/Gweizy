@@ -694,13 +694,22 @@ def get_predictions():
                         alert = pred['alert']
                         recommendation = pred['recommendation']
 
+                        # Map confidence value to level (frontend expects 'high'/'medium'/'low')
+                        conf_value = classification['confidence']
+                        if conf_value >= 0.7:
+                            conf_level = 'high'
+                        elif conf_value >= 0.5:
+                            conf_level = 'medium'
+                        else:
+                            conf_level = 'low'
+
                         prediction_data[horizon] = [{
                             'time': horizon,
                             'predictedGwei': prediction['price'],
                             'lowerBound': prediction['lower_bound'],
                             'upperBound': prediction['upper_bound'],
-                            'confidence': classification['confidence'],
-                            'confidenceLevel': classification['class'],
+                            'confidence': conf_value,
+                            'confidenceLevel': conf_level,
                             'confidenceEmoji': classification['emoji'],
                             'confidenceColor': classification['color'],
                             'classification': {

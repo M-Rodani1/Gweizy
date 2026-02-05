@@ -243,9 +243,22 @@ class HybridPredictor:
 
         for horizon in ['1h', '4h', '24h']:
             if horizon not in self.spike_detectors:
+                logger.debug(f"Spike detector not available for {horizon}")
                 continue
 
             detector_data = self.spike_detectors[horizon]
+
+            # Validate model data structure
+            if not isinstance(detector_data, dict):
+                logger.warning(f"Invalid spike detector format for {horizon}: expected dict, got {type(detector_data)}")
+                continue
+            if 'model' not in detector_data:
+                logger.warning(f"Spike detector for {horizon} missing 'model' key. Available keys: {list(detector_data.keys())}")
+                continue
+            if 'feature_names' not in detector_data:
+                logger.warning(f"Spike detector for {horizon} missing 'feature_names' key")
+                continue
+
             model = detector_data['model']
             feature_names = detector_data['feature_names']
 

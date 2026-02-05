@@ -674,16 +674,28 @@ for name, steps in horizon_steps.items():
     log_current = np.log(current_price + 1e-8)
     log_future = np.log(future_price + 1e-8)
     target_log_return = log_future - log_current
-    
+
     # TARGET A (Classifier): spike_class
-    # 0 (Stable): Log-return between -5% and +5%
-    # 1 (Surge): Log-return > +5%
-    # 2 (Crash): Log-return < -5%
-    target_log_return_pct = target_log_return * 100  # Convert to percentage
-    spike_class = pd.Series(1, index=target_log_return_pct.index)  # Default to Stable (1)
-    spike_class[target_log_return_pct > 5.0] = 1  # Surge
-    spike_class[target_log_return_pct < -5.0] = 2  # Crash
-    spike_class[(target_log_return_pct >= -5.0) & (target_log_return_pct <= 5.0)] = 0  # Stable
+    # Classify FUTURE GAS PRICE LEVEL (not direction!) to match hybrid_predictor.py
+    # 0 (Normal): Low gas prices (below 50th percentile)
+    # 1 (Elevated): Medium gas prices (50th-90th percentile)
+    # 2 (Spike): High gas prices (above 90th percentile)
+
+    # Use percentile-based thresholds from the data distribution
+    valid_future = future_price.dropna()
+    if len(valid_future) > 0:
+        normal_threshold = valid_future.quantile(0.50)  # 50th percentile
+        elevated_threshold = valid_future.quantile(0.90)  # 90th percentile
+        log(f"      Price thresholds for {name}: Normal < {normal_threshold:.4f}, Elevated < {elevated_threshold:.4f}, Spike >= {elevated_threshold:.4f}")
+    else:
+        # Fallback to fixed thresholds matching hybrid_predictor.py
+        normal_threshold = 0.01
+        elevated_threshold = 0.05
+
+    spike_class = pd.Series(0, index=future_price.index)  # Default to Normal (0)
+    spike_class[future_price >= elevated_threshold] = 2  # Spike (high prices)
+    spike_class[(future_price >= normal_threshold) & (future_price < elevated_threshold)] = 1  # Elevated
+    spike_class[future_price < normal_threshold] = 0  # Normal (low prices)
     
     # TARGET B (Regressor): volatility_scaled_return
     # Normalize log-return by rolling mean and std to make small variations comparable
@@ -3105,11 +3117,13 @@ for horizon in ['1h', '4h', '24h']:
     sample_weights_smote = np.array([class_weight_dict_remapped[y] for y in y_train_smote])
 
     # Enhance weights for spike and elevated classes using per-class cost-sensitive learning
-    log(f"   Step 2: Applying per-class cost-sensitive learning (spike: 5x, elevated: 2x)...")
+    # Spike is ~10% of data (90th percentile), so 10x weight to balance
+    # Elevated is ~40% of data (50th-90th), so 2.5x weight
+    log(f"   Step 2: Applying per-class cost-sensitive learning (spike: 10x, elevated: 2.5x)...")
     cost_learner = CostSensitiveSpikeLearner(
         base_model=None,
-        spike_weight_multiplier=5.0,
-        elevated_weight_multiplier=2.0
+        spike_weight_multiplier=10.0,
+        elevated_weight_multiplier=2.5
     )
     sample_weights_final = cost_learner.compute_adjusted_weights(
         y_train_smote, original_weights=sample_weights_smote

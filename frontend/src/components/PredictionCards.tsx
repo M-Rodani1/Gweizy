@@ -425,9 +425,9 @@ const PredictionCards: React.FC<PredictionCardsProps> = ({ hybridData }) => {
                   </span>
                 </div>
                 <p className={`text-xs ${confClass.textLight} mt-2`}>
-                  {card.confidenceLevel === 'high' && "Models strongly agree on this prediction"}
-                  {card.confidenceLevel === 'medium' && "Moderate agreement between models"}
-                  {card.confidenceLevel === 'low' && "High uncertainty - models disagree"}
+                  {card.confidenceLevel === 'high' && "Model is confident in this prediction"}
+                  {card.confidenceLevel === 'medium' && "Moderate prediction confidence"}
+                  {card.confidenceLevel === 'low' && "High uncertainty - prediction less reliable"}
                 </p>
               </div>
             );
