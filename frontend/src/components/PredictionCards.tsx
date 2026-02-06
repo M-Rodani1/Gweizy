@@ -246,8 +246,83 @@ const PredictionCards: React.FC<PredictionCardsProps> = ({ hybridData }) => {
     );
   }
 
+  // Determine optimal transaction window based on all predictions
+  const getOptimalWindow = () => {
+    if (!cards || cards.length === 0) return null;
+
+    // Find the best horizon based on lowest predicted price and highest confidence
+    const validCards = cards.filter(c => c.predicted > 0 && c.confidence !== undefined);
+    if (validCards.length === 0) return null;
+
+    // Score each horizon: lower price = better, higher confidence = better
+    const scored = validCards.map(card => {
+      const priceScore = 1 / (card.predicted + 0.0001); // Lower price = higher score
+      const confScore = card.confidence || 0.5;
+      // Weight 24h predictions higher for reliability
+      const reliabilityBonus = card.horizon === '24h' ? 1.2 : 1.0;
+      return {
+        ...card,
+        score: priceScore * confScore * reliabilityBonus
+      };
+    });
+
+    const best = scored.reduce((a, b) => a.score > b.score ? a : b);
+
+    // Determine action based on probabilities
+    const waitProb = best.probabilities ? (best.probabilities.wait + best.probabilities.urgent) : 0;
+    const shouldWait = waitProb > 0.5;
+
+    return {
+      horizon: best.horizon,
+      action: shouldWait ? 'wait' : 'transact',
+      predicted: best.predicted,
+      current: best.current,
+      confidence: best.confidence,
+      savingsPercent: best.current > 0 ? Math.abs(((best.predicted - best.current) / best.current) * 100) : 0
+    };
+  };
+
+  const optimalWindow = getOptimalWindow();
+
   return (
     <>
+      {/* Optimal Transaction Window Banner */}
+      {optimalWindow && (
+        <div className={`mb-4 p-4 rounded-lg border-2 ${
+          optimalWindow.action === 'transact'
+            ? 'bg-gradient-to-r from-green-500/10 to-cyan-500/10 border-green-500/30'
+            : 'bg-gradient-to-r from-amber-500/10 to-orange-500/10 border-amber-500/30'
+        }`}>
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <div className="flex items-center gap-3">
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                optimalWindow.action === 'transact' ? 'bg-green-500/20' : 'bg-amber-500/20'
+              }`}>
+                <span className="text-xl">{optimalWindow.action === 'transact' ? '✓' : '⏳'}</span>
+              </div>
+              <div>
+                <h3 className={`font-bold text-lg ${
+                  optimalWindow.action === 'transact' ? 'text-green-400' : 'text-amber-400'
+                }`}>
+                  {optimalWindow.action === 'transact' ? 'Good Time to Transact' : 'Consider Waiting'}
+                </h3>
+                <p className="text-sm text-gray-400">
+                  Based on {optimalWindow.horizon} prediction ({((optimalWindow.confidence || 0) * 100).toFixed(0)}% confidence)
+                </p>
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="text-sm text-gray-400">Potential savings</div>
+              <div className={`text-xl font-bold ${
+                optimalWindow.action === 'transact' ? 'text-green-400' : 'text-amber-400'
+              }`}>
+                {optimalWindow.savingsPercent.toFixed(0)}%
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         {cards && cards.length > 0 ? cards.map((card) => (
           <div
