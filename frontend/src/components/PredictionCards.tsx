@@ -38,6 +38,7 @@ const PredictionCards: React.FC<PredictionCardsProps> = ({ hybridData }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showExplanation, setShowExplanation] = useState<string | null>(null);
+  const [showShortTerm, setShowShortTerm] = useState(false); // Hide 1h/4h by default
 
   // All hooks must be called before any early returns
   const getColorClasses = useCallback((color: string) => {
@@ -323,7 +324,147 @@ const PredictionCards: React.FC<PredictionCardsProps> = ({ hybridData }) => {
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      {/* 24h Prediction - Featured prominently */}
+      {cards && cards.length > 0 && (() => {
+        const card24h = cards.find(c => c.horizon === '24h');
+        if (!card24h) return null;
+
+        return (
+          <div className={`bg-gray-800 p-4 md:p-6 rounded-lg shadow-lg border-2 ${getColorClasses(card24h.color)} relative mb-4`}>
+            {/* Classification Badge */}
+            {(() => {
+              const classifState = getClassificationState(card24h.probabilities);
+              if (!classifState) return null;
+              const badges = {
+                normal: { bg: 'bg-green-500/20', border: 'border-green-500/30', text: 'text-green-400', label: 'Normal' },
+                elevated: { bg: 'bg-amber-500/20', border: 'border-amber-500/30', text: 'text-amber-400', label: 'Elevated' },
+                spike: { bg: 'bg-red-500/20', border: 'border-red-500/30', text: 'text-red-400', label: 'Spike' }
+              };
+              const badge = badges[classifState as keyof typeof badges];
+              return (
+                <div className={`absolute -top-3 right-4 ${badge.bg} border ${badge.border} ${badge.text} px-3 py-1 rounded-full text-xs font-bold shadow-lg`}>
+                  {badge.label}
+                </div>
+              );
+            })()}
+
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <h3 className="text-lg font-semibold text-gray-200">24H PREDICTION</h3>
+                <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-cyan-500/10 text-cyan-300 border border-cyan-500/30">
+                  Most Reliable
+                </span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <div className={`text-xl font-bold mb-2 ${getTextColor(card24h.color)}`}>
+                  {card24h.probabilities && (card24h.probabilities.urgent + card24h.probabilities.wait) > 0.5
+                    ? 'WAIT - Consider Delaying'
+                    : 'TRANSACT - Good Time'}
+                </div>
+                <p className="text-sm text-gray-400">{card24h.recommendation}</p>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-400">Current:</span>
+                  <span className="text-gray-200 font-medium">{card24h.current?.toFixed(4) || 'N/A'} gwei</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-400">Predicted:</span>
+                  <span className="text-gray-200 font-medium">{card24h.predicted?.toFixed(4) || 'N/A'} gwei</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-400">Change:</span>
+                  <span className={`font-bold ${getTextColor(card24h.color)}`}>
+                    {Math.abs(card24h.changePercent).toFixed(0)}%
+                  </span>
+                </div>
+              </div>
+
+              <div>
+                {card24h.confidence !== undefined && (
+                  <div className="bg-gray-900/50 rounded-md p-3">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-sm text-gray-400">Confidence</span>
+                      <span className="text-cyan-400 font-bold">{((card24h.confidence || 0) * 100).toFixed(0)}%</span>
+                    </div>
+                    <div className="w-full bg-gray-700 rounded-full h-2">
+                      <div
+                        className="bg-cyan-500 h-2 rounded-full"
+                        style={{ width: `${(card24h.confidence || 0) * 100}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Short-term Predictions Toggle */}
+      <div className="mb-4">
+        <button
+          onClick={() => setShowShortTerm(!showShortTerm)}
+          className="flex items-center gap-2 text-sm text-gray-400 hover:text-gray-200 transition-colors"
+        >
+          <span>{showShortTerm ? '▼' : '▶'}</span>
+          <span>Short-term predictions (1h, 4h)</span>
+          <span className="px-2 py-0.5 rounded text-xs bg-gray-700 text-gray-400">Indicative</span>
+        </button>
+      </div>
+
+      {/* Short-term Predictions - Collapsed by default */}
+      {showShortTerm && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 opacity-80">
+          {cards && cards.filter(c => c.horizon !== '24h').map((card) => (
+            <div
+              key={card.horizon}
+              className={`bg-gray-800/70 p-4 rounded-lg shadow-lg border ${getColorClasses(card.color).replace('border-2', 'border')} relative`}
+            >
+              {/* Indicative Badge */}
+              <div className="absolute -top-2 right-4 bg-gray-700 text-gray-400 px-2 py-0.5 rounded text-xs">
+                Indicative
+              </div>
+
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <h3 className="text-md font-semibold text-gray-300">
+                    {card.horizon.toUpperCase()} PREDICTION
+                  </h3>
+                </div>
+              </div>
+
+              <div className={`text-lg font-bold mb-2 ${getTextColor(card.color)}`}>
+                {card.probabilities && (card.probabilities.urgent + card.probabilities.wait) > 0.5
+                  ? 'WAIT'
+                  : 'TRANSACT'}
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <div>
+                  <span className="text-gray-500">Current:</span>
+                  <span className="text-gray-300 ml-1">{card.current?.toFixed(4) || 'N/A'}</span>
+                </div>
+                <div>
+                  <span className="text-gray-500">Predicted:</span>
+                  <span className="text-gray-300 ml-1">{card.predicted?.toFixed(4) || 'N/A'}</span>
+                </div>
+              </div>
+
+              <p className="text-xs text-gray-500 mt-2 italic">
+                Short-term predictions have higher uncertainty
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Legacy full cards - hidden, keeping for reference */}
+      <div className="hidden grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         {cards && cards.length > 0 ? cards.map((card) => (
           <div
             key={card.horizon}
@@ -354,7 +495,7 @@ const PredictionCards: React.FC<PredictionCardsProps> = ({ hybridData }) => {
               </div>
             );
           })()}
-          
+
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
               <h3 className="text-lg font-semibold text-gray-200">
