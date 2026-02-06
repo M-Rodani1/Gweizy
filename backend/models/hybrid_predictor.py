@@ -279,19 +279,40 @@ class HybridPredictor:
                 # Get spike threshold from model data (default 0.7)
                 spike_threshold = detector_data.get('spike_probability_threshold', 0.7)
 
-                # Map binary to 3-class:
-                # - Transact -> Normal (0)
-                # - Wait with high prob -> Spike (2)
-                # - Wait with moderate prob -> Elevated (1)
-                if prob_transact > prob_wait:
-                    spike_class = 0  # Normal
-                    spike_probs = np.array([prob_transact, prob_wait * 0.5, prob_wait * 0.5])
-                elif prob_wait >= spike_threshold:
-                    spike_class = 2  # Spike
-                    spike_probs = np.array([prob_transact, prob_wait * 0.2, prob_wait * 0.8])
+                # For short-term predictions (1h, 4h), use ensemble when confidence is low
+                use_ensemble = False
+                ensemble_probs = None
+                if horizon in ['1h', '4h'] and detector_data.get('has_ensemble'):
+                    ensemble_data = detector_data.get('ensemble')
+                    if ensemble_data and ensemble_data.get('ensemble'):
+                        ensemble_model = ensemble_data['ensemble']
+                        # Use ensemble when binary classifier is uncertain (max prob < 0.65)
+                        if max(prob_transact, prob_wait) < 0.65:
+                            try:
+                                ensemble_probs = ensemble_model.predict_proba(X)[0]
+                                use_ensemble = True
+                                logger.debug(f"Using ensemble for {horizon} (binary confidence low: {max(prob_transact, prob_wait):.2f})")
+                            except Exception as e:
+                                logger.debug(f"Ensemble prediction failed for {horizon}: {e}")
+
+                if use_ensemble and ensemble_probs is not None:
+                    # Use ensemble 3-class probabilities directly
+                    spike_probs = ensemble_probs
+                    spike_class = np.argmax(spike_probs)
                 else:
-                    spike_class = 1  # Elevated
-                    spike_probs = np.array([prob_transact, prob_wait * 0.7, prob_wait * 0.3])
+                    # Map binary to 3-class:
+                    # - Transact -> Normal (0)
+                    # - Wait with high prob -> Spike (2)
+                    # - Wait with moderate prob -> Elevated (1)
+                    if prob_transact > prob_wait:
+                        spike_class = 0  # Normal
+                        spike_probs = np.array([prob_transact, prob_wait * 0.5, prob_wait * 0.5])
+                    elif prob_wait >= spike_threshold:
+                        spike_class = 2  # Spike
+                        spike_probs = np.array([prob_transact, prob_wait * 0.2, prob_wait * 0.8])
+                    else:
+                        spike_class = 1  # Elevated
+                        spike_probs = np.array([prob_transact, prob_wait * 0.7, prob_wait * 0.3])
 
             else:
                 # Legacy 3-class model inference
