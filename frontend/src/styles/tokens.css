@@ -253,14 +253,14 @@ p {
 .status-dot.danger { background: var(--danger); }
 .status-dot.warning { background: var(--warning); }
 
-/* Buttons */
+/* Buttons - base styles matching <Button> component */
 .btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: var(--space-sm);
-  padding: 0.75rem 1.5rem;
-  font-size: 1rem;
+  padding: 0.625rem 1rem; /* matches Button md */
+  font-size: 0.875rem;
   font-weight: 600;
   font-family: var(--font-base);
   border-radius: var(--radius-md);
@@ -306,6 +306,25 @@ p {
 .btn-ghost:hover {
   background: var(--surface-2);
   color: var(--text);
+}
+
+/* Button Sizes - matches <Button> component */
+.btn-sm {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  border-radius: var(--radius-sm);
+}
+
+.btn-md {
+  padding: 0.625rem 1rem;
+  font-size: 0.875rem;
+  border-radius: var(--radius-md);
+}
+
+.btn-lg {
+  padding: 0.75rem 1.25rem;
+  font-size: 1rem;
+  border-radius: var(--radius-lg);
 }
 
 /* Loading Skeleton */

@@ -812,12 +812,6 @@ html {
   margin: 0 auto var(--space-md);
 }
 
-/* Button sizes */
-.btn-lg {
-  padding: 1rem 2rem;
-  font-size: 1.125rem;
-}
-
 /* Flex utilities */
 .flex-center {
   display: flex;
