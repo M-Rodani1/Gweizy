@@ -134,41 +134,16 @@ const Dashboard: React.FC = () => {
             </CollapsibleSection>
           </div>
 
-          {/* Quick links to other pages */}
-          <div className="flex gap-6 pt-4">
-            <a
-              href="/analytics"
-              className="flex items-center gap-2 text-sm text-gray-400 hover:text-cyan-400 transition-colors"
-              aria-label="Go to analytics page"
-            >
-              View detailed analytics <ChevronRight className="w-4 h-4" aria-hidden="true" />
-            </a>
-            <a
-              href="/system"
-              className="flex items-center gap-2 text-sm text-gray-400 hover:text-amber-400 transition-colors"
-              aria-label="Go to system status page"
-            >
-              View system status <ChevronRight className="w-4 h-4" aria-hidden="true" />
-            </a>
-          </div>
         </section>
 
         {/* Footer */}
-        <footer className="mt-10 py-8 text-center border-t border-gray-800" role="contentinfo">
+        <footer className="mt-10 py-6 text-center border-t border-gray-800" role="contentinfo">
           <p className="text-sm text-gray-500">
-            Gweizy — AI-Powered Multi-Chain Gas Optimizer
+            Gweizy — AI-Powered Gas Optimizer
           </p>
           <p className="text-xs text-gray-600 mt-1">
-            <span className="sr-only">Current network: </span>
-            {selectedChain.name} • Chain ID: {selectedChain.id} • Powered by DQN Neural Networks
+            v2.0 • Powered by DQN Neural Networks
           </p>
-          <p className="text-xs text-cyan-500 mt-1">
-            v2.0 - AI Pilot Edition (Dec 28, 2025)
-          </p>
-          <nav className="mt-4 flex justify-center gap-4 text-xs text-gray-500" aria-label="Footer navigation">
-            <a href="/analytics" className="hover:text-cyan-400 transition-colors">Analytics</a>
-            <a href="/pricing" className="hover:text-cyan-400 transition-colors">API Pricing</a>
-          </nav>
         </footer>
       </div>
 
