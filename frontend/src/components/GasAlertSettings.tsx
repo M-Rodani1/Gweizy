@@ -244,8 +244,8 @@ const GasAlertSettings: React.FC<GasAlertSettingsProps> = ({ currentGas, walletA
         tabIndex={0}
       >
         <div className="flex items-center gap-3 mb-3">
-          <div className="p-2 bg-blue-500/20 rounded-lg">
-            <Bell className="w-5 h-5 text-blue-400" />
+          <div className="p-2 bg-cyan-500/20 rounded-lg">
+            <Bell className="w-5 h-5 text-cyan-400" />
           </div>
           <div>
             <h3 className="text-lg font-bold text-white">Gas Price Alerts</h3>
@@ -272,8 +272,8 @@ const GasAlertSettings: React.FC<GasAlertSettingsProps> = ({ currentGas, walletA
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-blue-500/20 rounded-lg">
-            <Bell className="w-5 h-5 text-blue-400" />
+          <div className="p-2 bg-cyan-500/20 rounded-lg">
+            <Bell className="w-5 h-5 text-cyan-400" />
           </div>
           <div>
             <h3 className="text-lg font-bold text-white">Gas Price Alerts</h3>
@@ -282,7 +282,7 @@ const GasAlertSettings: React.FC<GasAlertSettingsProps> = ({ currentGas, walletA
         </div>
         <button
           onClick={() => setShowCreateForm(!showCreateForm)}
-          className="px-4 py-2 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+          className="px-4 py-2 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-400 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
         >
           {showCreateForm ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
           {showCreateForm ? 'Cancel' : 'New Alert'}
@@ -358,7 +358,7 @@ const GasAlertSettings: React.FC<GasAlertSettingsProps> = ({ currentGas, walletA
                 setAlertMode(e.target.value as 'price' | 'classification');
                 resetForm();
               }}
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+              className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
             >
               <option value="price">Price-Based Alert</option>
               <option value="classification">Classification-Based Alert</option>
@@ -380,7 +380,7 @@ const GasAlertSettings: React.FC<GasAlertSettingsProps> = ({ currentGas, walletA
                     id="alert-type"
                     value={alertType}
                     onChange={(e) => setAlertType(e.target.value as 'below' | 'above')}
-                    className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                    className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
                   >
                     <option value="below">Notify when below</option>
                     <option value="above">Notify when above</option>
@@ -393,7 +393,7 @@ const GasAlertSettings: React.FC<GasAlertSettingsProps> = ({ currentGas, walletA
                       <button
                         type="button"
                         onClick={() => setValue('thresholdGwei', getSuggestion())}
-                        className="ml-2 text-xs text-blue-400 hover:text-blue-300 focus:outline-none focus:underline"
+                        className="ml-2 text-xs text-cyan-400 hover:text-cyan-300 focus:outline-none focus:underline"
                         aria-label={`Use suggested threshold of ${getSuggestion()} gwei`}
                       >
                         Suggest: {getSuggestion()}
@@ -408,7 +408,7 @@ const GasAlertSettings: React.FC<GasAlertSettingsProps> = ({ currentGas, walletA
                     className={`w-full px-3 py-2 bg-slate-800 border rounded-lg text-white focus:outline-none focus:ring-2 transition-colors ${
                       touched.thresholdGwei && errors.thresholdGwei
                         ? 'border-red-500 focus:border-red-500 focus:ring-red-500/50'
-                        : 'border-slate-600 focus:border-blue-500 focus:ring-blue-500/50'
+                        : 'border-slate-600 focus:border-cyan-500 focus:ring-cyan-500/50'
                     }`}
                     placeholder="0.001"
                     aria-required="true"
@@ -432,7 +432,7 @@ const GasAlertSettings: React.FC<GasAlertSettingsProps> = ({ currentGas, walletA
                     id="classification-type"
                     value={classificationType}
                     onChange={(e) => setClassificationType(e.target.value as 'elevated' | 'spike')}
-                    className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                    className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
                   >
                     <option value="elevated">Elevated Prices</option>
                     <option value="spike">Price Spike</option>
@@ -468,7 +468,7 @@ const GasAlertSettings: React.FC<GasAlertSettingsProps> = ({ currentGas, walletA
                 setNotificationMethod(e.target.value);
                 setValue('notificationTarget', '');  // Clear target when method changes
               }}
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+              className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
             >
               <option value="browser">Browser Notification</option>
               <option value="email">Email</option>
@@ -492,7 +492,7 @@ const GasAlertSettings: React.FC<GasAlertSettingsProps> = ({ currentGas, walletA
                 className={`w-full px-3 py-2 bg-slate-800 border rounded-lg text-white focus:outline-none focus:ring-2 transition-colors ${
                   touched.notificationTarget && errors.notificationTarget
                     ? 'border-red-500 focus:border-red-500 focus:ring-red-500/50'
-                    : 'border-slate-600 focus:border-blue-500 focus:ring-blue-500/50'
+                    : 'border-slate-600 focus:border-cyan-500 focus:ring-cyan-500/50'
                 }`}
                 placeholder={
                   notificationMethod === 'email' ? 'your@email.com' :
@@ -521,7 +521,7 @@ const GasAlertSettings: React.FC<GasAlertSettingsProps> = ({ currentGas, walletA
 
           <button
             type="submit"
-            className="w-full px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-800"
+            className="w-full px-4 py-2 bg-cyan-500 hover:bg-cyan-600 text-white rounded-lg font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 focus:ring-offset-slate-800"
           >
             Create Alert
           </button>
@@ -604,7 +604,7 @@ const GasAlertSettings: React.FC<GasAlertSettingsProps> = ({ currentGas, walletA
 
       {/* Current Gas Info */}
       {currentGas > 0 && (
-        <div className="mt-6 p-3 bg-blue-500/10 rounded-lg border border-blue-500/30">
+        <div className="mt-6 p-3 bg-cyan-500/10 rounded-lg border border-cyan-500/30">
           <div className="flex items-center justify-between text-sm">
             <span className="text-gray-400">Current Gas Price:</span>
             <span className="font-bold text-white">{currentGas.toFixed(4)} gwei</span>
