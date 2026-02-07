@@ -68,24 +68,24 @@ const Landing: React.FC = () => {
       <section className="section landing-hero">
         <div className="container">
           <div className="max-w-3xl mx-auto text-center">
-            <Badge variant="accent" className="mb-[var(--space-lg)] inline-flex items-center gap-[0.35rem]" icon={<Trophy size={14} />}>
+            <Badge variant="accent" className="mb-6 inline-flex items-center gap-1.5" icon={<Trophy size={14} />}>
               Coinbase 2025 Hackathon Winner
             </Badge>
 
-            <h1 className="hero-title mb-[var(--space-lg)]">
+            <h1 className="hero-title mb-6">
               <span className="text-[var(--accent)]">AI Transaction Pilot</span>{' '}
               for Base and beyond
             </h1>
 
-            <p className="hero-subtitle mb-[var(--space-md)]">
+            <p className="hero-subtitle mb-4">
               A DQN agent that tells you when to submit, wait, or rebid. Cut gas spend by up to 40%.
             </p>
 
-            <p className="hero-kicker mb-[var(--space-2xl)]">
+            <p className="hero-kicker mb-12">
               Live coverage: Base, Ethereum, Arbitrum, Optimism, Polygon
             </p>
 
-            <div className="flex flex-wrap justify-center gap-[var(--space-md)] mb-[var(--space-2xl)]">
+            <div className="flex flex-wrap justify-center gap-4 mb-12">
               <Link to="/app" onClick={() => trackEvent('cta_click', { source: 'hero', cta: 'launch_pilot' })}>
                 <Button size="lg">Launch AI Pilot</Button>
               </Link>
@@ -114,12 +114,12 @@ const Landing: React.FC = () => {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-[var(--space-xl)] max-w-4xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
             <div className="card landing-feature-card">
               <div className="icon-tile landing-feature-icon">
                 <Activity size={22} />
               </div>
-              <h3 className="mb-[var(--space-md)]">1. Real-Time Monitoring</h3>
+              <h3 className="mb-4">1. Real-Time Monitoring</h3>
               <p className="text-[var(--text-secondary)] leading-[1.7]">
                 We track network activity every minute across 5 chains, measuring congestion, gas prices, and mempool state.
               </p>
@@ -129,7 +129,7 @@ const Landing: React.FC = () => {
               <div className="icon-tile landing-feature-icon">
                 <Brain size={22} />
               </div>
-              <h3 className="mb-[var(--space-md)]">2. AI Recommends Action</h3>
+              <h3 className="mb-4">2. AI Recommends Action</h3>
               <p className="text-[var(--text-secondary)] leading-[1.7]">
                 A DQN neural network tells you to submit now, wait for lower prices, or bid higher for faster confirmation.
               </p>
@@ -145,26 +145,26 @@ const Landing: React.FC = () => {
             <h2>Key Features</h2>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-[var(--space-lg)] max-w-5xl mx-auto">
-            <div className="card p-[var(--space-lg)] text-center">
-              <div className="icon-tile mb-[var(--space-md)] mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+            <div className="card p-6 text-center">
+              <div className="icon-tile mb-4 mx-auto">
                 <TrendingUp size={18} />
               </div>
-              <h4 className="mb-[var(--space-sm)]">Price Predictions</h4>
+              <h4 className="mb-2">Price Predictions</h4>
               <p className="text-[var(--text-secondary)] text-sm leading-[1.6]">ML-powered forecasts for 1h, 4h, and 24h ahead.</p>
             </div>
-            <div className="card p-[var(--space-lg)] text-center">
-              <div className="icon-tile mb-[var(--space-md)] mx-auto">
+            <div className="card p-6 text-center">
+              <div className="icon-tile mb-4 mx-auto">
                 <Zap size={18} />
               </div>
-              <h4 className="mb-[var(--space-sm)]">Real-Time Updates</h4>
+              <h4 className="mb-2">Real-Time Updates</h4>
               <p className="text-[var(--text-secondary)] text-sm leading-[1.6]">Live data refreshed every 30 seconds across 5 chains.</p>
             </div>
-            <div className="card p-[var(--space-lg)] text-center">
-              <div className="icon-tile mb-[var(--space-md)] mx-auto">
+            <div className="card p-6 text-center">
+              <div className="icon-tile mb-4 mx-auto">
                 <Brain size={18} />
               </div>
-              <h4 className="mb-[var(--space-sm)]">Smart Recommendations</h4>
+              <h4 className="mb-2">Smart Recommendations</h4>
               <p className="text-[var(--text-secondary)] text-sm leading-[1.6]">AI tells you exactly when to submit your transaction.</p>
             </div>
           </div>
@@ -174,27 +174,27 @@ const Landing: React.FC = () => {
       {/* Final CTA */}
       <section className="section bg-surface text-center">
         <div className="container max-w-[800px]">
-          <h2 className="mb-[var(--space-lg)]">Stop Overpaying for Gas</h2>
-          <p className="text-xl text-[var(--text-secondary)] mb-[var(--space-2xl)]">
+          <h2 className="mb-6">Stop Overpaying for Gas</h2>
+          <p className="text-xl text-[var(--text-secondary)] mb-12">
             Join thousands of Base users saving money with AI-powered gas predictions
           </p>
           <Link to="/app" className="btn btn-primary btn-lg px-10 py-5 text-xl">
             Start Saving Now - It's Free →
           </Link>
-          <p className="mt-[var(--space-lg)] text-sm text-[var(--text-muted)]">
+          <p className="mt-6 text-sm text-[var(--text-muted)]">
             No wallet connection required • No sign-up • Instant access
           </p>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="py-[var(--space-2xl)] bg-bg border-t border-[var(--border)]">
+      <footer className="py-12 bg-bg border-t border-[var(--border)]">
         <div className="container">
-          <div className="flex justify-between items-center flex-wrap gap-[var(--space-lg)]">
+          <div className="flex justify-between items-center flex-wrap gap-6">
             <div className="text-sm text-[var(--text-muted)]">
               © 2025 Base Gas Optimiser. Built at Coinbase 2025 Hackathon.
             </div>
-            <div className="flex gap-[var(--space-lg)] text-sm text-[var(--text-muted)]">
+            <div className="flex gap-6 text-sm text-[var(--text-muted)]">
               <span>Queen Mary University of London</span>
               <span>•</span>
               <span>Powered by Base</span>
