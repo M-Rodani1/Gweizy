@@ -50,7 +50,7 @@ describe('UI primitives snapshots', () => {
   it('SectionHeader renders alignments', () => {
     const { container } = render(
       <>
-        <SectionHeader eyebrow="Overview" title="AI Pilot" description="Doc" action={<Button size="sm">Docs</Button>} />
+        <SectionHeader eyebrow="Overview" title="AI Pilot" description="Details" action={<Button size="sm">View</Button>} />
         <SectionHeader align="center" title="Analytics" description="Charts" />
       </>
     );
