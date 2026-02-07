@@ -65,13 +65,13 @@ export const Cards: StoryObj = {
   render: () => (
     <div className="grid grid-cols-2 gap-4">
       <Card title="Simple Card" subtitle="Use for content blocks">
-        <p className="text-sm text-[var(--text-secondary)]">Card body content goes here.</p>
+        <p className="text-sm text-gray-400">Card body content goes here.</p>
       </Card>
       <Card
         title="With Action"
         action={<Button size="sm" variant="outline">Action</Button>}
       >
-        <p className="text-sm text-[var(--text-secondary)]">A card with a right-aligned action button.</p>
+        <p className="text-sm text-gray-400">A card with a right-aligned action button.</p>
       </Card>
     </div>
   )

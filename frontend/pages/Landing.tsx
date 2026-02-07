@@ -120,7 +120,7 @@ const Landing: React.FC = () => {
                 <Activity size={22} />
               </div>
               <h3 className="mb-4">1. Real-Time Monitoring</h3>
-              <p className="text-[var(--text-secondary)] leading-[1.7]">
+              <p className="text-gray-400 leading-relaxed">
                 We track network activity every minute across 5 chains, measuring congestion, gas prices, and mempool state.
               </p>
             </div>
@@ -130,7 +130,7 @@ const Landing: React.FC = () => {
                 <Brain size={22} />
               </div>
               <h3 className="mb-4">2. AI Recommends Action</h3>
-              <p className="text-[var(--text-secondary)] leading-[1.7]">
+              <p className="text-gray-400 leading-relaxed">
                 A DQN neural network tells you to submit now, wait for lower prices, or bid higher for faster confirmation.
               </p>
             </div>
@@ -151,21 +151,21 @@ const Landing: React.FC = () => {
                 <TrendingUp size={18} />
               </div>
               <h4 className="mb-2">Price Predictions</h4>
-              <p className="text-[var(--text-secondary)] text-sm leading-[1.6]">ML-powered forecasts for 1h, 4h, and 24h ahead.</p>
+              <p className="text-gray-400 text-sm leading-relaxed">ML-powered forecasts for 1h, 4h, and 24h ahead.</p>
             </div>
             <div className="card p-6 text-center">
               <div className="icon-tile mb-4 mx-auto">
                 <Zap size={18} />
               </div>
               <h4 className="mb-2">Real-Time Updates</h4>
-              <p className="text-[var(--text-secondary)] text-sm leading-[1.6]">Live data refreshed every 30 seconds across 5 chains.</p>
+              <p className="text-gray-400 text-sm leading-relaxed">Live data refreshed every 30 seconds across 5 chains.</p>
             </div>
             <div className="card p-6 text-center">
               <div className="icon-tile mb-4 mx-auto">
                 <Brain size={18} />
               </div>
               <h4 className="mb-2">Smart Recommendations</h4>
-              <p className="text-[var(--text-secondary)] text-sm leading-[1.6]">AI tells you exactly when to submit your transaction.</p>
+              <p className="text-gray-400 text-sm leading-relaxed">AI tells you exactly when to submit your transaction.</p>
             </div>
           </div>
         </div>
@@ -175,26 +175,26 @@ const Landing: React.FC = () => {
       <section className="section bg-surface text-center">
         <div className="container max-w-[800px]">
           <h2 className="mb-6">Stop Overpaying for Gas</h2>
-          <p className="text-xl text-[var(--text-secondary)] mb-12">
+          <p className="text-xl text-gray-400 mb-12">
             Join thousands of Base users saving money with AI-powered gas predictions
           </p>
           <Link to="/app" className="btn btn-primary btn-lg px-10 py-5 text-xl">
             Start Saving Now - It's Free →
           </Link>
-          <p className="mt-6 text-sm text-[var(--text-muted)]">
+          <p className="mt-6 text-sm text-gray-500">
             No wallet connection required • No sign-up • Instant access
           </p>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="py-12 bg-bg border-t border-[var(--border)]">
+      <footer className="py-12 bg-bg border-t border-gray-800">
         <div className="container">
           <div className="flex justify-between items-center flex-wrap gap-6">
-            <div className="text-sm text-[var(--text-muted)]">
+            <div className="text-sm text-gray-500">
               © 2025 Gweizy. Built at Coinbase 2025 Hackathon.
             </div>
-            <div className="flex gap-6 text-sm text-[var(--text-muted)]">
+            <div className="flex gap-6 text-sm text-gray-500">
               <span>Queen Mary University of London</span>
               <span>•</span>
               <span>Powered by Base</span>
