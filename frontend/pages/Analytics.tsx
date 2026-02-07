@@ -188,14 +188,13 @@ const Analytics: React.FC = () => {
         </SectionErrorBoundary>
 
         {/* Footer */}
-        <footer className="mt-12 py-6 text-center border-t border-gray-800">
+        <footer className="mt-10 py-6 text-center border-t border-gray-800" role="contentinfo">
           <p className="text-sm text-gray-500">
-            Gweizy Analytics — Deep dive into gas price data
+            Gweizy — AI-Powered Gas Optimizer
           </p>
-          <div className="mt-4 flex justify-center gap-4 text-xs text-gray-500">
-            <Link to="/" className="hover:text-cyan-400 transition-colors">Dashboard</Link>
-            <Link to="/pricing" className="hover:text-cyan-400 transition-colors">API</Link>
-          </div>
+          <p className="text-xs text-gray-600 mt-1">
+            v2.0 • Powered by DQN Neural Networks
+          </p>
         </footer>
       </div>
     </AppShell>
