@@ -49,7 +49,7 @@ const Landing: React.FC = () => {
               <div className="icon-tile">
                 <Logo size="sm" />
               </div>
-              <span className="text-[1.1rem] font-semibold tracking-[-0.01em]">
+              <span className="text-lg font-semibold">
                 Gweizy
               </span>
               <Badge variant="accent" icon={<Trophy size={14} />}>Hackathon Winner</Badge>
@@ -151,21 +151,21 @@ const Landing: React.FC = () => {
                 <TrendingUp size={18} />
               </div>
               <h4 className="mb-[var(--space-sm)]">Price Predictions</h4>
-              <p className="text-[var(--text-secondary)] text-[0.875rem] leading-[1.6]">ML-powered forecasts for 1h, 4h, and 24h ahead.</p>
+              <p className="text-[var(--text-secondary)] text-sm leading-[1.6]">ML-powered forecasts for 1h, 4h, and 24h ahead.</p>
             </div>
             <div className="card p-[var(--space-lg)] text-center">
               <div className="icon-tile mb-[var(--space-md)] mx-auto">
                 <Zap size={18} />
               </div>
               <h4 className="mb-[var(--space-sm)]">Real-Time Updates</h4>
-              <p className="text-[var(--text-secondary)] text-[0.875rem] leading-[1.6]">Live data refreshed every 30 seconds across 5 chains.</p>
+              <p className="text-[var(--text-secondary)] text-sm leading-[1.6]">Live data refreshed every 30 seconds across 5 chains.</p>
             </div>
             <div className="card p-[var(--space-lg)] text-center">
               <div className="icon-tile mb-[var(--space-md)] mx-auto">
                 <Brain size={18} />
               </div>
               <h4 className="mb-[var(--space-sm)]">Smart Recommendations</h4>
-              <p className="text-[var(--text-secondary)] text-[0.875rem] leading-[1.6]">AI tells you exactly when to submit your transaction.</p>
+              <p className="text-[var(--text-secondary)] text-sm leading-[1.6]">AI tells you exactly when to submit your transaction.</p>
             </div>
           </div>
         </div>
@@ -175,13 +175,13 @@ const Landing: React.FC = () => {
       <section className="section bg-surface text-center">
         <div className="container max-w-[800px]">
           <h2 className="mb-[var(--space-lg)]">Stop Overpaying for Gas</h2>
-          <p className="text-[1.25rem] text-[var(--text-secondary)] mb-[var(--space-2xl)]">
+          <p className="text-xl text-[var(--text-secondary)] mb-[var(--space-2xl)]">
             Join thousands of Base users saving money with AI-powered gas predictions
           </p>
-          <Link to="/app" className="btn btn-primary btn-lg px-10 py-5 text-[1.25rem]">
+          <Link to="/app" className="btn btn-primary btn-lg px-10 py-5 text-xl">
             Start Saving Now - It's Free →
           </Link>
-          <p className="mt-[var(--space-lg)] text-[0.875rem] text-[var(--text-muted)]">
+          <p className="mt-[var(--space-lg)] text-sm text-[var(--text-muted)]">
             No wallet connection required • No sign-up • Instant access
           </p>
         </div>
@@ -191,10 +191,10 @@ const Landing: React.FC = () => {
       <footer className="py-[var(--space-2xl)] bg-bg border-t border-[var(--border)]">
         <div className="container">
           <div className="flex justify-between items-center flex-wrap gap-[var(--space-lg)]">
-            <div className="text-[0.875rem] text-[var(--text-muted)]">
+            <div className="text-sm text-[var(--text-muted)]">
               © 2025 Base Gas Optimiser. Built at Coinbase 2025 Hackathon.
             </div>
-            <div className="flex gap-[var(--space-lg)] text-[0.875rem] text-[var(--text-muted)]">
+            <div className="flex gap-[var(--space-lg)] text-sm text-[var(--text-muted)]">
               <span>Queen Mary University of London</span>
               <span>•</span>
               <span>Powered by Base</span>

@@ -35,7 +35,7 @@ export const Card: React.FC<CardProps> = ({
     {(title || action || subtitle) && (
       <header className="flex items-start justify-between gap-3 mb-4">
         <div>
-          {title && <h3 className="text-[1.05rem] font-semibold text-[var(--text)]">{title}</h3>}
+          {title && <h3 className="text-base font-semibold text-[var(--text)]">{title}</h3>}
           {subtitle && <p className="text-sm text-[var(--text-secondary)] mt-1">{subtitle}</p>}
         </div>
         {action && <div className="shrink-0">{action}</div>}

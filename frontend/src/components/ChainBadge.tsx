@@ -10,7 +10,7 @@ interface ChainBadgeProps {
 }
 
 const SIZE_STYLES: Record<ChainBadgeSize, string> = {
-  sm: 'w-6 h-6 text-[10px]',
+  sm: 'w-6 h-6 text-xs',
   md: 'w-8 h-8 text-xs',
   lg: 'w-10 h-10 text-sm'
 };

@@ -337,14 +337,14 @@ const AccuracyHistoryChart: React.FC = () => {
             </svg>
 
             {/* Y-axis labels */}
-            <div className="absolute left-0 top-0 h-full flex flex-col justify-between text-[10px] text-gray-500 font-mono">
+            <div className="absolute left-0 top-0 h-full flex flex-col justify-between text-xs text-gray-500 font-mono">
               <span>{formatMetricValue(maxValue)}</span>
               <span>{formatMetricValue(minValue)}</span>
             </div>
           </div>
 
           {/* X-axis labels */}
-          <div className="flex justify-between text-[10px] text-gray-500 mt-2 px-4">
+          <div className="flex justify-between text-xs text-gray-500 mt-2 px-4">
             <span>{currentData[0]?.timestamp?.split(' ')[0] || ''}</span>
             <span>{currentData[currentData.length - 1]?.timestamp?.split(' ')[0] || ''}</span>
           </div>

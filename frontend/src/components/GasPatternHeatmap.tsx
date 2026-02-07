@@ -253,7 +253,7 @@ const GasPatternHeatmap: React.FC = () => {
           {/* Time labels - top row */}
           <div className="grid grid-cols-12 gap-1 mb-2">
             {[0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22].map((hour) => (
-              <div key={hour} className="text-[10px] text-gray-500 text-center">
+              <div key={hour} className="text-xs text-gray-500 text-center">
                 {formatHour(hour).replace(' AM', 'a').replace(' PM', 'p')}
               </div>
             ))}

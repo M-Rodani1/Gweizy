@@ -357,7 +357,7 @@ const TransactionPilot: React.FC<TransactionPilotProps> = ({ ethPrice = 3000 }) 
           </div>
           <a
             href="/docs#transaction-pilot"
-            className="text-[11px] text-cyan-300 hover:text-cyan-100 underline decoration-dotted"
+            className="text-xs text-cyan-300 hover:text-cyan-100 underline decoration-dotted"
           >
             Learn more
           </a>

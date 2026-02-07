@@ -408,7 +408,7 @@ const ModelMetricsPanel: React.FC<ModelMetricsPanelProps> = ({
                     <div className={`text-2xl font-bold ${getR2Color(currentMetrics.r2)}`}>
                       {formatPercent(currentMetrics.r2)}
                     </div>
-                    <div className="text-[10px] text-gray-500 mt-1">Variance explained</div>
+                    <div className="text-xs text-gray-500 mt-1">Variance explained</div>
                   </div>
 
                   {/* Directional Accuracy */}
@@ -420,7 +420,7 @@ const ModelMetricsPanel: React.FC<ModelMetricsPanelProps> = ({
                     <div className={`text-2xl font-bold ${getDAColor(currentMetrics.directional_accuracy)}`}>
                       {formatPercent(currentMetrics.directional_accuracy)}
                     </div>
-                    <div className="text-[10px] text-gray-500 mt-1">Trend prediction</div>
+                    <div className="text-xs text-gray-500 mt-1">Trend prediction</div>
                   </div>
 
                   {/* MAE */}
@@ -432,7 +432,7 @@ const ModelMetricsPanel: React.FC<ModelMetricsPanelProps> = ({
                     <div className="text-xl font-bold text-white font-mono">
                       {formatMetric(currentMetrics.mae)}
                     </div>
-                    <div className="text-[10px] text-gray-500 mt-1">Mean absolute error</div>
+                    <div className="text-xs text-gray-500 mt-1">Mean absolute error</div>
                   </div>
 
                   {/* RMSE */}
@@ -444,7 +444,7 @@ const ModelMetricsPanel: React.FC<ModelMetricsPanelProps> = ({
                     <div className="text-xl font-bold text-white font-mono">
                       {formatMetric(currentMetrics.rmse)}
                     </div>
-                    <div className="text-[10px] text-gray-500 mt-1">Root mean squared error</div>
+                    <div className="text-xs text-gray-500 mt-1">Root mean squared error</div>
                   </div>
 
                   {/* Sample Count - Full Width */}

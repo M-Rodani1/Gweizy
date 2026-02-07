@@ -245,7 +245,7 @@ const HourlyHeatmap: React.FC = () => {
         </div>
         <div className="flex items-center gap-2">
           {isFallback && (
-            <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400">
+            <span className="text-xs px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400">
               Demo
             </span>
           )}
@@ -289,7 +289,7 @@ const HourlyHeatmap: React.FC = () => {
             {HOURS.filter(h => h % 3 === 0).map(hour => (
               <div
                 key={hour}
-                className="text-[9px] text-gray-500 text-center"
+                className="text-xs text-gray-500 text-center"
                 style={{ width: `${(3 / 24) * 100}%` }}
               >
                 {formatHour(hour)}
@@ -300,7 +300,7 @@ const HourlyHeatmap: React.FC = () => {
           {/* Grid rows */}
           {DAYS.map((day, dayIdx) => (
             <div key={day} className="flex items-center mb-0.5">
-              <div className="w-8 shrink-0 text-[10px] text-gray-500 pr-1 text-right">
+              <div className="w-8 shrink-0 text-xs text-gray-500 pr-1 text-right">
                 {day}
               </div>
               <div className="flex-1 flex gap-px">
@@ -323,7 +323,7 @@ const HourlyHeatmap: React.FC = () => {
                     >
                       {/* Tooltip */}
                       {isHovered && cell && (
-                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 border border-gray-700 rounded text-[10px] whitespace-nowrap z-20">
+                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 border border-gray-700 rounded text-xs whitespace-nowrap z-20">
                           <div className="font-medium text-white">
                             {DAYS[dayIdx]} {formatHour(hour)}
                             {isCurrentTime && <span className="text-cyan-400 ml-1">(Now)</span>}
@@ -343,7 +343,7 @@ const HourlyHeatmap: React.FC = () => {
       </div>
 
       {/* Legend */}
-      <div className="flex items-center justify-center gap-3 mt-4 text-[10px] text-gray-500" aria-hidden="true">
+      <div className="flex items-center justify-center gap-3 mt-4 text-xs text-gray-500" aria-hidden="true">
         <div className="flex items-center gap-1">
           <div className="w-3 h-3 rounded-sm bg-green-500" />
           <span>Low</span>

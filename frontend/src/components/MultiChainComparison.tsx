@@ -148,7 +148,7 @@ const MultiChainComparison: React.FC<MultiChainComparisonProps> = ({
                         </span>
                       )}
                     </div>
-                    <div className="text-[10px] sm:text-xs text-gray-400 font-mono truncate">
+                    <div className="text-xs sm:text-xs text-gray-400 font-mono truncate">
                       {formatGwei(gas?.gasPrice || 0)} gwei
                     </div>
                   </div>
@@ -173,12 +173,12 @@ const MultiChainComparison: React.FC<MultiChainComparisonProps> = ({
                     {formatUsd(costUsd)}
                   </div>
                   {savingsPercent > 0 && !isCheapest && (
-                    <div className="text-[10px] sm:text-xs text-red-400 font-mono">
+                    <div className="text-xs sm:text-xs text-red-400 font-mono">
                       +{savingsPercent.toFixed(0)}%
                     </div>
                   )}
                   {isCheapest && (
-                    <div className="badge badge-success badge-pulse text-[10px] sm:text-xs">
+                    <div className="badge badge-success badge-pulse text-xs sm:text-xs">
                       Best
                     </div>
                   )}

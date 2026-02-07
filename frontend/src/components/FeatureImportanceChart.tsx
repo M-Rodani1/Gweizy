@@ -143,7 +143,7 @@ const FeatureImportanceChart: React.FC = () => {
         <div className="space-y-2">
           {displayFeatures.map((feature, index) => (
             <div key={feature.feature} className="group">
-              <div className="flex items-center justify-between text-[10px] sm:text-xs mb-1 gap-2">
+              <div className="flex items-center justify-between text-xs sm:text-xs mb-1 gap-2">
                 <span className="text-gray-400 truncate max-w-[100px] sm:max-w-[140px]" title={feature.feature}>
                   {formatFeatureName(feature.feature)}
                 </span>
