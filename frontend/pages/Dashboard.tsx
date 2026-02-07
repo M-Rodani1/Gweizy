@@ -1,5 +1,5 @@
 import React, { useEffect, useState, lazy } from 'react';
-import { Bell, Calendar, ChevronRight, User } from 'lucide-react';
+import { Bell, Calendar, Sparkles, User } from 'lucide-react';
 import TransactionPilot from '../src/components/TransactionPilot';
 import MultiChainComparison from '../src/components/MultiChainComparison';
 import CompactForecast from '../src/components/CompactForecast';
@@ -102,7 +102,7 @@ const Dashboard: React.FC = () => {
             </div>
             <CollapsibleSection
               title="Recommendations"
-              icon={<ChevronRight className="w-4 h-4 text-cyan-300" />}
+              icon={<Sparkles className="w-4 h-4 text-cyan-300" />}
               defaultExpanded={false}
             >
               <SectionErrorBoundary sectionName="Recommendations">

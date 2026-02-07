@@ -192,7 +192,7 @@ const Landing: React.FC = () => {
         <div className="container">
           <div className="flex justify-between items-center flex-wrap gap-6">
             <div className="text-sm text-[var(--text-muted)]">
-              © 2025 Base Gas Optimiser. Built at Coinbase 2025 Hackathon.
+              © 2025 Gweizy. Built at Coinbase 2025 Hackathon.
             </div>
             <div className="flex gap-6 text-sm text-[var(--text-muted)]">
               <span>Queen Mary University of London</span>
