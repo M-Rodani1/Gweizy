@@ -1,5 +1,6 @@
 import React from 'react';
-import { Network } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { Network, Activity } from 'lucide-react';
 import { useChain, useChainComparison } from '../contexts/ChainContext';
 import { TX_GAS_ESTIMATES, TransactionType } from '../config/chains';
 import ChainBadge from './ChainBadge';
@@ -11,11 +12,15 @@ import AnimatedNumber from './ui/AnimatedNumber';
 interface MultiChainComparisonProps {
   txType?: TransactionType;
   ethPrice?: number;
+  networkUtilization?: number;
+  isConnected?: boolean;
 }
 
 const MultiChainComparison: React.FC<MultiChainComparisonProps> = ({
   txType = 'swap',
-  ethPrice = 3000
+  ethPrice = 3000,
+  networkUtilization = 0,
+  isConnected = false
 }) => {
   const { selectedChainId, setSelectedChainId, bestChainForTx, isLoading } = useChain();
   const chainComparison = useChainComparison();
@@ -47,14 +52,45 @@ const MultiChainComparison: React.FC<MultiChainComparisonProps> = ({
       <div className="px-6 py-4 border-b border-gray-700/50 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Network className="w-4 h-4 text-cyan-400" aria-hidden="true" />
-          <h3 id="multichain-heading" className="font-semibold text-white">Multi-Chain Gas</h3>
+          <h3 id="multichain-heading" className="font-semibold text-white">Network & Gas</h3>
         </div>
-        {isLoading && (
-          <div className="flex items-center gap-1.5">
-            <div className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
-            <span className="text-xs text-gray-400">Updating</span>
+        <div className="flex items-center gap-3">
+          {/* Network Utilization Indicator */}
+          <div className="flex items-center gap-2">
+            <Activity
+              className={`w-3.5 h-3.5 ${
+                networkUtilization < 0.5 ? 'text-green-400' :
+                networkUtilization < 0.8 ? 'text-yellow-400' : 'text-red-400'
+              } ${isConnected ? 'animate-pulse' : 'opacity-60'}`}
+              aria-hidden="true"
+            />
+            <div className="flex items-center gap-1.5">
+              <div className="w-16 h-1.5 bg-gray-700 rounded-full overflow-hidden">
+                <motion.div
+                  initial={{ width: 0 }}
+                  animate={{ width: `${networkUtilization * 100}%` }}
+                  transition={{ duration: 0.8, ease: 'easeOut' }}
+                  className={`h-full rounded-full ${
+                    networkUtilization < 0.5 ? 'bg-green-500' :
+                    networkUtilization < 0.8 ? 'bg-yellow-500' : 'bg-red-500'
+                  }`}
+                />
+              </div>
+              <span className={`text-xs font-mono ${
+                networkUtilization < 0.5 ? 'text-green-400' :
+                networkUtilization < 0.8 ? 'text-yellow-400' : 'text-red-400'
+              }`}>
+                {Math.round(networkUtilization * 100)}%
+              </span>
+            </div>
           </div>
-        )}
+          {isLoading && (
+            <div className="flex items-center gap-1.5">
+              <div className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
+              <span className="text-xs text-gray-400">Updating</span>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Chain List */}

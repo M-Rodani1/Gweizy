@@ -1,5 +1,5 @@
 import React, { useEffect, useState, lazy } from 'react';
-import { Bell, Calendar, ChevronRight } from 'lucide-react';
+import { Bell, Calendar, ChevronRight, User } from 'lucide-react';
 import TransactionPilot from '../src/components/TransactionPilot';
 import MultiChainComparison from '../src/components/MultiChainComparison';
 import CompactForecast from '../src/components/CompactForecast';
@@ -10,7 +10,6 @@ import OnboardingTour from '../src/components/OnboardingTour';
 import DriftAlertBanner from '../src/components/DriftAlertBanner';
 import PersonalizationPanel from '../src/components/PersonalizationPanel';
 import PersonalizedRecommendations from '../src/components/PersonalizedRecommendations';
-import NetworkPulse from '../src/components/ui/NetworkPulse';
 import { useChain } from '../src/contexts/ChainContext';
 import { useEthPrice } from '../src/hooks/useEthPrice';
 import { useWalletAddress } from '../src/hooks/useWalletAddress';
@@ -71,31 +70,45 @@ const Dashboard: React.FC = () => {
 
         {/* Overview Content */}
         <section className="space-y-8 animate-fadeIn">
-          {/* Top row: Forecast + Network Pulse + Network */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          {/* Top row: Forecast + Network & Gas (combined) */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <div data-tour="forecast" className="h-full">
               <SectionErrorBoundary sectionName="Price Forecast" className="h-full">
                 <CompactForecast />
               </SectionErrorBoundary>
             </div>
-            <SectionErrorBoundary sectionName="Network Pulse">
-              <NetworkPulse utilization={networkUtilization} isConnected={isWebSocketConnected} />
-            </SectionErrorBoundary>
-            <SectionErrorBoundary sectionName="Network Insights" className="h-full">
-              <MultiChainComparison txType="swap" ethPrice={ethPrice} />
+            <SectionErrorBoundary sectionName="Network & Gas" className="h-full">
+              <MultiChainComparison
+                txType="swap"
+                ethPrice={ethPrice}
+                networkUtilization={networkUtilization}
+                isConnected={isWebSocketConnected}
+              />
             </SectionErrorBoundary>
           </div>
 
-          {/* Second row: Personalization + Recommendations */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:min-h-[320px]">
-            <div data-tour="profile" className="h-full">
-              <SectionErrorBoundary sectionName="Profile Settings" className="h-full">
-                <PersonalizationPanel />
-              </SectionErrorBoundary>
+          {/* Second row: Personalization + Recommendations (collapsed by default) */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div data-tour="profile">
+              <CollapsibleSection
+                title="Profile Settings"
+                icon={<User className="w-4 h-4 text-cyan-300" />}
+                defaultExpanded={false}
+              >
+                <SectionErrorBoundary sectionName="Profile Settings">
+                  <PersonalizationPanel />
+                </SectionErrorBoundary>
+              </CollapsibleSection>
             </div>
-            <SectionErrorBoundary sectionName="Recommendations" className="h-full">
-              <PersonalizedRecommendations walletAddress={walletAddress} />
-            </SectionErrorBoundary>
+            <CollapsibleSection
+              title="Recommendations"
+              icon={<ChevronRight className="w-4 h-4 text-cyan-300" />}
+              defaultExpanded={false}
+            >
+              <SectionErrorBoundary sectionName="Recommendations">
+                <PersonalizedRecommendations walletAddress={walletAddress} />
+              </SectionErrorBoundary>
+            </CollapsibleSection>
           </div>
 
           {/* Transaction Management - Compact */}
