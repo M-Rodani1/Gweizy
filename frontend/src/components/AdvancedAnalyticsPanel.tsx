@@ -230,7 +230,7 @@ const AdvancedAnalyticsPanel: React.FC = () => {
         {/* Volatility Index */}
         <div className="bg-gray-700/50 rounded-lg p-4">
           <div className="flex items-center gap-2 mb-3">
-            <Gauge className="w-4 h-4 text-purple-400" />
+            <Gauge className="w-4 h-4 text-cyan-400" />
             <span className="text-sm font-medium text-gray-300">Gas Volatility Index</span>
           </div>
           {volatility?.available ? (

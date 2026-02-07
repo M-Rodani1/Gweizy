@@ -112,7 +112,7 @@ const AccuracyHistoryChart: React.FC = () => {
   const getMetricColor = (): string => {
     switch (selectedMetric) {
       case 'mae': return '#f59e0b'; // amber
-      case 'r2': return '#8b5cf6'; // purple
+      case 'r2': return '#06b6d4'; // cyan
       case 'directional_accuracy': return '#06b6d4'; // cyan
       default: return '#6b7280';
     }
@@ -161,7 +161,7 @@ const AccuracyHistoryChart: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
         <div className="flex items-center gap-2">
-          <TrendingUp className="w-4 h-4 text-purple-400" aria-hidden="true" />
+          <TrendingUp className="w-4 h-4 text-cyan-400" aria-hidden="true" />
           <h3 className="font-semibold text-white">Accuracy History</h3>
         </div>
 
@@ -173,7 +173,7 @@ const AccuracyHistoryChart: React.FC = () => {
               id="time-range-select"
               value={timeRange}
               onChange={(e) => setTimeRange(e.target.value as TimeRange)}
-              className="appearance-none bg-gray-800 text-gray-300 text-xs px-3 py-1.5 pr-7 rounded-lg border border-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+              className="appearance-none bg-gray-800 text-gray-300 text-xs px-3 py-1.5 pr-7 rounded-lg border border-gray-700 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
             >
               <option value="24h">24 Hours</option>
               <option value="7d">7 Days</option>
@@ -186,7 +186,7 @@ const AccuracyHistoryChart: React.FC = () => {
           <button
             onClick={fetchHistory}
             aria-label="Refresh accuracy history"
-            className="text-xs text-purple-300 hover:text-purple-200 transition-colors flex items-center gap-1 px-2 py-1.5 rounded focus:outline-none focus:ring-2 focus:ring-purple-500"
+            className="text-xs text-cyan-300 hover:text-cyan-200 transition-colors flex items-center gap-1 px-2 py-1.5 rounded focus:outline-none focus:ring-2 focus:ring-cyan-500"
             disabled={loading}
           >
             <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} aria-hidden="true" />
@@ -206,9 +206,9 @@ const AccuracyHistoryChart: React.FC = () => {
               key={horizon}
               onClick={() => setSelectedHorizon(horizon)}
               aria-pressed={selectedHorizon === horizon}
-              className={`px-3 py-1 text-xs font-medium rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 ${
+              className={`px-3 py-1 text-xs font-medium rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-cyan-500 ${
                 selectedHorizon === horizon
-                  ? 'bg-purple-500 text-white'
+                  ? 'bg-cyan-500 text-white'
                   : 'text-gray-400 hover:text-white'
               }`}
             >

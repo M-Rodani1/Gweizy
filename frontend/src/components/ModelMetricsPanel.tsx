@@ -215,7 +215,7 @@ const ModelMetricsPanel: React.FC<ModelMetricsPanelProps> = ({
     return (
       <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-6 shadow-xl">
         <div className="flex items-center gap-2 mb-4">
-          <Brain className="w-5 h-5 text-purple-400" />
+          <Brain className="w-5 h-5 text-cyan-400" />
           <h3 className="font-semibold text-white">Model Performance</h3>
         </div>
         <div className="flex items-center justify-center h-40">
@@ -234,8 +234,8 @@ const ModelMetricsPanel: React.FC<ModelMetricsPanelProps> = ({
       >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-purple-500/20 rounded-lg">
-              <Brain className="w-5 h-5 text-purple-400" />
+            <div className="p-2 bg-cyan-500/20 rounded-lg">
+              <Brain className="w-5 h-5 text-cyan-400" />
             </div>
             <div>
               <h3 className="font-semibold text-white">Model Performance</h3>
@@ -275,7 +275,7 @@ const ModelMetricsPanel: React.FC<ModelMetricsPanelProps> = ({
                 onClick={() => setActiveTab(tab)}
                 className={`flex-1 py-2 text-xs font-medium rounded-md transition-colors capitalize ${
                   activeTab === tab
-                    ? 'bg-purple-500 text-white'
+                    ? 'bg-cyan-500 text-white'
                     : 'text-gray-400 hover:text-white hover:bg-gray-700/50'
                 }`}
               >
@@ -353,11 +353,11 @@ const ModelMetricsPanel: React.FC<ModelMetricsPanelProps> = ({
               </div>
 
               {/* Colab Training Info */}
-              <div className="p-4 bg-purple-500/10 border border-purple-500/30 rounded-xl">
+              <div className="p-4 bg-cyan-500/10 border border-cyan-500/30 rounded-xl">
                 <div className="flex items-start gap-3">
-                  <Activity className="w-5 h-5 text-purple-400 mt-0.5" />
+                  <Activity className="w-5 h-5 text-cyan-400 mt-0.5" />
                   <div className="flex-1">
-                    <p className="text-sm text-purple-300 font-medium">Training via Colab</p>
+                    <p className="text-sm text-cyan-300 font-medium">Training via Colab</p>
                     <p className="text-xs text-gray-400 mt-1">
                       Model training is done using the Colab notebook for better GPU access.
                     </p>
@@ -365,7 +365,7 @@ const ModelMetricsPanel: React.FC<ModelMetricsPanelProps> = ({
                       href="https://colab.research.google.com"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-xs text-purple-400 hover:text-purple-300 mt-2 transition-colors"
+                      className="inline-flex items-center gap-1 text-xs text-cyan-400 hover:text-cyan-300 mt-2 transition-colors"
                     >
                       Open train_all_models.ipynb
                       <ExternalLink className="w-3 h-3" />
@@ -402,7 +402,7 @@ const ModelMetricsPanel: React.FC<ModelMetricsPanelProps> = ({
                   {/* R² Score */}
                   <div className="bg-gray-800/40 rounded-xl p-4 border border-gray-700/50">
                     <div className="flex items-center gap-1.5 mb-2">
-                      <Target className="w-4 h-4 text-purple-400" />
+                      <Target className="w-4 h-4 text-cyan-400" />
                       <span className="text-xs text-gray-400">R² Score</span>
                     </div>
                     <div className={`text-2xl font-bold ${getR2Color(currentMetrics.r2)}`}>

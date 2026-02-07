@@ -190,7 +190,7 @@ const PatternMatchingCard: React.FC = () => {
       {/* Confidence & Stats */}
       <div className="flex items-center gap-4 mb-4 text-sm">
         <div className="flex items-center gap-1">
-          <Target className="w-4 h-4 text-purple-400" />
+          <Target className="w-4 h-4 text-cyan-400" />
           <span className="text-gray-400">Confidence:</span>
           <span className="text-white font-medium">
             {((predictions?.confidence || 0) * 100).toFixed(0)}%

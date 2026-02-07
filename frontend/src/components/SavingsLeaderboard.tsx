@@ -152,7 +152,7 @@ const SavingsLeaderboard: React.FC<SavingsLeaderboardProps> = ({ walletAddress }
               </span>
             )}
             {userEntry && userEntry.streak && userEntry.streak >= 7 && (
-              <span className="px-2 py-1 bg-purple-500/20 text-purple-400 rounded text-xs">
+              <span className="px-2 py-1 bg-cyan-500/20 text-cyan-400 rounded text-xs">
                 🔥 Optimiser Pro
               </span>
             )}

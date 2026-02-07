@@ -240,7 +240,7 @@ const HourlyHeatmap: React.FC = () => {
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <Calendar className="w-4 h-4 text-purple-400" aria-hidden="true" />
+          <Calendar className="w-4 h-4 text-cyan-400" aria-hidden="true" />
           <h3 className="font-semibold text-white text-sm">Weekly Gas Heatmap</h3>
         </div>
         <div className="flex items-center gap-2">
@@ -252,7 +252,7 @@ const HourlyHeatmap: React.FC = () => {
           <button
             onClick={fetchData}
             aria-label="Refresh heatmap data"
-            className="p-1 text-gray-500 hover:text-gray-300 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 rounded"
+            className="p-1 text-gray-500 hover:text-gray-300 transition-colors focus:outline-none focus:ring-2 focus:ring-cyan-500 rounded"
           >
             <RefreshCw className="w-3 h-3" aria-hidden="true" />
           </button>

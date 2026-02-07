@@ -138,7 +138,7 @@ const MempoolStatusCard: React.FC = () => {
     return (
       <div className="bg-gray-800/50 rounded-xl p-6 border border-gray-700">
         <div className="flex items-center gap-2 mb-4">
-          <Activity className="w-5 h-5 text-purple-400" />
+          <Activity className="w-5 h-5 text-cyan-400" />
           <h3 className="text-lg font-semibold text-white">Mempool Status</h3>
         </div>
         <div className="flex items-center justify-center h-32">
@@ -152,7 +152,7 @@ const MempoolStatusCard: React.FC = () => {
     return (
       <div className="bg-gray-800/50 rounded-xl p-6 border border-gray-700">
         <div className="flex items-center gap-2 mb-4">
-          <Activity className="w-5 h-5 text-purple-400" />
+          <Activity className="w-5 h-5 text-cyan-400" />
           <h3 className="text-lg font-semibold text-white">Mempool Status</h3>
         </div>
         <p className="text-gray-400 text-sm">{error || 'Mempool data unavailable'}</p>
@@ -167,7 +167,7 @@ const MempoolStatusCard: React.FC = () => {
     <div className="bg-gray-800/50 rounded-xl p-6 border border-gray-700">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <Activity className="w-5 h-5 text-purple-400" />
+          <Activity className="w-5 h-5 text-cyan-400" />
           <h3 className="text-lg font-semibold text-white">Mempool Status</h3>
         </div>
         <button

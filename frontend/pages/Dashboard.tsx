@@ -138,7 +138,7 @@ const Dashboard: React.FC = () => {
           <div className="flex gap-6 pt-4">
             <a
               href="/analytics"
-              className="flex items-center gap-2 text-sm text-gray-400 hover:text-purple-400 transition-colors"
+              className="flex items-center gap-2 text-sm text-gray-400 hover:text-cyan-400 transition-colors"
               aria-label="Go to analytics page"
             >
               View detailed analytics <ChevronRight className="w-4 h-4" aria-hidden="true" />

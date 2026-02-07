@@ -143,7 +143,7 @@ const DriftAlertBanner: React.FC<DriftAlertBannerProps> = ({
                   href="https://colab.research.google.com"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-xs px-3 py-2 min-h-[36px] bg-purple-500/80 hover:bg-purple-500 text-white rounded-lg transition-colors flex items-center gap-1"
+                  className="text-xs px-3 py-2 min-h-[36px] bg-cyan-500/80 hover:bg-cyan-500 text-white rounded-lg transition-colors flex items-center gap-1"
                 >
                   <ExternalLink className="w-3 h-3" />
                   <span>Open Colab Notebook</span>

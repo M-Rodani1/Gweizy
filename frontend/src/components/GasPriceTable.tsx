@@ -14,7 +14,7 @@ const TableRow = React.memo<{ row: TableRowData; index: number }>(({ row, index 
   <tr className="border-b border-gray-700 hover:bg-gray-700/50">
     <td className="p-3 font-mono text-sm text-cyan-400">{row.txHash}</td>
     <td className="p-3">
-      <span className="bg-purple-600/50 text-purple-200 text-xs font-semibold mr-2 px-2.5 py-0.5 rounded">
+      <span className="bg-cyan-600/50 text-cyan-200 text-xs font-semibold mr-2 px-2.5 py-0.5 rounded">
         {row.method}
       </span>
     </td>
@@ -168,7 +168,7 @@ const GasPriceTable: React.FC = () => {
                       >
                         <td className="p-3 font-mono text-sm text-cyan-400">{row.txHash}</td>
                         <td className="p-3">
-                          <span className="bg-purple-600/50 text-purple-200 text-xs font-semibold mr-2 px-2.5 py-0.5 rounded">
+                          <span className="bg-cyan-600/50 text-cyan-200 text-xs font-semibold mr-2 px-2.5 py-0.5 rounded">
                             {row.method}
                           </span>
                         </td>

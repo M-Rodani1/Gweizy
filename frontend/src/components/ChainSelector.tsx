@@ -262,7 +262,7 @@ const ChainOption: React.FC<ChainOptionProps> = ({
               </span>
             )}
             {chain.isL2 && (
-              <span className="px-1.5 py-0.5 text-xs bg-purple-500/20 text-purple-400 rounded">
+              <span className="px-1.5 py-0.5 text-xs bg-cyan-500/20 text-cyan-400 rounded">
                 L2
               </span>
             )}

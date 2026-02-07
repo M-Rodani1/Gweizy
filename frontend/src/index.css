@@ -355,11 +355,6 @@ html {
   box-shadow: 0 0 30px rgba(234, 179, 8, 0.15);
 }
 
-.recommendation-card-purple {
-  border: 2px solid rgba(168, 85, 247, 0.5);
-  box-shadow: 0 0 30px rgba(168, 85, 247, 0.15);
-}
-
 .recommendation-card-cyan {
   border: 2px solid rgba(6, 182, 212, 0.5);
   box-shadow: 0 0 30px rgba(6, 182, 212, 0.15);
@@ -603,10 +598,6 @@ html {
 
 .widget-glow-green {
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(34, 197, 94, 0.2), 0 0 40px rgba(34, 197, 94, 0.1);
-}
-
-.widget-glow-purple {
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(168, 85, 247, 0.2), 0 0 40px rgba(168, 85, 247, 0.1);
 }
 
 /* 2. Enhanced button styles with gradients */

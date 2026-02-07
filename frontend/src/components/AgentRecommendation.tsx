@@ -89,9 +89,9 @@ const AgentRecommendation: React.FC<AgentRecommendationProps> = ({ currentGas: _
       case 'SUBMIT_HIGH':
         return {
           icon: <Zap className="w-6 h-6" />,
-          color: 'purple',
-          bgClass: 'bg-purple-500/10 border-purple-500/50',
-          textClass: 'text-purple-400',
+          color: 'cyan',
+          bgClass: 'bg-cyan-500/10 border-cyan-500/50',
+          textClass: 'text-cyan-400',
           label: 'Submit High',
           description: 'Priority submission for faster confirmation'
         };
@@ -139,8 +139,8 @@ const AgentRecommendation: React.FC<AgentRecommendationProps> = ({ currentGas: _
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <Bot className="w-5 h-5 text-purple-400" />
-          <h3 className="text-lg sm:text-xl font-bold bg-gradient-to-r from-purple-400 to-pink-500 bg-clip-text text-transparent">
+          <Bot className="w-5 h-5 text-cyan-400" />
+          <h3 className="text-lg sm:text-xl font-bold bg-gradient-to-r from-cyan-400 to-cyan-400 bg-clip-text text-transparent">
             AI Transaction Agent
           </h3>
         </div>
@@ -198,7 +198,7 @@ const AgentRecommendation: React.FC<AgentRecommendationProps> = ({ currentGas: _
           step="0.1"
           value={urgency}
           onChange={(e) => setUrgency(parseFloat(e.target.value))}
-          className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-purple-500"
+          className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-cyan-500"
         />
         <div className="flex justify-between text-xs text-gray-500 mt-1">
           <span>No Rush</span>
@@ -259,7 +259,7 @@ const AgentRecommendation: React.FC<AgentRecommendationProps> = ({ currentGas: _
       {/* Refresh Button */}
       <button
         onClick={fetchRecommendation}
-        className="mt-4 w-full py-2 px-4 bg-purple-600/20 hover:bg-purple-600/30 border border-purple-500/50 rounded-lg text-purple-400 text-sm font-medium transition-colors"
+        className="mt-4 w-full py-2 px-4 bg-cyan-600/20 hover:bg-cyan-600/30 border border-cyan-500/50 rounded-lg text-cyan-400 text-sm font-medium transition-colors"
       >
         Refresh Recommendation
       </button>

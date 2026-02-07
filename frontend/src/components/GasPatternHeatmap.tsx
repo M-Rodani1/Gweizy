@@ -180,8 +180,8 @@ const GasPatternHeatmap: React.FC = () => {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-purple-500/20 rounded-lg">
-            <Calendar className="w-5 h-5 text-purple-400" />
+          <div className="p-2 bg-cyan-500/20 rounded-lg">
+            <Calendar className="w-5 h-5 text-cyan-400" />
           </div>
           <div>
             <h3 className="text-lg font-bold text-white">Gas Price Patterns</h3>
@@ -200,7 +200,7 @@ const GasPatternHeatmap: React.FC = () => {
             onClick={() => setView('hourly')}
             className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
               view === 'hourly'
-                ? 'bg-purple-500 text-white'
+                ? 'bg-cyan-500 text-white'
                 : 'text-gray-400 hover:text-white'
             }`}
           >
@@ -211,7 +211,7 @@ const GasPatternHeatmap: React.FC = () => {
             onClick={() => setView('daily')}
             className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
               view === 'daily'
-                ? 'bg-purple-500 text-white'
+                ? 'bg-cyan-500 text-white'
                 : 'text-gray-400 hover:text-white'
             }`}
           >
@@ -331,8 +331,8 @@ const GasPatternHeatmap: React.FC = () => {
       )}
 
       {/* Insight */}
-      <div className="mt-6 p-3 bg-purple-500/10 border border-purple-500/30 rounded-lg">
-        <p className="text-sm text-purple-300">
+      <div className="mt-6 p-3 bg-cyan-500/10 border border-cyan-500/30 rounded-lg">
+        <p className="text-sm text-cyan-300">
           <strong>Tip:</strong> {view === 'hourly'
             ? `Gas prices are typically lowest around ${formatHour(data.cheapest_hour)} and highest around ${formatHour(data.most_expensive_hour)}.`
             : `${DAYS[data.cheapest_day]} tends to have the lowest gas prices, while ${DAYS[data.most_expensive_day]} is usually the most expensive.`

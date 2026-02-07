@@ -54,8 +54,8 @@ const TransactionCostCalculator: React.FC<TransactionCostCalculatorProps> = ({
     <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-sm border border-slate-700 rounded-xl p-6 shadow-xl">
       {/* Header */}
       <div className="flex items-center gap-3 mb-6">
-        <div className="p-2 bg-purple-500/20 rounded-lg">
-          <Calculator className="w-5 h-5 text-purple-400" />
+        <div className="p-2 bg-cyan-500/20 rounded-lg">
+          <Calculator className="w-5 h-5 text-cyan-400" />
         </div>
         <div>
           <h3 className="text-lg font-bold text-white">Transaction Cost Calculator</h3>
@@ -71,7 +71,7 @@ const TransactionCostCalculator: React.FC<TransactionCostCalculatorProps> = ({
             onClick={() => setSelectedTx(tx)}
             className={`p-4 rounded-lg border transition-all ${
               selectedTx.name === tx.name
-                ? 'bg-purple-500/20 border-purple-500/50 text-white shadow-lg shadow-purple-500/20'
+                ? 'bg-cyan-500/20 border-cyan-500/50 text-white shadow-lg shadow-cyan-500/20'
                 : 'bg-slate-700/30 border-slate-600 text-gray-400 hover:border-slate-500'
             }`}
           >
@@ -87,10 +87,10 @@ const TransactionCostCalculator: React.FC<TransactionCostCalculatorProps> = ({
       </div>
 
       {/* Cost Display */}
-      <div className="bg-purple-500/10 border border-purple-500/30 rounded-lg p-6 mb-4">
+      <div className="bg-cyan-500/10 border border-cyan-500/30 rounded-lg p-6 mb-4">
         <div className="text-center">
           <div className="flex items-center justify-center gap-2 mb-2">
-            <Zap className="w-4 h-4 text-purple-400" />
+            <Zap className="w-4 h-4 text-cyan-400" />
             <div className="text-sm text-gray-400">Estimated Cost</div>
           </div>
 

@@ -58,11 +58,11 @@ const HeroSection: React.FC<HeroSectionProps> = ({ currentGas, predictions, ethP
   return (
     <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-gray-800 via-gray-900 to-black border border-cyan-500/20 shadow-2xl shadow-cyan-500/10 mb-8">
       {/* Animated background gradient */}
-      <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/5 via-purple-500/5 to-cyan-500/5 animate-gradient-x" />
+      <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/5 via-cyan-500/5 to-cyan-500/5 animate-gradient-x" />
 
       {/* Floating orbs */}
       <div className="absolute top-0 left-1/4 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl animate-pulse" />
-      <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl animate-pulse delay-1000" />
+      <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl animate-pulse delay-1000" />
 
       <div className="relative z-10 px-6 py-8 sm:px-8 sm:py-12 lg:px-12 lg:py-16">
         <div className="max-w-6xl mx-auto">
@@ -137,9 +137,9 @@ const HeroSection: React.FC<HeroSectionProps> = ({ currentGas, predictions, ethP
                 </div>
               </div>
 
-              <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-4 border border-gray-700/50 hover:border-purple-500/30 transition-all duration-300 hover:shadow-lg hover:shadow-purple-500/5">
+              <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-4 border border-gray-700/50 hover:border-cyan-500/30 transition-all duration-300 hover:shadow-lg hover:shadow-cyan-500/5">
                 <div className="text-gray-400 text-xs sm:text-sm mb-1">4 Hours</div>
-                <div className="text-purple-400 text-lg sm:text-xl font-bold">
+                <div className="text-cyan-400 text-lg sm:text-xl font-bold">
                   {predictions?.['4h'] ? predictions['4h'].toFixed(4) : '---'} <span className="text-sm text-gray-500">Gwei</span>
                 </div>
                 <div className="text-xs text-gray-500 mt-1">
@@ -147,9 +147,9 @@ const HeroSection: React.FC<HeroSectionProps> = ({ currentGas, predictions, ethP
                 </div>
               </div>
 
-              <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-4 border border-gray-700/50 hover:border-pink-500/30 transition-all duration-300 hover:shadow-lg hover:shadow-pink-500/5">
+              <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-4 border border-gray-700/50 hover:border-cyan-500/30 transition-all duration-300 hover:shadow-lg hover:shadow-cyan-500/5">
                 <div className="text-gray-400 text-xs sm:text-sm mb-1">24 Hours</div>
-                <div className="text-pink-400 text-lg sm:text-xl font-bold">
+                <div className="text-cyan-400 text-lg sm:text-xl font-bold">
                   {predictions?.['24h'] ? predictions['24h'].toFixed(4) : '---'} <span className="text-sm text-gray-500">Gwei</span>
                 </div>
                 <div className="text-xs text-gray-500 mt-1">

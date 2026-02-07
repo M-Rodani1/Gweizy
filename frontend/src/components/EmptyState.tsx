@@ -21,7 +21,7 @@ const EmptyState: React.FC<EmptyStateProps> = ({
       case 'no-wallet':
         return <Wallet className="w-16 h-16 text-cyan-400/50" />;
       case 'no-predictions':
-        return <TrendingUp className="w-16 h-16 text-purple-400/50" />;
+        return <TrendingUp className="w-16 h-16 text-cyan-400/50" />;
       case 'error':
         return <AlertCircle className="w-16 h-16 text-red-400/50" />;
       case 'loading':
@@ -65,7 +65,7 @@ const EmptyState: React.FC<EmptyStateProps> = ({
     <div className={`flex flex-col items-center justify-center py-12 px-6 ${className}`}>
       <div className="relative mb-6">
         {/* Animated background circle */}
-        <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/10 to-purple-500/10 rounded-full blur-2xl animate-pulse" />
+        <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/10 to-cyan-500/10 rounded-full blur-2xl animate-pulse" />
 
         {/* Icon */}
         <div className="relative">

@@ -55,7 +55,7 @@ const PersonalizedRecommendations: React.FC<PersonalizedRecommendationsProps> = 
   if (!walletAddress) {
     return (
       <div
-        className="bg-gradient-to-br from-blue-900/30 to-purple-900/30 border border-blue-500/30 rounded-2xl p-6 h-full flex flex-col justify-between shadow-xl focus-card"
+        className="bg-gradient-to-br from-blue-900/30 to-gray-900/30 border border-blue-500/30 rounded-2xl p-6 h-full flex flex-col justify-between shadow-xl focus-card"
         role="article"
         aria-label="Personalized recommendations onboarding"
         tabIndex={0}
@@ -108,7 +108,7 @@ const PersonalizedRecommendations: React.FC<PersonalizedRecommendationsProps> = 
 
   return (
     <div
-      className="bg-gradient-to-br from-blue-900/20 to-purple-900/20 border border-blue-500/30 rounded-2xl p-6 h-full flex flex-col shadow-xl widget-glow-purple w-full max-w-full overflow-y-auto focus-card"
+      className="bg-gradient-to-br from-blue-900/20 to-gray-900/20 border border-blue-500/30 rounded-2xl p-6 h-full flex flex-col shadow-xl widget-glow w-full max-w-full overflow-y-auto focus-card"
       role="article"
       aria-label="Personalized recommendations"
       tabIndex={0}
@@ -170,7 +170,7 @@ const PersonalizedRecommendations: React.FC<PersonalizedRecommendationsProps> = 
         {patterns && patterns.total_transactions > 0 && (
           <div className="bg-gray-800/50 rounded-lg p-5 border border-gray-700">
             <div className="flex items-center gap-2 mb-4 min-w-0">
-              <TrendingUp className="w-5 h-5 text-purple-400 flex-shrink-0" />
+              <TrendingUp className="w-5 h-5 text-cyan-400 flex-shrink-0" />
               <h3 className="font-semibold text-white break-words min-w-0">Your Patterns</h3>
             </div>
             <div className="grid grid-cols-2 gap-3 text-sm">

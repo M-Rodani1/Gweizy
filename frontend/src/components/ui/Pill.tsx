@@ -2,14 +2,14 @@ import React from 'react';
 
 interface PillProps {
   children: React.ReactNode;
-  color?: 'cyan' | 'green' | 'purple' | 'gray';
+  color?: 'cyan' | 'green' | 'yellow' | 'gray';
   className?: string;
 }
 
 const colorClass: Record<NonNullable<PillProps['color']>, string> = {
   cyan: 'bg-cyan-500/15 text-cyan-200 border border-cyan-500/30',
   green: 'bg-green-500/15 text-green-200 border border-green-500/30',
-  purple: 'bg-purple-500/15 text-purple-200 border border-purple-500/30',
+  yellow: 'bg-yellow-500/15 text-yellow-200 border border-yellow-500/30',
   gray: 'bg-gray-700/40 text-gray-200 border border-gray-600/60'
 };
 

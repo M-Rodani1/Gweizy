@@ -74,7 +74,7 @@ const FeatureImportanceChart: React.FC = () => {
   }, []);
 
   const getBarColor = useCallback((rank: number): string => {
-    if (rank <= 3) return 'bg-gradient-to-r from-purple-500 to-purple-400';
+    if (rank <= 3) return 'bg-gradient-to-r from-cyan-500 to-cyan-400';
     if (rank <= 6) return 'bg-gradient-to-r from-cyan-500 to-cyan-400';
     return 'bg-gradient-to-r from-gray-500 to-gray-400';
   }, []);
@@ -102,12 +102,12 @@ const FeatureImportanceChart: React.FC = () => {
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <Layers className="w-4 h-4 text-purple-400" aria-hidden="true" />
+          <Layers className="w-4 h-4 text-cyan-400" aria-hidden="true" />
           <h3 className="font-semibold text-white">Feature Importance</h3>
           <div className="group relative">
             <button
               type="button"
-              className="focus:outline-none focus:ring-2 focus:ring-purple-500 rounded"
+              className="focus:outline-none focus:ring-2 focus:ring-cyan-500 rounded"
               aria-label="Information about feature importance"
             >
               <Info className="w-3.5 h-3.5 text-gray-500 cursor-help" aria-hidden="true" />
@@ -123,7 +123,7 @@ const FeatureImportanceChart: React.FC = () => {
         <button
           onClick={fetchFeatures}
           aria-label="Refresh feature importance"
-          className="btn-gradient-secondary text-xs text-white px-3 py-1.5 rounded-lg flex items-center gap-1.5 font-medium disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-purple-500"
+          className="btn-gradient-secondary text-xs text-white px-3 py-1.5 rounded-lg flex items-center gap-1.5 font-medium disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-cyan-500"
           disabled={loading}
         >
           <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} aria-hidden="true" />
@@ -170,7 +170,7 @@ const FeatureImportanceChart: React.FC = () => {
         <button
           onClick={() => setExpanded(!expanded)}
           aria-expanded={expanded}
-          className="w-full mt-3 pt-2 border-t border-gray-800 flex items-center justify-center gap-1 text-xs text-gray-400 hover:text-gray-300 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 rounded"
+          className="w-full mt-3 pt-2 border-t border-gray-800 flex items-center justify-center gap-1 text-xs text-gray-400 hover:text-gray-300 transition-colors focus:outline-none focus:ring-2 focus:ring-cyan-500 rounded"
         >
           {expanded ? (
             <>

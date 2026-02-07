@@ -33,7 +33,7 @@ const TOUR_STEPS: TourStep[] = [
     description: 'Switch between Overview, Analytics, and System tabs to access different features.',
     target: '[data-tour="tabs"]',
     position: 'bottom',
-    icon: <BarChart3 className="w-5 h-5 text-purple-400" />
+    icon: <BarChart3 className="w-5 h-5 text-cyan-400" />
   },
   {
     id: 'forecast',

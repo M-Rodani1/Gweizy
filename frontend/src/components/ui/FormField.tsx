@@ -66,7 +66,7 @@ const FormField: React.FC<FormFieldProps> = ({
         /border-(?:gray|slate)-\d{3}/g,
         'border-red-500'
       ).replace(
-        /focus:(?:ring|border)-(?:cyan|blue|purple)-\d{3}/g,
+        /focus:(?:ring|border)-(?:cyan|blue)-\d{3}/g,
         'focus:ring-red-500 focus:border-red-500'
       ) + ' border-red-500'
     : existingClassName;

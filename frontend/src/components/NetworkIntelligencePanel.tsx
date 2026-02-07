@@ -118,7 +118,7 @@ const NetworkIntelligencePanel: React.FC = () => {
     return (
       <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-xl p-6">
         <div className="flex items-center justify-center h-48">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-400"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-400"></div>
         </div>
       </div>
     );
@@ -132,7 +132,7 @@ const NetworkIntelligencePanel: React.FC = () => {
           <p>{error}</p>
           <button
             onClick={fetchNetworkData}
-            className="mt-4 px-4 py-2 bg-purple-500/20 hover:bg-purple-500/30 text-purple-400 rounded-lg transition-colors"
+            className="mt-4 px-4 py-2 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-400 rounded-lg transition-colors"
           >
             Retry
           </button>
@@ -150,8 +150,8 @@ const NetworkIntelligencePanel: React.FC = () => {
       >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-purple-500/20 rounded-lg">
-              <Network className="w-5 h-5 text-purple-400" />
+            <div className="p-2 bg-cyan-500/20 rounded-lg">
+              <Network className="w-5 h-5 text-cyan-400" />
             </div>
             <div>
               <h3 className="text-lg font-semibold text-white">Network Intelligence</h3>
@@ -180,10 +180,10 @@ const NetworkIntelligencePanel: React.FC = () => {
       {isExpanded && networkState && (
         <div className="p-6 space-y-6">
           {/* Congestion Gauge */}
-          <div className="bg-gradient-to-br from-purple-500/10 to-pink-500/10 border border-purple-500/30 rounded-lg p-6">
+          <div className="bg-gradient-to-br from-cyan-500/10 to-cyan-400/10 border border-cyan-500/30 rounded-lg p-6">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
-                <Gauge className="w-5 h-5 text-purple-400" />
+                <Gauge className="w-5 h-5 text-cyan-400" />
                 <h4 className="text-sm font-medium text-white">Network Congestion</h4>
               </div>
               <span className={`w-4 h-4 rounded-full ${getCongestionDot(networkState.network_congestion)}`} />
@@ -248,7 +248,7 @@ const NetworkIntelligencePanel: React.FC = () => {
               {/* Contract Call Ratio */}
               <div className="bg-slate-700/50 rounded-lg p-4">
                 <div className="flex items-center gap-2 mb-2">
-                  <Code className="w-4 h-4 text-purple-400" />
+                  <Code className="w-4 h-4 text-cyan-400" />
                   <p className="text-xs text-gray-400">Contract Calls</p>
                 </div>
                 <p className="text-2xl font-bold text-white">
@@ -358,7 +358,7 @@ const NetworkIntelligencePanel: React.FC = () => {
                         return (
                           <div
                             key={idx}
-                            className="flex-1 bg-purple-500/50 rounded-t hover:bg-purple-500/70 transition-colors"
+                            className="flex-1 bg-cyan-500/50 rounded-t hover:bg-cyan-500/70 transition-colors"
                             style={{ height: `${height}%` }}
                             title={`${new Date(congestionHistory.timestamps[idx]).toLocaleTimeString()}: ${count} tx`}
                           />
@@ -378,11 +378,11 @@ const NetworkIntelligencePanel: React.FC = () => {
           )}
 
           {/* Insights */}
-          <div className="bg-purple-500/10 border border-purple-500/30 rounded-lg p-4">
-            <h4 className="text-sm font-medium text-purple-400 mb-3">Network Insights</h4>
+          <div className="bg-cyan-500/10 border border-cyan-500/30 rounded-lg p-4">
+            <h4 className="text-sm font-medium text-cyan-400 mb-3">Network Insights</h4>
             <ul className="space-y-2 text-sm text-gray-300">
               <li className="flex items-start gap-2">
-                <span className="text-purple-400 mt-0.5">•</span>
+                <span className="text-cyan-400 mt-0.5">•</span>
                 <span>
                   {networkState.block_utilization_avg > 0.8
                     ? "Blocks are heavily utilized - expect higher gas prices"
@@ -392,7 +392,7 @@ const NetworkIntelligencePanel: React.FC = () => {
                 </span>
               </li>
               <li className="flex items-start gap-2">
-                <span className="text-purple-400 mt-0.5">•</span>
+                <span className="text-cyan-400 mt-0.5">•</span>
                 <span>
                   {(networkState.contract_call_ratio !== undefined && networkState.contract_call_ratio !== null && networkState.contract_call_ratio > 0.7)
                     ? "High contract interaction - complex transactions dominate"
@@ -400,7 +400,7 @@ const NetworkIntelligencePanel: React.FC = () => {
                 </span>
               </li>
               <li className="flex items-start gap-2">
-                <span className="text-purple-400 mt-0.5">•</span>
+                <span className="text-cyan-400 mt-0.5">•</span>
                 <span>
                   {networkState.tx_per_block_avg > 100
                     ? "High transaction volume per block - network is active"

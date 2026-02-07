@@ -197,13 +197,13 @@ const TransactionPilot: React.FC<TransactionPilotProps> = ({ ethPrice = 3000 }) 
         };
       case 'SUBMIT_HIGH':
         return {
-          gradient: 'from-purple-500 to-pink-500',
-          cardClass: 'recommendation-card-purple',
+          gradient: 'from-cyan-600 to-cyan-400',
+          cardClass: 'recommendation-card-cyan',
           text: 'Priority Submit',
           subtext: 'Faster confirmation guaranteed',
           buttonText: 'Execute Priority',
-          buttonClass: 'bg-purple-500 hover:bg-purple-600',
-          confidenceColor: '#a855f7'
+          buttonClass: 'bg-cyan-600 hover:bg-cyan-700',
+          confidenceColor: '#0891b2'
         };
       default:
         return {
