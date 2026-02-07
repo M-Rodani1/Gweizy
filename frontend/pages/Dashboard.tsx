@@ -55,7 +55,7 @@ const Dashboard: React.FC = () => {
   return (
     <AppShell activePath="/app">
       <div
-        className="max-w-7xl mx-auto pt-2 pb-8 space-y-6"
+        className="max-w-7xl mx-auto pt-4 pb-10 space-y-8"
         role="main"
         aria-label="Dashboard content"
       >
@@ -70,9 +70,9 @@ const Dashboard: React.FC = () => {
         </div>
 
         {/* Overview Content */}
-        <section className="space-y-6 animate-fadeIn">
+        <section className="space-y-8 animate-fadeIn">
           {/* Top row: Forecast + Network Pulse + Network */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-2">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div data-tour="forecast" className="h-full">
               <SectionErrorBoundary sectionName="Price Forecast" className="h-full">
                 <CompactForecast />
@@ -87,7 +87,7 @@ const Dashboard: React.FC = () => {
           </div>
 
           {/* Second row: Personalization + Recommendations */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:min-h-[320px]">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:min-h-[320px]">
             <div data-tour="profile" className="h-full">
               <SectionErrorBoundary sectionName="Profile Settings" className="h-full">
                 <PersonalizationPanel />
@@ -99,7 +99,7 @@ const Dashboard: React.FC = () => {
           </div>
 
           {/* Transaction Management - Compact */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             <CollapsibleSection
               title="Scheduled Transactions"
               icon={<Calendar className="w-4 h-4 text-cyan-300" />}
@@ -122,7 +122,7 @@ const Dashboard: React.FC = () => {
           </div>
 
           {/* Quick links to other pages */}
-          <div className="flex gap-4 pt-2">
+          <div className="flex gap-6 pt-4">
             <a
               href="/analytics"
               className="flex items-center gap-2 text-sm text-gray-400 hover:text-purple-400 transition-colors"
@@ -141,7 +141,7 @@ const Dashboard: React.FC = () => {
         </section>
 
         {/* Footer */}
-        <footer className="mt-8 py-6 text-center border-t border-gray-800" role="contentinfo">
+        <footer className="mt-10 py-8 text-center border-t border-gray-800" role="contentinfo">
           <p className="text-sm text-gray-500">
             Gweizy — AI-Powered Multi-Chain Gas Optimizer
           </p>

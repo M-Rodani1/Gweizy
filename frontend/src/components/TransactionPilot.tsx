@@ -266,7 +266,7 @@ const TransactionPilot: React.FC<TransactionPilotProps> = ({ ethPrice = 3000 }) 
   if (!walletAddress) {
     return (
       <div
-        className="bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 rounded-2xl border border-gray-700/50 p-6 card-interactive focus-card"
+        className="bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 rounded-2xl border border-gray-700/50 p-8 card-interactive focus-card"
         role="article"
         aria-label="Transaction pilot onboarding"
         tabIndex={0}
@@ -340,7 +340,7 @@ const TransactionPilot: React.FC<TransactionPilotProps> = ({ ethPrice = 3000 }) 
       )}
 
       {/* Header */}
-      <div className="px-6 py-4 border-b border-gray-700/50 flex items-center justify-between">
+      <div className="px-8 py-5 border-b border-gray-700/50 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-emerald-500 flex items-center justify-center shadow-lg shadow-cyan-500/20">
             <Bot className="w-5 h-5 text-white" />
@@ -367,7 +367,7 @@ const TransactionPilot: React.FC<TransactionPilotProps> = ({ ethPrice = 3000 }) 
       {/* Two-Column Layout - Improvement #4 */}
       <div className="flex flex-col lg:flex-row">
         {/* Left: Transaction Type Selector */}
-        <div className="lg:w-1/3 px-6 py-4 border-b lg:border-b-0 lg:border-r border-gray-700/30">
+        <div className="lg:w-1/3 px-8 py-6 border-b lg:border-b-0 lg:border-r border-gray-700/30">
           <div className="text-sm text-gray-400 mb-3">Choose a transaction</div>
           <div className="flex flex-wrap lg:flex-col gap-2">
             {TX_TYPES.map(({ type, label, Icon }) => (
@@ -417,7 +417,7 @@ const TransactionPilot: React.FC<TransactionPilotProps> = ({ ethPrice = 3000 }) 
         </div>
 
         {/* Right: Recommendation */}
-        <div className="lg:w-2/3 p-6">
+        <div className="lg:w-2/3 p-8">
           {loading && !recommendation ? (
             <div className="h-48 flex items-center justify-center">
               <div className="text-center">
@@ -431,7 +431,7 @@ const TransactionPilot: React.FC<TransactionPilotProps> = ({ ethPrice = 3000 }) 
               </div>
             </div>
           ) : error || !recommendation ? (
-            <div className="relative rounded-xl p-6 bg-gradient-to-r from-gray-700/50 to-gray-800/50 border border-gray-600/50">
+            <div className="relative rounded-xl p-8 bg-gradient-to-r from-gray-700/50 to-gray-800/50 border border-gray-600/50">
               <div className="text-center">
                 <div className="text-2xl font-bold text-white mb-2">
                   {loadingState === 'timeout' ? 'Agent Busy' :
@@ -483,7 +483,7 @@ const TransactionPilot: React.FC<TransactionPilotProps> = ({ ethPrice = 3000 }) 
               </div>
             </div>
           ) : (
-            <div className={`relative rounded-xl p-6 bg-gradient-to-r ${actionConfig.gradient} bg-opacity-10 ${actionConfig.cardClass}`}>
+            <div className={`relative rounded-xl p-8 bg-gradient-to-r ${actionConfig.gradient} bg-opacity-10 ${actionConfig.cardClass}`}>
               {/* Confidence Ring - Improvement #9 */}
               <div className="absolute top-4 right-4">
                 <ConfidenceRing
@@ -494,14 +494,14 @@ const TransactionPilot: React.FC<TransactionPilotProps> = ({ ethPrice = 3000 }) 
               </div>
 
               {/* Main action */}
-              <div className="mb-4 pr-16">
-                <div className="text-2xl lg:text-3xl font-bold text-white mb-1">{actionConfig.text}</div>
+              <div className="mb-6 pr-16">
+                <div className="text-2xl lg:text-3xl font-bold text-white mb-2">{actionConfig.text}</div>
                 <div className="text-white/70">{actionConfig.subtext}</div>
               </div>
 
               {/* Reasoning */}
               {recommendation.reasoning && (
-                <div className="mb-4 p-3 bg-black/20 rounded-lg backdrop-blur-sm">
+                <div className="mb-6 p-4 bg-black/20 rounded-lg backdrop-blur-sm">
                   <div className="text-xs text-white/50 mb-1 flex items-center gap-2">
                     <Brain className="w-3 h-3" />
                     Agent Reasoning
@@ -511,21 +511,21 @@ const TransactionPilot: React.FC<TransactionPilotProps> = ({ ethPrice = 3000 }) 
               )}
 
               {/* Cost estimate - Improvement #7, #8 */}
-              <div className="grid grid-cols-3 gap-3 mb-4">
-                <div className="bg-black/20 rounded-lg p-3 backdrop-blur-sm">
-                  <div className="text-xs text-white/50">Est. Cost</div>
+              <div className="grid grid-cols-3 gap-4 mb-6">
+                <div className="bg-black/20 rounded-lg p-4 backdrop-blur-sm">
+                  <div className="text-xs text-white/50 mb-1">Est. Cost</div>
                   <div className="text-lg font-mono font-bold text-white">
                     {formatUsd(estimatedCostUsd)}
                   </div>
                 </div>
-                <div className="bg-black/20 rounded-lg p-3 backdrop-blur-sm">
-                  <div className="text-xs text-white/50">Gas Units</div>
+                <div className="bg-black/20 rounded-lg p-4 backdrop-blur-sm">
+                  <div className="text-xs text-white/50 mb-1">Gas Units</div>
                   <div className="text-lg font-mono font-bold text-white">
                     {gasUnits.toLocaleString()}
                   </div>
                 </div>
-                <div className="bg-black/20 rounded-lg p-3 backdrop-blur-sm">
-                  <div className="text-xs text-white/50">Savings</div>
+                <div className="bg-black/20 rounded-lg p-4 backdrop-blur-sm">
+                  <div className="text-xs text-white/50 mb-1">Savings</div>
                   <div className="text-lg font-mono font-bold text-green-400">
                     {recommendation.expected_savings > 0
                       ? formatUsd(recommendation.expected_savings * estimatedCostUsd)
@@ -536,7 +536,7 @@ const TransactionPilot: React.FC<TransactionPilotProps> = ({ ethPrice = 3000 }) 
               </div>
 
               {/* Action buttons - Improvement #10 */}
-              <div className="flex flex-col sm:flex-row gap-3 sm:static sticky bottom-3 bg-gray-900/80 p-3 rounded-xl border border-white/10 backdrop-blur">
+              <div className="flex flex-col sm:flex-row gap-4 sm:static sticky bottom-4 bg-gray-900/80 p-4 rounded-xl border border-white/10 backdrop-blur">
                 <button
                   onClick={handlePrimaryAction}
                   className={`flex-1 py-3 px-6 min-h-[44px] rounded-xl font-bold text-white transition-all ${actionConfig.buttonClass}`}
@@ -557,7 +557,7 @@ const TransactionPilot: React.FC<TransactionPilotProps> = ({ ethPrice = 3000 }) 
       </div>
 
       {/* Footer */}
-      <div className="px-6 py-3 bg-gray-800/50 border-t border-gray-700/30 flex items-center justify-between">
+      <div className="px-8 py-4 bg-gray-800/50 border-t border-gray-700/30 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="text-xs text-gray-500">
             Updates every 30s • {selectedChain.name}
