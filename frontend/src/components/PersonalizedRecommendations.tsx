@@ -55,14 +55,14 @@ const PersonalizedRecommendations: React.FC<PersonalizedRecommendationsProps> = 
   if (!walletAddress) {
     return (
       <div
-        className="bg-gradient-to-br from-blue-900/30 to-gray-900/30 border border-blue-500/30 rounded-2xl p-6 h-full flex flex-col justify-between shadow-xl focus-card"
+        className="bg-gradient-to-br from-cyan-900/30 to-gray-900/30 border border-cyan-500/30 rounded-2xl p-6 h-full flex flex-col justify-between shadow-xl focus-card"
         role="article"
         aria-label="Personalized recommendations onboarding"
         tabIndex={0}
       >
         <div className="space-y-3">
           <div className="flex items-center gap-2">
-            <Target className="w-5 h-5 text-blue-300" />
+            <Target className="w-5 h-5 text-cyan-300" />
             <h2 className="text-lg font-semibold text-white">Personalized Recommendations</h2>
           </div>
           <p className="text-sm text-gray-300">
@@ -105,14 +105,14 @@ const PersonalizedRecommendations: React.FC<PersonalizedRecommendationsProps> = 
 
   return (
     <div
-      className="bg-gradient-to-br from-blue-900/20 to-gray-900/20 border border-blue-500/30 rounded-2xl p-6 h-full flex flex-col shadow-xl widget-glow w-full max-w-full overflow-y-auto focus-card"
+      className="bg-gradient-to-br from-cyan-900/20 to-gray-900/20 border border-cyan-500/30 rounded-2xl p-6 h-full flex flex-col shadow-xl widget-glow w-full max-w-full overflow-y-auto focus-card"
       role="article"
       aria-label="Personalized recommendations"
       tabIndex={0}
     >
       <div className="flex items-center justify-between mb-5 min-w-0">
         <div className="flex items-center gap-3 min-w-0 flex-1">
-          <Target className="w-6 h-6 text-blue-400 flex-shrink-0" />
+          <Target className="w-6 h-6 text-cyan-400 flex-shrink-0" />
           <h2 className="text-xl font-bold text-white break-words min-w-0">Personalized Recommendations</h2>
         </div>
         {lastUpdated && (
@@ -126,10 +126,10 @@ const PersonalizedRecommendations: React.FC<PersonalizedRecommendationsProps> = 
         {/* Best Time Recommendation */}
         <div className="bg-gray-800/50 rounded-lg p-5 border border-gray-700">
           <div className="flex items-center gap-2 mb-3 min-w-0">
-            <Clock className="w-5 h-5 text-blue-400 flex-shrink-0" />
+            <Clock className="w-5 h-5 text-cyan-400 flex-shrink-0" />
             <h3 className="font-semibold text-white break-words min-w-0">Best Time to Transact</h3>
           </div>
-          <div className="text-2xl font-bold text-blue-400 mb-2">{recommended_time}</div>
+          <div className="text-2xl font-bold text-cyan-400 mb-2">{recommended_time}</div>
           <p className="text-sm text-gray-400 mb-2">{reason}</p>
           {hours_until_best > 0 && (
             <p className="text-xs text-gray-500 mb-2">
@@ -197,8 +197,8 @@ const PersonalizedRecommendations: React.FC<PersonalizedRecommendationsProps> = 
 
         {/* Suggestion */}
         {patterns && patterns.recommendations && patterns.recommendations.suggestion && (
-          <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-5">
-            <p className="text-sm text-blue-300">{patterns.recommendations.suggestion}</p>
+          <div className="bg-cyan-500/10 border border-cyan-500/30 rounded-lg p-5">
+            <p className="text-sm text-cyan-300">{patterns.recommendations.suggestion}</p>
           </div>
         )}
       </div>
