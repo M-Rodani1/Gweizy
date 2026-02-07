@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, BarChart3, Settings2, BookOpen } from 'lucide-react';
+import { LayoutDashboard, BarChart3, Settings2 } from 'lucide-react';
 import StickyHeader from '../StickyHeader';
 import { useChain } from '../../contexts/ChainContext';
 import { checkHealth } from '../../api/gasApi';
@@ -29,8 +29,7 @@ const AppShell: React.FC<AppShellProps> = ({ children, activePath }) => {
   const navItems: NavItem[] = useMemo(() => ([
     { label: 'Overview', to: '/app', icon: LayoutDashboard, description: 'AI pilot & personalization' },
     { label: 'Analytics', to: '/analytics', icon: BarChart3, description: 'Forecasts, trends, heatmaps' },
-    { label: 'System', to: '/system', icon: Settings2, description: 'API, mempool, model status' },
-    { label: 'Docs', to: '/docs', icon: BookOpen, description: 'How it works & API usage' }
+    { label: 'System', to: '/system', icon: Settings2, description: 'API, mempool, model status' }
   ]), []);
 
   useEffect(() => {

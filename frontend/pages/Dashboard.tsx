@@ -167,7 +167,6 @@ const Dashboard: React.FC = () => {
           </p>
           <nav className="mt-4 flex justify-center gap-4 text-xs text-gray-500" aria-label="Footer navigation">
             <a href="/analytics" className="hover:text-cyan-400 transition-colors">Analytics</a>
-            <a href="/docs" className="hover:text-cyan-400 transition-colors">Documentation</a>
             <a href="/pricing" className="hover:text-cyan-400 transition-colors">API Pricing</a>
           </nav>
         </footer>
