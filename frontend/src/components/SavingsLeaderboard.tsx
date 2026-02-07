@@ -63,7 +63,7 @@ const SavingsLeaderboard: React.FC<SavingsLeaderboardProps> = ({ walletAddress }
 
   if (loading && leaderboard.length === 0) {
     return (
-      <div className="bg-gray-800 p-6 rounded-lg shadow-lg border border-gray-700">
+      <div className="bg-gray-800 p-6 rounded-2xl shadow-xl border border-gray-700">
         <h3 className="text-lg font-semibold text-gray-200 mb-4">🏆 Top Savers This Week</h3>
         <div className="text-gray-400 text-sm">Loading leaderboard...</div>
       </div>
@@ -72,7 +72,7 @@ const SavingsLeaderboard: React.FC<SavingsLeaderboardProps> = ({ walletAddress }
 
   if (error && leaderboard.length === 0) {
     return (
-      <div className="bg-gray-800 p-6 rounded-lg shadow-lg border border-gray-700">
+      <div className="bg-gray-800 p-6 rounded-2xl shadow-xl border border-gray-700">
         <h3 className="text-lg font-semibold text-gray-200 mb-4">🏆 Top Savers This Week</h3>
         <p className="text-red-400 text-sm mb-2">⚠️ {error}</p>
       </div>
@@ -80,7 +80,7 @@ const SavingsLeaderboard: React.FC<SavingsLeaderboardProps> = ({ walletAddress }
   }
 
   return (
-    <div className="bg-gray-800 p-6 rounded-lg shadow-lg border border-gray-700">
+    <div className="bg-gray-800 p-6 rounded-2xl shadow-xl border border-gray-700">
       <h3 className="text-lg font-semibold text-gray-200 mb-4">🏆 Top Savers This Week</h3>
 
       {/* Leaderboard */}

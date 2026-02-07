@@ -127,7 +127,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({ currentGas, predictions, ethP
 
             {/* Quick Stats */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-3xl mx-auto">
-              <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-4 border border-gray-700/50 hover:border-cyan-500/30 transition-all duration-300 hover:shadow-lg hover:shadow-cyan-500/5">
+              <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 border border-gray-700/50 hover:border-cyan-500/30 transition-all duration-300 hover:shadow-lg hover:shadow-cyan-500/5">
                 <div className="text-gray-400 text-xs sm:text-sm mb-1">1 Hour</div>
                 <div className="text-cyan-400 text-lg sm:text-xl font-bold">
                   {predictions?.['1h'] ? predictions['1h'].toFixed(4) : '---'} <span className="text-sm text-gray-500">Gwei</span>
@@ -137,7 +137,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({ currentGas, predictions, ethP
                 </div>
               </div>
 
-              <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-4 border border-gray-700/50 hover:border-cyan-500/30 transition-all duration-300 hover:shadow-lg hover:shadow-cyan-500/5">
+              <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 border border-gray-700/50 hover:border-cyan-500/30 transition-all duration-300 hover:shadow-lg hover:shadow-cyan-500/5">
                 <div className="text-gray-400 text-xs sm:text-sm mb-1">4 Hours</div>
                 <div className="text-cyan-400 text-lg sm:text-xl font-bold">
                   {predictions?.['4h'] ? predictions['4h'].toFixed(4) : '---'} <span className="text-sm text-gray-500">Gwei</span>
@@ -147,7 +147,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({ currentGas, predictions, ethP
                 </div>
               </div>
 
-              <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-4 border border-gray-700/50 hover:border-cyan-500/30 transition-all duration-300 hover:shadow-lg hover:shadow-cyan-500/5">
+              <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 border border-gray-700/50 hover:border-cyan-500/30 transition-all duration-300 hover:shadow-lg hover:shadow-cyan-500/5">
                 <div className="text-gray-400 text-xs sm:text-sm mb-1">24 Hours</div>
                 <div className="text-cyan-400 text-lg sm:text-xl font-bold">
                   {predictions?.['24h'] ? predictions['24h'].toFixed(4) : '---'} <span className="text-sm text-gray-500">Gwei</span>

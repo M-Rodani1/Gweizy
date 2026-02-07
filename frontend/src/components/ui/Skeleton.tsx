@@ -37,7 +37,7 @@ const Skeleton: React.FC<SkeletonProps> = ({
 
 // Pre-built skeleton layouts
 export const SkeletonCard: React.FC<{ className?: string }> = ({ className }) => (
-  <div className={`bg-gray-800/50 rounded-xl p-4 space-y-3 ${className}`}>
+  <div className={`bg-gray-800/50 rounded-2xl p-6 space-y-3 ${className}`}>
     <div className="flex items-center gap-3">
       <Skeleton variant="circle" width={40} height={40} />
       <div className="flex-1 space-y-2">
@@ -69,7 +69,7 @@ export const SkeletonList: React.FC<{ count?: number }> = ({ count = 3 }) => (
 );
 
 export const SkeletonMetrics: React.FC<{ className?: string }> = ({ className }) => (
-  <div className={`bg-gray-800/50 rounded-xl p-4 space-y-4 ${className}`}>
+  <div className={`bg-gray-800/50 rounded-2xl p-6 space-y-4 ${className}`}>
     <div className="flex items-center justify-between">
       <Skeleton variant="text" width={120} height={20} />
       <Skeleton variant="rect" width={80} height={28} />
@@ -90,7 +90,7 @@ export const SkeletonChart: React.FC<{ className?: string; height?: number }> = 
   className,
   height = 200,
 }) => (
-  <div className={`bg-gray-800/50 rounded-xl p-4 space-y-4 ${className}`}>
+  <div className={`bg-gray-800/50 rounded-2xl p-6 space-y-4 ${className}`}>
     <div className="flex items-center justify-between">
       <Skeleton variant="text" width={150} height={20} />
       <div className="flex gap-2">
@@ -106,7 +106,7 @@ export const SkeletonTable: React.FC<{ rows?: number; cols?: number }> = ({
   rows = 5,
   cols = 4,
 }) => (
-  <div className="bg-gray-800/50 rounded-xl overflow-hidden">
+  <div className="bg-gray-800/50 rounded-2xl overflow-hidden">
     {/* Header */}
     <div className="bg-gray-900/50 px-4 py-3 flex gap-4">
       {Array.from({ length: cols }).map((_, i) => (
@@ -132,7 +132,7 @@ export const SkeletonTable: React.FC<{ rows?: number; cols?: number }> = ({
  * Skeleton for gas prediction card with big number display
  */
 export const SkeletonGasPrediction: React.FC<{ className?: string }> = ({ className }) => (
-  <div className={`bg-gray-800/50 rounded-xl p-5 space-y-4 border border-gray-700/50 ${className}`}>
+  <div className={`bg-gray-800/50 rounded-2xl p-6 space-y-4 border border-gray-700/50 ${className}`}>
     {/* Header */}
     <div className="flex items-center justify-between">
       <div className="flex items-center gap-2">
@@ -171,7 +171,7 @@ export const SkeletonAccuracyMetrics: React.FC<{ className?: string }> = ({ clas
     {/* Metrics cards */}
     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
       {Array.from({ length: 4 }).map((_, i) => (
-        <div key={i} className="bg-slate-900 rounded-lg p-4 border border-slate-700 space-y-2">
+        <div key={i} className="bg-slate-900 rounded-2xl p-6 border border-slate-700 space-y-2">
           <Skeleton variant="text" width="70%" height={14} />
           <Skeleton variant="text" width="50%" height={32} />
           <Skeleton variant="text" width="60%" height={10} />
@@ -179,7 +179,7 @@ export const SkeletonAccuracyMetrics: React.FC<{ className?: string }> = ({ clas
       ))}
     </div>
     {/* Chart area */}
-    <div className="bg-slate-900 rounded-lg p-4 border border-slate-700">
+    <div className="bg-slate-900 rounded-2xl p-6 border border-slate-700">
       <Skeleton variant="text" width={180} height={18} className="mb-4" />
       <Skeleton variant="rect" height={200} className="w-full" />
     </div>
@@ -256,7 +256,7 @@ export const SkeletonGasHero: React.FC<{ className?: string }> = ({ className })
  * Skeleton for network intelligence panel
  */
 export const SkeletonNetworkIntel: React.FC<{ className?: string }> = ({ className }) => (
-  <div className={`bg-gray-800/50 rounded-xl p-4 border border-gray-700/50 space-y-4 ${className}`}>
+  <div className={`bg-gray-800/50 rounded-2xl p-6 border border-gray-700/50 space-y-4 ${className}`}>
     {/* Header */}
     <div className="flex items-center justify-between">
       <div className="flex items-center gap-2">

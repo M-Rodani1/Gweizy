@@ -136,7 +136,7 @@ const RelativePriceIndicator: React.FC<RelativePriceIndicatorProps> = ({
 
   if (loading || !currentGas) {
     return (
-      <div className={`bg-gray-800 p-6 rounded-lg shadow-lg ${className}`}>
+      <div className={`bg-gray-800 p-6 rounded-2xl shadow-xl ${className}`}>
         <div className="animate-pulse flex flex-col items-center">
           <div className="w-24 h-24 bg-gray-700 rounded-full mb-4"></div>
           <div className="h-6 bg-gray-700 rounded w-32 mb-2"></div>

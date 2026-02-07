@@ -75,7 +75,7 @@ const SavingsCalculator: React.FC<SavingsCalculatorProps> = ({
   };
 
   return (
-    <div className="bg-gray-800 p-6 rounded-lg shadow-lg border border-gray-700">
+    <div className="bg-gray-800 p-6 rounded-2xl shadow-xl border border-gray-700">
       {/* Header */}
       <div className="flex items-center mb-6 pb-4 border-b border-gray-700">
         <span className="text-2xl mr-2">💰</span>

@@ -24,7 +24,7 @@ const Docs: React.FC = () => {
 
         <div className="space-y-8">
           {/* Getting Started */}
-          <section className="bg-gray-800 rounded-lg p-6 border border-gray-700">
+          <section className="bg-gray-800 rounded-2xl p-6 border border-gray-700">
             <h2 className="text-2xl font-bold mb-4 text-cyan-400">Getting Started</h2>
             <p className="text-gray-300 mb-4">
               Base Gas Optimiser helps you save money on Base network transactions by showing you when gas prices are typically lowest.
@@ -38,7 +38,7 @@ const Docs: React.FC = () => {
           </section>
 
           {/* How It Works */}
-          <section className="bg-gray-800 rounded-lg p-6 border border-gray-700">
+          <section className="bg-gray-800 rounded-2xl p-6 border border-gray-700">
             <h2 className="text-2xl font-bold mb-4 text-cyan-400">How It Works</h2>
             <p className="text-gray-300 mb-4">
               Our system analyses 7+ days of historical Base gas price data to identify reliable hourly patterns.
@@ -66,7 +66,7 @@ const Docs: React.FC = () => {
           </section>
 
           {/* Features */}
-          <section className="bg-gray-800 rounded-lg p-6 border border-gray-700">
+          <section className="bg-gray-800 rounded-2xl p-6 border border-gray-700">
             <h2 className="text-2xl font-bold mb-4 text-cyan-400">Features</h2>
             <div className="space-y-3">
               <div className="flex items-start space-x-3">
@@ -94,7 +94,7 @@ const Docs: React.FC = () => {
           </section>
 
           {/* Transparency */}
-          <section className="bg-gray-800 rounded-lg p-6 border border-gray-700">
+          <section className="bg-gray-800 rounded-2xl p-6 border border-gray-700">
             <h2 className="text-2xl font-bold mb-4 text-cyan-400">Our Approach to Transparency</h2>
             <p className="text-gray-300 mb-4">
               We believe in being honest about what's predictable and what isn't.
@@ -125,7 +125,7 @@ const Docs: React.FC = () => {
           </section>
 
           {/* FAQ */}
-          <section className="bg-gray-800 rounded-lg p-6 border border-gray-700">
+          <section className="bg-gray-800 rounded-2xl p-6 border border-gray-700">
             <h2 className="text-2xl font-bold mb-4 text-cyan-400">Frequently Asked Questions</h2>
             <div className="space-y-4">
               <div>
@@ -156,7 +156,7 @@ const Docs: React.FC = () => {
           </section>
 
           {/* API Access */}
-          <section className="bg-gray-800 rounded-lg p-6 border border-gray-700">
+          <section className="bg-gray-800 rounded-2xl p-6 border border-gray-700">
             <h2 className="text-2xl font-bold mb-4 text-cyan-400">API Access</h2>
             <p className="text-gray-300 mb-4">
               Developers can access our gas price data through our API endpoints:

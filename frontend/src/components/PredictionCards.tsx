@@ -224,7 +224,7 @@ const PredictionCards: React.FC<PredictionCardsProps> = ({ hybridData }) => {
   if (loading && cards.length === 0) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <div className="bg-gray-800 p-4 md:p-6 rounded-lg shadow-lg">
+        <div className="bg-gray-800 p-6 rounded-2xl shadow-xl">
           <LoadingSpinner message="Loading predictions..." />
         </div>
       </div>
@@ -234,7 +234,7 @@ const PredictionCards: React.FC<PredictionCardsProps> = ({ hybridData }) => {
   if (error) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <div className="bg-gray-800 p-4 md:p-6 rounded-lg shadow-lg">
+        <div className="bg-gray-800 p-6 rounded-2xl shadow-xl">
           <p className="text-red-400 mb-4">⚠️ {error}</p>
           <button
             onClick={loadData}
@@ -330,7 +330,7 @@ const PredictionCards: React.FC<PredictionCardsProps> = ({ hybridData }) => {
         if (!card24h) return null;
 
         return (
-          <div className={`bg-gray-800 p-4 md:p-6 rounded-lg shadow-lg border-2 ${getColorClasses(card24h.color)} relative mb-4`}>
+          <div className={`bg-gray-800 p-6 rounded-2xl shadow-xl border-2 ${getColorClasses(card24h.color)} relative mb-4`}>
             {/* Classification Badge */}
             {(() => {
               const classifState = getClassificationState(card24h.probabilities);
@@ -468,7 +468,7 @@ const PredictionCards: React.FC<PredictionCardsProps> = ({ hybridData }) => {
         {cards && cards.length > 0 ? cards.map((card) => (
           <div
             key={card.horizon}
-            className={`bg-gray-800 p-4 md:p-6 rounded-lg shadow-lg border-2 ${getColorClasses(card.color)} relative`}
+            className={`bg-gray-800 p-6 rounded-2xl shadow-xl border-2 ${getColorClasses(card.color)} relative`}
           >
           {/* BEST TIME Badge */}
           {card.isBest && (

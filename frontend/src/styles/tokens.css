@@ -178,28 +178,31 @@ p {
   color: var(--text-secondary);
 }
 
-/* Card Components */
+/* Card Components - Unified Style */
 .card {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-card);
+  border-radius: 1rem; /* 16px = rounded-2xl */
+  padding: var(--space-lg); /* 24px = p-6 */
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.2);
   transition: all var(--transition-base);
 }
 
 .card:hover {
   border-color: var(--border-subtle);
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-lg);
+  transform: translateY(-2px);
+  box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.4), 0 8px 16px -8px rgba(0, 0, 0, 0.3);
 }
 
 .card-header {
   padding: var(--space-lg);
+  margin: calc(var(--space-lg) * -1);
+  margin-bottom: var(--space-lg);
   border-bottom: 1px solid var(--border-subtle);
 }
 
 .card-body {
-  padding: var(--space-lg);
+  padding: 0; /* Card already has padding */
 }
 
 /* Badges */

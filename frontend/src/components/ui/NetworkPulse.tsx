@@ -45,7 +45,7 @@ const NetworkPulse: React.FC<NetworkPulseProps> = ({ utilization, isConnected })
   const pulseSpeed = 1 + clampedUtil * 2; // 1s to 3s
 
   return (
-    <div className="bg-gray-800/60 rounded-xl shadow-lg border border-gray-700 p-4 flex flex-col gap-4">
+    <div className="bg-gray-800/60 rounded-2xl shadow-xl border border-gray-700 p-4 flex flex-col gap-4">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">

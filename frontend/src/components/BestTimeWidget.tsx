@@ -43,7 +43,7 @@ const BestTimeWidget: React.FC<BestTimeWidgetProps> = ({ currentGas = 0 }) => {
 
   if (loading) {
     return (
-      <div className="bg-gray-800 p-6 rounded-lg shadow-lg animate-pulse">
+      <div className="bg-gray-800 p-6 rounded-2xl shadow-xl animate-pulse">
         <div className="h-6 bg-gray-700 rounded w-48 mb-4"></div>
         <div className="h-24 bg-gray-700 rounded"></div>
       </div>

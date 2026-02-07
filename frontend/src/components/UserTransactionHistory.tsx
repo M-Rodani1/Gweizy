@@ -79,7 +79,7 @@ const UserTransactionHistory: React.FC<UserTransactionHistoryProps> = ({ address
 
   if (loading) {
     return (
-      <div className="bg-gray-800 p-6 rounded-lg shadow-lg border border-gray-700">
+      <div className="bg-gray-800 p-6 rounded-2xl shadow-xl border border-gray-700">
         <LoadingSpinner message="Loading your transaction history..." />
       </div>
     );
@@ -87,7 +87,7 @@ const UserTransactionHistory: React.FC<UserTransactionHistoryProps> = ({ address
 
   if (error) {
     return (
-      <div className="bg-gray-800 p-6 rounded-lg shadow-lg border border-gray-700">
+      <div className="bg-gray-800 p-6 rounded-2xl shadow-xl border border-gray-700">
         <p className="text-red-400 mb-4">⚠️ {error}</p>
         <button
           onClick={() => window.location.reload()}
@@ -107,7 +107,7 @@ const UserTransactionHistory: React.FC<UserTransactionHistoryProps> = ({ address
   return (
     <div className="space-y-6">
       {/* Savings Potential Card */}
-      <div className="bg-gray-800 p-6 rounded-lg shadow-lg border border-gray-700">
+      <div className="bg-gray-800 p-6 rounded-2xl shadow-xl border border-gray-700">
         <div className="flex items-center mb-4">
           <span className="text-2xl mr-2">💰</span>
           <h3 className="text-xl font-bold text-gray-200">YOUR POTENTIAL SAVINGS</h3>
@@ -142,7 +142,7 @@ const UserTransactionHistory: React.FC<UserTransactionHistoryProps> = ({ address
       </div>
 
       {/* Recent Transactions */}
-      <div className="bg-gray-800 p-6 rounded-lg shadow-lg border border-gray-700">
+      <div className="bg-gray-800 p-6 rounded-2xl shadow-xl border border-gray-700">
         <h3 className="text-lg font-semibold text-gray-200 mb-4">
           Your Recent Base Transactions
         </h3>

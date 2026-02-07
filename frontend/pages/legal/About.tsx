@@ -30,7 +30,7 @@ const About: React.FC = () => {
         {/* Story */}
         <section className="mb-12">
           <h2 className="text-3xl font-bold mb-4">Our Story</h2>
-          <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
+          <div className="bg-gray-800 border border-gray-700 rounded-2xl p-6">
             <p className="text-gray-300 mb-4">
               Base Gas Optimizer was founded in December 2024 during the Coinbase x Queen Mary
               hackathon. As active Base network users ourselves, we experienced firsthand the
@@ -54,7 +54,7 @@ const About: React.FC = () => {
         <section className="mb-12">
           <h2 className="text-3xl font-bold mb-4">Our Technology</h2>
           <div className="space-y-4">
-            <div className="bg-gray-800 border border-cyan-500/30 rounded-lg p-6">
+            <div className="bg-gray-800 border border-cyan-500/30 rounded-2xl p-6">
               <h3 className="text-xl font-bold text-cyan-400 mb-2">🤖 Machine Learning</h3>
               <p className="text-gray-300">
                 We use Random Forest regression trained on 30 days of Base network data, achieving
@@ -63,7 +63,7 @@ const About: React.FC = () => {
               </p>
             </div>
 
-            <div className="bg-gray-800 border border-emerald-500/30 rounded-lg p-6">
+            <div className="bg-gray-800 border border-emerald-500/30 rounded-2xl p-6">
               <h3 className="text-xl font-bold text-emerald-400 mb-2">📊 Real-time Data</h3>
               <p className="text-gray-300">
                 We collect Base gas prices every 5 minutes, capturing base fees, priority fees, and
@@ -71,7 +71,7 @@ const About: React.FC = () => {
               </p>
             </div>
 
-            <div className="bg-gray-800 border border-amber-500/30 rounded-lg p-6">
+            <div className="bg-gray-800 border border-amber-500/30 rounded-2xl p-6">
               <h3 className="text-xl font-bold text-amber-400 mb-2">🔄 Continuous Improvement</h3>
               <p className="text-gray-300">
                 We continuously monitor model performance and retrain when accuracy degrades. Our

@@ -31,7 +31,7 @@ const GasLeaderboard: React.FC = () => {
 
   if (loading && !currentGas) {
     return (
-      <div className="bg-gray-800 p-4 sm:p-6 rounded-lg shadow-lg h-full">
+      <div className="bg-gray-800 p-4 sm:p-6 rounded-2xl shadow-xl h-full">
         <LoadingSpinner message="Loading gas data..." />
       </div>
     );
@@ -39,7 +39,7 @@ const GasLeaderboard: React.FC = () => {
 
   if (error) {
     return (
-      <div className="bg-gray-800 p-4 sm:p-6 rounded-lg shadow-lg h-full">
+      <div className="bg-gray-800 p-4 sm:p-6 rounded-2xl shadow-xl h-full">
         <div className="text-center">
           <p className="text-red-400 mb-4">⚠️ {error}</p>
           <button
@@ -56,7 +56,7 @@ const GasLeaderboard: React.FC = () => {
   if (!currentGas) return null;
 
   return (
-    <div className="bg-gray-800 p-4 rounded-lg shadow-lg">
+    <div className="bg-gray-800 p-6 rounded-2xl shadow-xl">
       <h2 className="text-lg font-semibold text-gray-200 mb-3">Base Network Gas</h2>
 
       <div className="space-y-2">

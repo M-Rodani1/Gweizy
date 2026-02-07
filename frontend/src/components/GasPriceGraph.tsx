@@ -88,7 +88,7 @@ const GasPriceGraph: React.FC = () => {
 
   if (loading && data.length === 0) {
     return (
-      <div className="bg-gray-800 p-4 sm:p-6 rounded-lg shadow-lg h-64 md:h-80 lg:h-96">
+      <div className="bg-gray-800 p-4 sm:p-6 rounded-2xl shadow-xl h-64 md:h-80 lg:h-96">
         <LoadingSpinner message="Loading gas price data..." />
       </div>
     );
@@ -96,7 +96,7 @@ const GasPriceGraph: React.FC = () => {
 
   if (error) {
     return (
-      <div className="bg-gray-800 p-4 sm:p-6 rounded-lg shadow-lg h-64 md:h-80 lg:h-96">
+      <div className="bg-gray-800 p-4 sm:p-6 rounded-2xl shadow-xl h-64 md:h-80 lg:h-96">
         <div className="flex flex-col items-center justify-center h-full">
           <p className="text-red-400 mb-4">⚠️ {error}</p>
           <button

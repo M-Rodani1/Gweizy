@@ -309,7 +309,7 @@ const TransactionPilot: React.FC<TransactionPilotProps> = ({ ethPrice = 3000 }) 
       {/* Chain Switch Toast - Improvement #18 */}
       {showChainToast && bestChainForTx && (
         <div className="absolute top-4 right-4 z-50 animate-slide-up">
-          <div className="bg-green-500/20 border border-green-500/50 rounded-xl p-4 backdrop-blur-sm shadow-lg max-w-xs">
+          <div className="bg-green-500/20 border border-green-500/50 rounded-2xl p-6 backdrop-blur-sm shadow-xl max-w-xs">
             <div className="flex items-start gap-3">
               <Lightbulb className="w-6 h-6 text-green-300" />
               <div className="flex-1">

@@ -20,7 +20,7 @@ const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
   const [isOpen, setIsOpen] = useState(defaultExpanded ?? defaultOpen);
 
   return (
-    <div className="bg-gray-800/50 border border-gray-700 rounded-xl overflow-hidden">
+    <div className="bg-gray-800/50 border border-gray-700 rounded-2xl overflow-hidden">
       {/* Header - clickable */}
       <button
         onClick={() => setIsOpen(!isOpen)}

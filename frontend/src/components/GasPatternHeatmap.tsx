@@ -150,7 +150,7 @@ const GasPatternHeatmap: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-sm border border-slate-700 rounded-xl p-6 shadow-xl">
+      <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-sm border border-slate-700 rounded-2xl p-6 shadow-xl">
         <div className="flex items-center justify-center py-12">
           <Loader2 className="w-8 h-8 text-blue-400 animate-spin" />
         </div>
@@ -160,7 +160,7 @@ const GasPatternHeatmap: React.FC = () => {
 
   if (!data) {
     return (
-      <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-sm border border-slate-700 rounded-xl p-6 shadow-xl">
+      <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-sm border border-slate-700 rounded-2xl p-6 shadow-xl">
         <div className="text-center py-8 text-gray-400">
           <Calendar className="w-12 h-12 mx-auto mb-3 opacity-50" />
           <p>Not enough data to show patterns yet</p>
@@ -176,7 +176,7 @@ const GasPatternHeatmap: React.FC = () => {
   const dailyMax = Math.max(...data.daily.map(d => d.avg_gwei));
 
   return (
-    <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-sm border border-slate-700 rounded-xl p-6 shadow-xl">
+    <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-sm border border-slate-700 rounded-2xl p-6 shadow-xl">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">

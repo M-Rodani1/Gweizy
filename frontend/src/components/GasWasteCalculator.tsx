@@ -117,7 +117,7 @@ const GasWasteCalculator: React.FC<GasWasteCalculatorProps> = ({ walletAddress }
 
   if (loading && historicalData.length === 0) {
     return (
-      <div className="bg-gray-800 p-6 rounded-lg shadow-lg border border-gray-700">
+      <div className="bg-gray-800 p-6 rounded-2xl shadow-xl border border-gray-700">
         <h3 className="text-lg font-semibold text-gray-200 mb-4 flex items-center gap-2">
           <Coins className="w-5 h-5 text-cyan-400" />
           Gas Waste Calculator
@@ -129,7 +129,7 @@ const GasWasteCalculator: React.FC<GasWasteCalculatorProps> = ({ walletAddress }
 
   if (error) {
     return (
-      <div className="bg-gray-800 p-6 rounded-lg shadow-lg border border-gray-700">
+      <div className="bg-gray-800 p-6 rounded-2xl shadow-xl border border-gray-700">
         <h3 className="text-lg font-semibold text-gray-200 mb-4 flex items-center gap-2">
           <Coins className="w-5 h-5 text-cyan-400" />
           Gas Waste Calculator
@@ -143,7 +143,7 @@ const GasWasteCalculator: React.FC<GasWasteCalculatorProps> = ({ walletAddress }
   }
 
   return (
-    <div className="bg-gray-800 p-6 rounded-lg shadow-lg border border-gray-700">
+    <div className="bg-gray-800 p-6 rounded-2xl shadow-xl border border-gray-700">
       <h3 className="text-lg font-semibold text-gray-200 mb-4 flex items-center gap-2">
         <Coins className="w-5 h-5 text-cyan-400" />
         Gas Waste Calculator

@@ -85,7 +85,7 @@ const ShareResults: React.FC<ShareResultsProps> = ({ savings, savingsPercent, pe
   };
 
   return (
-    <div className="bg-gray-800 p-6 rounded-lg shadow-lg border border-gray-700">
+    <div className="bg-gray-800 p-6 rounded-2xl shadow-xl border border-gray-700">
       <h3 className="text-lg font-semibold text-gray-200 mb-4">📱 Share Your Savings</h3>
 
       <div className="space-y-3">
