@@ -52,7 +52,7 @@ const Landing: React.FC = () => {
               <span className="text-lg font-semibold">
                 Gweizy
               </span>
-              <Badge variant="accent" icon={<Trophy size={14} />}>Hackathon Winner</Badge>
+              <Badge variant="accent" icon={<Trophy className="w-4 h-4" />}>Hackathon Winner</Badge>
             </div>
             <div className="landing-nav-links">
                 <Link to="/pricing" className="btn btn-ghost" onClick={() => trackEvent('cta_click', { source: 'landing_nav', cta: 'pricing' })}>Pricing</Link>
@@ -68,7 +68,7 @@ const Landing: React.FC = () => {
       <section className="section landing-hero">
         <div className="container">
           <div className="max-w-3xl mx-auto text-center">
-            <Badge variant="accent" className="mb-6 inline-flex items-center gap-1.5" icon={<Trophy size={14} />}>
+            <Badge variant="accent" className="mb-6 inline-flex items-center gap-1.5" icon={<Trophy className="w-4 h-4" />}>
               Coinbase 2025 Hackathon Winner
             </Badge>
 
@@ -117,7 +117,7 @@ const Landing: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
             <div className="card landing-feature-card">
               <div className="icon-tile landing-feature-icon">
-                <Activity size={22} />
+                <Activity className="w-6 h-6" />
               </div>
               <h3 className="mb-4">1. Real-Time Monitoring</h3>
               <p className="text-gray-400 leading-relaxed">
@@ -127,7 +127,7 @@ const Landing: React.FC = () => {
 
             <div className="card landing-feature-card">
               <div className="icon-tile landing-feature-icon">
-                <Brain size={22} />
+                <Brain className="w-6 h-6" />
               </div>
               <h3 className="mb-4">2. AI Recommends Action</h3>
               <p className="text-gray-400 leading-relaxed">
@@ -148,21 +148,21 @@ const Landing: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
             <div className="card p-6 text-center">
               <div className="icon-tile mb-4 mx-auto">
-                <TrendingUp size={18} />
+                <TrendingUp className="w-5 h-5" />
               </div>
               <h4 className="mb-2">Price Predictions</h4>
               <p className="text-gray-400 text-sm leading-relaxed">ML-powered forecasts for 1h, 4h, and 24h ahead.</p>
             </div>
             <div className="card p-6 text-center">
               <div className="icon-tile mb-4 mx-auto">
-                <Zap size={18} />
+                <Zap className="w-5 h-5" />
               </div>
               <h4 className="mb-2">Real-Time Updates</h4>
               <p className="text-gray-400 text-sm leading-relaxed">Live data refreshed every 30 seconds across 5 chains.</p>
             </div>
             <div className="card p-6 text-center">
               <div className="icon-tile mb-4 mx-auto">
-                <Brain size={18} />
+                <Brain className="w-5 h-5" />
               </div>
               <h4 className="mb-2">Smart Recommendations</h4>
               <p className="text-gray-400 text-sm leading-relaxed">AI tells you exactly when to submit your transaction.</p>
