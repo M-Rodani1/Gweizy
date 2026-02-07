@@ -6,7 +6,6 @@ import Landing from './pages/Landing';
 
 // Lazy load heavy components for code splitting with prefetch hints
 const Dashboard = lazy(() => import(/* webpackChunkName: "dashboard" */ './pages/Dashboard'));
-const Docs = lazy(() => import(/* webpackChunkName: "docs" */ './pages/Docs'));
 const Pricing = lazy(() => import(/* webpackChunkName: "pricing" */ './pages/Pricing'));
 const Analytics = lazy(() => import(/* webpackChunkName: "analytics" */ './pages/Analytics'));
 const SystemStatus = lazy(() => import(/* webpackChunkName: "system" */ './pages/SystemStatus'));
@@ -47,7 +46,6 @@ function App() {
               <Route path="/app" element={<Dashboard />} />
               <Route path="/analytics" element={<Analytics />} />
               <Route path="/system" element={<SystemStatus />} />
-              <Route path="/docs" element={<Docs />} />
               <Route path="/pricing" element={<Pricing />} />
               <Route path="/terms" element={<Terms />} />
               <Route path="/privacy" element={<Privacy />} />

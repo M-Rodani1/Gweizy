@@ -255,10 +255,7 @@ const GasAlertSettings: React.FC<GasAlertSettingsProps> = ({ currentGas, walletA
         <p className="text-sm text-gray-300 mb-3">
           We’ll send pings when gas crosses your thresholds. Alerts stay linked to your address.
         </p>
-        <div className="flex items-center justify-between text-xs text-gray-400">
-          <a href="/docs#alerts" className="text-cyan-300 hover:text-cyan-100 underline decoration-dotted">
-            Learn how alerts work
-          </a>
+        <div className="text-xs text-gray-400">
           <span>Use the header wallet button to connect</span>
         </div>
       </div>
@@ -283,12 +280,6 @@ const GasAlertSettings: React.FC<GasAlertSettingsProps> = ({ currentGas, walletA
             <p className="text-xs text-gray-400">Get notified when gas reaches your target</p>
           </div>
         </div>
-        <a
-          href="/docs#alerts"
-          className="text-xs text-cyan-300 hover:text-cyan-100 underline decoration-dotted mr-3"
-        >
-          Learn more
-        </a>
         <button
           onClick={() => setShowCreateForm(!showCreateForm)}
           className="px-4 py-2 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"

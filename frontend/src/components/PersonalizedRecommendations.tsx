@@ -74,11 +74,8 @@ const PersonalizedRecommendations: React.FC<PersonalizedRecommendationsProps> = 
             <li>• Savings estimate for your wallet</li>
           </ul>
         </div>
-        <div className="flex items-center justify-between pt-4">
-          <a href="/docs#personalization" className="text-sm text-cyan-300 hover:text-cyan-100 underline decoration-dotted">
-            Learn more
-          </a>
-          <span className="text-xs text-gray-400">Use the header wallet button to connect</span>
+        <div className="pt-4 text-xs text-gray-400">
+          <span>Use the header wallet button to connect</span>
         </div>
       </div>
     );

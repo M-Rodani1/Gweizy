@@ -287,13 +287,8 @@ const TransactionPilot: React.FC<TransactionPilotProps> = ({ ethPrice = 3000 }) 
             <li>• Sync preferences across devices</li>
           </ul>
         </div>
-        <div className="flex flex-wrap gap-3">
-          <a href="/docs#connect-wallet" className="btn btn-secondary text-sm">
-            Learn how to connect
-          </a>
-          <span className="text-xs text-gray-400 flex items-center gap-1">
-            Tip: Use the top-right wallet button to link your account
-          </span>
+        <div className="text-xs text-gray-400">
+          <span>Tip: Use the top-right wallet button to link your account</span>
         </div>
       </div>
     );
@@ -355,12 +350,6 @@ const TransactionPilot: React.FC<TransactionPilotProps> = ({ ethPrice = 3000 }) 
           <div className="text-lg font-mono font-bold text-cyan-400">
             {formatGwei(currentGas)} gwei
           </div>
-          <a
-            href="/docs#transaction-pilot"
-            className="text-xs text-cyan-300 hover:text-cyan-100 underline decoration-dotted"
-          >
-            Learn more
-          </a>
         </div>
       </div>
 

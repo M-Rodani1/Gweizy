@@ -194,7 +194,6 @@ const Analytics: React.FC = () => {
           </p>
           <div className="mt-4 flex justify-center gap-4 text-xs text-gray-500">
             <Link to="/" className="hover:text-cyan-400 transition-colors">Dashboard</Link>
-            <Link to="/docs" className="hover:text-cyan-400 transition-colors">Docs</Link>
             <Link to="/pricing" className="hover:text-cyan-400 transition-colors">API</Link>
           </div>
         </footer>
