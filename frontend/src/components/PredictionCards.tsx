@@ -4,6 +4,7 @@ import { useChain } from '../contexts/ChainContext';
 import LoadingSpinner from './LoadingSpinner';
 import ConfidenceBar from './ui/ConfidenceBar';
 import { HybridPrediction } from '../../types';
+import { getColorClasses, getTextColor, getClassificationState } from '../utils/predictionUtils';
 
 interface PredictionCardsProps {
   hybridData?: HybridPrediction;
@@ -39,42 +40,6 @@ const PredictionCards: React.FC<PredictionCardsProps> = ({ hybridData }) => {
   const [error, setError] = useState<string | null>(null);
   const [showExplanation, setShowExplanation] = useState<string | null>(null);
   const [showShortTerm, setShowShortTerm] = useState(false); // Hide 1h/4h by default
-
-  // All hooks must be called before any early returns
-  const getColorClasses = useCallback((color: string) => {
-    switch (color) {
-      case 'red':
-        return 'border-red-500 bg-red-500/10';
-      case 'green':
-        return 'border-green-500 bg-green-500/10';
-      case 'yellow':
-        return 'border-yellow-500 bg-yellow-500/10';
-      default:
-        return 'border-gray-600 bg-gray-800';
-    }
-  }, []);
-
-  const getTextColor = useCallback((color: string) => {
-    switch (color) {
-      case 'red':
-        return 'text-red-400';
-      case 'green':
-        return 'text-green-400';
-      case 'yellow':
-        return 'text-yellow-400';
-      default:
-        return 'text-gray-400';
-    }
-  }, []);
-
-  // Determine classification state from probabilities
-  const getClassificationState = useCallback((probs: { wait: number; normal: number; urgent: number } | undefined) => {
-    if (!probs) return null;
-    const max = Math.max(probs.wait, probs.normal, probs.urgent);
-    if (probs.urgent === max && probs.urgent > 0.3) return 'spike';
-    if (probs.wait === max && probs.wait > 0.3) return 'elevated';
-    return 'normal';
-  }, []);
 
   const loadData = useCallback(async () => {
     try {
