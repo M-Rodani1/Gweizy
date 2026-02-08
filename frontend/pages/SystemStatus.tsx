@@ -9,7 +9,7 @@ import AppShell from '../src/components/layout/AppShell';
 import { useChain } from '../src/contexts/ChainContext';
 
 const SystemStatus: React.FC = () => {
-  const { selectedChain } = useChain();
+  useChain(); // Keep context subscription active
 
   return (
     <AppShell activePath="/system">

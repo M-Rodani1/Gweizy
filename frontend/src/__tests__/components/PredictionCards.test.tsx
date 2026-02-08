@@ -36,50 +36,58 @@ describe('PredictionCards', () => {
     vi.resetAllMocks();
   });
 
+  const mockCurrentGasData = {
+    current_gas: 0.001,
+    base_fee: 0.0008,
+    priority_fee: 0.0002,
+    timestamp: new Date().toISOString(),
+    block_number: 12345678
+  };
+
   const mockPredictionsResponse = {
+    current: mockCurrentGasData,
     predictions: {
       '1h': [
         {
+          time: new Date().toISOString(),
           predictedGwei: 0.00095,
           lowerBound: 0.0009,
           upperBound: 0.001,
           confidence: 0.85,
-          confidenceLevel: 'high',
+          confidenceLevel: 'high' as const,
           confidenceEmoji: '🎯',
           confidenceColor: 'green'
         }
       ],
       '4h': [
         {
+          time: new Date().toISOString(),
           predictedGwei: 0.0011,
           lowerBound: 0.001,
           upperBound: 0.0012,
           confidence: 0.72,
-          confidenceLevel: 'medium',
+          confidenceLevel: 'medium' as const,
           confidenceEmoji: '📊',
           confidenceColor: 'yellow'
         }
       ],
       '24h': [
         {
+          time: new Date().toISOString(),
           predictedGwei: 0.00085,
           lowerBound: 0.0007,
           upperBound: 0.001,
           confidence: 0.55,
-          confidenceLevel: 'low',
+          confidenceLevel: 'low' as const,
           confidenceEmoji: '⚠️',
           confidenceColor: 'red'
         }
-      ]
+      ],
+      historical: []
     }
   };
 
-  const mockCurrentGasResponse = {
-    current_gas: 0.001,
-    base_fee: 0.0008,
-    priority_fee: 0.0002,
-    timestamp: new Date().toISOString()
-  };
+  const mockCurrentGasResponse = mockCurrentGasData;
 
   it('renders loading state initially', () => {
     // Make the API calls hang indefinitely
@@ -138,10 +146,12 @@ describe('PredictionCards', () => {
   describe('Color Coding', () => {
     it('shows green for rising gas prices', async () => {
       const risingResponse = {
+        current: mockCurrentGasData,
         predictions: {
-          '1h': [{ predictedGwei: 0.0015, confidence: 0.8, confidenceLevel: 'high' }],
-          '4h': [{ predictedGwei: 0.001, confidence: 0.7, confidenceLevel: 'medium' }],
-          '24h': [{ predictedGwei: 0.001, confidence: 0.5, confidenceLevel: 'low' }]
+          '1h': [{ time: '', predictedGwei: 0.0015, confidence: 0.8, confidenceLevel: 'high' as const }],
+          '4h': [{ time: '', predictedGwei: 0.001, confidence: 0.7, confidenceLevel: 'medium' as const }],
+          '24h': [{ time: '', predictedGwei: 0.001, confidence: 0.5, confidenceLevel: 'low' as const }],
+          historical: []
         }
       };
 
@@ -159,10 +169,12 @@ describe('PredictionCards', () => {
 
     it('shows red for dropping gas prices', async () => {
       const droppingResponse = {
+        current: mockCurrentGasData,
         predictions: {
-          '1h': [{ predictedGwei: 0.0005, confidence: 0.8, confidenceLevel: 'high' }],
-          '4h': [{ predictedGwei: 0.001, confidence: 0.7, confidenceLevel: 'medium' }],
-          '24h': [{ predictedGwei: 0.001, confidence: 0.5, confidenceLevel: 'low' }]
+          '1h': [{ time: '', predictedGwei: 0.0005, confidence: 0.8, confidenceLevel: 'high' as const }],
+          '4h': [{ time: '', predictedGwei: 0.001, confidence: 0.7, confidenceLevel: 'medium' as const }],
+          '24h': [{ time: '', predictedGwei: 0.001, confidence: 0.5, confidenceLevel: 'low' as const }],
+          historical: []
         }
       };
 
@@ -276,10 +288,12 @@ describe('PredictionCards', () => {
   describe('Best Time Indicator', () => {
     it('highlights best prediction horizon', async () => {
       const bestTimeResponse = {
+        current: mockCurrentGasData,
         predictions: {
-          '1h': [{ predictedGwei: 0.0015, confidence: 0.9, confidenceLevel: 'high' }],
-          '4h': [{ predictedGwei: 0.0008, confidence: 0.85, confidenceLevel: 'high' }], // Best (lowest)
-          '24h': [{ predictedGwei: 0.0012, confidence: 0.7, confidenceLevel: 'medium' }]
+          '1h': [{ time: '', predictedGwei: 0.0015, confidence: 0.9, confidenceLevel: 'high' as const }],
+          '4h': [{ time: '', predictedGwei: 0.0008, confidence: 0.85, confidenceLevel: 'high' as const }], // Best (lowest)
+          '24h': [{ time: '', predictedGwei: 0.0012, confidence: 0.7, confidenceLevel: 'medium' as const }],
+          historical: []
         }
       };
 
@@ -314,7 +328,10 @@ describe('PredictionCards', () => {
 
   describe('Empty State', () => {
     it('handles empty predictions gracefully', async () => {
-      vi.mocked(gasApi.fetchPredictions).mockResolvedValue({ predictions: {} });
+      vi.mocked(gasApi.fetchPredictions).mockResolvedValue({
+        current: mockCurrentGasData,
+        predictions: { '1h': [], '4h': [], '24h': [], historical: [] }
+      });
       vi.mocked(gasApi.fetchCurrentGas).mockResolvedValue(mockCurrentGasResponse);
 
       render(<PredictionCards />, { wrapper: TestWrapper });

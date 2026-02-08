@@ -7,9 +7,6 @@ import {
   formatGasPrice,
   formatUSD,
   formatPercent,
-  formatTimestamp,
-  formatRelativeTime,
-  formatHour,
   formatAddress,
   formatLargeNumber
 } from '../../utils/formatters';

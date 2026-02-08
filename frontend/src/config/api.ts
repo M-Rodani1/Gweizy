@@ -55,7 +55,9 @@ export const API_CONFIG = {
     ANALYTICS_ANOMALIES: '/analytics/anomalies',
     ANALYTICS_ENSEMBLE: '/analytics/ensemble',
     // Hybrid prediction endpoint
-    HYBRID_PREDICTION: '/predictions/hybrid'
+    HYBRID_PREDICTION: '/predictions/hybrid',
+    // Analytics endpoint (for accuracy dashboard)
+    ANALYTICS: '/analytics'
   },
   TIMEOUT: 10000, // 10 seconds
   RETRY_ATTEMPTS: 3,

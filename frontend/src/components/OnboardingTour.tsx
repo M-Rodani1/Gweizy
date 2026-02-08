@@ -69,7 +69,7 @@ const OnboardingTour: React.FC<OnboardingTourProps> = ({ onComplete, forceShow =
   useEffect(() => {
     if (forceShow) {
       setIsVisible(true);
-      return;
+      return undefined;
     }
 
     const hasCompleted = localStorage.getItem(STORAGE_KEY);
@@ -78,6 +78,7 @@ const OnboardingTour: React.FC<OnboardingTourProps> = ({ onComplete, forceShow =
       const timer = setTimeout(() => setIsVisible(true), 1000);
       return () => clearTimeout(timer);
     }
+    return undefined;
   }, [forceShow]);
 
   // Update target element position
@@ -108,6 +109,7 @@ const OnboardingTour: React.FC<OnboardingTourProps> = ({ onComplete, forceShow =
         window.removeEventListener('scroll', updateTargetPosition);
       };
     }
+    return undefined;
   }, [isVisible, currentStep, updateTargetPosition]);
 
   const handleNext = () => {

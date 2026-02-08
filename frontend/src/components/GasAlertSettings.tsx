@@ -98,11 +98,11 @@ const GasAlertSettings: React.FC<GasAlertSettingsProps> = ({ currentGas, walletA
   useEffect(() => {
     if (alerts.length > 0 && currentGas > 0 && notificationPermission === 'granted') {
       const formattedAlerts = alerts
-        .filter(a => a.is_active)
+        .filter(a => a.is_active && a.threshold_gwei !== undefined)
         .map(a => ({
           id: a.id,
           alert_type: a.alert_type as 'below' | 'above',
-          threshold_gwei: a.threshold_gwei,
+          threshold_gwei: a.threshold_gwei!,
           is_active: a.is_active
         }));
 

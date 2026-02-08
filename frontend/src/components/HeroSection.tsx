@@ -39,6 +39,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({ currentGas, predictions, ethP
       const timer = setTimeout(() => setAnimateValue(false), 600);
       return () => clearTimeout(timer);
     }
+    return undefined;
   }, [currentGas, previousGas]);
 
   const next1h = predictions?.['1h'] || 0;

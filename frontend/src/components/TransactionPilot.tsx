@@ -64,6 +64,7 @@ const TransactionPilot: React.FC<TransactionPilotProps> = ({ ethPrice = 3000 }) 
       const timer = setTimeout(() => setShowChainToast(false), 10000);
       return () => clearTimeout(timer);
     }
+    return undefined;
   }, [bestChainForTx, selectedChain.id]);
 
   const fetchRecommendation = useCallback(async () => {

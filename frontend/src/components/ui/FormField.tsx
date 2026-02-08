@@ -12,7 +12,7 @@ interface FormFieldProps {
   /** Whether the field is required */
   required?: boolean;
   /** The input element(s) to render */
-  children: React.ReactElement;
+  children: React.ReactElement<React.InputHTMLAttributes<HTMLInputElement>>;
   /** Additional CSS classes for the container */
   className?: string;
   /** Show error only when touched (default: true) */
@@ -58,7 +58,8 @@ const FormField: React.FC<FormFieldProps> = ({
   const showError = error && (showErrorOnlyWhenTouched ? touched : true);
 
   // Get the existing className from the child input
-  const existingClassName = children.props.className || '';
+  const childProps = children.props as { className?: string };
+  const existingClassName = childProps.className || '';
 
   // Build error-aware input styles
   const inputClassName = showError

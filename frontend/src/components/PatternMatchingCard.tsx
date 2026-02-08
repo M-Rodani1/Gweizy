@@ -132,7 +132,7 @@ const PatternMatchingCard: React.FC = () => {
           <h3 className="text-lg font-semibold text-white">Pattern Analysis</h3>
         </div>
         <p className="text-gray-400 text-sm">
-          {error || data?.reason || 'Pattern analysis unavailable'}
+          {error || 'Pattern analysis unavailable'}
         </p>
       </div>
     );

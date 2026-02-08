@@ -13,7 +13,6 @@ declare global {
   }
 }
 
-const BASE_CHAIN_ID = '0x2105'; // Base mainnet = 8453 decimal
 const BASE_CHAIN_ID_DECIMAL = 8453;
 
 export interface WalletInfo {

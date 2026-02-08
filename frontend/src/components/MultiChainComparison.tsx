@@ -22,7 +22,7 @@ const MultiChainComparison: React.FC<MultiChainComparisonProps> = ({
   networkUtilization = 0,
   isConnected = false
 }) => {
-  const { selectedChainId, setSelectedChainId, bestChainForTx, isLoading } = useChain();
+  const { selectedChainId, setSelectedChainId, isLoading } = useChain();
   const chainComparison = useChainComparison();
 
   const gasUnits = TX_GAS_ESTIMATES[txType];
@@ -103,7 +103,7 @@ const MultiChainComparison: React.FC<MultiChainComparisonProps> = ({
             : 0;
 
           // Generate mock sparkline data based on gas price
-          const sparklineData = Array.from({ length: 12 }, (_, i) => {
+          const sparklineData = Array.from({ length: 12 }, () => {
             const basePrice = gas?.gasPrice || 0.001;
             const variance = basePrice * 0.2;
             return basePrice + (Math.random() - 0.5) * variance;

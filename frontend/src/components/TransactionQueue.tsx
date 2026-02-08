@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Clock, Plus, Trash2, X, Zap, CheckCircle, AlertCircle, Send } from 'lucide-react';
+import { Clock, Plus, Trash2, X, Zap, CheckCircle, Send } from 'lucide-react';
 import { sendGasAlertNotification } from '../utils/pushNotifications';
 
 interface QueuedTransaction {

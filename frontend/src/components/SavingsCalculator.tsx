@@ -61,11 +61,6 @@ const SavingsCalculator: React.FC<SavingsCalculatorProps> = ({
   const savings = costNow - costBest;
   const savingsPercent = costNow > 0 ? (savings / costNow) * 100 : 0;
 
-  const formatHorizon = (horizon: string) => {
-    if (horizon === 'now') return 'NOW';
-    return horizon.toUpperCase();
-  };
-
   const formatTime = (horizon: string) => {
     if (horizon === 'now') return 'now';
     if (horizon === '1h') return '1 hour';

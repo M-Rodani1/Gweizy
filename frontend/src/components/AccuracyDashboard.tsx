@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
-  LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
-  ComposedChart, Area, AreaChart
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  Area, AreaChart
 } from 'recharts';
 import { TrendingUp, TrendingDown, Activity } from 'lucide-react';
 import { API_CONFIG, getApiUrl } from '../config/api';

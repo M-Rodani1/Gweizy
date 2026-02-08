@@ -15,7 +15,7 @@ const Analytics: React.FC = () => {
           </p>
         </div>
 
-        <AccuracyDashboard selectedChain={selectedChainId} />
+        <AccuracyDashboard selectedChain={String(selectedChainId)} />
       </div>
     </div>
   );

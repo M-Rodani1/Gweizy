@@ -16,7 +16,7 @@ const TRANSACTION_TYPES = [
 
 const ETH_PRICE = 3000; // USD per ETH
 
-const GasWasteCalculator: React.FC<GasWasteCalculatorProps> = ({ walletAddress }) => {
+const GasWasteCalculator: React.FC<GasWasteCalculatorProps> = () => {
   const [timePeriod, setTimePeriod] = useState<'week' | 'month' | '3months'>('month');
   const [transactionsPerWeek, setTransactionsPerWeek] = useState<number>(5);
   const [selectedType, setSelectedType] = useState(TRANSACTION_TYPES[2]); // Uniswap Swap default

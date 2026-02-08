@@ -10,7 +10,7 @@ const VIRTUAL_SCROLL_THRESHOLD = 50;
 const ROW_HEIGHT = 60; // Estimated row height in pixels
 
 // Memoized table row component to prevent unnecessary re-renders
-const TableRow = React.memo<{ row: TableRowData; index: number }>(({ row, index }) => (
+const TableRow = React.memo<{ row: TableRowData; index: number }>(({ row }) => (
   <tr className="border-b border-gray-700 hover:bg-gray-700/50">
     <td className="p-3 font-mono text-sm text-cyan-400">{row.txHash}</td>
     <td className="p-3">

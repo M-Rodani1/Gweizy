@@ -39,7 +39,6 @@ const PredictionExplanation: React.FC<PredictionExplanationProps> = ({
 }) => {
   const [explanation, setExplanation] = useState<ExplanationData | null>(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [showDetails, setShowDetails] = useState(false);
 
   const fetchExplanation = async () => {
@@ -47,7 +46,6 @@ const PredictionExplanation: React.FC<PredictionExplanationProps> = ({
 
     try {
       setLoading(true);
-      setError(null);
 
       const response = await fetch(getApiUrl(`${API_CONFIG.ENDPOINTS.EXPLAIN}/${horizon}`));
 

@@ -8,8 +8,7 @@ import {
   sanitizeAddress,
   isValidNumber,
   sanitizeNumber,
-  isValidUrl,
-  sanitizeString
+  isValidUrl
 } from '../../utils/validators';
 
 describe('validators', () => {

@@ -1,9 +1,11 @@
 /**
  * Lazy-loaded lucide-react icons wrapper
- * 
+ *
  * This ensures React is fully initialized before lucide-react components are used.
  * Helps prevent "Cannot set properties of undefined (setting 'Children')" errors.
  */
+
+import React from 'react';
 
 // Wait for React to be fully available
 let ReactReady = false;

@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { useChain } from './ChainContext';
-import { TransactionType, TX_GAS_ESTIMATES } from '../config/chains';
+import { TransactionType } from '../config/chains';
 
 export interface ScheduledTransaction {
   id: string;

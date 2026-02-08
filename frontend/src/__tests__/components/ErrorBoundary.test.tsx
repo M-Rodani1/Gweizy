@@ -5,9 +5,8 @@
  * and Sentry integration.
  */
 
-import React from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import ErrorBoundary from '../../components/ErrorBoundary';
 import { SectionErrorBoundary } from '../../components/SectionErrorBoundary';
 
@@ -24,14 +23,6 @@ const ThrowingComponent = ({ shouldThrow = true }: { shouldThrow?: boolean }) =>
     throw new Error('Test error');
   }
   return <div>No error</div>;
-};
-
-// Component that throws after render
-const DelayedThrowingComponent = ({ throwError }: { throwError: boolean }) => {
-  if (throwError) {
-    throw new Error('Delayed test error');
-  }
-  return <div>Delayed component</div>;
 };
 
 describe('ErrorBoundary', () => {
@@ -204,7 +195,7 @@ describe('ErrorBoundary', () => {
 
   describe('Recovery', () => {
     it('should reset error state when Try Again is clicked', () => {
-      const { rerender } = render(
+      render(
         <ErrorBoundary>
           <ThrowingComponent shouldThrow={true} />
         </ErrorBoundary>

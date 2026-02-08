@@ -16,13 +16,12 @@ const Sparkline: React.FC<SparklineProps> = ({
   width = 100,
   height = 30,
   color = '#06b6d4',
-  fillColor = 'rgba(6, 182, 212, 0.1)',
   strokeWidth = 2,
   className = '',
   showGradient = true
 }) => {
   const pathData = useMemo(() => {
-    if (!data || data.length === 0) return '';
+    if (!data || data.length === 0) return { linePath: '', areaPath: '' };
 
     const min = Math.min(...data);
     const max = Math.max(...data);

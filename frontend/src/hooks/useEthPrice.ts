@@ -1,11 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
 
-interface EthPriceData {
-  usd: number;
-  usd_24h_change: number;
-  last_updated: Date;
-}
-
 interface UseEthPriceReturn {
   ethPrice: number;
   priceChange24h: number;
