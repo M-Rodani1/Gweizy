@@ -1,9 +1,8 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Bot, Brain, Clock, Coins, Lightbulb, RefreshCw, Zap } from 'lucide-react';
 import { useChain } from '../contexts/ChainContext';
 import { useScheduler } from '../contexts/SchedulerContext';
 import { TransactionType } from '../config/chains';
-import { API_CONFIG, getApiUrl } from '../config/api';
 import { TX_TYPE_META, getTxShortLabel } from '../config/transactions';
 import ScheduleTransactionModal from './ScheduleTransactionModal';
 import ExecuteTransactionModal from './ExecuteTransactionModal';
@@ -11,17 +10,8 @@ import ConfidenceRing from './ui/ConfidenceRing';
 import { formatGwei, formatUsd } from '../utils/formatNumber';
 import { usePreferences } from '../contexts/PreferencesContext';
 import { useWalletAddress } from '../hooks/useWalletAddress';
+import { useRecommendation } from '../hooks/useRecommendation';
 import { calculateGasCost } from '../utils/gasCalculations';
-
-interface AgentRecommendation {
-  action: string;
-  confidence: number;
-  recommended_gas: number;
-  expected_savings: number;
-  reasoning: string;
-  urgency_factor: number;
-  wait_time?: number;
-}
 
 interface TransactionPilotProps {
   ethPrice?: number;
@@ -42,16 +32,21 @@ const TransactionPilot: React.FC<TransactionPilotProps> = ({ ethPrice = 3000 }) 
   const walletAddress = useWalletAddress();
   const [selectedTxType, setSelectedTxType] = useState<TransactionType>(preferences.defaultTxType);
   const [urgency, setUrgency] = useState(preferences.urgency);
-  const [recommendation, setRecommendation] = useState<AgentRecommendation | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [loadingState, setLoadingState] = useState<'idle' | 'analyzing' | 'timeout' | 'error'>('analyzing');
-  const [retryCount, setRetryCount] = useState(0);
-  const [countdown, setCountdown] = useState<number | null>(null);
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [showExecuteModal, setShowExecuteModal] = useState(false);
   const [executeGasGwei, setExecuteGasGwei] = useState<number | null>(null);
   const [showChainToast, setShowChainToast] = useState(false);
+
+  // Use the recommendation hook
+  const {
+    recommendation,
+    loading,
+    loadingState,
+    error,
+    retryCount,
+    countdown,
+    refresh: fetchRecommendation
+  } = useRecommendation(urgency);
 
   const currentGas = multiChainGas[selectedChain.id]?.gasPrice || 0;
   const { gasUnits, costUsd: estimatedCostUsd } = calculateGasCost(selectedTxType, currentGas, ethPrice);
@@ -66,64 +61,6 @@ const TransactionPilot: React.FC<TransactionPilotProps> = ({ ethPrice = 3000 }) 
     return undefined;
   }, [bestChainForTx, selectedChain.id]);
 
-  const fetchRecommendation = useCallback(async () => {
-    try {
-      setLoading(true);
-      setLoadingState('analyzing');
-      setError(null);
-
-      const response = await fetch(
-        getApiUrl(API_CONFIG.ENDPOINTS.AGENT_RECOMMEND, { urgency }),
-        {
-          signal: AbortSignal.timeout(API_CONFIG.TIMEOUT)
-        }
-      );
-
-      if (!response.ok) {
-        setLoadingState('error');
-        setError('Server error — using live gas data');
-        setRecommendation(null);
-        return;
-      }
-
-      const data = await response.json();
-
-      if (data.success) {
-        setRecommendation(data.recommendation);
-        setLoadingState('idle');
-        setError(null);
-        setRetryCount(0);
-
-        if (data.recommendation.action === 'WAIT') {
-          const waitMinutes = Math.round((1 - data.recommendation.confidence) * 60);
-          setCountdown(waitMinutes * 60);
-        } else {
-          setCountdown(null);
-        }
-      } else {
-        setLoadingState('error');
-        setError(data.error || 'Could not get recommendation');
-      }
-    } catch (err) {
-      console.error('Failed to fetch recommendation:', err);
-      const isTimeout = err instanceof Error && err.name === 'TimeoutError';
-      setLoadingState(isTimeout ? 'timeout' : 'error');
-      setError(isTimeout
-        ? 'Analysis taking longer than usual...'
-        : 'Connection issue — showing live gas'
-      );
-      setRetryCount((prev: number) => prev + 1);
-    } finally {
-      setLoading(false);
-    }
-  }, [urgency]);
-
-  useEffect(() => {
-    fetchRecommendation();
-    const interval = setInterval(fetchRecommendation, 30000);
-    return () => clearInterval(interval);
-  }, [fetchRecommendation]);
-
   useEffect(() => {
     setSelectedTxType(preferences.defaultTxType);
   }, [preferences.defaultTxType]);
@@ -131,14 +68,6 @@ const TransactionPilot: React.FC<TransactionPilotProps> = ({ ethPrice = 3000 }) 
   useEffect(() => {
     setUrgency(preferences.urgency);
   }, [preferences.urgency]);
-
-  useEffect(() => {
-    if (countdown === null || countdown <= 0) return;
-    const timer = setInterval(() => {
-      setCountdown(prev => (prev !== null && prev > 0 ? prev - 1 : null));
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [countdown]);
 
   const formatCountdown = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
