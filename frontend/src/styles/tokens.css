@@ -34,6 +34,16 @@
   --warning-bg: rgba(245, 158, 11, 0.1);
   --warning-border: rgba(245, 158, 11, 0.2);
 
+  /* Chart Colors */
+  --chart-primary: #4FD1C5;
+  --chart-primary-light: #81E6D9;
+  --chart-secondary: #F6E05E;
+  --chart-grid: #4A5568;
+  --chart-axis: #A0AEC0;
+  --chart-tooltip-bg: #1A202C;
+  --chart-tooltip-border: #4A5568;
+  --chart-tooltip-text: #E2E8F0;
+
   /* Spacing Scale */
   --space-xs: 0.25rem;   /* 4px */
   --space-sm: 0.5rem;    /* 8px */
