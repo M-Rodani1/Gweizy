@@ -27,6 +27,14 @@ export default defineConfig(({ mode }) => {
       resolve: {
         alias: {
           '@': path.resolve(__dirname, '.'),
+          '@/components': path.resolve(__dirname, './src/components'),
+          '@/hooks': path.resolve(__dirname, './src/hooks'),
+          '@/contexts': path.resolve(__dirname, './src/contexts'),
+          '@/utils': path.resolve(__dirname, './src/utils'),
+          '@/api': path.resolve(__dirname, './src/api'),
+          '@/config': path.resolve(__dirname, './src/config'),
+          '@/schemas': path.resolve(__dirname, './src/schemas'),
+          '@/types': path.resolve(__dirname, './types.ts'),
         },
         dedupe: ['react', 'react-dom', 'react-router', 'react-router-dom'], // Ensure single instance of React and router
       },
