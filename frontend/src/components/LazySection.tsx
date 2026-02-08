@@ -1,6 +1,6 @@
 import React, { Suspense } from 'react';
 import { useLazyLoad } from '../hooks/useLazyLoad';
-import { CardSkeleton } from './LoadingSkeleton';
+import { SkeletonCard } from './ui/Skeleton';
 
 interface LazySectionProps {
   children: React.ReactNode;
@@ -10,7 +10,7 @@ interface LazySectionProps {
   style?: React.CSSProperties;
 }
 
-const ComponentLoader = () => <CardSkeleton />;
+const ComponentLoader = () => <SkeletonCard />;
 
 export const LazySection: React.FC<LazySectionProps> = ({
   children,

@@ -7,7 +7,7 @@ import DriftAlertBanner from '../src/components/DriftAlertBanner';
 import ApiStatusPanel from '../src/components/ApiStatusPanel';
 import HourlyHeatmap from '../src/components/HourlyHeatmap';
 import ModelMetricsPanel from '../src/components/ModelMetricsPanel';
-import { CardSkeleton, ChartSkeleton, HeatmapSkeleton } from '../src/components/SkeletonLoader';
+import { SkeletonCard, SkeletonChart, SkeletonHeatmap } from '../src/components/ui/Skeleton';
 import { useChain } from '../src/contexts/ChainContext';
 import { useEthPrice } from '../src/hooks/useEthPrice';
 import { fetchHybridPrediction } from '../src/api/gasApi';
@@ -111,7 +111,7 @@ const Analytics: React.FC = () => {
               <Sparkles className="w-4 h-4 text-cyan-400" />
               ML Predictions
             </h2>
-            <Suspense fallback={<CardSkeleton rows={4} />}>
+            <Suspense fallback={<SkeletonCard />}>
               <PredictionCards hybridData={hybridData} />
             </Suspense>
           </section>
@@ -125,7 +125,7 @@ const Analytics: React.FC = () => {
               Price Charts
             </h2>
             <div className="grid grid-cols-1 gap-6">
-              <Suspense fallback={<ChartSkeleton height={250} />}>
+              <Suspense fallback={<SkeletonChart height={250} />}>
                 <GasPriceGraph />
               </Suspense>
             </div>
@@ -141,7 +141,7 @@ const Analytics: React.FC = () => {
             </h2>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <HourlyHeatmap />
-              <Suspense fallback={<CardSkeleton rows={3} />}>
+              <Suspense fallback={<SkeletonCard />}>
                 <BestTimeWidget currentGas={currentGas} />
               </Suspense>
             </div>
@@ -155,7 +155,7 @@ const Analytics: React.FC = () => {
               <Calendar className="w-4 h-4 text-cyan-400" />
               Pattern Analysis
             </h2>
-            <Suspense fallback={<HeatmapSkeleton />}>
+            <Suspense fallback={<SkeletonHeatmap />}>
               <GasPatternHeatmap />
             </Suspense>
           </section>
@@ -168,7 +168,7 @@ const Analytics: React.FC = () => {
               <Brain className="w-4 h-4 text-cyan-400" />
               Network Intelligence
             </h2>
-            <Suspense fallback={<CardSkeleton rows={5} />}>
+            <Suspense fallback={<SkeletonCard />}>
               <NetworkIntelligencePanel />
             </Suspense>
           </section>
@@ -181,7 +181,7 @@ const Analytics: React.FC = () => {
               <ClipboardList className="w-4 h-4 text-cyan-400" />
               Historical Data
             </h2>
-            <Suspense fallback={<ChartSkeleton height={300} />}>
+            <Suspense fallback={<SkeletonChart height={300} />}>
               <GasPriceTable />
             </Suspense>
           </section>

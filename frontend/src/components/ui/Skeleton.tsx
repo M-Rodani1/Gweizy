@@ -377,4 +377,81 @@ export const SkeletonProfile: React.FC<{ className?: string }> = ({ className })
   </div>
 );
 
+// ============================================================================
+// Heatmap Skeleton
+// ============================================================================
+
+export const SkeletonHeatmap: React.FC<{ className?: string }> = ({ className }) => (
+  <div className={`bg-gray-800/50 rounded-2xl p-6 border border-gray-700 ${className}`}>
+    <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center gap-2">
+        <Skeleton variant="circle" width={20} height={20} />
+        <Skeleton variant="text" width={140} height={16} />
+      </div>
+      <Skeleton variant="rect" width={40} height={20} className="rounded" />
+    </div>
+    <div className="flex gap-2 mb-4">
+      <Skeleton variant="rect" height={40} className="flex-1 rounded-lg" />
+      <Skeleton variant="rect" height={40} className="flex-1 rounded-lg" />
+    </div>
+    <div className="space-y-1">
+      {Array.from({ length: 7 }).map((_, i) => (
+        <div key={i} className="flex gap-1">
+          <Skeleton variant="text" width={28} height={16} />
+          <div className="flex-1 flex gap-px">
+            {Array.from({ length: 24 }).map((_, j) => (
+              <Skeleton key={j} variant="rect" height={16} className="flex-1" />
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
+// ============================================================================
+// Error Fallback Component
+// ============================================================================
+
+interface ErrorFallbackProps {
+  error?: string;
+  onRetry?: () => void;
+}
+
+export const ErrorFallback: React.FC<ErrorFallbackProps> = ({ error, onRetry }) => (
+  <div className="bg-gray-800 border border-yellow-500/30 rounded-lg p-6">
+    <div className="flex items-center gap-3 mb-3">
+      <span className="text-2xl">⚠️</span>
+      <h3 className="text-lg font-semibold text-yellow-400">Unable to load data</h3>
+    </div>
+    <p className="text-gray-400 text-sm mb-4">
+      {error || "We're having trouble fetching the latest data. This might be temporary."}
+    </p>
+    {onRetry && (
+      <button
+        onClick={onRetry}
+        className="px-4 py-2 bg-cyan-500 hover:bg-cyan-600 text-white rounded-lg text-sm font-medium transition-colors"
+      >
+        Try Again
+      </button>
+    )}
+  </div>
+);
+
+// ============================================================================
+// Simple Aliases for backwards compatibility
+// ============================================================================
+
+/** @deprecated Use SkeletonCard instead */
+export const CardSkeleton = SkeletonCard;
+
+/** @deprecated Use SkeletonChart instead */
+export const GraphSkeleton = SkeletonChart;
+
+/** @deprecated Use SkeletonChart instead */
+export const ChartSkeleton = SkeletonChart;
+
+/** @deprecated Use SkeletonHeatmap instead */
+export const HeatmapSkeleton = SkeletonHeatmap;
+
 export default Skeleton;
