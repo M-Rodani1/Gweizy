@@ -4,6 +4,7 @@ import { useChain } from '../contexts/ChainContext';
 import { useScheduler } from '../contexts/SchedulerContext';
 import { TransactionType } from '../config/chains';
 import { TX_TYPE_META, getTxShortLabel } from '../config/transactions';
+import { getActionConfig, getPrimaryActionLabel } from '../config/actionConfig';
 import ScheduleTransactionModal from './ScheduleTransactionModal';
 import ExecuteTransactionModal from './ExecuteTransactionModal';
 import ConfidenceRing from './ui/ConfidenceRing';
@@ -69,87 +70,13 @@ const TransactionPilot: React.FC<TransactionPilotProps> = ({ ethPrice = 3000 }) 
     setUrgency(preferences.urgency);
   }, [preferences.urgency]);
 
-  const formatCountdown = (seconds: number): string => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
-
   const txShortLabel = getTxShortLabel(selectedTxType);
 
-  const getPrimaryActionLabel = (action: string): string => {
-    switch (action) {
-      case 'WAIT':
-        return `Notify for ${txShortLabel}`;
-      case 'SUBMIT_NOW':
-        return `Execute ${txShortLabel}`;
-      case 'SUBMIT_LOW':
-        return `Execute ${txShortLabel} (Low)`;
-      case 'SUBMIT_HIGH':
-        return `Priority ${txShortLabel}`;
-      default:
-        return `Analyse ${txShortLabel}`;
-    }
-  };
-
-  const getActionConfig = (action: string) => {
-    switch (action) {
-      case 'WAIT':
-        return {
-          gradient: 'from-yellow-500 to-orange-500',
-          cardClass: 'recommendation-card-yellow',
-          text: 'Wait for Better Price',
-          subtext: countdown ? `Optimal in ~${formatCountdown(countdown)}` : 'Prices expected to drop',
-          buttonText: 'Notify When Ready',
-          buttonClass: 'bg-yellow-500 hover:bg-yellow-600 btn-wait-glow',
-          confidenceColor: '#eab308'
-        };
-      case 'SUBMIT_NOW':
-        return {
-          gradient: 'from-green-500 to-emerald-500',
-          cardClass: 'recommendation-card-green',
-          text: 'Execute Now',
-          subtext: 'Good time to transact',
-          buttonText: 'Execute Transaction',
-          buttonClass: 'bg-green-500 hover:bg-green-600 btn-execute-glow',
-          confidenceColor: '#22c55e'
-        };
-      case 'SUBMIT_LOW':
-        return {
-          gradient: 'from-cyan-500 to-blue-500',
-          cardClass: 'recommendation-card-cyan',
-          text: 'Try Lower Gas',
-          subtext: 'Submit 10% below current (~15% fail risk)',
-          buttonText: 'Execute Low',
-          buttonClass: 'bg-cyan-500 hover:bg-cyan-600',
-          confidenceColor: '#06b6d4'
-        };
-      case 'SUBMIT_HIGH':
-        return {
-          gradient: 'from-cyan-600 to-cyan-400',
-          cardClass: 'recommendation-card-cyan',
-          text: 'Priority Submit',
-          subtext: 'Faster confirmation guaranteed',
-          buttonText: 'Execute Priority',
-          buttonClass: 'bg-cyan-600 hover:bg-cyan-700',
-          confidenceColor: '#0891b2'
-        };
-      default:
-        return {
-          gradient: 'from-gray-500 to-gray-600',
-          cardClass: '',
-          text: 'Analysing...',
-          subtext: 'Getting recommendation',
-          buttonText: 'Wait',
-          buttonClass: 'bg-gray-500',
-          confidenceColor: '#6b7280'
-        };
-    }
-  };
-
-  const actionConfig = recommendation ? getActionConfig(recommendation.action) : getActionConfig('');
+  const actionConfig = recommendation
+    ? getActionConfig(recommendation.action, countdown)
+    : getActionConfig('');
   const primaryActionLabel = recommendation
-    ? getPrimaryActionLabel(recommendation.action)
+    ? getPrimaryActionLabel(recommendation.action, txShortLabel)
     : actionConfig.buttonText;
 
   const handleTxTypeSelect = (type: TransactionType) => {
