@@ -1,0 +1,202 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`UI primitives snapshots > Badges and pills match snapshot 1`] = `
+<div>
+  <span
+    class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-[var(--accent-light)] text-[var(--accent)] border border-[var(--accent-border)] "
+  >
+    Accent
+  </span>
+  <span
+    class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-[var(--success-bg)] text-[var(--success)] border border-[var(--success-border)] "
+  >
+    Success
+  </span>
+  <span
+    class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-cyan-500/15 text-cyan-200 border border-cyan-500/30 "
+  >
+    Cyan
+  </span>
+  <span
+    class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--surface-2)] border border-[var(--border)] text-sm text-[var(--text)] "
+  >
+    Chip
+  </span>
+</div>
+`;
+
+exports[`UI primitives snapshots > Button variants match snapshot 1`] = `
+<div>
+  <button
+    class="btn-reset inline-flex items-center justify-center gap-2 font-semibold transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg)] px-4 py-2.5 text-sm rounded-lg bg-[var(--accent)] text-white hover:bg-[var(--accent-hover)] shadow-sm shadow-cyan-500/30  "
+  >
+    <span
+      class="whitespace-nowrap"
+    >
+      Primary
+    </span>
+  </button>
+  <button
+    class="btn-reset inline-flex items-center justify-center gap-2 font-semibold transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg)] px-4 py-2.5 text-sm rounded-lg bg-[var(--surface-2)] text-[var(--text)] border border-[var(--border)] hover:border-[var(--accent-border)]  "
+  >
+    <span
+      class="whitespace-nowrap"
+    >
+      Secondary
+    </span>
+  </button>
+  <button
+    class="btn-reset inline-flex items-center justify-center gap-2 font-semibold transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg)] px-4 py-2.5 text-sm rounded-lg border border-[var(--accent-border)] text-[var(--accent)] hover:bg-[var(--accent-light)]  "
+  >
+    <span
+      class="whitespace-nowrap"
+    >
+      Outline
+    </span>
+  </button>
+  <button
+    class="btn-reset inline-flex items-center justify-center gap-2 font-semibold transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg)] px-4 py-2.5 text-sm rounded-lg bg-transparent text-[var(--text-secondary)] hover:bg-[var(--surface-2)]  "
+  >
+    <span
+      class="whitespace-nowrap"
+    >
+      Ghost
+    </span>
+  </button>
+</div>
+`;
+
+exports[`UI primitives snapshots > Card with header matches snapshot 1`] = `
+<div>
+  <div
+    class="card bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-lg)] shadow-card transition-all p-6 "
+  >
+    <header
+      class="flex items-start justify-between gap-3 mb-4"
+    >
+      <div>
+        <h3
+          class="text-base font-semibold text-[var(--text)]"
+        >
+          Card Title
+        </h3>
+        <p
+          class="text-sm text-[var(--text-secondary)] mt-1"
+        >
+          Subtitle
+        </p>
+      </div>
+      <div
+        class="shrink-0"
+      >
+        <button
+          class="btn-reset inline-flex items-center justify-center gap-2 font-semibold transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg)] px-3 py-2 text-sm rounded-md bg-[var(--accent)] text-white hover:bg-[var(--accent-hover)] shadow-sm shadow-cyan-500/30  "
+        >
+          <span
+            class="whitespace-nowrap"
+          >
+            Action
+          </span>
+        </button>
+      </div>
+    </header>
+    <p>
+      Body
+    </p>
+  </div>
+</div>
+`;
+
+exports[`UI primitives snapshots > SectionHeader renders alignments 1`] = `
+<div>
+  <div
+    class="flex flex-col gap-2 w-full"
+  >
+    <div
+      class="flex w-full items-start justify-between gap-2"
+    >
+      <div
+        class=""
+      >
+        <span
+          class="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--text-muted)]"
+        >
+          Overview
+        </span>
+        <h2
+          class="text-2xl font-semibold text-[var(--text)] leading-tight"
+        >
+          AI Pilot
+        </h2>
+        <p
+          class="text-[var(--text-secondary)] mt-2 max-w-2xl"
+        >
+          Details
+        </p>
+      </div>
+      <div
+        class="shrink-0"
+      >
+        <button
+          class="btn-reset inline-flex items-center justify-center gap-2 font-semibold transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg)] px-3 py-2 text-sm rounded-md bg-[var(--accent)] text-white hover:bg-[var(--accent-hover)] shadow-sm shadow-cyan-500/30  "
+        >
+          <span
+            class="whitespace-nowrap"
+          >
+            View
+          </span>
+        </button>
+      </div>
+    </div>
+  </div>
+  <div
+    class="flex flex-col items-center text-center w-full"
+  >
+    <div
+      class="flex w-full items-start justify-between gap-2"
+    >
+      <div
+        class="w-full"
+      >
+        <h2
+          class="text-2xl font-semibold text-[var(--text)] leading-tight"
+        >
+          Analytics
+        </h2>
+        <p
+          class="text-[var(--text-secondary)] mt-2 max-w-2xl"
+        >
+          Charts
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+`;
+
+exports[`UI primitives snapshots > Stat renders with helper 1`] = `
+<div>
+  <div
+    aria-label="Accuracy: 82%"
+    class="landing-stat focus-card"
+    role="article"
+    tabindex="0"
+  >
+    <div
+      class="landing-stat-value"
+    >
+      82%
+    </div>
+    <div
+      class="landing-stat-label"
+    >
+      Accuracy
+    </div>
+    <div
+      class="text-xs mt-1 text-green-400"
+    >
+      Rolling 30d
+    </div>
+  </div>
+</div>
+`;
