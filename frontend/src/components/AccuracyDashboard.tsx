@@ -374,8 +374,8 @@ const AccuracyDashboard: React.FC<AccuracyDashboardProps> = ({ selectedChain = '
       )}
 
       {/* Info Box */}
-      <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
-        <p className="text-sm text-blue-300">
+      <div className="bg-cyan-500/10 border border-cyan-500/30 rounded-lg p-4">
+        <p className="text-sm text-cyan-300">
           <strong>💡 What these metrics mean:</strong>
           <br />
           • <strong>MAE:</strong> Average prediction error in gwei (lower is better)

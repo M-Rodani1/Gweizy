@@ -114,7 +114,7 @@ const PatternMatchingCard: React.FC = () => {
     return (
       <div className="bg-gray-800/50 rounded-xl p-6 border border-gray-700">
         <div className="flex items-center gap-2 mb-4">
-          <Search className="w-5 h-5 text-blue-400" />
+          <Search className="w-5 h-5 text-cyan-400" />
           <h3 className="text-lg font-semibold text-white">Pattern Analysis</h3>
         </div>
         <div className="flex items-center justify-center h-32">
@@ -128,7 +128,7 @@ const PatternMatchingCard: React.FC = () => {
     return (
       <div className="bg-gray-800/50 rounded-xl p-6 border border-gray-700">
         <div className="flex items-center gap-2 mb-4">
-          <Search className="w-5 h-5 text-blue-400" />
+          <Search className="w-5 h-5 text-cyan-400" />
           <h3 className="text-lg font-semibold text-white">Pattern Analysis</h3>
         </div>
         <p className="text-gray-400 text-sm">
@@ -144,7 +144,7 @@ const PatternMatchingCard: React.FC = () => {
     <div className="bg-gray-800/50 rounded-xl p-6 border border-gray-700">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <Search className="w-5 h-5 text-blue-400" />
+          <Search className="w-5 h-5 text-cyan-400" />
           <h3 className="text-lg font-semibold text-white">Pattern Analysis</h3>
         </div>
         <button
@@ -197,7 +197,7 @@ const PatternMatchingCard: React.FC = () => {
           </span>
         </div>
         <div className="flex items-center gap-1">
-          <Clock className="w-4 h-4 text-blue-400" />
+          <Clock className="w-4 h-4 text-cyan-400" />
           <span className="text-gray-400">Matches:</span>
           <span className="text-white font-medium">{data.match_count}</span>
         </div>
@@ -219,7 +219,7 @@ const PatternMatchingCard: React.FC = () => {
                   <span className="text-xs text-gray-500">
                     {new Date(match.timestamp).toLocaleDateString()}
                   </span>
-                  <span className="text-xs px-1.5 py-0.5 bg-blue-500/20 text-blue-400 rounded">
+                  <span className="text-xs px-1.5 py-0.5 bg-cyan-500/20 text-cyan-400 rounded">
                     {(match.correlation * 100).toFixed(0)}% match
                   </span>
                 </div>

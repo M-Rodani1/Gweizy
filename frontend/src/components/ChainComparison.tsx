@@ -125,7 +125,7 @@ const ChainComparison: React.FC = () => {
                 <tr
                   key={chain.chainId}
                   className={`border-b border-gray-700 hover:bg-gray-700/50 transition ${
-                    isSelected ? 'bg-blue-900/20' : ''
+                    isSelected ? 'bg-cyan-900/20' : ''
                   }`}
                 >
                   <td className="py-3 px-4">
@@ -158,11 +158,11 @@ const ChainComparison: React.FC = () => {
                   </td>
                   <td className="text-center py-3 px-4">
                     {isSelected ? (
-                      <span className="text-blue-400 text-sm">Selected</span>
+                      <span className="text-cyan-400 text-sm">Selected</span>
                     ) : (
                       <button
                         onClick={() => setSelectedChainId(chain.chainId)}
-                        className="text-blue-400 hover:text-blue-300 text-sm underline"
+                        className="text-cyan-400 hover:text-cyan-300 text-sm underline"
                       >
                         Select
                       </button>

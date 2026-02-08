@@ -217,7 +217,7 @@ const NetworkIntelligencePanel: React.FC = () => {
               {/* Block Utilization */}
               <div className="bg-slate-700/50 rounded-lg p-4">
                 <div className="flex items-center gap-2 mb-2">
-                  <Box className="w-4 h-4 text-blue-400" />
+                  <Box className="w-4 h-4 text-cyan-400" />
                   <p className="text-xs text-gray-400">Block Utilization</p>
                 </div>
                 <p className="text-2xl font-bold text-white">
@@ -225,7 +225,7 @@ const NetworkIntelligencePanel: React.FC = () => {
                 </p>
                 <div className="mt-2 h-1.5 bg-slate-600 rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-blue-500 transition-all"
+                    className="h-full bg-cyan-500 transition-all"
                     style={{ width: `${networkState.block_utilization_avg * 100}%` }}
                   />
                 </div>
@@ -338,7 +338,7 @@ const NetworkIntelligencePanel: React.FC = () => {
                       {congestionHistory.block_utilization && congestionHistory.block_utilization.length > 0 ? congestionHistory.block_utilization.map((util, idx) => (
                         <div
                           key={idx}
-                          className="flex-1 bg-blue-500/50 rounded-t hover:bg-blue-500/70 transition-colors"
+                          className="flex-1 bg-cyan-500/50 rounded-t hover:bg-cyan-500/70 transition-colors"
                           style={{ height: `${util * 100}%` }}
                           title={`${new Date(congestionHistory.timestamps[idx]).toLocaleTimeString()}: ${formatPercentage(util)}`}
                         />

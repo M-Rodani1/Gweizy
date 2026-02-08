@@ -73,7 +73,7 @@ const DataExport: React.FC<DataExportProps> = ({ className = '' }) => {
         <button
           onClick={() => handleExport('json')}
           disabled={loading}
-          className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white text-sm rounded-lg transition-colors"
+          className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-cyan-600 hover:bg-cyan-700 disabled:bg-gray-600 text-white text-sm rounded-lg transition-colors"
         >
           <FileJson className="w-4 h-4" />
           JSON

@@ -260,7 +260,7 @@ const AdvancedAnalyticsPanel: React.FC = () => {
         {/* Whale Activity */}
         <div className="bg-gray-700/50 rounded-lg p-4">
           <div className="flex items-center gap-2 mb-3">
-            <Fish className="w-4 h-4 text-blue-400" />
+            <Fish className="w-4 h-4 text-cyan-400" />
             <span className="text-sm font-medium text-gray-300">Whale Activity</span>
           </div>
           {whales?.available ? (
@@ -272,7 +272,7 @@ const AdvancedAnalyticsPanel: React.FC = () => {
                 <div className={`px-2 py-1 rounded text-xs font-medium ${
                   whales.current.activity_level === 'high' ? 'bg-red-400/20 text-red-400' :
                   whales.current.activity_level === 'moderate' ? 'bg-yellow-400/20 text-yellow-400' :
-                  whales.current.activity_level === 'low' ? 'bg-blue-400/20 text-blue-400' :
+                  whales.current.activity_level === 'low' ? 'bg-cyan-400/20 text-cyan-400' :
                   'bg-gray-400/20 text-gray-400'
                 }`}>
                   {whales.current.activity_level.toUpperCase()}
@@ -332,7 +332,7 @@ const AdvancedAnalyticsPanel: React.FC = () => {
         {/* Model Ensemble */}
         <div className="bg-gray-700/50 rounded-lg p-4">
           <div className="flex items-center gap-2 mb-3">
-            <Layers className="w-4 h-4 text-indigo-400" />
+            <Layers className="w-4 h-4 text-cyan-400" />
             <span className="text-sm font-medium text-gray-300">Model Ensemble</span>
           </div>
           {ensemble?.available ? (

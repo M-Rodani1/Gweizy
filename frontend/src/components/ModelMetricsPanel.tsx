@@ -340,11 +340,11 @@ const ModelMetricsPanel: React.FC<ModelMetricsPanelProps> = ({
               )}
 
               {/* Validation Latency Info */}
-              <div className="p-4 bg-blue-500/10 border border-blue-500/30 rounded-xl">
+              <div className="p-4 bg-cyan-500/10 border border-cyan-500/30 rounded-xl">
                 <div className="flex items-start gap-3">
-                  <Activity className="w-5 h-5 text-blue-400 mt-0.5" />
+                  <Activity className="w-5 h-5 text-cyan-400 mt-0.5" />
                   <div className="flex-1">
-                    <p className="text-sm text-blue-300 font-medium">About Metrics</p>
+                    <p className="text-sm text-cyan-300 font-medium">About Metrics</p>
                     <p className="text-xs text-gray-400 mt-1">
                       Predictions are validated after their horizon passes (≈80% of time). 1h metrics update ~48 min later, 4h after ~3.2 hrs, 24h after ~19 hrs.
                     </p>
@@ -438,7 +438,7 @@ const ModelMetricsPanel: React.FC<ModelMetricsPanelProps> = ({
                   {/* RMSE */}
                   <div className="bg-gray-800/40 rounded-xl p-4 border border-gray-700/50">
                     <div className="flex items-center gap-1.5 mb-2">
-                      <Activity className="w-4 h-4 text-blue-400" />
+                      <Activity className="w-4 h-4 text-cyan-400" />
                       <span className="text-xs text-gray-400">RMSE</span>
                     </div>
                     <div className="text-xl font-bold text-white font-mono">
@@ -511,7 +511,7 @@ const ModelMetricsPanel: React.FC<ModelMetricsPanelProps> = ({
                         return (
                           <div
                             key={idx}
-                            className="flex-1 bg-blue-500/50 rounded-t hover:bg-blue-500/70 transition-colors cursor-pointer"
+                            className="flex-1 bg-cyan-500/50 rounded-t hover:bg-cyan-500/70 transition-colors cursor-pointer"
                             style={{ height: `${height}%`, minHeight: '4px' }}
                             title={`${trends.dates[idx]}: ${formatMetric(value)}`}
                           />

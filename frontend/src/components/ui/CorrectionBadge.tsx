@@ -20,7 +20,7 @@ export function CorrectionBadge({ biasCorrection, showDetails = false }: Correct
 
   return (
     <span
-      className="inline-flex items-center gap-1 text-xs text-blue-400 ml-1"
+      className="inline-flex items-center gap-1 text-xs text-cyan-400 ml-1"
       title={tooltipText}
     >
       <svg

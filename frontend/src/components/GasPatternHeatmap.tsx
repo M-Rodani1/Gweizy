@@ -152,7 +152,7 @@ const GasPatternHeatmap: React.FC = () => {
     return (
       <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-sm border border-slate-700 rounded-2xl p-6 shadow-xl">
         <div className="flex items-center justify-center py-12">
-          <Loader2 className="w-8 h-8 text-blue-400 animate-spin" />
+          <Loader2 className="w-8 h-8 text-cyan-400 animate-spin" />
         </div>
       </div>
     );
