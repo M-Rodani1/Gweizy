@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Bot, Brain, Clock, Coins, Lightbulb, RefreshCw, Zap } from 'lucide-react';
 import { useChain } from '../contexts/ChainContext';
 import { useScheduler } from '../contexts/SchedulerContext';
-import { TX_GAS_ESTIMATES, TransactionType } from '../config/chains';
+import { TransactionType } from '../config/chains';
 import { API_CONFIG, getApiUrl } from '../config/api';
 import { TX_TYPE_META, getTxShortLabel } from '../config/transactions';
 import ScheduleTransactionModal from './ScheduleTransactionModal';
@@ -11,6 +11,7 @@ import ConfidenceRing from './ui/ConfidenceRing';
 import { formatGwei, formatUsd } from '../utils/formatNumber';
 import { usePreferences } from '../contexts/PreferencesContext';
 import { useWalletAddress } from '../hooks/useWalletAddress';
+import { calculateGasCost } from '../utils/gasCalculations';
 
 interface AgentRecommendation {
   action: string;
@@ -53,9 +54,7 @@ const TransactionPilot: React.FC<TransactionPilotProps> = ({ ethPrice = 3000 }) 
   const [showChainToast, setShowChainToast] = useState(false);
 
   const currentGas = multiChainGas[selectedChain.id]?.gasPrice || 0;
-  const gasUnits = TX_GAS_ESTIMATES[selectedTxType];
-  const estimatedCostEth = (currentGas * gasUnits) / 1e9;
-  const estimatedCostUsd = estimatedCostEth * ethPrice;
+  const { gasUnits, costUsd: estimatedCostUsd } = calculateGasCost(selectedTxType, currentGas, ethPrice);
 
   // Show chain switch toast when better chain available
   useEffect(() => {
