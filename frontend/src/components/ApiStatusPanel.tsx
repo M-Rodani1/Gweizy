@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Activity, CloudOff, RefreshCw, ShieldCheck, Brain, AlertTriangle } from 'lucide-react';
 import { API_CONFIG, getApiUrl } from '../config/api';
+import type { DriftInfo } from '../types/modelMetrics';
 
 type StatusState = 'checking' | 'online' | 'offline' | 'degraded';
 
@@ -62,7 +63,7 @@ const ApiStatusPanel: React.FC = () => {
       if (driftRes.ok) {
         const driftData = await driftRes.json();
         const shouldRetrain = driftData?.should_retrain ?? false;
-        const isDrifting = Object.values(driftData?.drift || {}).some((d: any) => d?.is_drifting);
+        const isDrifting = Object.values(driftData?.drift || {}).some((d) => (d as DriftInfo)?.is_drifting);
 
         if (shouldRetrain) {
           nextItems[2] = { key: 'model', label: 'Model Health', status: 'degraded', detail: 'Retrain recommended' };

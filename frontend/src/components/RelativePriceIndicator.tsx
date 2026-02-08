@@ -13,6 +13,12 @@ interface RelativePriceIndicatorProps {
   className?: string;
 }
 
+interface HistoricalPoint {
+  timestamp: string;
+  gwei?: number;
+  current_gas?: number;
+}
+
 const RelativePriceIndicator: React.FC<RelativePriceIndicatorProps> = ({
   currentGas,
   className = ''
@@ -33,19 +39,19 @@ const RelativePriceIndicator: React.FC<RelativePriceIndicatorProps> = ({
           const currentHour = new Date().getUTCHours();
 
           // Calculate current hour average
-          const hourData = dayData.historical.filter((point: any) => {
+          const hourData = dayData.historical.filter((point: HistoricalPoint) => {
             const timestamp = new Date(point.timestamp);
             return timestamp.getUTCHours() === currentHour;
           });
 
           if (hourData.length > 0) {
-            const hourAvg = hourData.reduce((sum: number, p: any) =>
+            const hourAvg = hourData.reduce((sum: number, p: HistoricalPoint) =>
               sum + (p.gwei || p.current_gas || 0), 0) / hourData.length;
             setHourlyAverage(hourAvg);
           }
 
           // Calculate 24h average
-          const dayAvg = dayData.historical.reduce((sum: number, p: any) =>
+          const dayAvg = dayData.historical.reduce((sum: number, p: HistoricalPoint) =>
             sum + (p.gwei || p.current_gas || 0), 0) / dayData.historical.length;
           setDayAverage(dayAvg);
         }
@@ -56,7 +62,7 @@ const RelativePriceIndicator: React.FC<RelativePriceIndicatorProps> = ({
           const weekData = await weekResponse.json();
 
           if (weekData && weekData.historical && Array.isArray(weekData.historical) && weekData.historical.length > 0) {
-            const weekAvg = weekData.historical.reduce((sum: number, p: any) =>
+            const weekAvg = weekData.historical.reduce((sum: number, p: HistoricalPoint) =>
               sum + (p.gwei || p.current_gas || 0), 0) / weekData.historical.length;
             setWeeklyAverage(weekAvg);
           }

@@ -17,6 +17,12 @@ interface HeatmapData {
   worstTime: { day: number; hour: number; gwei: number };
 }
 
+interface HourlyDataPoint {
+  hour: number;
+  avg_gwei: number;
+  sample_count: number;
+}
+
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
 
@@ -48,7 +54,7 @@ const HourlyHeatmap: React.FC = () => {
 
           // Generate cells for each day/hour combination
           DAYS.forEach((_, dayIdx) => {
-            hourlyData.forEach((h: any) => {
+            hourlyData.forEach((h: HourlyDataPoint) => {
               const hour = h?.hour;
               const avgGwei = h?.avg_gwei;
               const sampleCount = h?.sample_count;
