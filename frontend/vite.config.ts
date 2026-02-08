@@ -70,14 +70,21 @@ export default defineConfig(({ mode }) => {
                 if (id.includes('socket.io')) {
                   return 'vendor-socket';
                 }
-                
+
                 // D3 and other chart utilities (used by recharts internally but no React dep)
                 if (id.includes('d3-') || id.includes('victory-vendor')) {
                   return 'vendor-charts';
                 }
-                
+
+                // Wallet/blockchain utilities (viem, wagmi core, abitype)
+                if (id.includes('viem') ||
+                    id.includes('abitype') ||
+                    id.includes('@wagmi/core')) {
+                  return 'vendor-web3';
+                }
+
                 // Other truly independent utilities
-                if (id.includes('clsx') || 
+                if (id.includes('clsx') ||
                     id.includes('tailwind-merge') ||
                     id.includes('class-variance-authority')) {
                   return 'vendor-utils';
