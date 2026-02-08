@@ -320,7 +320,7 @@ const PredictionExplanation: React.FC<PredictionExplanationProps> = ({
                   <div className="text-xs text-gray-500 mb-2">Similar historical situations</div>
                   <div className="text-xs text-gray-400 font-mono">
                     Avg: {(explanation.technical_details.similar_cases.reduce((a, b) => a + b.gas_price, 0) / explanation.technical_details.similar_cases.length).toFixed(4)} gwei
-                    <span className="text-gray-600 ml-2">
+                    <span className="text-gray-500 ml-2">
                       ({explanation.technical_details.similar_cases.length} cases)
                     </span>
                   </div>

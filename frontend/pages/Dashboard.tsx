@@ -141,7 +141,7 @@ const Dashboard: React.FC = () => {
           <p className="text-sm text-gray-500">
             Gweizy — AI-Powered Gas Optimizer
           </p>
-          <p className="text-xs text-gray-600 mt-1">
+          <p className="text-xs text-gray-500 mt-1">
             v2.0 • Powered by DQN Neural Networks
           </p>
         </footer>
