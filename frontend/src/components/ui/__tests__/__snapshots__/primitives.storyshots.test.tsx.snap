@@ -31,11 +31,6 @@ exports[`Primitives stories > BadgesAndPills matches story snapshot 1`] = `
       Neutral
     </span>
     <span
-      class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-[var(--accent-light)] text-[var(--accent)] border border-[var(--accent-border)] "
-    >
-      Pill
-    </span>
-    <span
       class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--surface-2)] border border-[var(--border)] text-sm text-[var(--text)] "
     >
       Chip

@@ -4,7 +4,6 @@ import { Button } from '../Button';
 import { Card } from '../Card';
 import { Badge } from '../Badge';
 import { Stat } from '../Stat';
-import { Pill } from '../Pill';
 import { Chip } from '../Chip';
 import { SectionHeader } from '../SectionHeader';
 
@@ -30,12 +29,12 @@ describe('UI primitives snapshots', () => {
     expect(container).toMatchSnapshot();
   });
 
-  it('Badges and pills match snapshot', () => {
+  it('Badges and chips match snapshot', () => {
     const { container } = render(
       <>
         <Badge variant="accent">Accent</Badge>
         <Badge variant="success">Success</Badge>
-        <Pill color="cyan">Cyan</Pill>
+        <Badge variant="warning">Warning</Badge>
         <Chip label="Chip" />
       </>
     );

@@ -3,7 +3,6 @@ import { Button } from './Button';
 import { Card } from './Card';
 import { Badge } from './Badge';
 import { Stat } from './Stat';
-import { Pill } from './Pill';
 import { Chip } from './Chip';
 import { SectionHeader } from './SectionHeader';
 
@@ -45,7 +44,6 @@ export const BadgesAndPills: StoryObj = {
       <Badge variant="warning">Warning</Badge>
       <Badge variant="danger">Danger</Badge>
       <Badge variant="neutral">Neutral</Badge>
-      <Pill color="cyan">Pill</Pill>
       <Chip label="Chip" />
     </div>
   )
