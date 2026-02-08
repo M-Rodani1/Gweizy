@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, memo } from 'react';
 import { Calendar, Clock, RefreshCw } from 'lucide-react';
 import { API_CONFIG, getApiUrl } from '../config/api';
 
@@ -365,4 +365,4 @@ const HourlyHeatmap: React.FC = () => {
   );
 };
 
-export default HourlyHeatmap;
+export default memo(HourlyHeatmap);
