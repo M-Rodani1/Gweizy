@@ -110,6 +110,17 @@ const GasPriceGraph: React.FC = () => {
     );
   }
 
+  // Memoize tooltip formatters to avoid recreation on each render
+  const tooltipFormatter = useCallback((value: unknown) => {
+    if (value === null || value === undefined) return 'N/A';
+    return `${Number(value).toFixed(4)} gwei`;
+  }, []);
+
+  const tooltipLabelFormatter = useCallback((label: string) => {
+    if (label === 'now') return 'Current (Now)';
+    return `Time: ${label}`;
+  }, []);
+
   // Generate summary for screen readers
   const chartSummary = useMemo(() => {
     if (data.length === 0) return 'No data available';
@@ -182,14 +193,8 @@ const GasPriceGraph: React.FC = () => {
               boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
             }}
             labelStyle={{ color: '#E2E8F0' }}
-            formatter={(value: any) => {
-              if (value === null || value === undefined) return 'N/A';
-              return `${Number(value).toFixed(4)} gwei`;
-            }}
-            labelFormatter={(label: string) => {
-              if (label === 'now') return 'Current (Now)';
-              return `Time: ${label}`;
-            }}
+            formatter={tooltipFormatter}
+            labelFormatter={tooltipLabelFormatter}
           />
           <Legend wrapperStyle={{ color: '#E2E8F0', paddingTop: '20px' }} />
           {/* Filled area for current price */}
