@@ -6,7 +6,12 @@ import {
   PredictionsResponse,
   TableRowData,
   HistoricalResponse,
-  HybridPrediction
+  HybridPrediction,
+  ConfigResponse,
+  AccuracyResponse,
+  UserHistoryResponse,
+  LeaderboardResponse,
+  GlobalStatsResponse
 } from '../../types';
 
 class GasAPIError extends Error {
@@ -207,9 +212,9 @@ export async function fetchTransactions(limit: number = 10): Promise<TableRowDat
 /**
  * Fetch Base platform config
  */
-export async function fetchConfig(): Promise<any> {
+export async function fetchConfig(): Promise<ConfigResponse> {
   const url = getApiUrl(API_CONFIG.ENDPOINTS.CONFIG);
-  return fetchJsonWithRetry(
+  return fetchJsonWithRetry<ConfigResponse>(
     url,
     { method: 'GET', headers: { 'Content-Type': 'application/json' } },
     { key: getCacheKey(url), ttlMs: CACHE_TTL_MS.config },
@@ -220,9 +225,9 @@ export async function fetchConfig(): Promise<any> {
 /**
  * Fetch model accuracy metrics
  */
-export async function fetchAccuracy(): Promise<any> {
+export async function fetchAccuracy(): Promise<AccuracyResponse> {
   const url = getApiUrl(API_CONFIG.ENDPOINTS.ACCURACY);
-  return fetchJsonWithRetry(
+  return fetchJsonWithRetry<AccuracyResponse>(
     url,
     { method: 'GET', headers: { 'Content-Type': 'application/json' } },
     { key: getCacheKey(url), ttlMs: CACHE_TTL_MS.accuracy },
@@ -233,9 +238,9 @@ export async function fetchAccuracy(): Promise<any> {
 /**
  * Fetch user transaction history
  */
-export async function fetchUserHistory(address: string): Promise<any> {
+export async function fetchUserHistory(address: string): Promise<UserHistoryResponse> {
   const url = getApiUrl(`${API_CONFIG.ENDPOINTS.USER_HISTORY}/${address}`);
-  return fetchJsonWithRetry(
+  return fetchJsonWithRetry<UserHistoryResponse>(
     url,
     { method: 'GET', headers: { 'Content-Type': 'application/json' } },
     { key: getCacheKey(url), ttlMs: CACHE_TTL_MS.userHistory },
@@ -246,9 +251,9 @@ export async function fetchUserHistory(address: string): Promise<any> {
 /**
  * Fetch savings leaderboard
  */
-export async function fetchLeaderboard(): Promise<any> {
+export async function fetchLeaderboard(): Promise<LeaderboardResponse> {
   const url = getApiUrl(API_CONFIG.ENDPOINTS.LEADERBOARD);
-  return fetchJsonWithRetry(
+  return fetchJsonWithRetry<LeaderboardResponse>(
     url,
     { method: 'GET', headers: { 'Content-Type': 'application/json' } },
     { key: getCacheKey(url), ttlMs: CACHE_TTL_MS.leaderboard },
@@ -259,9 +264,9 @@ export async function fetchLeaderboard(): Promise<any> {
 /**
  * Fetch global statistics for landing page - LIVE DATA
  */
-export async function fetchGlobalStats(): Promise<any> {
+export async function fetchGlobalStats(): Promise<GlobalStatsResponse> {
   const url = getApiUrl(API_CONFIG.ENDPOINTS.STATS);
-  return fetchJsonWithRetry(
+  return fetchJsonWithRetry<GlobalStatsResponse>(
     url,
     { method: 'GET', headers: { 'Content-Type': 'application/json' } },
     { key: getCacheKey(url), ttlMs: CACHE_TTL_MS.stats },

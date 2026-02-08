@@ -126,3 +126,71 @@ export interface BlockPulse {
   base_fee: number;
   timestamp: string;
 }
+
+// Platform config response
+export interface ConfigResponse {
+  chains: Array<{
+    id: number;
+    name: string;
+    enabled: boolean;
+  }>;
+  features: {
+    [key: string]: boolean;
+  };
+  version: string;
+}
+
+// Model accuracy metrics
+export interface AccuracyResponse {
+  horizons: {
+    [horizon: string]: {
+      mae: number;
+      rmse?: number;
+      r2?: number;
+      directional_accuracy?: number;
+      n_samples: number;
+    };
+  };
+  overall: {
+    mae: number;
+    rmse?: number;
+    r2?: number;
+  };
+  updated_at: string;
+}
+
+// User transaction history
+export interface UserHistoryResponse {
+  address: string;
+  transactions: Array<{
+    hash: string;
+    timestamp: string;
+    gas_used: number;
+    gas_price: number;
+    savings?: number;
+  }>;
+  total_savings: number;
+  total_transactions: number;
+}
+
+// Leaderboard response
+export interface LeaderboardResponse {
+  entries: Array<{
+    rank: number;
+    address: string;
+    display_name?: string;
+    total_savings: number;
+    transaction_count: number;
+  }>;
+  updated_at: string;
+}
+
+// Global stats response
+export interface GlobalStatsResponse {
+  total_users: number;
+  total_transactions: number;
+  total_savings_usd: number;
+  predictions_made: number;
+  average_accuracy: number;
+  active_chains: number;
+}
