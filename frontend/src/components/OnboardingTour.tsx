@@ -221,7 +221,7 @@ const OnboardingTour: React.FC<OnboardingTourProps> = ({ onComplete, forceShow =
 
       {/* Tooltip */}
       <div
-        className="z-[10000] w-80 bg-gray-900 border border-gray-700 rounded-2xl shadow-2xl animate-fadeIn"
+        className="z-[10000] w-80 bg-gray-900 border border-gray-700 rounded-2xl shadow-2xl animate-fade-in"
         style={getTooltipStyle()}
       >
         {/* Header */}

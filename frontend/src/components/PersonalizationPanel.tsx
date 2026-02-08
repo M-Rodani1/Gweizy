@@ -138,7 +138,7 @@ const PersonalizationPanel: React.FC = () => {
 
       {/* Advanced Settings - Collapsible */}
       {showAdvanced && (
-        <div id="advanced-settings" className="space-y-3 pt-2 animate-fadeIn" role="group" aria-label="Advanced settings">
+        <div id="advanced-settings" className="space-y-3 pt-2 animate-fade-in" role="group" aria-label="Advanced settings">
           <div className="grid grid-cols-3 gap-2 text-xs">
             <div className="bg-gray-900/60 border border-gray-800 rounded-lg p-2 text-center">
               <div className="text-gray-500">Discount</div>

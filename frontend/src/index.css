@@ -103,10 +103,6 @@ html, body {
   animation: fade-in 0.3s ease-out;
 }
 
-.animate-fadeIn {
-  animation: fade-in 0.4s ease-out;
-}
-
 .animate-slide-up {
   animation: slide-up 0.4s ease-out;
 }
