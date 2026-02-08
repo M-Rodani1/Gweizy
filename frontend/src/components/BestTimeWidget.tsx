@@ -19,7 +19,6 @@ const BestTimeWidget: React.FC<BestTimeWidgetProps> = ({ currentGas = 0 }) => {
   useEffect(() => {
     // Use fallback pattern-based data for instant loading and reliability
     // Based on historical Base network gas price analysis
-    console.log('Using pattern-based Base gas data (optimized for demo)');
     setHourlyStats(getFallbackStats());
     setLoading(false);
   }, []);

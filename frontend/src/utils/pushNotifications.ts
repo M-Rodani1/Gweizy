@@ -119,8 +119,6 @@ export function checkAndTriggerAlerts(
     // Trigger the notification
     sendGasAlertNotification(currentGas, alert);
     triggeredAlerts.set(alert.id, now);
-
-    console.log(`Alert triggered: ${alert.alert_type} ${alert.threshold_gwei} gwei`);
   }
 }
 

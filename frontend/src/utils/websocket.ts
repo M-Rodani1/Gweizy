@@ -25,12 +25,11 @@ class WebSocketService {
     });
 
     this.socket.on('connect', () => {
-      console.log('WebSocket connected');
       this.reconnectAttempts = 0;
     });
 
-    this.socket.on('disconnect', (reason) => {
-      console.log('WebSocket disconnected:', reason);
+    this.socket.on('disconnect', () => {
+      // Connection lost - will attempt to reconnect automatically
     });
 
     this.socket.on('connect_error', (error) => {
@@ -42,8 +41,8 @@ class WebSocketService {
       }
     });
 
-    this.socket.on('connection_established', (data) => {
-      console.log('WebSocket connection established:', data.message);
+    this.socket.on('connection_established', () => {
+      // Connection confirmed by server
     });
 
     return this.socket;

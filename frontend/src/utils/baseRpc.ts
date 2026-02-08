@@ -15,11 +15,6 @@ function getBaseRPC(): string {
   return BASE_RPC_URLS[currentRpcIndex % BASE_RPC_URLS.length];
 }
 
-function rotateRPC(): void {
-  currentRpcIndex++;
-  console.log(`🔄 Switching to RPC: ${getBaseRPC()}`);
-}
-
 interface BlockData {
   baseFeePerGas: string;
   timestamp: string;
@@ -110,7 +105,6 @@ export async function fetchHistoricalBaseGas(hoursBack: number = 168): Promise<A
     const sampleInterval = 120;
     const numSamples = Math.min(Math.floor(totalBlocks / sampleInterval), 200); // Reduced from 500 to 200
 
-    console.log(`📊 Fetching ${numSamples} historical blocks from Base network (optimized for rate limits)...`);
 
     // Fetch blocks in parallel (in smaller batches to avoid rate limiting)
     const batchSize = 10; // Reduced from 20 to 10
@@ -167,7 +161,6 @@ export async function fetchHistoricalBaseGas(hoursBack: number = 168): Promise<A
       }
     }
 
-    console.log(`✅ Fetched ${historicalData.length} historical data points from Base network`);
 
     // Sort by timestamp (oldest first)
     return historicalData.sort((a, b) => a.timestamp - b.timestamp);
