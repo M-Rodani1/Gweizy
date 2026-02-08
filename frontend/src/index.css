@@ -808,6 +808,5 @@ html {
   margin: 0 auto var(--space-md);
 }
 
-/* Utility helpers */
-.bg-surface { background: var(--surface); }
+/* Additional utility - bg is defined in tokens.css */
 .bg-bg { background: var(--bg); }

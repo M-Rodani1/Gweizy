@@ -372,3 +372,41 @@ select:focus-visible {
 ::-webkit-scrollbar-thumb:hover {
   background: var(--text-muted);
 }
+
+/* ========================================
+   Token-based Utility Classes
+   ======================================== */
+
+/* Backgrounds */
+.bg-surface { background-color: var(--surface); }
+.bg-surface-2 { background-color: var(--surface-2); }
+.bg-surface-hover { background-color: var(--surface-hover); }
+.bg-accent-light { background-color: var(--accent-light); }
+
+/* Text Colors */
+.text-primary { color: var(--text); }
+.text-secondary { color: var(--text-secondary); }
+.text-muted { color: var(--text-muted); }
+.text-accent { color: var(--accent); }
+.text-success { color: var(--success); }
+.text-warning { color: var(--warning); }
+.text-danger { color: var(--danger); }
+
+/* Borders */
+.border-default { border-color: var(--border); }
+.border-subtle { border-color: var(--border-subtle); }
+.border-accent { border-color: var(--accent-border); }
+
+/* Combined card/panel styles */
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+
+.panel-elevated {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+}
