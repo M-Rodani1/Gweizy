@@ -812,25 +812,6 @@ html {
   margin: 0 auto var(--space-md);
 }
 
-/* Flex utilities */
-.flex-center {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.flex-between {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.flex-wrap-gap {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-md);
-}
-
 /* Utility helpers */
 .bg-surface { background: var(--surface); }
 .bg-bg { background: var(--bg); }
