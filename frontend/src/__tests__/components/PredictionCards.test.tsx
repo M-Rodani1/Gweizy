@@ -106,13 +106,17 @@ describe('PredictionCards', () => {
     render(<PredictionCards />, { wrapper: TestWrapper });
 
     await waitFor(() => {
-      // Should show horizon labels in uppercase format
-      expect(screen.getByText('1H PREDICTION')).toBeInTheDocument();
+      // 24H prediction is always visible (may be rendered multiple times)
+      expect(screen.getAllByText('24H PREDICTION').length).toBeGreaterThan(0);
     });
 
+    // 1H/4H are hidden by default - expand the toggle to see them
+    const toggleButton = screen.getAllByText(/Short-term predictions/i)[0];
+    fireEvent.click(toggleButton);
+
     await waitFor(() => {
-      expect(screen.getByText('4H PREDICTION')).toBeInTheDocument();
-      expect(screen.getByText('24H PREDICTION')).toBeInTheDocument();
+      expect(screen.getAllByText('1H PREDICTION').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('4H PREDICTION').length).toBeGreaterThan(0);
     });
   });
 
@@ -125,10 +129,18 @@ describe('PredictionCards', () => {
     it('displays all three prediction horizons', async () => {
       render(<PredictionCards />, { wrapper: TestWrapper });
 
+      // 24H is always visible (may be rendered multiple times)
       await waitFor(() => {
-        expect(screen.getByText('1H PREDICTION')).toBeInTheDocument();
-        expect(screen.getByText('4H PREDICTION')).toBeInTheDocument();
-        expect(screen.getByText('24H PREDICTION')).toBeInTheDocument();
+        expect(screen.getAllByText('24H PREDICTION').length).toBeGreaterThan(0);
+      });
+
+      // Expand short-term predictions to see 1H/4H
+      const toggleButton = screen.getAllByText(/Short-term predictions/i)[0];
+      fireEvent.click(toggleButton);
+
+      await waitFor(() => {
+        expect(screen.getAllByText('1H PREDICTION').length).toBeGreaterThan(0);
+        expect(screen.getAllByText('4H PREDICTION').length).toBeGreaterThan(0);
       });
     });
 
@@ -286,12 +298,12 @@ describe('PredictionCards', () => {
   });
 
   describe('Best Time Indicator', () => {
-    it('highlights best prediction horizon', async () => {
+    it('shows optimal transaction window banner', async () => {
       const bestTimeResponse = {
         current: mockCurrentGasData,
         predictions: {
           '1h': [{ time: '', predictedGwei: 0.0015, confidence: 0.9, confidenceLevel: 'high' as const }],
-          '4h': [{ time: '', predictedGwei: 0.0008, confidence: 0.85, confidenceLevel: 'high' as const }], // Best (lowest)
+          '4h': [{ time: '', predictedGwei: 0.0008, confidence: 0.85, confidenceLevel: 'high' as const }],
           '24h': [{ time: '', predictedGwei: 0.0012, confidence: 0.7, confidenceLevel: 'medium' as const }],
           historical: []
         }
@@ -303,10 +315,9 @@ describe('PredictionCards', () => {
       render(<PredictionCards />, { wrapper: TestWrapper });
 
       await waitFor(() => {
-        // 4h should be marked as best
-        expect(screen.getByText('4H PREDICTION')).toBeInTheDocument();
-        // BEST TIME badge should appear
-        expect(screen.getByText('BEST TIME')).toBeInTheDocument();
+        // Should show the optimal window banner with transaction guidance
+        const bannerText = screen.queryByText(/Good Time to Transact|Consider Waiting/i);
+        expect(bannerText).toBeInTheDocument();
       });
     });
   });

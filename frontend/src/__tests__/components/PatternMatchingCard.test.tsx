@@ -229,7 +229,7 @@ describe('PatternMatchingCard', () => {
       render(<PatternMatchingCard />);
 
       await waitFor(() => {
-        expect(screen.getByText(/Insufficient data/i)).toBeInTheDocument();
+        expect(screen.getByText(/Pattern analysis unavailable/i)).toBeInTheDocument();
       });
     });
   });
