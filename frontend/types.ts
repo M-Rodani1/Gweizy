@@ -1,5 +1,51 @@
 import React from 'react';
 
+// ========================================
+// API Response Wrapper Types
+// ========================================
+
+/**
+ * Standard API response wrapper for successful responses
+ */
+export interface ApiResponse<T> {
+  data: T;
+  success: true;
+  timestamp: string;
+}
+
+/**
+ * Standard API error response
+ */
+export interface ApiErrorResponse {
+  success: false;
+  error: string;
+  code?: string;
+  details?: Record<string, unknown>;
+}
+
+/**
+ * Union type for API responses that can be either success or error
+ */
+export type ApiResult<T> = ApiResponse<T> | ApiErrorResponse;
+
+/**
+ * Type guard to check if response is successful
+ */
+export function isApiSuccess<T>(result: ApiResult<T>): result is ApiResponse<T> {
+  return result.success === true;
+}
+
+/**
+ * Type guard to check if response is an error
+ */
+export function isApiError<T>(result: ApiResult<T>): result is ApiErrorResponse {
+  return result.success === false;
+}
+
+// ========================================
+// Domain Types
+// ========================================
+
 // Bias correction info from backend
 export interface BiasCorrection {
   applied: boolean;
