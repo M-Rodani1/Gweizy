@@ -24,7 +24,7 @@ const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
       {/* Header - clickable */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-700/30 transition-colors"
+        className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-700/30 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 focus-visible:ring-inset"
       >
         <div className="flex items-center gap-3">
           {icon && <span className="text-lg">{icon}</span>}

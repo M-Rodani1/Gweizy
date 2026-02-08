@@ -13,7 +13,7 @@ export const Chip: React.FC<ChipProps> = ({ label, onRemove, className = '' }) =
       <button
         type="button"
         onClick={onRemove}
-        className="text-[var(--text-muted)] hover:text-[var(--text)] focus:outline-none"
+        className="text-[var(--text-muted)] hover:text-[var(--text)] focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 rounded"
         aria-label={`Remove ${label}`}
       >
         ×
