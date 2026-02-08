@@ -33,7 +33,7 @@ const ConfidenceBar: React.FC<ConfidenceBarProps> = ({ probs, showLabels = 'acti
   // Label configurations
   const labels = showLabels === 'classification'
     ? { wait: 'Elevated', normal: 'Normal', urgent: 'Spike', waitColor: 'text-amber-400', normalColor: 'text-green-400', urgentColor: 'text-red-400' }
-    : { wait: 'Wait', normal: 'Normal', urgent: 'Urgent', waitColor: 'text-green-400', normalColor: 'text-blue-400', urgentColor: 'text-red-400' };
+    : { wait: 'Wait', normal: 'Normal', urgent: 'Urgent', waitColor: 'text-green-400', normalColor: 'text-cyan-400', urgentColor: 'text-red-400' };
 
   return (
     <div className="w-full">
@@ -76,7 +76,7 @@ const ConfidenceBar: React.FC<ConfidenceBarProps> = ({ probs, showLabels = 'acti
             className={`absolute h-full ${
               showLabels === 'classification'
                 ? 'bg-gradient-to-r from-green-500 to-green-600'
-                : 'bg-gradient-to-r from-blue-500 to-blue-600'
+                : 'bg-gradient-to-r from-cyan-500 to-cyan-600'
             }`}
             style={{
               left: `${waitWidth}%`,
@@ -118,7 +118,7 @@ const ConfidenceBar: React.FC<ConfidenceBarProps> = ({ probs, showLabels = 'acti
           <span>{labels.wait}</span>
         </div>
         <div className="flex items-center gap-1">
-          <div className={`w-3 h-3 rounded-full ${showLabels === 'classification' ? 'bg-green-500' : 'bg-blue-500'}`} />
+          <div className={`w-3 h-3 rounded-full ${showLabels === 'classification' ? 'bg-green-500' : 'bg-cyan-500'}`} />
           <span>{labels.normal}</span>
         </div>
         <div className="flex items-center gap-1">
