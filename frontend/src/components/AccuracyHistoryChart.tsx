@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, memo } from 'react';
 import { TrendingUp, RefreshCw, Calendar, ChevronDown } from 'lucide-react';
 import { API_CONFIG, getApiUrl } from '../config/api';
 
@@ -362,4 +362,4 @@ const AccuracyHistoryChart: React.FC = () => {
   );
 };
 
-export default AccuracyHistoryChart;
+export default memo(AccuracyHistoryChart);

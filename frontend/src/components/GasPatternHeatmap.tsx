@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, memo } from 'react';
 import { Calendar, Clock, TrendingDown, TrendingUp, Loader2 } from 'lucide-react';
 import { API_CONFIG, getApiUrl } from '../config/api';
 
@@ -343,4 +343,4 @@ const GasPatternHeatmap: React.FC = () => {
   );
 };
 
-export default GasPatternHeatmap;
+export default memo(GasPatternHeatmap);

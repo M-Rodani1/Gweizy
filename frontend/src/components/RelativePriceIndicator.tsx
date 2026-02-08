@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, memo } from 'react';
 import { API_CONFIG, getApiUrl } from '../config/api';
 
 interface PriceLevel {
@@ -296,4 +296,4 @@ const RelativePriceIndicator: React.FC<RelativePriceIndicatorProps> = ({
   );
 };
 
-export default RelativePriceIndicator;
+export default memo(RelativePriceIndicator);

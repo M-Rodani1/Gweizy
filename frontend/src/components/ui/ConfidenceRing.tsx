@@ -62,4 +62,4 @@ const ConfidenceRing: React.FC<ConfidenceRingProps> = ({
   );
 };
 
-export default ConfidenceRing;
+export default React.memo(ConfidenceRing);

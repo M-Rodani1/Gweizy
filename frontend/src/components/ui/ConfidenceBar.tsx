@@ -130,4 +130,4 @@ const ConfidenceBar: React.FC<ConfidenceBarProps> = ({ probs, showLabels = 'acti
   );
 };
 
-export default ConfidenceBar;
+export default React.memo(ConfidenceBar);
