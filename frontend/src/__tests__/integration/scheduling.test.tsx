@@ -5,7 +5,7 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
-import { SchedulerProvider, useScheduler, ScheduledTransaction } from '../../contexts/SchedulerContext';
+import { SchedulerProvider, useScheduler } from '../../contexts/SchedulerContext';
 import { ChainProvider } from '../../contexts/ChainContext';
 
 // Mock localStorage
@@ -317,6 +317,158 @@ describe('Transaction Scheduling Flow', () => {
       const tx = result.current.transactions[0];
       expect(tx.toAddress).toBe('0x1234567890123456789012345678901234567890');
       expect(tx.amount).toBe('1.5');
+    });
+  });
+
+  describe('Ready Transactions', () => {
+    it('should filter ready transactions correctly', async () => {
+      const { result } = renderHook(() => useScheduler(), { wrapper });
+
+      let txId1: string = '';
+      let txId2: string = '';
+
+      act(() => {
+        txId1 = result.current.addTransaction({
+          chainId: 1,
+          txType: 'swap',
+          targetGasPrice: 20,
+          maxGasPrice: 30,
+          expiresAt: Date.now() + 86400000
+        });
+      });
+
+      act(() => {
+        txId2 = result.current.addTransaction({
+          chainId: 1,
+          txType: 'transfer',
+          targetGasPrice: 15,
+          maxGasPrice: 25,
+          expiresAt: Date.now() + 86400000
+        });
+      });
+
+      // Initially no ready transactions
+      expect(result.current.readyTransactions).toHaveLength(0);
+      expect(result.current.readyCount).toBe(0);
+
+      // Manually set one to ready status
+      act(() => {
+        result.current.updateTransaction(txId1, { status: 'ready' });
+      });
+
+      expect(result.current.readyTransactions).toHaveLength(1);
+      expect(result.current.readyCount).toBe(1);
+      expect(result.current.readyTransactions[0].id).toBe(txId1);
+    });
+
+    it('should not include non-ready transactions in readyTransactions', async () => {
+      const { result } = renderHook(() => useScheduler(), { wrapper });
+
+      let txId: string = '';
+      act(() => {
+        txId = result.current.addTransaction({
+          chainId: 1,
+          txType: 'swap',
+          targetGasPrice: 20,
+          maxGasPrice: 30,
+          expiresAt: Date.now() + 86400000
+        });
+      });
+
+      // Pending should not appear
+      expect(result.current.readyTransactions).toHaveLength(0);
+
+      // Executed should not appear
+      act(() => {
+        result.current.markExecuted(txId);
+      });
+
+      expect(result.current.readyTransactions).toHaveLength(0);
+    });
+  });
+
+  describe('useScheduler Hook', () => {
+    it('should throw when used outside SchedulerProvider', () => {
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      expect(() => {
+        renderHook(() => useScheduler());
+      }).toThrow('useScheduler must be used within a SchedulerProvider');
+
+      consoleSpy.mockRestore();
+    });
+
+    it('should return all required context properties', async () => {
+      const { result } = renderHook(() => useScheduler(), { wrapper });
+
+      expect(result.current).toHaveProperty('transactions');
+      expect(result.current).toHaveProperty('addTransaction');
+      expect(result.current).toHaveProperty('removeTransaction');
+      expect(result.current).toHaveProperty('updateTransaction');
+      expect(result.current).toHaveProperty('readyTransactions');
+      expect(result.current).toHaveProperty('markExecuted');
+      expect(result.current).toHaveProperty('markCancelled');
+      expect(result.current).toHaveProperty('pendingCount');
+      expect(result.current).toHaveProperty('readyCount');
+    });
+  });
+
+  describe('Transaction Initialization', () => {
+    it('should load transactions from localStorage on init', async () => {
+      const savedTransactions = [
+        {
+          id: 'tx_saved_1',
+          chainId: 1,
+          txType: 'swap',
+          targetGasPrice: 20,
+          maxGasPrice: 30,
+          status: 'pending',
+          createdAt: Date.now(),
+          expiresAt: Date.now() + 86400000,
+          notified: false
+        }
+      ];
+
+      localStorageMock.getItem.mockReturnValue(JSON.stringify(savedTransactions));
+
+      const { result } = renderHook(() => useScheduler(), { wrapper });
+
+      await waitFor(() => {
+        expect(result.current.transactions).toHaveLength(1);
+        expect(result.current.transactions[0].id).toBe('tx_saved_1');
+      });
+    });
+
+    it('should handle invalid localStorage data gracefully', async () => {
+      localStorageMock.getItem.mockReturnValue('invalid json');
+
+      const { result } = renderHook(() => useScheduler(), { wrapper });
+
+      // Should start with empty array if JSON parse fails
+      expect(result.current.transactions).toHaveLength(0);
+    });
+  });
+
+  describe('Multiple Transaction Types', () => {
+    it('should handle different transaction types', async () => {
+      const { result } = renderHook(() => useScheduler(), { wrapper });
+
+      const txTypes = ['transfer', 'swap', 'bridge', 'approve'] as const;
+
+      txTypes.forEach((txType, index) => {
+        act(() => {
+          result.current.addTransaction({
+            chainId: 1,
+            txType,
+            targetGasPrice: 20 + index,
+            maxGasPrice: 30 + index,
+            expiresAt: Date.now() + 86400000
+          });
+        });
+      });
+
+      expect(result.current.transactions).toHaveLength(4);
+      expect(result.current.transactions.map(tx => tx.txType)).toEqual(txTypes);
     });
   });
 });
