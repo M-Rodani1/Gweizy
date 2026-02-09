@@ -62,3 +62,99 @@ export const FEATURE_FLAGS = {
   OFFLINE_MODE: true,
   OPTIMISTIC_UPDATES: true
 } as const;
+
+// ========================================
+// Chain Configuration
+// ========================================
+
+export const CHAIN_IDS = {
+  ETHEREUM: 1,
+  BASE: 8453,
+  ARBITRUM: 42161,
+  OPTIMISM: 10,
+  POLYGON: 137,
+} as const;
+
+export const CHAIN_NAMES: Record<number, string> = {
+  [CHAIN_IDS.ETHEREUM]: 'Ethereum',
+  [CHAIN_IDS.BASE]: 'Base',
+  [CHAIN_IDS.ARBITRUM]: 'Arbitrum',
+  [CHAIN_IDS.OPTIMISM]: 'Optimism',
+  [CHAIN_IDS.POLYGON]: 'Polygon',
+};
+
+// ========================================
+// Confidence Levels
+// ========================================
+
+export const CONFIDENCE_LEVELS = {
+  LOW: 0.5,
+  MEDIUM: 0.7,
+  HIGH: 0.85,
+  VERY_HIGH: 0.95,
+} as const;
+
+// ========================================
+// Pagination
+// ========================================
+
+export const PAGINATION = {
+  DEFAULT_PAGE_SIZE: 10,
+  MAX_PAGE_SIZE: 100,
+  PAGE_SIZE_OPTIONS: [10, 25, 50, 100] as const,
+} as const;
+
+// ========================================
+// Local Storage Keys
+// ========================================
+
+export const STORAGE_KEYS = {
+  THEME: 'gweizy-theme',
+  CHAIN_PREFERENCE: 'gweizy-chain',
+  GAS_CACHE: 'gweizy-gas-cache',
+  PREDICTIONS_CACHE: 'gweizy-predictions-cache',
+  USER_PREFERENCES: 'gweizy-preferences',
+  SCHEDULED_TXS: 'gweizy-scheduled-txs',
+} as const;
+
+// ========================================
+// Time Constants
+// ========================================
+
+export const TIME = {
+  SECOND: 1000,
+  MINUTE: 60 * 1000,
+  HOUR: 60 * 60 * 1000,
+  DAY: 24 * 60 * 60 * 1000,
+} as const;
+
+// ========================================
+// Validation
+// ========================================
+
+export const VALIDATION = {
+  MIN_ADDRESS_LENGTH: 42,
+  MAX_HASH_LENGTH: 66,
+  MAX_SEARCH_LENGTH: 200,
+} as const;
+
+// ========================================
+// WebSocket Configuration
+// ========================================
+
+export const WEBSOCKET_CONFIG = {
+  MAX_RECONNECT_ATTEMPTS: 5,
+  INITIAL_RECONNECT_DELAY: 1000,
+  MAX_RECONNECT_DELAY: 5000,
+  CONNECTION_TIMEOUT: 20000,
+} as const;
+
+// ========================================
+// Virtual Scrolling
+// ========================================
+
+export const VIRTUAL_SCROLL = {
+  THRESHOLD: 50,
+  ROW_HEIGHT: 60,
+  OVERSCAN: 5,
+} as const;
