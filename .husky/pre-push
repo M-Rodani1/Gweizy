@@ -1,0 +1,46 @@
+#!/bin/sh
+
+# Validate branch naming convention before push
+
+current_branch=$(git symbolic-ref --short HEAD 2>/dev/null)
+
+# Skip validation for main/master branches
+if [ "$current_branch" = "main" ] || [ "$current_branch" = "master" ]; then
+  exit 0
+fi
+
+# Valid branch patterns:
+# - feature/description
+# - feat/description
+# - fix/description
+# - bugfix/description
+# - hotfix/description
+# - release/version
+# - docs/description
+# - refactor/description
+# - test/description
+# - chore/description
+
+valid_pattern="^(feature|feat|fix|bugfix|hotfix|release|docs|refactor|test|chore)\/[a-z0-9._-]+$"
+
+if ! echo "$current_branch" | grep -qE "$valid_pattern"; then
+  echo ""
+  echo "ERROR: Invalid branch name: $current_branch"
+  echo ""
+  echo "Branch names must follow the pattern:"
+  echo "  <type>/<description>"
+  echo ""
+  echo "Types: feature, feat, fix, bugfix, hotfix, release, docs, refactor, test, chore"
+  echo ""
+  echo "Examples:"
+  echo "  feature/add-gas-predictions"
+  echo "  fix/api-rate-limiting"
+  echo "  docs/update-readme"
+  echo "  refactor/simplify-hooks"
+  echo ""
+  echo "Description should be lowercase, using hyphens for spaces."
+  echo ""
+  exit 1
+fi
+
+echo "Branch naming validation passed: $current_branch"

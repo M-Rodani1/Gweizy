@@ -1,0 +1,40 @@
+#!/bin/sh
+
+# Validate commit message format
+# Follows Conventional Commits: https://www.conventionalcommits.org/
+
+commit_msg=$(cat "$1")
+
+# Regex for conventional commit format
+# Types: feat, fix, docs, style, refactor, perf, test, build, ci, chore, revert
+pattern="^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\(.+\))?: .{1,72}"
+
+if ! echo "$commit_msg" | head -1 | grep -qE "$pattern"; then
+  echo ""
+  echo "ERROR: Invalid commit message format!"
+  echo ""
+  echo "Commit message must follow Conventional Commits format:"
+  echo "  <type>(<scope>): <description>"
+  echo ""
+  echo "Types: feat, fix, docs, style, refactor, perf, test, build, ci, chore, revert"
+  echo ""
+  echo "Examples:"
+  echo "  feat: add gas price predictions"
+  echo "  fix(api): handle rate limiting errors"
+  echo "  docs: update README with setup instructions"
+  echo "  refactor(hooks): simplify useGasData logic"
+  echo ""
+  echo "Your commit message was:"
+  echo "  $commit_msg"
+  echo ""
+  exit 1
+fi
+
+# Check message length (first line should be <= 72 chars)
+first_line=$(echo "$commit_msg" | head -1)
+if [ ${#first_line} -gt 100 ]; then
+  echo ""
+  echo "WARNING: Commit message first line is too long (${#first_line} chars)."
+  echo "Consider keeping it under 72 characters for better readability."
+  echo ""
+fi
