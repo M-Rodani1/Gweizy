@@ -30,6 +30,9 @@ export {
 // Recommendations
 export { useRecommendation } from './useRecommendation';
 
+// Transaction scheduling
+export { useTransactionScheduler } from './useTransactionScheduler';
+
 // Re-export types
 export type { UsePollingOptions, UsePollingResult } from './usePolling';
 export type {
@@ -41,3 +44,8 @@ export type {
 } from './useGasWebSocket';
 export type { UseIntersectionObserverOptions } from './useIntersectionObserver';
 export type { DebouncedCallbackOptions } from './useDebounce';
+export type {
+  ScheduleFormState,
+  ScheduleFormErrors,
+  UseTransactionSchedulerReturn,
+} from './useTransactionScheduler';
