@@ -21,7 +21,8 @@
     "lint": "eslint src --ext .ts,.tsx",
     "lint:fix": "eslint src --ext .ts,.tsx --fix",
     "prepare": "husky",
-    "analyze": "ANALYZE=true vite build"
+    "analyze": "ANALYZE=true vite build",
+    "generate:component": "node scripts/generate-component.js"
   },
   "dependencies": {
     "@farcaster/miniapp-sdk": "^0.2.1",
