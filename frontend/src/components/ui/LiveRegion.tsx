@@ -158,7 +158,7 @@ export const LiveRegion: React.FC<{
   children: React.ReactNode;
   politeness?: Politeness;
   atomic?: boolean;
-  relevant?: 'additions' | 'removals' | 'text' | 'all';
+  relevant?: 'additions' | 'removals' | 'text' | 'all' | 'additions text';
   className?: string;
 }> = ({
   children,
@@ -172,7 +172,7 @@ export const LiveRegion: React.FC<{
       role={politeness === 'assertive' ? 'alert' : 'status'}
       aria-live={politeness}
       aria-atomic={atomic}
-      aria-relevant={relevant}
+      aria-relevant={relevant as 'additions' | 'removals' | 'text' | 'all' | 'additions text'}
       className={`sr-only ${className}`.trim()}
     >
       {children}

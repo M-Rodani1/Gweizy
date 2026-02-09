@@ -41,6 +41,7 @@
     "zustand": "^5.0.2"
   },
   "devDependencies": {
+    "@axe-core/react": "^4.11.1",
     "@storybook/addon-essentials": "^8.6.15",
     "@storybook/addon-interactions": "^8.6.15",
     "@storybook/addon-links": "^8.6.15",
@@ -51,6 +52,7 @@
     "@tanstack/react-query-devtools": "^5.91.1",
     "@testing-library/jest-dom": "^6.1.5",
     "@testing-library/react": "^14.1.2",
+    "@types/jest-axe": "^3.5.9",
     "@types/jest-image-snapshot": "^6.4.1",
     "@types/node": "^22.14.0",
     "@types/react": "^19.2.11",
@@ -62,6 +64,7 @@
     "eslint": "^10.0.0",
     "eslint-plugin-react-hooks": "^7.0.1",
     "husky": "^9.1.7",
+    "jest-axe": "^10.0.0",
     "jest-image-snapshot": "^6.5.1",
     "jsdom": "^23.0.1",
     "lint-staged": "^16.2.7",
@@ -73,6 +76,7 @@
     "typescript": "~5.8.2",
     "vite": "^6.2.0",
     "vitest": "^4.0.16",
+    "vitest-axe": "^0.1.0",
     "zustand": "^5.0.2"
   },
   "lint-staged": {

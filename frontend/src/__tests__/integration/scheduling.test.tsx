@@ -325,7 +325,6 @@ describe('Transaction Scheduling Flow', () => {
       const { result } = renderHook(() => useScheduler(), { wrapper });
 
       let txId1: string = '';
-      let txId2: string = '';
 
       act(() => {
         txId1 = result.current.addTransaction({
@@ -338,7 +337,7 @@ describe('Transaction Scheduling Flow', () => {
       });
 
       act(() => {
-        txId2 = result.current.addTransaction({
+        result.current.addTransaction({
           chainId: 1,
           txType: 'transfer',
           targetGasPrice: 15,

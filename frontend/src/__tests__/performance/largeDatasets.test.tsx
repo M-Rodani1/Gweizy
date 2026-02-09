@@ -7,9 +7,9 @@
  * - Computation time for data transformations
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
 import React from 'react';
+import { describe, it, expect } from 'vitest';
+import { render, screen } from '@testing-library/react';
 
 // Helper to generate large datasets
 function generateGasHistory(count: number) {
@@ -32,16 +32,6 @@ function generateTransactions(count: number) {
     status: Math.random() > 0.1 ? 'confirmed' : 'pending',
     from: `0x${Math.random().toString(16).slice(2, 42)}`,
     to: `0x${Math.random().toString(16).slice(2, 42)}`,
-  }));
-}
-
-function generatePredictions(count: number) {
-  return Array.from({ length: count }, (_, i) => ({
-    timestamp: Date.now() + i * 3600000,
-    predicted_gas: 0.001 + Math.random() * 0.01,
-    confidence: 0.7 + Math.random() * 0.25,
-    lower_bound: 0.0008,
-    upper_bound: 0.015,
   }));
 }
 

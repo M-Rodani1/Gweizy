@@ -31,7 +31,7 @@ export {
 export { useRecommendation } from './useRecommendation';
 
 // Re-export types
-export type { UsePollingOptions, UsePollingReturn } from './usePolling';
+export type { UsePollingOptions, UsePollingResult } from './usePolling';
 export type {
   UseGasWebSocketOptions,
   UseGasWebSocketReturn,

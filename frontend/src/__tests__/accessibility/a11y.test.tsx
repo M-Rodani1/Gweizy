@@ -9,7 +9,6 @@
  * - ARIA attributes
  */
 
-import React from 'react';
 import { describe, it, expect } from 'vitest';
 import { render } from '@testing-library/react';
 import { configureAxe, toHaveNoViolations } from 'jest-axe';
@@ -91,7 +90,7 @@ describe('Accessibility Tests', () => {
     it('should have no accessibility violations', async () => {
       const { container } = render(
         <div>
-          <Badge variant="default">Default</Badge>
+          <Badge variant="neutral">Neutral</Badge>
           <Badge variant="success">Success</Badge>
           <Badge variant="warning">Warning</Badge>
           <Badge variant="danger">Error</Badge>
@@ -120,9 +119,9 @@ describe('Accessibility Tests', () => {
     it('should have no accessibility violations', async () => {
       const { container } = render(
         <div>
-          <Chip>Default Chip</Chip>
-          <Chip variant="success">Success Chip</Chip>
-          <Chip variant="warning">Warning Chip</Chip>
+          <Chip label="Default Chip" />
+          <Chip label="Success Chip" />
+          <Chip label="Warning Chip" />
         </div>
       );
       const results = await axe(container);

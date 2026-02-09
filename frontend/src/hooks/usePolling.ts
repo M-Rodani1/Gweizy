@@ -11,7 +11,7 @@
 
 import { useEffect, useRef, useCallback, useState } from 'react';
 
-interface UsePollingOptions<T> {
+export interface UsePollingOptions<T> {
   /** The async function to call for fetching data */
   fetcher: () => Promise<T>;
   /** Polling interval in milliseconds (default: 30000 = 30s) */
@@ -28,7 +28,7 @@ interface UsePollingOptions<T> {
   deps?: unknown[];
 }
 
-interface UsePollingResult<T> {
+export interface UsePollingResult<T> {
   /** The fetched data */
   data: T | null;
   /** Whether a fetch is in progress */
