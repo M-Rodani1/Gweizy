@@ -57,5 +57,13 @@ export {
   useLiveRegion,
 } from './LiveRegion';
 
+// Error handling
+export {
+  RetryableQuery,
+  RetryButton,
+  MutationError,
+  InlineError,
+} from './RetryableQuery';
+
 // Deprecated - use Badge instead
 export { Pill } from './Pill';
