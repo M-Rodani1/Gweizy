@@ -1,6 +1,14 @@
 /**
  * Test setup file
- * Configures test environment
+ * Configures test environment with React Testing Library
+ *
+ * Note: MSW is opt-in per test file. See src/__tests__/mocks/msw.example.test.ts
+ * for usage examples. Import and start the server in your test file:
+ *
+ *   import { server } from './mocks/server';
+ *   beforeAll(() => server.listen());
+ *   afterEach(() => server.resetHandlers());
+ *   afterAll(() => server.close());
  */
 
 import { afterEach } from 'vitest';
