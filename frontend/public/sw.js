@@ -1,9 +1,23 @@
+/**
+ * Service Worker for Gweizy
+ *
+ * Provides offline caching for static assets and API responses.
+ * Uses a cache-first strategy for static assets and network-first for API calls.
+ */
+
 // Version-based cache name - update this on each deployment to force cache refresh
-const CACHE_VERSION = 'v3-20260102';
+const CACHE_VERSION = 'v4-20260209';
 const CACHE_NAME = `base-gas-optimizer-${CACHE_VERSION}`;
+const API_CACHE_NAME = `api-cache-${CACHE_VERSION}`;
 
 // Only cache truly static assets (images, fonts, etc.)
 const STATIC_ASSET_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.svg', '.gif', '.webp', '.woff', '.woff2', '.ttf', '.eot', '.ico'];
+
+// API endpoints that should be cached for offline use
+const CACHEABLE_API_PATHS = ['/current', '/predictions', '/health', '/hybrid'];
+
+// Maximum age for cached API responses (5 minutes)
+const API_CACHE_MAX_AGE = 5 * 60 * 1000;
 
 // Install event - clear old caches immediately
 self.addEventListener('install', (event) => {
@@ -43,9 +57,17 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // API requests - always go to network, no caching (to avoid CORS issues)
-  if (url.pathname.includes('/api/') || url.hostname.includes('railway.app') || url.hostname.includes('cloudflare')) {
-    // Don't intercept - let the browser handle it directly
+  // API requests - network-first with offline cache fallback
+  const isApiRequest = url.pathname.includes('/api/') || url.hostname.includes('railway.app');
+  const isCacheableApi = isApiRequest && CACHEABLE_API_PATHS.some(path => url.pathname.includes(path));
+
+  if (isCacheableApi) {
+    event.respondWith(networkFirstWithCache(request));
+    return;
+  }
+
+  // Non-cacheable API requests - let browser handle directly
+  if (isApiRequest || url.hostname.includes('cloudflare')) {
     return;
   }
 
@@ -97,3 +119,117 @@ self.addEventListener('fetch', (event) => {
     );
   }
 });
+
+/**
+ * Network-first strategy with cache fallback for API requests
+ * Caches successful responses for offline use
+ */
+async function networkFirstWithCache(request) {
+  try {
+    const networkResponse = await fetch(request);
+
+    // Cache successful responses
+    if (networkResponse.ok) {
+      const cache = await caches.open(API_CACHE_NAME);
+      const responseToCache = networkResponse.clone();
+
+      // Add cache timestamp header
+      const headers = new Headers(responseToCache.headers);
+      headers.set('sw-cached-at', Date.now().toString());
+
+      const cachedResponse = new Response(await responseToCache.blob(), {
+        status: responseToCache.status,
+        statusText: responseToCache.statusText,
+        headers: headers,
+      });
+
+      cache.put(request, cachedResponse);
+    }
+
+    return networkResponse;
+  } catch (error) {
+    // Network failed, try cache
+    const cachedResponse = await caches.match(request);
+
+    if (cachedResponse) {
+      const cachedAt = cachedResponse.headers.get('sw-cached-at');
+      const age = cachedAt ? Date.now() - parseInt(cachedAt) : 0;
+
+      console.log('[SW] Serving cached API response:', request.url, `(age: ${Math.round(age / 1000)}s)`);
+
+      // Return cached response even if stale (offline scenario)
+      return cachedResponse;
+    }
+
+    // No cache available, return offline error
+    return new Response(
+      JSON.stringify({
+        error: 'Offline',
+        message: 'No cached data available',
+        offline: true,
+      }),
+      {
+        status: 503,
+        headers: { 'Content-Type': 'application/json' },
+      }
+    );
+  }
+}
+
+/**
+ * Handle messages from main thread
+ */
+self.addEventListener('message', (event) => {
+  const { type } = event.data || {};
+
+  switch (type) {
+    case 'SKIP_WAITING':
+      self.skipWaiting();
+      break;
+
+    case 'CLEAR_API_CACHE':
+      caches.delete(API_CACHE_NAME);
+      console.log('[SW] API cache cleared');
+      break;
+
+    case 'GET_CACHE_INFO':
+      getCacheInfo().then((info) => {
+        if (event.ports && event.ports[0]) {
+          event.ports[0].postMessage({ type: 'CACHE_INFO', payload: info });
+        }
+      });
+      break;
+  }
+});
+
+/**
+ * Get cache information
+ */
+async function getCacheInfo() {
+  const cacheNames = await caches.keys();
+  let totalSize = 0;
+  let entryCount = 0;
+
+  for (const name of cacheNames) {
+    const cache = await caches.open(name);
+    const keys = await cache.keys();
+    entryCount += keys.length;
+
+    for (const request of keys) {
+      const response = await cache.match(request);
+      if (response) {
+        const blob = await response.blob();
+        totalSize += blob.size;
+      }
+    }
+  }
+
+  return {
+    version: CACHE_VERSION,
+    caches: cacheNames,
+    totalSize,
+    entryCount,
+  };
+}
+
+console.log('[SW] Service Worker loaded, version:', CACHE_VERSION);
