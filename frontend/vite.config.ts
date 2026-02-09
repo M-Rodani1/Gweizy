@@ -1,9 +1,11 @@
 import path from 'path';
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
+import { visualizer } from 'rollup-plugin-visualizer';
 
 export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, '.', '');
+    const isAnalyze = process.env.ANALYZE === 'true';
     return {
       server: {
         port: 3000,
@@ -18,8 +20,16 @@ export default defineConfig(({ mode }) => {
               // Ensure React is properly transformed
             ],
           },
-        })
-      ],
+        }),
+        // Bundle analyzer - run with ANALYZE=true npm run build
+        isAnalyze && visualizer({
+          filename: 'dist/stats.html',
+          open: true,
+          gzipSize: true,
+          brotliSize: true,
+          template: 'treemap', // 'sunburst' | 'treemap' | 'network'
+        }),
+      ].filter(Boolean),
       define: {
         'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),
         'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY)

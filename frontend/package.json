@@ -20,7 +20,8 @@
     "test-storybook:ci": "test-storybook --ci",
     "lint": "eslint src --ext .ts,.tsx",
     "lint:fix": "eslint src --ext .ts,.tsx --fix",
-    "prepare": "husky"
+    "prepare": "husky",
+    "analyze": "ANALYZE=true vite build"
   },
   "dependencies": {
     "@farcaster/miniapp-sdk": "^0.2.1",
@@ -70,6 +71,7 @@
     "lint-staged": "^16.2.7",
     "msw": "^2.12.9",
     "postcss": "^8.5.6",
+    "rollup-plugin-visualizer": "^6.0.5",
     "storybook": "^8.6.15",
     "tailwindcss": "^4.1.18",
     "terser": "^5.44.1",
