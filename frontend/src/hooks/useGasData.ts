@@ -12,7 +12,7 @@ import { useState, useEffect } from 'react';
 import { fetchLiveBaseGas } from '../utils/baseRpc';
 import { fetchPredictions } from '../api/gasApi';
 import { REFRESH_INTERVALS } from '../constants';
-import { useWebSocket } from './useWebSocket';
+import { useGasWebSocket } from './useGasWebSocket';
 
 /**
  * Hook to fetch current gas price with WebSocket support.
@@ -43,7 +43,7 @@ import { useWebSocket } from './useWebSocket';
  * ```
  */
 export function useCurrentGas() {
-  const { isConnected, gasPrice } = useWebSocket({ enabled: true });
+  const { isConnected, gasPrice } = useGasWebSocket({ enabled: true });
   const [currentGas, setCurrentGas] = useState<number | null>(null);
 
   // Update from WebSocket

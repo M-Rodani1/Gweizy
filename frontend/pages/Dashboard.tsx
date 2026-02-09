@@ -13,7 +13,7 @@ import PersonalizedRecommendations from '../src/components/PersonalizedRecommend
 import { useChain } from '../src/contexts/ChainContext';
 import { useEthPrice } from '../src/hooks/useEthPrice';
 import { useWalletAddress } from '../src/hooks/useWalletAddress';
-import { useWebSocket } from '../src/hooks/useWebSocket';
+import { useGasWebSocket } from '../src/hooks/useGasWebSocket';
 import { API_CONFIG, getApiUrl } from '../src/config/api';
 import AppShell from '../src/components/layout/AppShell';
 
@@ -26,7 +26,7 @@ const Dashboard: React.FC = () => {
   const { selectedChain, multiChainGas } = useChain();
   const { ethPrice } = useEthPrice(60000);
   const walletAddress = useWalletAddress();
-  const { isConnected: isWebSocketConnected } = useWebSocket({ enabled: true });
+  const { isConnected: isWebSocketConnected } = useGasWebSocket({ enabled: true });
 
   // Memoize currentGas calculation
   const currentGas = multiChainGas[selectedChain.id]?.gasPrice || 0;

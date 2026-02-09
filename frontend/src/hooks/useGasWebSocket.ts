@@ -1,21 +1,25 @@
 /**
- * WebSocket hook for real-time gas price updates.
+ * Gas-specific WebSocket hook for real-time price updates.
  *
  * Provides a Socket.IO connection to the backend for receiving
- * live gas price updates. Includes automatic reconnection with
- * exponential backoff and connection state management.
+ * live gas price, prediction, and mempool updates. Includes automatic
+ * reconnection with exponential backoff and connection state management.
  *
- * @module hooks/useWebSocket
+ * @module hooks/useGasWebSocket
  */
 
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { getApiOrigin } from '../config/api';
 
+// ========================================
+// Types
+// ========================================
+
 /**
  * Gas price update payload received from WebSocket.
  */
-interface GasPriceUpdate {
+export interface GasPriceUpdate {
   current_gas: number;
   base_fee: number;
   priority_fee: number;
@@ -26,7 +30,7 @@ interface GasPriceUpdate {
 /**
  * Prediction update payload from WebSocket.
  */
-interface PredictionUpdate {
+export interface PredictionUpdate {
   current_price: number;
   predictions: {
     [horizon: string]: {
@@ -42,7 +46,7 @@ interface PredictionUpdate {
 /**
  * Mempool status update from WebSocket.
  */
-interface MempoolUpdate {
+export interface MempoolUpdate {
   pending_count: number;
   avg_gas_price: number;
   is_congested: boolean;
@@ -54,7 +58,7 @@ interface MempoolUpdate {
 /**
  * Combined update with all real-time data.
  */
-interface CombinedUpdate {
+export interface CombinedGasUpdate {
   gas: GasPriceUpdate;
   predictions?: PredictionUpdate;
   mempool?: MempoolUpdate;
@@ -64,7 +68,7 @@ interface CombinedUpdate {
 /**
  * Configuration options for the WebSocket hook.
  */
-interface UseWebSocketOptions {
+export interface UseGasWebSocketOptions {
   /** Whether the WebSocket connection should be active (default: true) */
   enabled?: boolean;
   /** Callback fired when connection is established */
@@ -73,7 +77,48 @@ interface UseWebSocketOptions {
   onDisconnect?: () => void;
   /** Callback fired when a connection error occurs */
   onError?: (error: Error) => void;
+  /** Callback fired when gas price updates */
+  onGasPriceUpdate?: (data: GasPriceUpdate) => void;
+  /** Callback fired when predictions update */
+  onPredictionUpdate?: (data: PredictionUpdate) => void;
+  /** Callback fired when mempool status updates */
+  onMempoolUpdate?: (data: MempoolUpdate) => void;
 }
+
+/**
+ * Return type for useGasWebSocket hook.
+ */
+export interface UseGasWebSocketReturn {
+  /** The Socket.IO socket instance */
+  socket: Socket | null;
+  /** Current connection status */
+  isConnected: boolean;
+  /** Latest gas price data */
+  gasPrice: GasPriceUpdate | null;
+  /** Latest prediction data */
+  predictions: PredictionUpdate | null;
+  /** Latest mempool data */
+  mempool: MempoolUpdate | null;
+  /** Any connection error */
+  error: Error | null;
+  /** Manually disconnect */
+  disconnect: () => void;
+  /** Manually trigger reconnection */
+  reconnect: () => void;
+}
+
+// ========================================
+// Constants
+// ========================================
+
+const MAX_RECONNECT_ATTEMPTS = 5;
+const INITIAL_RECONNECT_DELAY = 1000;
+const MAX_RECONNECT_DELAY = 5000;
+const CONNECTION_TIMEOUT = 20000;
+
+// ========================================
+// Hook
+// ========================================
 
 /**
  * Hook for real-time WebSocket communication with the gas price backend.
@@ -81,25 +126,15 @@ interface UseWebSocketOptions {
  * Establishes a Socket.IO connection that receives live gas price updates.
  * Handles automatic reconnection with exponential backoff (up to 5 attempts).
  *
- * @param {UseWebSocketOptions} options - Configuration options
- * @param {boolean} [options.enabled=true] - Whether to enable the connection
- * @param {Function} [options.onConnect] - Callback when connected
- * @param {Function} [options.onDisconnect] - Callback when disconnected
- * @param {Function} [options.onError] - Callback when error occurs
- *
- * @returns {Object} WebSocket state and controls
- * @returns {Socket|null} returns.socket - The Socket.IO socket instance
- * @returns {boolean} returns.isConnected - Current connection status
- * @returns {GasPriceUpdate|null} returns.gasPrice - Latest gas price data
- * @returns {Error|null} returns.error - Any connection error
- * @returns {Function} returns.disconnect - Manually disconnect
- * @returns {Function} returns.reconnect - Manually trigger reconnection
+ * @param options - Configuration options
+ * @returns WebSocket state and controls
  *
  * @example
  * ```tsx
  * function GasDisplay() {
- *   const { isConnected, gasPrice, error } = useWebSocket({
+ *   const { isConnected, gasPrice, error } = useGasWebSocket({
  *     onConnect: () => console.log('Connected!'),
+ *     onGasPriceUpdate: (data) => console.log('New price:', data.current_gas),
  *     onError: (err) => console.error('WS Error:', err),
  *   });
  *
@@ -109,17 +144,28 @@ interface UseWebSocketOptions {
  * }
  * ```
  */
-export function useWebSocket(options: UseWebSocketOptions = {}) {
-  const { enabled = true, onConnect, onDisconnect, onError } = options;
+export function useGasWebSocket(
+  options: UseGasWebSocketOptions = {}
+): UseGasWebSocketReturn {
+  const {
+    enabled = true,
+    onConnect,
+    onDisconnect,
+    onError,
+    onGasPriceUpdate,
+    onPredictionUpdate,
+    onMempoolUpdate,
+  } = options;
+
   const [socket, setSocket] = useState<Socket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [gasPrice, setGasPrice] = useState<GasPriceUpdate | null>(null);
   const [predictions, setPredictions] = useState<PredictionUpdate | null>(null);
   const [mempool, setMempool] = useState<MempoolUpdate | null>(null);
   const [error, setError] = useState<Error | null>(null);
+
   const reconnectAttempts = useRef(0);
-  const maxReconnectAttempts = 5;
-  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (!enabled) {
@@ -127,22 +173,19 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
     }
 
     const apiOrigin = getApiOrigin();
-    // Socket.IO handles protocol automatically, just use the origin
-    const socketUrl = apiOrigin;
-    
+
     // Create Socket.IO connection
-    const newSocket = io(socketUrl, {
+    const newSocket = io(apiOrigin, {
       transports: ['websocket', 'polling'],
       reconnection: true,
-      reconnectionAttempts: maxReconnectAttempts,
-      reconnectionDelay: 1000,
-      reconnectionDelayMax: 5000,
-      timeout: 20000,
+      reconnectionAttempts: MAX_RECONNECT_ATTEMPTS,
+      reconnectionDelay: INITIAL_RECONNECT_DELAY,
+      reconnectionDelayMax: MAX_RECONNECT_DELAY,
+      timeout: CONNECTION_TIMEOUT,
     });
 
     // Connection established
     newSocket.on('connect', () => {
-      console.log('WebSocket connected');
       setIsConnected(true);
       setError(null);
       reconnectAttempts.current = 0;
@@ -151,15 +194,17 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
 
     // Connection lost
     newSocket.on('disconnect', (reason: string) => {
-      console.log('WebSocket disconnected:', reason);
       setIsConnected(false);
       onDisconnect?.();
-      
+
       // Attempt reconnection if not intentional
       if (reason !== 'io client disconnect') {
         reconnectAttempts.current += 1;
-        if (reconnectAttempts.current < maxReconnectAttempts) {
-          const delay = Math.min(1000 * Math.pow(2, reconnectAttempts.current), 5000);
+        if (reconnectAttempts.current < MAX_RECONNECT_ATTEMPTS) {
+          const delay = Math.min(
+            INITIAL_RECONNECT_DELAY * Math.pow(2, reconnectAttempts.current),
+            MAX_RECONNECT_DELAY
+          );
           reconnectTimeoutRef.current = setTimeout(() => {
             newSocket.connect();
           }, delay);
@@ -182,29 +227,41 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
     newSocket.on('gas_price_update', (data: GasPriceUpdate) => {
       setGasPrice(data);
       setError(null);
+      onGasPriceUpdate?.(data);
     });
 
     // Prediction update
     newSocket.on('prediction_update', (data: PredictionUpdate) => {
       setPredictions(data);
+      onPredictionUpdate?.(data);
     });
 
     // Mempool status update
     newSocket.on('mempool_update', (data: MempoolUpdate) => {
       setMempool(data);
+      onMempoolUpdate?.(data);
     });
 
     // Combined update (gas + predictions + mempool)
-    newSocket.on('combined_update', (data: CombinedUpdate) => {
-      if (data.gas) setGasPrice(data.gas);
-      if (data.predictions) setPredictions(data.predictions);
-      if (data.mempool) setMempool(data.mempool);
+    newSocket.on('combined_update', (data: CombinedGasUpdate) => {
+      if (data.gas) {
+        setGasPrice(data.gas);
+        onGasPriceUpdate?.(data.gas);
+      }
+      if (data.predictions) {
+        setPredictions(data.predictions);
+        onPredictionUpdate?.(data.predictions);
+      }
+      if (data.mempool) {
+        setMempool(data.mempool);
+        onMempoolUpdate?.(data.mempool);
+      }
       setError(null);
     });
 
     // Connection established confirmation
-    newSocket.on('connection_established', (data: { message: string }) => {
-      console.log('Connection confirmed:', data);
+    newSocket.on('connection_established', (_data: { message: string }) => {
+      // Connection confirmed by server
     });
 
     setSocket(newSocket);
@@ -218,7 +275,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
       setSocket(null);
       setIsConnected(false);
     };
-  }, [enabled, onConnect, onDisconnect, onError]);
+  }, [enabled, onConnect, onDisconnect, onError, onGasPriceUpdate, onPredictionUpdate, onMempoolUpdate]);
 
   const disconnect = useCallback(() => {
     if (socket) {
@@ -245,5 +302,5 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
   };
 }
 
-export type { GasPriceUpdate, PredictionUpdate, MempoolUpdate, CombinedUpdate };
-
+// Re-export with backwards compatible name
+export { useGasWebSocket as useWebSocket };

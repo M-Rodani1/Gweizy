@@ -21,8 +21,8 @@ vi.mock('../../utils/baseRpc', () => ({
   fetchLiveBaseGas: vi.fn(),
 }));
 
-vi.mock('../../hooks/useWebSocket', () => ({
-  useWebSocket: vi.fn(() => ({
+vi.mock('../../hooks/useGasWebSocket', () => ({
+  useGasWebSocket: vi.fn(() => ({
     isConnected: false,
     gasPrice: null,
   })),
@@ -32,7 +32,7 @@ vi.mock('../../hooks/useWebSocket', () => ({
 import { useCurrentGas, usePredictions, useGasData } from '../../hooks/useGasData';
 import { fetchPredictions } from '../../api/gasApi';
 import { fetchLiveBaseGas } from '../../utils/baseRpc';
-import { useWebSocket } from '../../hooks/useWebSocket';
+import { useGasWebSocket } from '../../hooks/useGasWebSocket';
 
 // Create wrapper with QueryClient
 const createWrapper = () => {
@@ -61,7 +61,7 @@ describe('useGasData hooks', () => {
 
   describe('useCurrentGas', () => {
     it('should return loading state initially', () => {
-      (useWebSocket as any).mockReturnValue({
+      (useGasWebSocket as any).mockReturnValue({
         isConnected: false,
         gasPrice: null,
       });
@@ -75,7 +75,7 @@ describe('useGasData hooks', () => {
     });
 
     it('should fetch gas price via polling when WebSocket not connected', async () => {
-      (useWebSocket as any).mockReturnValue({
+      (useGasWebSocket as any).mockReturnValue({
         isConnected: false,
         gasPrice: null,
       });
@@ -94,7 +94,7 @@ describe('useGasData hooks', () => {
     });
 
     it('should use WebSocket data when connected', async () => {
-      (useWebSocket as any).mockReturnValue({
+      (useGasWebSocket as any).mockReturnValue({
         isConnected: true,
         gasPrice: { current_gas: 0.00345 },
       });
@@ -113,7 +113,7 @@ describe('useGasData hooks', () => {
     });
 
     it('should handle fetch errors gracefully', async () => {
-      (useWebSocket as any).mockReturnValue({
+      (useGasWebSocket as any).mockReturnValue({
         isConnected: false,
         gasPrice: null,
       });
@@ -131,7 +131,7 @@ describe('useGasData hooks', () => {
     });
 
     it('should provide refetch function', async () => {
-      (useWebSocket as any).mockReturnValue({
+      (useGasWebSocket as any).mockReturnValue({
         isConnected: false,
         gasPrice: null,
       });
@@ -231,7 +231,7 @@ describe('useGasData hooks', () => {
 
   describe('useGasData', () => {
     it('should combine current gas and predictions', async () => {
-      (useWebSocket as any).mockReturnValue({
+      (useGasWebSocket as any).mockReturnValue({
         isConnected: false,
         gasPrice: null,
       });
@@ -261,7 +261,7 @@ describe('useGasData hooks', () => {
     });
 
     it('should show loading when either query is loading', () => {
-      (useWebSocket as any).mockReturnValue({
+      (useGasWebSocket as any).mockReturnValue({
         isConnected: false,
         gasPrice: null,
       });
@@ -283,7 +283,7 @@ describe('useGasData hooks', () => {
     });
 
     it('should show error if either query has error', async () => {
-      (useWebSocket as any).mockReturnValue({
+      (useGasWebSocket as any).mockReturnValue({
         isConnected: false,
         gasPrice: null,
       });
@@ -306,7 +306,7 @@ describe('useGasData hooks', () => {
     });
 
     it('should provide refetch function that refreshes both queries', async () => {
-      (useWebSocket as any).mockReturnValue({
+      (useGasWebSocket as any).mockReturnValue({
         isConnected: false,
         gasPrice: null,
       });
@@ -339,7 +339,7 @@ describe('useGasData hooks', () => {
     });
 
     it('should return default values when data is null', async () => {
-      (useWebSocket as any).mockReturnValue({
+      (useGasWebSocket as any).mockReturnValue({
         isConnected: false,
         gasPrice: null,
       });
