@@ -2,6 +2,7 @@ import React, { lazy, Suspense, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { FarcasterProvider } from './src/contexts/FarcasterContext';
 import { SkeletonCard } from './src/components/ui/Skeleton';
+import { SkipLink } from './src/components/ui/SkipLink';
 import Landing from './pages/Landing';
 
 // Lazy load heavy components for code splitting with prefetch hints
@@ -39,6 +40,7 @@ function App() {
   return (
     <FarcasterProvider>
       <BrowserRouter>
+        <SkipLink targetId="main-content" />
         <PrefetchManager>
           <Suspense fallback={<SkeletonCard />}>
             <Routes>
