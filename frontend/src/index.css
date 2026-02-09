@@ -239,6 +239,30 @@ textarea:focus-visible {
   box-shadow: 0 0 0 4px rgba(34, 211, 238, 0.3);
 }
 
+/* Focus-within for container elements */
+.focus-within-ring:focus-within {
+  outline: 2px solid #06b6d4;
+  outline-offset: 2px;
+}
+
+/* Remove focus outline on mouse click, keep for keyboard */
+.focus-visible-only:focus:not(:focus-visible) {
+  outline: none;
+  box-shadow: none;
+}
+
+/* High visibility focus for critical actions */
+.focus-ring-danger:focus-visible {
+  outline-color: #f87171;
+  box-shadow: 0 0 0 4px rgba(248, 113, 113, 0.3);
+}
+
+/* Focus indicator for custom checkboxes/radios */
+.focus-ring-inset:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px #06b6d4;
+}
+
 /* Reduced motion preference */
 @media (prefers-reduced-motion: reduce) {
   *,
