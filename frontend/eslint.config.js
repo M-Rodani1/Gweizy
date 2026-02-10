@@ -2,6 +2,7 @@ import js from '@eslint/js';
 import tseslint from '@typescript-eslint/eslint-plugin';
 import tsparser from '@typescript-eslint/parser';
 import reactHooks from 'eslint-plugin-react-hooks';
+import localRules from './eslint-rules/index.js';
 
 export default [
   js.configs.recommended,
@@ -61,7 +62,8 @@ export default [
     },
     plugins: {
       '@typescript-eslint': tseslint,
-      'react-hooks': reactHooks
+      'react-hooks': reactHooks,
+      local: localRules
     },
     rules: {
       // React Hooks rules - these catch common mistakes
@@ -78,7 +80,8 @@ export default [
       // General rules
       'no-console': ['warn', { allow: ['warn', 'error'] }],
       'no-unused-vars': 'off', // Use TypeScript version instead
-      'no-undef': 'off' // TypeScript handles this
+      'no-undef': 'off', // TypeScript handles this
+      'local/require-rel-on-target-blank': 'error'
     }
   }
 ];
