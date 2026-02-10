@@ -52,5 +52,6 @@ describe('CSP headers configuration', () => {
     expect(headerCsp).toContain("style-src 'self'");
     expect(headerCsp).toContain("img-src 'self'");
     expect(headerCsp).toContain("connect-src 'self'");
+    expect(headerCsp).toContain("frame-ancestors 'none'");
   });
 });
