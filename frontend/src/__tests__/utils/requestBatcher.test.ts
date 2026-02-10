@@ -8,6 +8,7 @@ import {
   createPredictionBatcher,
   createChainBatcher,
   RateLimitedQueue,
+  PriorityRequestQueue,
 } from '../../utils/requestBatcher';
 
 describe('createBatcher', () => {
@@ -140,11 +141,12 @@ describe('createBatcher', () => {
 
       const promise1 = batcher.request(1);
       const promise2 = batcher.request(2);
+      const expectation1 = expect(promise1).rejects.toThrow('Batch failed');
+      const expectation2 = expect(promise2).rejects.toThrow('Batch failed');
 
       await vi.advanceTimersByTimeAsync(20);
 
-      await expect(promise1).rejects.toThrow('Batch failed');
-      await expect(promise2).rejects.toThrow('Batch failed');
+      await Promise.all([expectation1, expectation2]);
     });
 
     it('should reject if key not found in results', async () => {
@@ -154,11 +156,12 @@ describe('createBatcher', () => {
 
       const promise1 = batcher.request(1);
       const promise2 = batcher.request(2); // Not in results
+      const expectation1 = expect(promise1).resolves.toBe('result');
+      const expectation2 = expect(promise2).rejects.toThrow('No result for key');
 
       await vi.advanceTimersByTimeAsync(20);
 
-      await expect(promise1).resolves.toBe('result');
-      await expect(promise2).rejects.toThrow('No result for key');
+      await Promise.all([expectation1, expectation2]);
     });
   });
 
@@ -338,8 +341,8 @@ describe('RateLimitedQueue', () => {
     queue.enqueue(async () => 1);
     queue.enqueue(async () => 2);
 
-    // First one starts processing immediately, second is pending
-    expect(queue.pendingCount).toBe(1);
+    // Both are queued before processing starts
+    expect(queue.pendingCount).toBe(2);
   });
 
   it('should handle errors without stopping queue', async () => {
@@ -348,16 +351,18 @@ describe('RateLimitedQueue', () => {
     const promise1 = queue.enqueue(async () => {
       throw new Error('Error 1');
     });
+    const expectation1 = expect(promise1).rejects.toThrow('Error 1');
 
     const promise2 = queue.enqueue(async () => {
       return 2;
     });
+    const expectation2 = expect(promise2).resolves.toBe(2);
 
     await vi.advanceTimersByTimeAsync(0);
-    await expect(promise1).rejects.toThrow('Error 1');
+    await expectation1;
 
     await vi.advanceTimersByTimeAsync(50);
-    await expect(promise2).resolves.toBe(2);
+    await expectation2;
   });
 
   it('should clear pending requests', () => {
@@ -370,5 +375,52 @@ describe('RateLimitedQueue', () => {
     queue.clear();
 
     expect(queue.pendingCount).toBe(0);
+  });
+
+  it('should process priority requests before standard requests', async () => {
+    const queue = new RateLimitedQueue<string>(0);
+    const results: string[] = [];
+
+    const standard = () =>
+      queue.enqueue(async () => {
+        results.push('standard');
+        return 'standard';
+      });
+
+    const priority = () =>
+      queue.enqueuePriority(async () => {
+        results.push('priority');
+        return 'priority';
+      });
+
+    await Promise.all([standard(), priority()]);
+
+    expect(results[0]).toBe('priority');
+  });
+});
+
+describe('PriorityRequestQueue', () => {
+  it('should execute higher priority requests first', async () => {
+    const queue = new PriorityRequestQueue<string>();
+    const results: string[] = [];
+
+    await Promise.all([
+      queue.enqueue(async () => {
+        results.push('low');
+        return 'low';
+      }, 1),
+      queue.enqueue(async () => {
+        results.push('high');
+        return 'high';
+      }, 10),
+      queue.enqueue(async () => {
+        results.push('medium');
+        return 'medium';
+      }, 5),
+    ]);
+
+    expect(results[0]).toBe('high');
+    expect(results[1]).toBe('medium');
+    expect(results[2]).toBe('low');
   });
 });
