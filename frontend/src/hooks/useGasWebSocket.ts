@@ -11,6 +11,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { getApiOrigin } from '../config/api';
+import { acquireSocket, releaseSocket } from '../utils/websocketPool';
 
 // ========================================
 // Types
@@ -169,31 +170,37 @@ export function useGasWebSocket(
 
   useEffect(() => {
     if (!enabled) {
+      setSocket(null);
+      setIsConnected(false);
       return;
     }
 
     const apiOrigin = getApiOrigin();
+    const socketKey = `gas-socket::${apiOrigin}`;
 
     // Create Socket.IO connection
-    const newSocket = io(apiOrigin, {
-      transports: ['websocket', 'polling'],
-      reconnection: true,
-      reconnectionAttempts: MAX_RECONNECT_ATTEMPTS,
-      reconnectionDelay: INITIAL_RECONNECT_DELAY,
-      reconnectionDelayMax: MAX_RECONNECT_DELAY,
-      timeout: CONNECTION_TIMEOUT,
-    });
+    const newSocket = acquireSocket(socketKey, () =>
+      io(apiOrigin, {
+        transports: ['websocket', 'polling'],
+        reconnection: true,
+        reconnectionAttempts: MAX_RECONNECT_ATTEMPTS,
+        reconnectionDelay: INITIAL_RECONNECT_DELAY,
+        reconnectionDelayMax: MAX_RECONNECT_DELAY,
+        timeout: CONNECTION_TIMEOUT,
+      })
+    );
 
     // Connection established
-    newSocket.on('connect', () => {
+    const handleConnect = () => {
       setIsConnected(true);
       setError(null);
       reconnectAttempts.current = 0;
       onConnect?.();
-    });
+    };
+    newSocket.on('connect', handleConnect);
 
     // Connection lost
-    newSocket.on('disconnect', (reason: string) => {
+    const handleDisconnect = (reason: string) => {
       setIsConnected(false);
       onDisconnect?.();
 
@@ -214,36 +221,41 @@ export function useGasWebSocket(
           onError?.(err);
         }
       }
-    });
+    };
+    newSocket.on('disconnect', handleDisconnect);
 
     // Connection error
-    newSocket.on('connect_error', (err: Error) => {
+    const handleConnectError = (err: Error) => {
       console.error('WebSocket connection error:', err);
       setError(err);
       onError?.(err);
-    });
+    };
+    newSocket.on('connect_error', handleConnectError);
 
     // Gas price update
-    newSocket.on('gas_price_update', (data: GasPriceUpdate) => {
+    const handleGasPriceUpdate = (data: GasPriceUpdate) => {
       setGasPrice(data);
       setError(null);
       onGasPriceUpdate?.(data);
-    });
+    };
+    newSocket.on('gas_price_update', handleGasPriceUpdate);
 
     // Prediction update
-    newSocket.on('prediction_update', (data: PredictionUpdate) => {
+    const handlePredictionUpdate = (data: PredictionUpdate) => {
       setPredictions(data);
       onPredictionUpdate?.(data);
-    });
+    };
+    newSocket.on('prediction_update', handlePredictionUpdate);
 
     // Mempool status update
-    newSocket.on('mempool_update', (data: MempoolUpdate) => {
+    const handleMempoolUpdate = (data: MempoolUpdate) => {
       setMempool(data);
       onMempoolUpdate?.(data);
-    });
+    };
+    newSocket.on('mempool_update', handleMempoolUpdate);
 
     // Combined update (gas + predictions + mempool)
-    newSocket.on('combined_update', (data: CombinedGasUpdate) => {
+    const handleCombinedUpdate = (data: CombinedGasUpdate) => {
       if (data.gas) {
         setGasPrice(data.gas);
         onGasPriceUpdate?.(data.gas);
@@ -257,12 +269,14 @@ export function useGasWebSocket(
         onMempoolUpdate?.(data.mempool);
       }
       setError(null);
-    });
+    };
+    newSocket.on('combined_update', handleCombinedUpdate);
 
     // Connection established confirmation
-    newSocket.on('connection_established', (_data: { message: string }) => {
+    const handleConnectionEstablished = (_data: { message: string }) => {
       // Connection confirmed by server
-    });
+    };
+    newSocket.on('connection_established', handleConnectionEstablished);
 
     setSocket(newSocket);
 
@@ -271,7 +285,15 @@ export function useGasWebSocket(
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
       }
-      newSocket.disconnect();
+      newSocket.off('connect', handleConnect);
+      newSocket.off('disconnect', handleDisconnect);
+      newSocket.off('connect_error', handleConnectError);
+      newSocket.off('gas_price_update', handleGasPriceUpdate);
+      newSocket.off('prediction_update', handlePredictionUpdate);
+      newSocket.off('mempool_update', handleMempoolUpdate);
+      newSocket.off('combined_update', handleCombinedUpdate);
+      newSocket.off('connection_established', handleConnectionEstablished);
+      releaseSocket(socketKey);
       setSocket(null);
       setIsConnected(false);
     };

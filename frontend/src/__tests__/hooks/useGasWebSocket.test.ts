@@ -14,6 +14,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useGasWebSocket } from '../../hooks/useGasWebSocket';
+import { resetSocketPool } from '../../utils/websocketPool';
 
 // Mock socket.io-client
 const mockSocket = {
@@ -40,6 +41,7 @@ describe('useGasWebSocket', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     eventHandlers = {};
+    resetSocketPool();
 
     // Capture event handlers
     mockSocket.on.mockImplementation((event: string, handler: (...args: unknown[]) => void) => {
@@ -55,6 +57,7 @@ describe('useGasWebSocket', () => {
   afterEach(() => {
     vi.useRealTimers();
     vi.clearAllMocks();
+    resetSocketPool();
   });
 
   describe('initial state', () => {
