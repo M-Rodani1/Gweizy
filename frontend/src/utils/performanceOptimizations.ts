@@ -212,3 +212,15 @@ export function withRenderMonitor<T extends (...args: any[]) => any>(
     return result;
   } as T;
 }
+
+/**
+ * Enforce HTTPS by redirecting non-localhost traffic.
+ */
+export function enforceHttps(): boolean {
+  if (typeof window === 'undefined') return false;
+  const { protocol, hostname, href } = window.location;
+  if (protocol === 'https:') return false;
+  if (hostname === 'localhost' || hostname === '127.0.0.1') return false;
+  window.location.href = href.replace(/^http:/, 'https:');
+  return true;
+}
