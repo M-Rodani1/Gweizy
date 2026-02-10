@@ -9,6 +9,7 @@ import { retryWithBackoff } from './retry';
 import { getErrorMessage } from './errorMessages';
 import toast from 'react-hot-toast';
 import { getWithSWR, type SWRCacheOptions } from './swrCache';
+import { buildCsrfHeaders, getCsrfToken } from './csrf';
 
 /**
  * API client with interceptors
@@ -96,6 +97,7 @@ class ApiClient {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
+              ...buildCsrfHeaders(getCsrfToken()),
             },
             body: body ? JSON.stringify(body) : undefined,
             signal: AbortSignal.timeout(API_CONFIG.TIMEOUT),
