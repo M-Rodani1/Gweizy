@@ -23,6 +23,7 @@
     "prepare": "husky",
     "analyze": "ANALYZE=true vite build",
     "bundle:size": "node scripts/bundleSizeReport.js",
+    "bundle:budget": "node scripts/checkBundleBudget.js",
     "generate:component": "node scripts/generate-component.js",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
