@@ -106,6 +106,7 @@ export default [
         memberSyntaxSortOrder: ['none', 'all', 'multiple', 'single']
       }],
       'complexity': ['warn', { max: 12 }],
+      'max-lines': ['warn', { max: 500, skipBlankLines: true, skipComments: true }],
       'local/require-rel-on-target-blank': 'error'
     }
   }
