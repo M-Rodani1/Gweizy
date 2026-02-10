@@ -88,6 +88,7 @@ export default [
         allowSeparatedGroups: true,
         memberSyntaxSortOrder: ['none', 'all', 'multiple', 'single']
       }],
+      'complexity': ['warn', { max: 12 }],
       'local/require-rel-on-target-blank': 'error'
     }
   }
