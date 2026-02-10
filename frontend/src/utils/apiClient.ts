@@ -10,6 +10,7 @@ import { getErrorMessage } from './errorMessages';
 import toast from 'react-hot-toast';
 import { getWithSWR, type SWRCacheOptions } from './swrCache';
 import { buildCsrfHeaders, getCsrfToken } from './csrf';
+import { getApiKeyHeader, rotateApiKey } from './apiKeys';
 
 /**
  * API client with interceptors
@@ -39,11 +40,15 @@ class ApiClient {
               method: 'GET',
               headers: {
                 'Content-Type': 'application/json',
+                ...getApiKeyHeader(),
               },
               signal: AbortSignal.timeout(API_CONFIG.TIMEOUT),
             });
 
             if (!res.ok) {
+              if (res.status === 401 || res.status === 403) {
+                rotateApiKey();
+              }
               throw new Error(`HTTP ${res.status}: ${res.statusText}`);
             }
 
@@ -98,12 +103,16 @@ class ApiClient {
             headers: {
               'Content-Type': 'application/json',
               ...buildCsrfHeaders(getCsrfToken()),
+              ...getApiKeyHeader(),
             },
             body: body ? JSON.stringify(body) : undefined,
             signal: AbortSignal.timeout(API_CONFIG.TIMEOUT),
           });
 
           if (!res.ok) {
+            if (res.status === 401 || res.status === 403) {
+              rotateApiKey();
+            }
             throw new Error(`HTTP ${res.status}: ${res.statusText}`);
           }
 
