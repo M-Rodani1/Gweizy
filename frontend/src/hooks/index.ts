@@ -26,6 +26,7 @@ export {
   useMultipleIntersectionObserver,
   useInViewport,
 } from './useIntersectionObserver';
+export { useChartKeyboardNav } from './useChartKeyboardNav';
 
 // Recommendations
 export { useRecommendation } from './useRecommendation';
@@ -49,3 +50,8 @@ export type {
   ScheduleFormErrors,
   UseTransactionSchedulerReturn,
 } from './useTransactionScheduler';
+export type {
+  ChartDataPoint,
+  UseChartKeyboardNavOptions,
+  UseChartKeyboardNavReturn,
+} from './useChartKeyboardNav';

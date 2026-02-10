@@ -1,6 +1,8 @@
-import React, { useEffect, useState, useMemo, memo } from 'react';
+import React, { useEffect, useState, useMemo, memo, useCallback } from 'react';
 import { TrendingUp, RefreshCw, Calendar, ChevronDown } from 'lucide-react';
 import { API_CONFIG, getApiUrl } from '../config/api';
+import { useChartKeyboardNav, ChartDataPoint } from '../hooks/useChartKeyboardNav';
+import { LiveRegion } from './ui/LiveRegion';
 
 interface HistoryPoint {
   timestamp: string;
@@ -140,6 +142,37 @@ const AccuracyHistoryChart: React.FC = () => {
   };
 
   const trend = calcTrend();
+
+  // Create data points for keyboard navigation
+  const chartDataPoints = useMemo<ChartDataPoint[]>(() => {
+    return currentData.map((point) => ({
+      label: point.timestamp,
+      value: formatMetricValue(getMetricValue(point)),
+      rawValue: getMetricValue(point),
+    }));
+  }, [currentData, selectedMetric]);
+
+  // Keyboard navigation hook
+  const {
+    containerProps,
+    focusedIndex,
+    announcement,
+  } = useChartKeyboardNav({
+    dataPoints: chartDataPoints,
+    chartLabel: `${getMetricLabel()} history chart for ${selectedHorizon} predictions`,
+  });
+
+  // Calculate focused point position for visual indicator
+  const getFocusedPointPosition = useCallback(() => {
+    if (focusedIndex < 0 || focusedIndex >= currentData.length) return null;
+    const point = currentData[focusedIndex];
+    const value = getMetricValue(point);
+    const x = focusedIndex * 10 + 5;
+    const y = 100 - ((value - minValue) / (maxValue - minValue)) * 90 - 5;
+    return { x, y, value, point };
+  }, [focusedIndex, currentData, minValue, maxValue, selectedMetric]);
+
+  const focusedPosition = getFocusedPointPosition();
 
   // Generate screen reader summary
   const chartSummary = useMemo(() => {
@@ -281,8 +314,14 @@ const AccuracyHistoryChart: React.FC = () => {
             </div>
           </div>
 
-          {/* Sparkline Chart */}
-          <div className="relative h-32 sm:h-40" role="img" aria-label={`${getMetricLabel()} chart for ${selectedHorizon} predictions`}>
+          {/* Sparkline Chart - Keyboard Navigable */}
+          <div
+            className="relative h-32 sm:h-40 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900 rounded-lg"
+            {...containerProps}
+          >
+            {/* Live region for screen reader announcements */}
+            <LiveRegion>{announcement}</LiveRegion>
+
             <svg className="w-full h-full" viewBox={`0 0 ${currentData.length * 10} 100`} preserveAspectRatio="none" aria-hidden="true">
               {/* Grid lines */}
               {[0, 25, 50, 75, 100].map((y) => (
@@ -323,23 +362,69 @@ const AccuracyHistoryChart: React.FC = () => {
               {currentData.map((point, i) => {
                 const value = getMetricValue(point);
                 const y = 100 - ((value - minValue) / (maxValue - minValue)) * 90 - 5;
+                const isFocused = focusedIndex === i;
                 return (
                   <circle
                     key={i}
                     cx={i * 10 + 5}
                     cy={y}
-                    r="2"
+                    r={isFocused ? 4 : 2}
                     fill={getMetricColor()}
-                    className="opacity-0 hover:opacity-100 transition-opacity"
+                    stroke={isFocused ? '#fff' : 'none'}
+                    strokeWidth={isFocused ? 2 : 0}
+                    className={`transition-all duration-150 ${isFocused ? 'opacity-100' : 'opacity-0 hover:opacity-100'}`}
                   />
                 );
               })}
+
+              {/* Focused point indicator */}
+              {focusedPosition && (
+                <g>
+                  {/* Vertical line from point to bottom */}
+                  <line
+                    x1={focusedPosition.x}
+                    y1={focusedPosition.y}
+                    x2={focusedPosition.x}
+                    y2={100}
+                    stroke={getMetricColor()}
+                    strokeWidth="1"
+                    strokeDasharray="2,2"
+                    opacity={0.5}
+                  />
+                </g>
+              )}
             </svg>
 
+            {/* Focused point tooltip */}
+            {focusedPosition && (
+              <div
+                className="absolute bg-gray-800 border border-gray-700 rounded-lg px-2 py-1 text-xs text-white shadow-lg pointer-events-none z-10"
+                style={{
+                  left: `${(focusedPosition.x / (currentData.length * 10)) * 100}%`,
+                  bottom: 'calc(100% - 0.5rem)',
+                  transform: 'translateX(-50%)',
+                }}
+              >
+                <div className="font-mono" style={{ color: getMetricColor() }}>
+                  {formatMetricValue(focusedPosition.value)}
+                </div>
+                <div className="text-gray-400 text-[10px] truncate max-w-[100px]">
+                  {focusedPosition.point.timestamp}
+                </div>
+              </div>
+            )}
+
             {/* Y-axis labels */}
-            <div className="absolute left-0 top-0 h-full flex flex-col justify-between text-xs text-gray-500 font-mono">
+            <div className="absolute left-0 top-0 h-full flex flex-col justify-between text-xs text-gray-500 font-mono pointer-events-none">
               <span>{formatMetricValue(maxValue)}</span>
               <span>{formatMetricValue(minValue)}</span>
+            </div>
+
+            {/* Keyboard hint */}
+            <div className="sr-only">
+              Use left and right arrow keys to navigate between data points.
+              Press Home for the first point, End for the last point.
+              Press Escape to clear focus.
             </div>
           </div>
 
