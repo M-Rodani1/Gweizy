@@ -1,0 +1,29 @@
+# Chromatic Visual Regression Testing Configuration
+# https://www.chromatic.com/docs/configuration
+
+# Auto-accept all changes in certain files (docs, etc.)
+autoAcceptChanges: "main"
+
+# Exit code behavior
+exitZeroOnChanges: true
+exitOnceUploaded: false
+
+# Skip builds for certain branches or conditions
+skip: "dependabot/**"
+
+# Only run on specific file changes
+onlyChanged: true
+
+# Ignore specific stories from visual testing
+storybookConfigDir: ".storybook"
+
+# Build settings
+buildScriptName: "build-storybook"
+
+# Configure viewports for responsive testing
+# viewports:
+#   - 320   # Mobile S
+#   - 375   # Mobile M
+#   - 768   # Tablet
+#   - 1024  # Desktop
+#   - 1440  # Desktop L
