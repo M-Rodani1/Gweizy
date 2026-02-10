@@ -29,7 +29,9 @@
     "test:e2e:debug": "playwright test --debug",
     "test:e2e:report": "playwright show-report",
     "chromatic": "chromatic --exit-zero-on-changes",
-    "chromatic:ci": "chromatic"
+    "chromatic:ci": "chromatic",
+    "test:mutation": "stryker run",
+    "test:mutation:dry": "stryker run --dryRunOnly"
   },
   "dependencies": {
     "@farcaster/miniapp-sdk": "^0.2.1",
