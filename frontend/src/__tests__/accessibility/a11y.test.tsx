@@ -19,8 +19,6 @@ expect.extend(toHaveNoViolations);
 // Configure axe
 const axe = configureAxe({
   rules: {
-    // Ignore color contrast for now as it may fail in jsdom
-    'color-contrast': { enabled: false },
     // Ignore region rule as we're testing isolated components
     'region': { enabled: false },
   },
