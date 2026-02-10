@@ -55,4 +55,10 @@ describe('security headers', () => {
     expect(metaHeaders['Permissions-Policy']).toBe(headers['Permissions-Policy']);
     expect(metaHeaders['Strict-Transport-Security']).toBe(headers['Strict-Transport-Security']);
   });
+
+  it('enables subresource integrity in Vite config', () => {
+    const configPath = path.resolve(process.cwd(), 'vite.config.ts');
+    const configContent = fs.readFileSync(configPath, 'utf8');
+    expect(configContent).toContain("sri(");
+  });
 });
