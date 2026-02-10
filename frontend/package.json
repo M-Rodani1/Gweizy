@@ -78,6 +78,7 @@
     "terser": "^5.44.1",
     "typescript": "~5.8.2",
     "vite": "^6.2.0",
+    "vite-plugin-sri": "^0.0.2",
     "vitest": "^4.0.16",
     "vitest-axe": "^0.1.0",
     "zustand": "^5.0.2"

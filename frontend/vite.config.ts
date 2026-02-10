@@ -2,6 +2,7 @@ import path from 'path';
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import { visualizer } from 'rollup-plugin-visualizer';
+import sri from 'vite-plugin-sri';
 
 export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, '.', '');
@@ -29,6 +30,8 @@ export default defineConfig(({ mode }) => {
           brotliSize: true,
           template: 'treemap', // 'sunburst' | 'treemap' | 'network'
         }),
+        // Subresource Integrity for production builds
+        mode === 'production' && sri(),
       ].filter(Boolean),
       define: {
         'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),
