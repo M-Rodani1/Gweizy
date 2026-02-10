@@ -1,0 +1,19 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    // Progressive strict options - enable as codebase matures
+    // These are not in the base config to avoid breaking existing code
+
+    // Adds undefined to array/object index access
+    // e.g., arr[0] becomes T | undefined instead of T
+    "noUncheckedIndexedAccess": true,
+
+    // Differentiates between undefined and missing properties
+    // e.g., { x?: number } doesn't allow { x: undefined }
+    "exactOptionalPropertyTypes": true,
+
+    // Requires bracket notation for index signature access
+    // e.g., obj['key'] instead of obj.key for index signatures
+    "noPropertyAccessFromIndexSignature": true
+  }
+}
