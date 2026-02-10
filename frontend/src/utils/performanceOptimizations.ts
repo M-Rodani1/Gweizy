@@ -148,3 +148,67 @@ export function measureRender(componentName: string): () => void {
     }
   };
 }
+
+/**
+ * Render performance monitor for tracking slow components in development.
+ */
+export interface RenderMetric {
+  componentName: string;
+  duration: number;
+  threshold: number;
+  timestamp: number;
+}
+
+const renderMetrics: RenderMetric[] = [];
+let renderThresholdMs = 16;
+
+export function setRenderThresholdMs(value: number): void {
+  renderThresholdMs = value;
+}
+
+export function getRenderMetrics(): RenderMetric[] {
+  return [...renderMetrics];
+}
+
+export function clearRenderMetrics(): void {
+  renderMetrics.length = 0;
+}
+
+export function createRenderMonitor(componentName: string, thresholdMs = renderThresholdMs): () => void {
+  if (process.env.NODE_ENV !== 'development') {
+    return () => {};
+  }
+
+  const start = performance.now();
+
+  return () => {
+    const duration = performance.now() - start;
+    if (duration < thresholdMs) {
+      return;
+    }
+
+    const metric: RenderMetric = {
+      componentName,
+      duration,
+      threshold: thresholdMs,
+      timestamp: Date.now(),
+    };
+    renderMetrics.push(metric);
+    console.warn(
+      `[Performance] ${componentName} render ${duration.toFixed(2)}ms exceeded ${thresholdMs}ms`
+    );
+  };
+}
+
+export function withRenderMonitor<T extends (...args: any[]) => any>(
+  componentName: string,
+  fn: T,
+  thresholdMs = renderThresholdMs
+): T {
+  return function (...args: Parameters<T>): ReturnType<T> {
+    const stop = createRenderMonitor(componentName, thresholdMs);
+    const result = fn(...args);
+    stop();
+    return result;
+  } as T;
+}
