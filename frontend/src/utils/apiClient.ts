@@ -11,6 +11,7 @@ import toast from 'react-hot-toast';
 import { getWithSWR, type SWRCacheOptions } from './swrCache';
 import { buildCsrfHeaders, getCsrfToken } from './csrf';
 import { getApiKeyHeader, rotateApiKey } from './apiKeys';
+import { logSecurityEvent } from './securityAudit';
 
 /**
  * API client with interceptors
@@ -48,6 +49,7 @@ class ApiClient {
             if (!res.ok) {
               if (res.status === 401 || res.status === 403) {
                 rotateApiKey();
+                logSecurityEvent('api_key_rotated', { statusCode: res.status, route: endpoint });
               }
               throw new Error(`HTTP ${res.status}: ${res.statusText}`);
             }
@@ -98,11 +100,15 @@ class ApiClient {
     try {
       const response = await retryWithBackoff(
         async () => {
+          const csrfToken = getCsrfToken();
+          if (!csrfToken) {
+            logSecurityEvent('csrf_token_missing', { route: endpoint });
+          }
           const res = await fetch(url, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              ...buildCsrfHeaders(getCsrfToken()),
+              ...buildCsrfHeaders(csrfToken),
               ...getApiKeyHeader(),
             },
             body: body ? JSON.stringify(body) : undefined,
@@ -112,6 +118,7 @@ class ApiClient {
           if (!res.ok) {
             if (res.status === 401 || res.status === 403) {
               rotateApiKey();
+              logSecurityEvent('api_key_rotated', { statusCode: res.status, route: endpoint });
             }
             throw new Error(`HTTP ${res.status}: ${res.statusText}`);
           }

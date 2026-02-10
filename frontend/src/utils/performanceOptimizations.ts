@@ -2,6 +2,8 @@
  * Performance optimisation utilities for the Gweizy app
  */
 
+import { logSecurityEvent } from './securityAudit';
+
 /**
  * Debounce function - delays execution until after delay ms have passed since last call
  */
@@ -221,6 +223,7 @@ export function enforceHttps(): boolean {
   const { protocol, hostname, href } = window.location;
   if (protocol === 'https:') return false;
   if (hostname === 'localhost' || hostname === '127.0.0.1') return false;
+  logSecurityEvent('https_redirect', { route: window.location.pathname });
   window.location.href = href.replace(/^http:/, 'https:');
   return true;
 }
