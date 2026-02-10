@@ -81,6 +81,13 @@ export default [
       'no-console': ['warn', { allow: ['warn', 'error'] }],
       'no-unused-vars': 'off', // Use TypeScript version instead
       'no-undef': 'off', // TypeScript handles this
+      'sort-imports': ['warn', {
+        ignoreCase: false,
+        ignoreDeclarationSort: true,
+        ignoreMemberSort: false,
+        allowSeparatedGroups: true,
+        memberSyntaxSortOrder: ['none', 'all', 'multiple', 'single']
+      }],
       'local/require-rel-on-target-blank': 'error'
     }
   }
