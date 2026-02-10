@@ -1,5 +1,6 @@
 import React, { useEffect, useCallback, useRef, useId } from 'react';
 import { X } from 'lucide-react';
+import { focusFirst, trapFocus, getFocusableElements } from '../../utils/focusManagement';
 
 type ModalSize = 'sm' | 'md' | 'lg' | 'xl' | 'full';
 
@@ -21,20 +22,6 @@ const sizeStyles: Record<ModalSize, string> = {
   lg: 'max-w-lg',
   xl: 'max-w-xl',
   full: 'max-w-4xl',
-};
-
-// Get all focusable elements within a container
-const getFocusableElements = (container: HTMLElement): HTMLElement[] => {
-  const focusableSelectors = [
-    'button:not([disabled])',
-    'input:not([disabled])',
-    'select:not([disabled])',
-    'textarea:not([disabled])',
-    'a[href]',
-    '[tabindex]:not([tabindex="-1"])',
-  ].join(', ');
-
-  return Array.from(container.querySelectorAll<HTMLElement>(focusableSelectors));
 };
 
 const Modal: React.FC<ModalProps> = ({
@@ -63,27 +50,8 @@ const Modal: React.FC<ModalProps> = ({
 
   // Handle focus trapping
   const handleTabKey = useCallback((e: KeyboardEvent) => {
-    if (e.key !== 'Tab' || !modalRef.current) return;
-
-    const focusableElements = getFocusableElements(modalRef.current);
-    if (focusableElements.length === 0) return;
-
-    const firstElement = focusableElements[0];
-    const lastElement = focusableElements[focusableElements.length - 1];
-
-    if (e.shiftKey) {
-      // Shift + Tab: Move focus backward
-      if (document.activeElement === firstElement) {
-        e.preventDefault();
-        lastElement.focus();
-      }
-    } else {
-      // Tab: Move focus forward
-      if (document.activeElement === lastElement) {
-        e.preventDefault();
-        firstElement.focus();
-      }
-    }
+    if (!modalRef.current) return;
+    trapFocus(modalRef.current, e);
   }, []);
 
   useEffect(() => {
@@ -99,12 +67,7 @@ const Modal: React.FC<ModalProps> = ({
       // Focus the modal or first focusable element
       requestAnimationFrame(() => {
         if (modalRef.current) {
-          const focusableElements = getFocusableElements(modalRef.current);
-          if (focusableElements.length > 0) {
-            focusableElements[0].focus();
-          } else {
-            modalRef.current.focus();
-          }
+          focusFirst(modalRef.current);
         }
       });
     }
