@@ -8,6 +8,7 @@ import { rateLimiter } from './rateLimiter';
 import { retryWithBackoff } from './retry';
 import { getErrorMessage } from './errorMessages';
 import toast from 'react-hot-toast';
+import { getWithSWR, type SWRCacheOptions } from './swrCache';
 
 /**
  * API client with interceptors
@@ -16,7 +17,11 @@ class ApiClient {
   /**
    * Make a GET request
    */
-  async get<T>(endpoint: string, params?: Record<string, string | number>): Promise<T> {
+  async get<T>(
+    endpoint: string,
+    params?: Record<string, string | number>,
+    options?: { swr?: SWRCacheOptions & { enabled?: boolean } }
+  ): Promise<T> {
     const url = getApiUrl(endpoint, params);
     
     // Check rate limit
@@ -26,33 +31,40 @@ class ApiClient {
     }
 
     try {
-      const response = await retryWithBackoff(
-        async () => {
-          const res = await fetch(url, {
-            method: 'GET',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            signal: AbortSignal.timeout(API_CONFIG.TIMEOUT),
-          });
+      const fetcher = async () => {
+        const response = await retryWithBackoff(
+          async () => {
+            const res = await fetch(url, {
+              method: 'GET',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              signal: AbortSignal.timeout(API_CONFIG.TIMEOUT),
+            });
 
-          if (!res.ok) {
-            throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+            if (!res.ok) {
+              throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+            }
+
+            return res;
+          },
+          {
+            maxAttempts: API_CONFIG.RETRY_ATTEMPTS,
+            baseDelay: API_CONFIG.RETRY_DELAY,
+            onRetry: (attempt, error) => {
+              console.warn(`Retrying ${endpoint} (attempt ${attempt}):`, error);
+            }
           }
+        );
 
-          return res;
-        },
-        {
-          maxAttempts: API_CONFIG.RETRY_ATTEMPTS,
-          baseDelay: API_CONFIG.RETRY_DELAY,
-          onRetry: (attempt, error) => {
-            console.warn(`Retrying ${endpoint} (attempt ${attempt}):`, error);
-          }
-        }
-      );
+        return (await response.json()) as T;
+      };
 
-      const data = await response.json();
-      return data as T;
+      if (options?.swr?.enabled) {
+        return await getWithSWR<T>(url, fetcher, options.swr);
+      }
+
+      return await fetcher();
     } catch (error) {
       const errorInfo = getErrorMessage(error);
       
