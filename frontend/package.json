@@ -31,7 +31,10 @@
     "chromatic": "chromatic --exit-zero-on-changes",
     "chromatic:ci": "chromatic",
     "test:mutation": "stryker run",
-    "test:mutation:dry": "stryker run --dryRunOnly"
+    "test:mutation:dry": "stryker run --dryRunOnly",
+    "test:coverage": "vitest run --coverage",
+    "test:coverage:watch": "vitest --coverage",
+    "test:coverage:ci": "vitest run --coverage --reporter=json --outputFile=./coverage/test-results.json"
   },
   "dependencies": {
     "@farcaster/miniapp-sdk": "^0.2.1",
@@ -72,6 +75,7 @@
     "@typescript-eslint/eslint-plugin": "^8.54.0",
     "@typescript-eslint/parser": "^8.54.0",
     "@vitejs/plugin-react": "^5.0.0",
+    "@vitest/coverage-v8": "^4.0.18",
     "autoprefixer": "^10.4.23",
     "eslint": "^10.0.0",
     "eslint-plugin-react-hooks": "^7.0.1",
