@@ -18,6 +18,7 @@
     "build-storybook": "storybook build",
     "test-storybook": "test-storybook",
     "test-storybook:ci": "test-storybook --ci",
+    "audit:dependencies": "npm audit --omit=dev --audit-level=high",
     "lint": "eslint src --ext .ts,.tsx",
     "lint:fix": "eslint src --ext .ts,.tsx --fix",
     "prepare": "husky",
