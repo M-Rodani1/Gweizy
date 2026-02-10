@@ -76,6 +76,23 @@ export default [
         varsIgnorePattern: '^_'
       }],
       '@typescript-eslint/no-explicit-any': 'warn',
+      '@typescript-eslint/naming-convention': ['warn',
+        {
+          selector: 'default',
+          format: ['camelCase'],
+          leadingUnderscore: 'allow'
+        },
+        {
+          selector: 'variable',
+          modifiers: ['const'],
+          format: ['camelCase', 'UPPER_CASE', 'PascalCase'],
+          leadingUnderscore: 'allow'
+        },
+        {
+          selector: 'typeLike',
+          format: ['PascalCase']
+        }
+      ],
 
       // General rules
       'no-console': ['warn', { allow: ['warn', 'error'] }],
