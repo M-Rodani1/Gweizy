@@ -261,4 +261,62 @@ export function useAnnounceChange<T>(
   }, [value, formatter, announce, politeness, debounceMs]);
 }
 
+/**
+ * Hook for announcing error messages.
+ *
+ * @example
+ * ```tsx
+ * useAnnounceError(errorMessage);
+ * ```
+ */
+export function useAnnounceError(
+  error: string | null | undefined,
+  options: { prefix?: string; politeness?: Politeness; debounceMs?: number } = {}
+): void {
+  const { prefix = 'Error', politeness = 'assertive', debounceMs = 0 } = options;
+  const { announce } = useLiveRegion();
+  const previousError = useRef<string | null | undefined>(error);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (!error) {
+      previousError.current = error;
+      return () => {
+        if (timeoutRef.current) {
+          clearTimeout(timeoutRef.current);
+        }
+      };
+    }
+
+    if (error === previousError.current) {
+      return () => {
+        if (timeoutRef.current) {
+          clearTimeout(timeoutRef.current);
+        }
+      };
+    }
+
+    const message = prefix ? `${prefix}: ${error}` : error;
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+
+    if (debounceMs > 0) {
+      timeoutRef.current = setTimeout(() => {
+        announce(message, politeness);
+      }, debounceMs);
+    } else {
+      announce(message, politeness);
+    }
+
+    previousError.current = error;
+
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, [announce, debounceMs, error, politeness, prefix]);
+}
+
 export default LiveRegion;

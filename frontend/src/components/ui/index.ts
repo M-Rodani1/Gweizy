@@ -54,6 +54,7 @@ export {
   LiveRegionProvider,
   StatusAnnouncer,
   useAnnounceChange,
+  useAnnounceError,
   useLiveRegion,
 } from './LiveRegion';
 
