@@ -122,6 +122,19 @@ html, body {
   contain: layout style paint;
 }
 
+/* Scroll-triggered reveal animation */
+.scroll-reveal {
+  opacity: 0;
+  transform: translateY(16px);
+  transition: opacity 0.5s ease, transform 0.5s ease;
+  will-change: opacity, transform;
+}
+
+.scroll-reveal--visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
 /* Glass morphism effect */
 .glass {
   background: rgba(17, 24, 39, 0.7);

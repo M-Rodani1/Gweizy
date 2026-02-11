@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { ArrowDown, ArrowUp, Clock } from 'lucide-react';
+import ScrollReveal from './ui/ScrollReveal';
 
 interface HourlyStats {
   hour: number;
@@ -73,7 +74,7 @@ const BestTimeWidget: React.FC<BestTimeWidgetProps> = ({ currentGas = 0 }) => {
   }
 
   return (
-    <div className="bg-gradient-to-br from-gray-800 to-gray-900 p-4 sm:p-6 rounded-2xl shadow-2xl border border-gray-700/50 card-hover">
+    <ScrollReveal className="bg-gradient-to-br from-gray-800 to-gray-900 p-4 sm:p-6 rounded-2xl shadow-2xl border border-gray-700/50 card-hover">
       <div className="flex items-center gap-2 mb-4">
         <Clock className="w-5 h-5 text-cyan-400" />
         <h3 className="text-lg sm:text-xl font-bold bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">Best Times to Transact</h3>
@@ -142,7 +143,7 @@ const BestTimeWidget: React.FC<BestTimeWidgetProps> = ({ currentGas = 0 }) => {
           </div>
         </div>
       )}
-    </div>
+    </ScrollReveal>
   );
 };
 
