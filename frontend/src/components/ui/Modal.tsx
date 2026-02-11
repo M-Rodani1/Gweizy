@@ -78,8 +78,9 @@ const Modal: React.FC<ModalProps> = ({
       document.body.style.overflow = 'unset';
 
       // Restore focus to the previously focused element
-      if (previousActiveElement.current && !isOpen) {
+      if (previousActiveElement.current) {
         previousActiveElement.current.focus();
+        previousActiveElement.current = null;
       }
     };
   }, [isOpen, handleEscape, handleTabKey]);
