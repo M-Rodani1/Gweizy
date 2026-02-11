@@ -12,6 +12,7 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: ['./src/__tests__/setup.ts'],
+    exclude: ['e2e/**', 'playwright-report/**'],
     coverage: {
       // Coverage provider
       provider: 'v8',
