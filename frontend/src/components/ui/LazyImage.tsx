@@ -3,6 +3,8 @@ import React, { useState, useRef, useEffect, memo } from 'react';
 interface LazyImageProps extends React.ImgHTMLAttributes<HTMLImageElement> {
   src: string;
   alt: string;
+  avifSrc?: string;
+  webpSrc?: string;
   placeholder?: string;
   className?: string;
 }
@@ -14,6 +16,8 @@ interface LazyImageProps extends React.ImgHTMLAttributes<HTMLImageElement> {
 const LazyImage: React.FC<LazyImageProps> = memo(({
   src,
   alt,
+  avifSrc,
+  webpSrc,
   placeholder = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1"%3E%3Crect fill="%231f2937" width="1" height="1"/%3E%3C/svg%3E',
   className = '',
   ...props
@@ -43,7 +47,7 @@ const LazyImage: React.FC<LazyImageProps> = memo(({
     return () => observer.disconnect();
   }, []);
 
-  return (
+  const image = (
     <img
       ref={imgRef}
       src={isInView ? src : placeholder}
@@ -54,6 +58,18 @@ const LazyImage: React.FC<LazyImageProps> = memo(({
       decoding="async"
       {...props}
     />
+  );
+
+  if (!avifSrc && !webpSrc) {
+    return image;
+  }
+
+  return (
+    <picture>
+      {isInView && avifSrc && <source type="image/avif" srcSet={avifSrc} />}
+      {isInView && webpSrc && <source type="image/webp" srcSet={webpSrc} />}
+      {image}
+    </picture>
   );
 });
 
