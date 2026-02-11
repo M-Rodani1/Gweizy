@@ -28,6 +28,7 @@
     "bundle:budget": "node scripts/checkBundleBudget.js",
     "generate:component": "node scripts/generate-component.js",
     "docs:api": "node scripts/generateApiDocs.js",
+    "docs:components": "node scripts/generateComponentDocs.js",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:headed": "playwright test --headed",
