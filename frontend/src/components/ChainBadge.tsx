@@ -1,5 +1,6 @@
 import React from 'react';
 import { ChainConfig } from '../config/chains';
+import { compilerMemo } from '../utils/reactCompiler';
 
 type ChainBadgeSize = 'sm' | 'md' | 'lg';
 
@@ -36,4 +37,4 @@ const ChainBadge: React.FC<ChainBadgeProps> = ({ chain, size = 'md', className =
   );
 };
 
-export default React.memo(ChainBadge);
+export default compilerMemo(ChainBadge, 'ChainBadge');
