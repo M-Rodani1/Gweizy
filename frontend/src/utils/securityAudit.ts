@@ -7,12 +7,33 @@ export type SecurityAuditEvent =
   | 'session_expired'
   | 'suspicious_input';
 
+export type SensitiveAction =
+  | 'wallet_connect'
+  | 'wallet_disconnect'
+  | 'wallet_export'
+  | 'settings_update'
+  | 'account_switch'
+  | 'api_token_viewed';
+
 export interface SecurityAuditPayload {
   detail?: string;
   route?: string;
   statusCode?: number;
 }
 
+export interface SensitiveActionPayload {
+  detail?: string;
+  route?: string;
+  resourceId?: string;
+}
+
 export function logSecurityEvent(event: SecurityAuditEvent, payload: SecurityAuditPayload = {}): void {
   trackEvent(`security:${event}`, payload);
+}
+
+export function logSensitiveAction(
+  action: SensitiveAction,
+  payload: SensitiveActionPayload = {}
+): void {
+  trackEvent('audit:sensitive_action', { action, ...payload });
 }
