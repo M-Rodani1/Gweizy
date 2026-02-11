@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { ArrowDown, ArrowUp, Clock } from 'lucide-react';
 
 interface HourlyStats {
@@ -40,6 +40,29 @@ const BestTimeWidget: React.FC<BestTimeWidgetProps> = ({ currentGas = 0 }) => {
     }));
   };
 
+  const { bestHours, worstHours, avgGas, savingsPercent } = useMemo(() => {
+    const sortedByGas = hourlyStats.length > 0 ? [...hourlyStats].sort((a, b) => a.avgGas - b.avgGas) : [];
+    const best = sortedByGas.slice(0, 3);
+    const worst = sortedByGas.slice(-3).reverse();
+
+    const avg = hourlyStats.length > 0
+      ? hourlyStats.reduce((sum, h) => sum + h.avgGas, 0) / hourlyStats.length
+      : 0;
+    const bestAvg = best.length > 0
+      ? best.reduce((sum, h) => sum + h.avgGas, 0) / best.length
+      : 0;
+    const worstAvg = worst.length > 0
+      ? worst.reduce((sum, h) => sum + h.avgGas, 0) / worst.length
+      : 0;
+    const savings = worstAvg > 0 ? Math.round(((worstAvg - bestAvg) / worstAvg) * 100) : 0;
+
+    return { bestHours: best, worstHours: worst, avgGas: avg, savingsPercent: savings };
+  }, [hourlyStats]);
+
+  const formatHour = useCallback((hour: number) => {
+    return `${hour.toString().padStart(2, '0')}:00`;
+  }, []);
+
   if (loading) {
     return (
       <div className="bg-gray-800 p-6 rounded-2xl shadow-xl animate-pulse">
@@ -48,26 +71,6 @@ const BestTimeWidget: React.FC<BestTimeWidgetProps> = ({ currentGas = 0 }) => {
       </div>
     );
   }
-
-  // Find best and worst hours - with safety checks
-  const sortedByGas = hourlyStats && hourlyStats.length > 0 ? [...hourlyStats].sort((a, b) => a.avgGas - b.avgGas) : [];
-  const bestHours = sortedByGas.slice(0, 3);
-  const worstHours = sortedByGas.slice(-3).reverse();
-
-  const avgGas = hourlyStats && hourlyStats.length > 0
-    ? hourlyStats.reduce((sum, h) => sum + h.avgGas, 0) / hourlyStats.length
-    : 0;
-  const bestAvg = bestHours && bestHours.length > 0
-    ? bestHours.reduce((sum, h) => sum + h.avgGas, 0) / bestHours.length
-    : 0;
-  const worstAvg = worstHours && worstHours.length > 0
-    ? worstHours.reduce((sum, h) => sum + h.avgGas, 0) / worstHours.length
-    : 0;
-  const savingsPercent = worstAvg > 0 ? Math.round(((worstAvg - bestAvg) / worstAvg) * 100) : 0;
-
-  const formatHour = (hour: number) => {
-    return `${hour.toString().padStart(2, '0')}:00`;
-  };
 
   return (
     <div className="bg-gradient-to-br from-gray-800 to-gray-900 p-4 sm:p-6 rounded-2xl shadow-2xl border border-gray-700/50 card-hover">
