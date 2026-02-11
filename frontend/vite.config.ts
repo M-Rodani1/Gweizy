@@ -72,6 +72,7 @@ export default defineConfig(({ mode }) => {
       build: {
         reportCompressedSize: true,
         rollupOptions: {
+          treeshake: true,
           output: {
             // Code splitting strategy that prevents React initialization errors:
             // 1. React and ALL React-dependent packages stay in MAIN ENTRY (return undefined)
