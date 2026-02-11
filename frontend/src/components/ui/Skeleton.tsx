@@ -7,7 +7,7 @@ interface SkeletonProps {
   className?: string;
 }
 
-const Skeleton: React.FC<SkeletonProps> = ({
+export const Skeleton: React.FC<SkeletonProps> = ({
   variant = 'rect',
   width,
   height,
