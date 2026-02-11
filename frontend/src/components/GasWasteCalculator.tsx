@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { AlertTriangle, Coins, TrendingDown } from 'lucide-react';
 import { fetchHistoricalData } from '../api/gasApi';
+import { calculateGasWasteAsync } from '../utils/gasWasteWorkerClient';
+import { EMPTY_GAS_WASTE_RESULT } from '../utils/gasWasteCalculations';
 
 interface GasWasteCalculatorProps {
   walletAddress?: string | null;
@@ -23,6 +25,7 @@ const GasWasteCalculator: React.FC<GasWasteCalculatorProps> = () => {
   const [historicalData, setHistoricalData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [results, setResults] = useState(EMPTY_GAS_WASTE_RESULT);
 
   useEffect(() => {
     const loadData = async () => {
@@ -44,67 +47,40 @@ const GasWasteCalculator: React.FC<GasWasteCalculatorProps> = () => {
     loadData();
   }, [timePeriod]);
 
-  const calculateWaste = () => {
-    if (!historicalData || historicalData.length === 0) {
-      return {
-        avgGasPaid: 0,
-        optimizedGasCost: 0,
-        waste: 0,
-        wastePercent: 0,
-        annualWaste: 0
-      };
+  useEffect(() => {
+    let cancelled = false;
+    const gasPrices = historicalData?.length
+      ? historicalData.map((entry) => entry.gwei || 0).filter((price) => price > 0)
+      : [];
+
+    if (!gasPrices.length) {
+      setResults(EMPTY_GAS_WASTE_RESULT);
+      return;
     }
 
-    // Calculate average gas price over period - with safety checks
-    const gasPrices = historicalData && historicalData.length > 0
-      ? historicalData.map(d => d.gwei || 0).filter(p => p > 0)
-      : [];
-    if (!gasPrices || gasPrices.length === 0) return { avgGasPaid: 0, optimizedGasCost: 0, waste: 0, wastePercent: 0, annualWaste: 0 };
+    calculateGasWasteAsync({
+      gasPrices,
+      gasLimit: selectedType.gasLimit,
+      transactionsPerWeek,
+      timePeriod,
+      ethPrice: ETH_PRICE,
+    })
+      .then((result) => {
+        if (!cancelled) {
+          setResults(result);
+        }
+      })
+      .catch((err) => {
+        console.error('Error calculating gas waste:', err);
+        if (!cancelled) {
+          setResults(EMPTY_GAS_WASTE_RESULT);
+        }
+      });
 
-    const avgGasPrice = gasPrices.length > 0
-      ? gasPrices.reduce((a, b) => a + b, 0) / gasPrices.length
-      : 0;
-
-    // Find optimal (lowest) gas prices (bottom 20th percentile)
-    const sortedPrices = gasPrices && gasPrices.length > 0 ? [...gasPrices].sort((a, b) => a - b) : [];
-    const optimalGasPrice = sortedPrices && sortedPrices.length > 0
-      ? sortedPrices[Math.floor(sortedPrices.length * 0.2)]
-      : 0; // 20th percentile
-
-    // Calculate costs
-    const costPerTx = (gasPrice: number) => {
-      const ethCost = (gasPrice * selectedType.gasLimit) / 1e9;
-      return ethCost * ETH_PRICE;
+    return () => {
+      cancelled = true;
     };
-
-    const avgCostPerTx = costPerTx(avgGasPrice);
-    const optimalCostPerTx = costPerTx(optimalGasPrice);
-
-    // Calculate for the period
-    const days = timePeriod === 'week' ? 7 : timePeriod === 'month' ? 30 : 90;
-    const transactionsInPeriod = (transactionsPerWeek / 7) * days;
-    
-    const totalPaid = avgCostPerTx * transactionsInPeriod;
-    const totalOptimal = optimalCostPerTx * transactionsInPeriod;
-    const waste = totalPaid - totalOptimal;
-    const wastePercent = totalPaid > 0 ? (waste / totalPaid) * 100 : 0;
-
-    // Annual projection
-    const annualTransactions = transactionsPerWeek * 52;
-    const annualPaid = avgCostPerTx * annualTransactions;
-    const annualOptimal = optimalCostPerTx * annualTransactions;
-    const annualWaste = annualPaid - annualOptimal;
-
-    return {
-      avgGasPaid: totalPaid,
-      optimizedGasCost: totalOptimal,
-      waste,
-      wastePercent,
-      annualWaste
-    };
-  };
-
-  const results = calculateWaste();
+  }, [historicalData, selectedType.gasLimit, transactionsPerWeek, timePeriod]);
   const coffeePrice = 5; // $5 per coffee
   const coffeesWasted = Math.floor(results.waste / coffeePrice);
 
