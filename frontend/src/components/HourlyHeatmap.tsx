@@ -207,17 +207,6 @@ const HourlyHeatmap: React.FC = () => {
   // Convert Sunday=0 to Monday=0 format
   const adjustedDay = currentDay === 0 ? 6 : currentDay - 1;
 
-  if (loading) {
-    return (
-      <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-4 shadow-xl">
-        <div className="flex items-center justify-center py-12" role="status" aria-label="Loading heatmap data">
-          <RefreshCw className="w-6 h-6 text-gray-500 animate-spin" aria-hidden="true" />
-          <span className="sr-only">Loading weekly gas heatmap...</span>
-        </div>
-      </div>
-    );
-  }
-
   // Helper to safely format gwei values
   const safeGwei = (value: number | undefined): string => {
     if (value === undefined || value === null || !Number.isFinite(value)) return '0.000000';
@@ -241,8 +230,19 @@ const HourlyHeatmap: React.FC = () => {
       `Gas prices range from ${safeGwei(data.minGwei)} to ${safeGwei(data.maxGwei)} gwei.`;
   }, [data]);
 
+  if (loading) {
+    return (
+      <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-4 shadow-xl contain-layout">
+        <div className="flex items-center justify-center py-12" role="status" aria-label="Loading heatmap data">
+          <RefreshCw className="w-6 h-6 text-gray-500 animate-spin" aria-hidden="true" />
+          <span className="sr-only">Loading weekly gas heatmap...</span>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-4 shadow-xl">
+    <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-4 shadow-xl contain-layout">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
