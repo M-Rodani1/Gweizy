@@ -21,6 +21,7 @@
     "audit:dependencies": "npm audit --omit=dev --audit-level=high",
     "lint": "eslint src --ext .ts,.tsx",
     "lint:fix": "eslint src --ext .ts,.tsx --fix",
+    "lint:circular": "node scripts/checkCircularDeps.js",
     "prepare": "husky",
     "analyze": "ANALYZE=true vite build",
     "bundle:size": "node scripts/bundleSizeReport.js",
