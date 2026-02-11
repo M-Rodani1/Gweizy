@@ -70,7 +70,7 @@ export default defineConfig(({ mode }) => {
         },
       },
       build: {
-        reportCompressedSize: false,
+        reportCompressedSize: true,
         rollupOptions: {
           output: {
             // Code splitting strategy that prevents React initialization errors:

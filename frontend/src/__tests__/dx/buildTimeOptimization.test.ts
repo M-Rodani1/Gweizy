@@ -7,6 +7,6 @@ describe('build time optimization', () => {
     const configPath = resolve(__dirname, '../../../vite.config.ts');
     const contents = readFileSync(configPath, 'utf8');
 
-    expect(contents).toContain('reportCompressedSize: false');
+    expect(contents).toContain('reportCompressedSize: true');
   });
 });
