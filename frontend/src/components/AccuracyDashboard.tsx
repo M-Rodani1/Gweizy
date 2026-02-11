@@ -1,12 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  Area, AreaChart
-} from 'recharts';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { TrendingUp, TrendingDown, Activity } from 'lucide-react';
 import { API_CONFIG, getApiUrl } from '../config/api';
 
-interface MetricsData {
+export interface MetricsData {
   horizon: string;
   mae_7d: number;
   mae_30d: number;
@@ -17,7 +13,7 @@ interface MetricsData {
   predictions_count: number;
 }
 
-interface TrendData {
+export interface TrendData {
   date: string;
   mae: number;
   success_rate: number;
@@ -27,6 +23,8 @@ interface TrendData {
 interface AccuracyDashboardProps {
   selectedChain?: string;
 }
+
+const AccuracyDashboardCharts = lazy(() => import('./AccuracyDashboardCharts'));
 
 const AccuracyDashboard: React.FC<AccuracyDashboardProps> = ({ selectedChain = 'base' }) => {
   const [metrics, setMetrics] = useState<Record<string, MetricsData>>({});
@@ -215,161 +213,22 @@ const AccuracyDashboard: React.FC<AccuracyDashboardProps> = ({ selectedChain = '
         </div>
       )}
 
-      {/* Trends Chart */}
-      {trends[selectedHorizon] && trends[selectedHorizon].length > 0 && (
-        <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
-          <h3 className="text-lg font-semibold text-white mb-4">MAE Trend</h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <AreaChart data={trends[selectedHorizon]}>
-              <defs>
-                <linearGradient id="colorMae" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#06b6d4" stopOpacity={0.8} />
-                  <stop offset="95%" stopColor="#06b6d4" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-              <XAxis
-                dataKey="date"
-                stroke="#9ca3af"
-                style={{ fontSize: '12px' }}
-              />
-              <YAxis stroke="#9ca3af" style={{ fontSize: '12px' }} />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: '#1f2937',
-                  border: '1px solid #374151',
-                  borderRadius: '8px'
-                }}
-                labelStyle={{ color: '#9ca3af' }}
-              />
-              <Area
-                type="monotone"
-                dataKey="mae"
-                stroke="#06b6d4"
-                fillOpacity={1}
-                fill="url(#colorMae)"
-              />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
-      )}
-
-      {/* Success Rate Chart */}
-      {trends[selectedHorizon] && trends[selectedHorizon].length > 0 && (
-        <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
-          <h3 className="text-lg font-semibold text-white mb-4">Success Rate Trend</h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <AreaChart data={trends[selectedHorizon]}>
-              <defs>
-                <linearGradient id="colorSuccess" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#10b981" stopOpacity={0.8} />
-                  <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-              <XAxis
-                dataKey="date"
-                stroke="#9ca3af"
-                style={{ fontSize: '12px' }}
-              />
-              <YAxis stroke="#9ca3af" style={{ fontSize: '12px' }} domain={[0, 100]} />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: '#1f2937',
-                  border: '1px solid #374151',
-                  borderRadius: '8px'
-                }}
-                labelStyle={{ color: '#9ca3af' }}
-                formatter={(value: any) => `${(value * 100).toFixed(1)}%`}
-              />
-              <Area
-                type="monotone"
-                dataKey="success_rate"
-                stroke="#10b981"
-                fillOpacity={1}
-                fill="url(#colorSuccess)"
-              />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
-      )}
-
-      {/* Comparison Across Horizons */}
-      {metrics && Object.keys(metrics).length > 0 && (
-        <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
-          <h3 className="text-lg font-semibold text-white mb-4">MAE Comparison by Horizon</h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart
-              data={[
-                {
-                  horizon: '1h',
-                  mae: metrics['1h']?.[getPeriodKey(selectedPeriod)] || 0
-                },
-                {
-                  horizon: '4h',
-                  mae: metrics['4h']?.[getPeriodKey(selectedPeriod)] || 0
-                },
-                {
-                  horizon: '24h',
-                  mae: metrics['24h']?.[getPeriodKey(selectedPeriod)] || 0
-                }
-              ]}
-            >
-              <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-              <XAxis dataKey="horizon" stroke="#9ca3af" style={{ fontSize: '12px' }} />
-              <YAxis stroke="#9ca3af" style={{ fontSize: '12px' }} />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: '#1f2937',
-                  border: '1px solid #374151',
-                  borderRadius: '8px'
-                }}
-                labelStyle={{ color: '#9ca3af' }}
-              />
-              <Bar dataKey="mae" fill="#06b6d4" radius={[8, 8, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      )}
-
-      {/* Success Rate by Horizon */}
-      {metrics && Object.keys(metrics).length > 0 && (
-        <div className="bg-gray-800 border border-gray-700 rounded-lg p-6">
-          <h3 className="text-lg font-semibold text-white mb-4">Success Rate by Horizon</h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart
-              data={[
-                {
-                  horizon: '1h',
-                  successRate: metrics['1h']?.[getSuccessRateKey(selectedPeriod)] || 0
-                },
-                {
-                  horizon: '4h',
-                  successRate: metrics['4h']?.[getSuccessRateKey(selectedPeriod)] || 0
-                },
-                {
-                  horizon: '24h',
-                  successRate: metrics['24h']?.[getSuccessRateKey(selectedPeriod)] || 0
-                }
-              ]}
-            >
-              <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-              <XAxis dataKey="horizon" stroke="#9ca3af" style={{ fontSize: '12px' }} />
-              <YAxis stroke="#9ca3af" style={{ fontSize: '12px' }} domain={[0, 100]} />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: '#1f2937',
-                  border: '1px solid #374151',
-                  borderRadius: '8px'
-                }}
-                labelStyle={{ color: '#9ca3af' }}
-                formatter={(value: any) => `${value.toFixed(1)}%`}
-              />
-              <Bar dataKey="successRate" fill="#10b981" radius={[8, 8, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      )}
+      <Suspense
+        fallback={(
+          <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 text-sm text-gray-400">
+            Loading charts...
+          </div>
+        )}
+      >
+        <AccuracyDashboardCharts
+          metrics={metrics}
+          trends={trends}
+          selectedHorizon={selectedHorizon}
+          selectedPeriod={selectedPeriod}
+          getPeriodKey={getPeriodKey}
+          getSuccessRateKey={getSuccessRateKey}
+        />
+      </Suspense>
 
       {/* Info Box */}
       <div className="bg-cyan-500/10 border border-cyan-500/30 rounded-lg p-4">
