@@ -7,6 +7,8 @@ interface Props {
   fallback?: ReactNode;
   /** Optional callback when error is caught */
   onError?: (error: Error, errorInfo: ErrorInfo) => void;
+  /** Reset boundary when these values change */
+  resetKeys?: unknown[];
   /** Whether to show retry button (default: true) */
   showRetry?: boolean;
 }
@@ -68,6 +70,17 @@ class ErrorBoundary extends Component<Props, State> {
 
     // Call optional error callback
     this.props.onError?.(error, errorInfo);
+  }
+
+  public componentDidUpdate(prevProps: Props) {
+    if (!this.state.hasError) return;
+    const prevKeys = prevProps.resetKeys;
+    const nextKeys = this.props.resetKeys;
+    if (!prevKeys || !nextKeys || prevKeys.length !== nextKeys.length) return;
+    const changed = nextKeys.some((key, index) => key !== prevKeys[index]);
+    if (changed) {
+      this.handleReset();
+    }
   }
 
   private handleReset = () => {
@@ -157,4 +170,3 @@ class ErrorBoundary extends Component<Props, State> {
 }
 
 export default ErrorBoundary;
-
