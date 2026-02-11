@@ -9,6 +9,7 @@
  */
 import { useState, useEffect } from 'react';
 import { getCurrentAccount, onAccountsChanged } from '../utils/wallet';
+import { isValidAddress, toChecksumAddress } from '../utils/walletAddress';
 
 /**
  * Hook to track the currently connected wallet address.
@@ -64,7 +65,13 @@ export function useWalletAddress(): string | null {
 
     // Listen for account changes
     const unsubscribe = onAccountsChanged((accounts) => {
-      setAddress(accounts.length > 0 ? accounts[0] : null);
+      if (accounts.length === 0) {
+        setAddress(null);
+        return;
+      }
+
+      const next = accounts[0];
+      setAddress(isValidAddress(next) ? toChecksumAddress(next) : null);
     });
 
     return () => {
@@ -74,4 +81,3 @@ export function useWalletAddress(): string | null {
 
   return address;
 }
-

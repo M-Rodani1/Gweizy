@@ -1,5 +1,6 @@
 // Wallet connection utilities for MetaMask/Coinbase Wallet
 import { SUPPORTED_CHAINS } from '../config/chains';
+import { isValidAddress, toChecksumAddress } from './walletAddress';
 
 declare global {
   interface Window {
@@ -36,7 +37,9 @@ export async function getCurrentAccount(): Promise<string | null> {
   
   try {
     const accounts = await window.ethereum.request({ method: 'eth_accounts' });
-    return accounts.length > 0 ? accounts[0] : null;
+    if (accounts.length === 0) return null;
+    const address = accounts[0];
+    return isValidAddress(address) ? toChecksumAddress(address) : null;
   } catch (error) {
     console.error('Error getting current account:', error);
     return null;
@@ -127,11 +130,14 @@ export async function connectWallet(targetChainId: number = BASE_CHAIN_ID_DECIMA
   }
 
   const address = accounts[0];
+  if (!isValidAddress(address)) {
+    throw new Error('Invalid wallet address returned.');
+  }
 
   // Switch to target network
   await switchToChain(targetChainId);
 
-  return address;
+  return toChecksumAddress(address);
 }
 
 interface SendTransactionParams {
