@@ -108,12 +108,12 @@ const ChainComparison: React.FC = () => {
         <table className="w-full">
           <thead>
             <tr className="border-b border-gray-700">
-              <th className="text-left py-3 px-4 text-gray-300">Chain</th>
-              <th className="text-right py-3 px-4 text-gray-300">Current</th>
-              <th className="text-right py-3 px-4 text-gray-300">1h Prediction</th>
-              <th className="text-right py-3 px-4 text-gray-300">4h Prediction</th>
-              <th className="text-right py-3 px-4 text-gray-300">24h Prediction</th>
-              <th className="text-center py-3 px-4 text-gray-300">Action</th>
+              <th scope="col" className="text-left py-3 px-4 text-gray-300">Chain</th>
+              <th scope="col" className="text-right py-3 px-4 text-gray-300">Current</th>
+              <th scope="col" className="text-right py-3 px-4 text-gray-300">1h Prediction</th>
+              <th scope="col" className="text-right py-3 px-4 text-gray-300">4h Prediction</th>
+              <th scope="col" className="text-right py-3 px-4 text-gray-300">24h Prediction</th>
+              <th scope="col" className="text-center py-3 px-4 text-gray-300">Action</th>
             </tr>
           </thead>
           <tbody>
@@ -128,7 +128,7 @@ const ChainComparison: React.FC = () => {
                     isSelected ? 'bg-cyan-900/20' : ''
                   }`}
                 >
-                  <td className="py-3 px-4">
+                  <th scope="row" className="py-3 px-4 text-left">
                     <div className="flex items-center gap-2">
                       <span className="font-semibold text-white">{chain.chainName}</span>
                       {isCheapest && (
@@ -137,7 +137,7 @@ const ChainComparison: React.FC = () => {
                         </span>
                       )}
                     </div>
-                  </td>
+                  </th>
                   <td className="text-right py-3 px-4 text-white">
                     {chain.currentGas > 0 ? `${chain.currentGas.toFixed(4)} gwei` : '-'}
                   </td>
@@ -185,4 +185,3 @@ const ChainComparison: React.FC = () => {
 };
 
 export default ChainComparison;
-

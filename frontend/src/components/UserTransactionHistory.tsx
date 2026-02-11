@@ -151,14 +151,24 @@ const UserTransactionHistory: React.FC<UserTransactionHistoryProps> = ({ address
           <p className="text-gray-400 text-sm">No transactions found.</p>
         ) : (
           <div className="overflow-x-auto">
-            <div className="min-w-[720px]" role="table" aria-label="Recent transactions">
+            <div
+              className="min-w-[720px]"
+              role="table"
+              aria-label="Recent transactions"
+              aria-rowcount={transactions.length + 1}
+              aria-colcount={5}
+            >
               <div role="rowgroup" className="border-b border-gray-700">
-                <div role="row" className={`${gridCols} text-xs uppercase tracking-wide text-gray-400`}>
-                  <div role="columnheader" className="py-2 text-left">Hash</div>
-                  <div role="columnheader" className="py-2 text-left">Time</div>
-                  <div role="columnheader" className="py-2 text-right">Gas Price</div>
-                  <div role="columnheader" className="py-2 text-right">Gas Used</div>
-                  <div role="columnheader" className="py-2 text-right">Cost</div>
+                <div
+                  role="row"
+                  aria-rowindex={1}
+                  className={`${gridCols} text-xs uppercase tracking-wide text-gray-400`}
+                >
+                  <div role="columnheader" aria-colindex={1} className="py-2 text-left">Hash</div>
+                  <div role="columnheader" aria-colindex={2} className="py-2 text-left">Time</div>
+                  <div role="columnheader" aria-colindex={3} className="py-2 text-right">Gas Price</div>
+                  <div role="columnheader" aria-colindex={4} className="py-2 text-right">Gas Used</div>
+                  <div role="columnheader" aria-colindex={5} className="py-2 text-right">Cost</div>
                 </div>
               </div>
               <VirtualizedList
@@ -166,12 +176,13 @@ const UserTransactionHistory: React.FC<UserTransactionHistoryProps> = ({ address
                 itemHeight={rowHeight}
                 maxHeight={maxListHeight}
                 getKey={(tx) => tx.hash}
-                renderItem={(tx) => (
+                renderItem={(tx, index) => (
                   <div
                     role="row"
+                    aria-rowindex={index + 2}
                     className={`${gridCols} h-full items-center border-b border-gray-700/50 hover:bg-gray-700/30`}
                   >
-                    <div role="cell" className="py-2">
+                    <div role="rowheader" aria-colindex={1} className="py-2">
                       <a
                         href={`https://basescan.org/tx/${tx.hash}`}
                         target="_blank"
@@ -181,16 +192,16 @@ const UserTransactionHistory: React.FC<UserTransactionHistoryProps> = ({ address
                         {tx.hash.slice(0, 10)}...{tx.hash.slice(-8)}
                       </a>
                     </div>
-                    <div role="cell" className="py-2 text-gray-300">
+                    <div role="cell" aria-colindex={2} className="py-2 text-gray-300">
                       {formatTime(tx.timestamp)}
                     </div>
-                    <div role="cell" className="py-2 text-right text-gray-300">
+                    <div role="cell" aria-colindex={3} className="py-2 text-right text-gray-300">
                       {formatGasPrice(tx.gasPrice)} gwei
                     </div>
-                    <div role="cell" className="py-2 text-right text-gray-300">
+                    <div role="cell" aria-colindex={4} className="py-2 text-right text-gray-300">
                       {tx.gasUsed.toLocaleString()}
                     </div>
-                    <div role="cell" className="py-2 text-right text-gray-300">
+                    <div role="cell" aria-colindex={5} className="py-2 text-right text-gray-300">
                       ${formatUSD((tx.gasPrice * tx.gasUsed) / 1e9 * 3000)}
                     </div>
                   </div>

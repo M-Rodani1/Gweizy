@@ -12,7 +12,9 @@ const ROW_HEIGHT = 60; // Estimated row height in pixels
 // Memoized table row component to prevent unnecessary re-renders
 const TableRow = React.memo<{ row: TableRowData; index: number }>(({ row }) => (
   <tr className="border-b border-gray-700 hover:bg-gray-700/50">
-    <td className="p-3 font-mono text-sm text-cyan-400">{row.txHash}</td>
+    <th scope="row" className="p-3 font-mono text-sm text-cyan-400 text-left">
+      {row.txHash}
+    </th>
     <td className="p-3">
       <span className="bg-cyan-600/50 text-cyan-200 text-xs font-semibold mr-2 px-2.5 py-0.5 rounded">
         {row.method}
@@ -141,11 +143,11 @@ const GasPriceTable: React.FC = () => {
           <table className="w-full text-left table-auto">
             <thead className="border-b-2 border-gray-600 sticky top-0 bg-gray-800 z-10">
               <tr className="text-gray-400">
-                <th className="p-3">Tx Hash</th>
-                <th className="p-3">Method</th>
-                <th className="p-3">Age</th>
-                <th className="p-3 text-right">Gas Used</th>
-                <th className="p-3 text-right">Gas Price (Gwei)</th>
+                <th scope="col" className="p-3 text-left">Tx Hash</th>
+                <th scope="col" className="p-3 text-left">Method</th>
+                <th scope="col" className="p-3 text-left">Age</th>
+                <th scope="col" className="p-3 text-right">Gas Used</th>
+                <th scope="col" className="p-3 text-right">Gas Price (Gwei)</th>
               </tr>
             </thead>
             <tbody>
@@ -166,7 +168,9 @@ const GasPriceTable: React.FC = () => {
                         ref={virtualizer.measureElement}
                         className="border-b border-gray-700 hover:bg-gray-700/50"
                       >
-                        <td className="p-3 font-mono text-sm text-cyan-400">{row.txHash}</td>
+                        <th scope="row" className="p-3 font-mono text-sm text-cyan-400 text-left">
+                          {row.txHash}
+                        </th>
                         <td className="p-3">
                           <span className="bg-cyan-600/50 text-cyan-200 text-xs font-semibold mr-2 px-2.5 py-0.5 rounded">
                             {row.method}
