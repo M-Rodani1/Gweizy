@@ -154,4 +154,4 @@ const ShareResults: React.FC<ShareResultsProps> = ({ savings, savingsPercent, pe
   );
 };
 
-export default ShareResults;
+export default React.memo(ShareResults);
