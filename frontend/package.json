@@ -30,6 +30,8 @@
     "docs:api": "node scripts/generateApiDocs.js",
     "docs:components": "node scripts/generateComponentDocs.js",
     "docs:tests": "node scripts/generateTestDocs.js",
+    "release:prepare": "node scripts/prepareRelease.js",
+    "changelog": "node scripts/generateChangelog.js",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:headed": "playwright test --headed",
