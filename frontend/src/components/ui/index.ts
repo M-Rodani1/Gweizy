@@ -16,6 +16,7 @@ export { Chip } from './Chip';
 export { SectionHeader } from './SectionHeader';
 export { default as FormField } from './FormField';
 export { default as Modal } from './Modal';
+export { default as Combobox } from './Combobox';
 export { default as CollapsibleSection } from './CollapsibleSection';
 export { default as ThemeToggle } from './ThemeToggle';
 
