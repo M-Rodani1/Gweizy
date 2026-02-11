@@ -7,10 +7,22 @@ import sri from 'vite-plugin-sri';
 export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, '.', '');
     const isAnalyze = process.env.ANALYZE === 'true';
+    const apiTarget = (env.VITE_API_URL || 'https://basegasfeesml-production.up.railway.app')
+      .replace(/\/api\/?$/, '');
     return {
       server: {
         port: 3000,
         host: '0.0.0.0',
+        hmr: {
+          overlay: true
+        },
+        proxy: {
+          '/api': {
+            target: apiTarget,
+            changeOrigin: true,
+            secure: true
+          }
+        }
       },
       plugins: [
         react({
@@ -58,6 +70,7 @@ export default defineConfig(({ mode }) => {
         },
       },
       build: {
+        reportCompressedSize: false,
         rollupOptions: {
           output: {
             // Code splitting strategy that prevents React initialization errors:
