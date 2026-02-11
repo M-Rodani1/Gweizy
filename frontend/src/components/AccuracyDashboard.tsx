@@ -43,11 +43,15 @@ const AccuracyDashboard: React.FC<AccuracyDashboardProps> = ({ selectedChain = '
     try {
       setLoading(true);
 
-      // Fetch metrics for all horizons
-      const metricsRes = await fetch(
-        getApiUrl(`${API_CONFIG.ENDPOINTS.ANALYTICS}/performance?days=90`)
-      );
-      const metricsData = await metricsRes.json();
+      const [metricsRes, trendsRes] = await Promise.all([
+        fetch(getApiUrl(`${API_CONFIG.ENDPOINTS.ANALYTICS}/performance?days=90`)),
+        fetch(getApiUrl(`${API_CONFIG.ENDPOINTS.ANALYTICS}/trends?horizon=${selectedHorizon}&days=90`))
+      ]);
+
+      const [metricsData, trendsData] = await Promise.all([
+        metricsRes.json(),
+        trendsRes.json()
+      ]);
 
       if (metricsData.metrics) {
         // Transform metrics data
@@ -66,12 +70,6 @@ const AccuracyDashboard: React.FC<AccuracyDashboardProps> = ({ selectedChain = '
         });
         setMetrics(transformedMetrics);
       }
-
-      // Fetch trends
-      const trendsRes = await fetch(
-        getApiUrl(`${API_CONFIG.ENDPOINTS.ANALYTICS}/trends?horizon=${selectedHorizon}&days=90`)
-      );
-      const trendsData = await trendsRes.json();
 
       if (trendsData.trends) {
         setTrends({ [selectedHorizon]: trendsData.trends });
