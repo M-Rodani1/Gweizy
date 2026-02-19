@@ -106,9 +106,24 @@ const ModelMetricsPanel: React.FC<ModelMetricsPanelProps> = ({
   }, [selectedHorizon, trendPeriod]);
 
   useEffect(() => {
-    fetchData();
-    const interval = setInterval(fetchData, REFRESH_INTERVALS.API_HEALTH);
-    return () => clearInterval(interval);
+    void fetchData();
+    const refreshIfVisible = () => {
+      if (typeof document === 'undefined' || document.visibilityState === 'visible') {
+        void fetchData();
+      }
+    };
+    const interval = setInterval(refreshIfVisible, REFRESH_INTERVALS.API_HEALTH);
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        void fetchData();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [fetchData]);
 
   useEffect(() => {
