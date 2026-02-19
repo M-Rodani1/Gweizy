@@ -4,9 +4,10 @@
  */
 import React, { useState, useEffect } from 'react';
 import { useChain } from '../contexts/ChainContext';
-import { getApiUrl } from '../config/api';
+import { API_CONFIG, getApiUrl } from '../config/api';
 import { Clock, TrendingUp, Target, DollarSign } from 'lucide-react';
 import LoadingSpinner from './LoadingSpinner';
+import { withTimeout } from '../utils/withTimeout';
 
 interface PersonalizedRecommendationsProps {
   walletAddress: string | null;
@@ -30,9 +31,16 @@ const PersonalizedRecommendations: React.FC<PersonalizedRecommendationsProps> = 
         setLoading(true);
         setError(null);
 
-        const response = await fetch(
-          getApiUrl(`/personalization/recommendations/${walletAddress}`, { chain_id: selectedChainId })
+        const response = await withTimeout(
+          fetch(
+            getApiUrl(`/personalization/recommendations/${walletAddress}`, { chain_id: selectedChainId })
+          ),
+          API_CONFIG.TIMEOUT,
+          'Request timed out: personalized recommendations'
         );
+        if (!response.ok) {
+          throw new Error(`Failed to load recommendations: ${response.status}`);
+        }
         const data = await response.json();
 
         if (data.success) {
