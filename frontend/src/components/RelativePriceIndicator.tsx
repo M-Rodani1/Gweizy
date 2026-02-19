@@ -1,5 +1,6 @@
 import React, { useEffect, useState, memo } from 'react';
 import { API_CONFIG, getApiUrl } from '../config/api';
+import { REFRESH_INTERVALS } from '../constants';
 
 interface PriceLevel {
   level: string;
@@ -80,11 +81,26 @@ const RelativePriceIndicator: React.FC<RelativePriceIndicatorProps> = ({
       }
     };
 
-    fetchAverages();
+    void fetchAverages();
 
     // Refresh every 5 minutes
-    const interval = setInterval(fetchAverages, 5 * 60 * 1000);
-    return () => clearInterval(interval);
+    const refreshIfVisible = () => {
+      if (typeof document === 'undefined' || document.visibilityState === 'visible') {
+        void fetchAverages();
+      }
+    };
+    const interval = setInterval(refreshIfVisible, REFRESH_INTERVALS.HISTORICAL);
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        void fetchAverages();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, []);
 
   const getPriceLevel = (current: number, avg: number): PriceLevel => {
