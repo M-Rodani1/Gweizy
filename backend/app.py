@@ -106,6 +106,21 @@ if sentry_dsn:
 def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
+
+    cors_allow_methods = 'GET, POST, OPTIONS, PUT, DELETE, PATCH'
+    cors_default_allow_headers = 'Content-Type, Authorization, Cache-Control, Pragma, X-Requested-With, X-Request-ID'
+    cors_expose_headers = 'X-Request-ID, X-Response-Time'
+
+    def apply_cors_headers(response, req):
+        requested_headers = req.headers.get('Access-Control-Request-Headers')
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        response.headers['Access-Control-Allow-Methods'] = cors_allow_methods
+        response.headers['Access-Control-Allow-Headers'] = requested_headers or cors_default_allow_headers
+        response.headers['Access-Control-Max-Age'] = '3600'
+        response.headers['Access-Control-Allow-Credentials'] = 'false'
+        response.headers['Access-Control-Expose-Headers'] = cors_expose_headers
+        response.headers['Vary'] = 'Origin, Access-Control-Request-Method, Access-Control-Request-Headers'
+        return response
     
     # CORS configuration - Allow all origins for all routes
     # Explicitly allow the frontend domain and all origins
@@ -170,12 +185,7 @@ def create_app():
         """Handle CORS preflight requests"""
         from flask import request
         if request.method == "OPTIONS":
-            response = jsonify({})
-            response.headers['Access-Control-Allow-Origin'] = '*'
-            response.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS, PUT, DELETE, PATCH'
-            response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, Cache-Control, Pragma, X-Requested-With'
-            response.headers['Access-Control-Max-Age'] = '3600'
-            return response
+            return apply_cors_headers(jsonify({}), request)
 
     # Add HTTP caching and CORS headers
     @app.after_request
@@ -184,14 +194,8 @@ def create_app():
         from flask import request
 
         # Always add CORS headers (belt and suspenders with flask-cors)
-        # CRITICAL: These must be on ALL responses, including errors
-        response.headers['Access-Control-Allow-Origin'] = '*'
-        response.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS, PUT, DELETE, PATCH'
-        response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, Cache-Control, Pragma, X-Requested-With'
-        response.headers['Access-Control-Max-Age'] = '3600'
-        response.headers['Access-Control-Allow-Credentials'] = 'false'
-        response.headers['Access-Control-Expose-Headers'] = 'X-Request-ID, X-Response-Time'
-        response.headers['Access-Control-Expose-Headers'] = 'X-Request-ID, X-Response-Time'
+        # CRITICAL: These must be on ALL app-generated responses, including errors
+        response = apply_cors_headers(response, request)
 
         # Only cache GET requests
         if request.method == 'GET':
