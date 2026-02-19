@@ -85,12 +85,26 @@ export function useEthPrice(refreshInterval = 60000): UseEthPriceReturn {
 
   useEffect(() => {
     // Initial fetch
-    fetchEthPrice();
+    void fetchEthPrice();
 
     // Set up interval for periodic updates
-    const interval = setInterval(fetchEthPrice, refreshInterval);
+    const refreshIfVisible = () => {
+      if (typeof document === 'undefined' || document.visibilityState === 'visible') {
+        void fetchEthPrice();
+      }
+    };
+    const interval = setInterval(refreshIfVisible, refreshInterval);
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        void fetchEthPrice();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [fetchEthPrice, refreshInterval]);
 
   return {
