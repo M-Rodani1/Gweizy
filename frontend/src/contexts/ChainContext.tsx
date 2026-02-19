@@ -175,18 +175,20 @@ export const ChainProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     setIsLoading(true);
 
     // Set loading state for all chains
-    const loadingState: Record<number, MultiChainGas> = {};
-    enabledChains.forEach(chain => {
-      loadingState[chain.id] = {
-        chainId: chain.id,
-        gasPrice: multiChainGas[chain.id]?.gasPrice || 0,
-        timestamp: Date.now(),
-        loading: true,
-        error: null,
-        source: multiChainGas[chain.id]?.source
-      };
+    setMultiChainGas(previousState => {
+      const loadingState: Record<number, MultiChainGas> = {};
+      enabledChains.forEach(chain => {
+        loadingState[chain.id] = {
+          chainId: chain.id,
+          gasPrice: previousState[chain.id]?.gasPrice || 0,
+          timestamp: Date.now(),
+          loading: true,
+          error: null,
+          source: previousState[chain.id]?.source
+        };
+      });
+      return loadingState;
     });
-    setMultiChainGas(loadingState);
 
     // Fetch all chains in parallel
     const results = await Promise.all(
@@ -200,7 +202,7 @@ export const ChainProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     });
     setMultiChainGas(newState);
     setIsLoading(false);
-  }, [enabledChains, fetchChainGas, multiChainGas]);
+  }, [enabledChains, fetchChainGas]);
 
   // Calculate best chain for transaction
   const bestChainForTx = React.useMemo(() => {
@@ -232,12 +234,27 @@ export const ChainProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   // Initial fetch
   useEffect(() => {
-    refreshMultiChainGas();
+    void refreshMultiChainGas();
 
-    // Refresh every 30 seconds
-    const interval = setInterval(refreshMultiChainGas, 30000);
-    return () => clearInterval(interval);
-  }, []);
+    const refreshIfVisible = () => {
+      if (typeof document === 'undefined' || document.visibilityState === 'visible') {
+        void refreshMultiChainGas();
+      }
+    };
+
+    const interval = setInterval(refreshIfVisible, 30000);
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        void refreshMultiChainGas();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [refreshMultiChainGas]);
 
   const value: ChainContextType = {
     selectedChainId,
