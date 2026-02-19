@@ -1,6 +1,7 @@
 import React, { useState, useEffect, memo } from 'react';
 import { Calendar, Clock, TrendingDown, TrendingUp, Loader2 } from 'lucide-react';
 import { API_CONFIG, getApiUrl } from '../config/api';
+import { withTimeout } from '../utils/withTimeout';
 
 interface HourlyPattern {
   hour: number;
@@ -44,7 +45,11 @@ const GasPatternHeatmap: React.FC = () => {
   const fetchPatternData = async () => {
     try {
       setLoading(true);
-      const response = await fetch(getApiUrl(API_CONFIG.ENDPOINTS.GAS_PATTERNS));
+      const response = await withTimeout(
+        fetch(getApiUrl(API_CONFIG.ENDPOINTS.GAS_PATTERNS)),
+        API_CONFIG.TIMEOUT,
+        'Request timed out: gas pattern heatmap'
+      );
 
       if (!response.ok) {
         // Generate mock data if API not available
