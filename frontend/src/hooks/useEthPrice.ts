@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { API_CONFIG, getApiUrl } from '../config/api';
 
 interface UseEthPriceReturn {
   ethPrice: number;
@@ -9,8 +10,8 @@ interface UseEthPriceReturn {
   refetch: () => Promise<void>;
 }
 
-// ETH price endpoint - proxied through backend to avoid CORS
-const ETH_PRICE_API = 'https://basegasfeesml-production.up.railway.app/api/eth-price';
+// ETH price endpoint - routed through configured API base
+const ETH_PRICE_API = getApiUrl(API_CONFIG.ENDPOINTS.ETH_PRICE);
 
 // Cache to prevent excessive API calls
 let priceCache: {
