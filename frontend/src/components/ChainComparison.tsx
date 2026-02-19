@@ -7,6 +7,7 @@ import { fetchPredictions } from '../api/gasApi';
 import { SUPPORTED_CHAINS } from '../config/chains';
 import { useChain } from '../contexts/ChainContext';
 import LoadingSpinner from './LoadingSpinner';
+import { REFRESH_INTERVALS } from '../constants';
 
 interface ChainPrediction {
   chainId: number;
@@ -78,11 +79,26 @@ const ChainComparison: React.FC = () => {
       setLoading(false);
     };
 
-    loadAllChainPredictions();
-    
+    void loadAllChainPredictions();
+
     // Refresh every 60 seconds
-    const interval = setInterval(loadAllChainPredictions, 60000);
-    return () => clearInterval(interval);
+    const refreshIfVisible = () => {
+      if (typeof document === 'undefined' || document.visibilityState === 'visible') {
+        void loadAllChainPredictions();
+      }
+    };
+    const interval = setInterval(refreshIfVisible, REFRESH_INTERVALS.PREDICTIONS);
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        void loadAllChainPredictions();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [multiChainGas]);
 
   if (loading) {
