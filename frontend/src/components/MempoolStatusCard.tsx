@@ -56,14 +56,16 @@ const MempoolStatusCard: React.FC = () => {
 
       // Use AbortController for timeout
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
-
-      const response = await fetch(
-        getApiUrl(API_CONFIG.ENDPOINTS.MEMPOOL_STATUS),
-        { signal: controller.signal }
-      );
-
-      clearTimeout(timeoutId);
+      const timeoutId = setTimeout(() => controller.abort(), API_CONFIG.TIMEOUT);
+      let response: Response;
+      try {
+        response = await fetch(
+          getApiUrl(API_CONFIG.ENDPOINTS.MEMPOOL_STATUS),
+          { signal: controller.signal }
+        );
+      } finally {
+        clearTimeout(timeoutId);
+      }
 
       if (!response.ok) {
         throw new Error('Failed to fetch mempool status');
