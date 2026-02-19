@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { API_CONFIG, getApiUrl } from '../config/api';
+import { withTimeout } from '../utils/withTimeout';
 
 interface UseEthPriceReturn {
   ethPrice: number;
@@ -42,11 +43,15 @@ export function useEthPrice(refreshInterval = 60000): UseEthPriceReturn {
     try {
       setError(null);
 
-      const response = await fetch(ETH_PRICE_API, {
-        headers: {
-          'Accept': 'application/json',
-        }
-      });
+      const response = await withTimeout(
+        fetch(ETH_PRICE_API, {
+          headers: {
+            'Accept': 'application/json',
+          }
+        }),
+        API_CONFIG.TIMEOUT,
+        'Request timed out: ETH price'
+      );
 
       if (!response.ok) {
         throw new Error('Failed to fetch ETH price');
@@ -125,7 +130,14 @@ export async function getEthPrice(): Promise<number> {
   }
 
   try {
-    const response = await fetch(ETH_PRICE_API);
+    const response = await withTimeout(
+      fetch(ETH_PRICE_API),
+      API_CONFIG.TIMEOUT,
+      'Request timed out: ETH price'
+    );
+    if (!response.ok) {
+      throw new Error(`ETH price request failed with status ${response.status}`);
+    }
     const data = await response.json();
 
     if (data.ethereum) {
