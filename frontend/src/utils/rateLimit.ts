@@ -7,6 +7,9 @@
  * @module utils/rateLimit
  */
 
+import { API_CONFIG } from '../config/api';
+import { withTimeout } from './withTimeout';
+
 /**
  * Rate limit state for an endpoint.
  */
@@ -235,7 +238,11 @@ export function createRateLimitedFetch(rateLimiter: RateLimiter) {
 
     rateLimiter.recordRequest();
 
-    const response = await fetch(input, init);
+    const response = await withTimeout(
+      fetch(input, init),
+      API_CONFIG.TIMEOUT,
+      'Request timed out: rate-limited fetch'
+    );
 
     // Update state from response headers
     rateLimiter.updateFromHeaders(response.headers);
