@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Bell, Plus, Trash2, Power, X, BellOff, BellRing, AlertCircle } from 'lucide-react';
 import { API_CONFIG, getApiUrl } from '../config/api';
 import { trackEvent } from '../utils/analytics';
+import { withTimeout } from '../utils/withTimeout';
 import {
   isNotificationSupported,
   getNotificationPermission,
@@ -113,7 +114,11 @@ const GasAlertSettings: React.FC<GasAlertSettingsProps> = ({ currentGas, walletA
 
   const fetchAlerts = async () => {
     try {
-      const response = await fetch(getApiUrl(`${API_CONFIG.ENDPOINTS.ALERTS}/${userId}`));
+      const response = await withTimeout(
+        fetch(getApiUrl(`${API_CONFIG.ENDPOINTS.ALERTS}/${userId}`)),
+        API_CONFIG.TIMEOUT,
+        'Request timed out: fetch alerts'
+      );
       const data = await response.json();
 
       if (data.success) {
@@ -149,11 +154,15 @@ const GasAlertSettings: React.FC<GasAlertSettingsProps> = ({ currentGas, walletA
         alertBody.confidence_threshold = confidenceThreshold;
       }
 
-      const response = await fetch(getApiUrl(API_CONFIG.ENDPOINTS.ALERTS), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(alertBody)
-      });
+      const response = await withTimeout(
+        fetch(getApiUrl(API_CONFIG.ENDPOINTS.ALERTS), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(alertBody)
+        }),
+        API_CONFIG.TIMEOUT,
+        'Request timed out: create alert'
+      );
 
       const data = await response.json();
 
@@ -176,11 +185,15 @@ const GasAlertSettings: React.FC<GasAlertSettingsProps> = ({ currentGas, walletA
 
   const toggleAlert = async (alertId: number, currentStatus: boolean) => {
     try {
-      const response = await fetch(getApiUrl(`${API_CONFIG.ENDPOINTS.ALERTS}/${alertId}`), {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ is_active: !currentStatus })
-      });
+      const response = await withTimeout(
+        fetch(getApiUrl(`${API_CONFIG.ENDPOINTS.ALERTS}/${alertId}`), {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ is_active: !currentStatus })
+        }),
+        API_CONFIG.TIMEOUT,
+        'Request timed out: toggle alert'
+      );
 
       const data = await response.json();
 
@@ -199,9 +212,13 @@ const GasAlertSettings: React.FC<GasAlertSettingsProps> = ({ currentGas, walletA
     if (!confirm('Are you sure you want to delete this alert?')) return;
 
     try {
-      const response = await fetch(getApiUrl(`${API_CONFIG.ENDPOINTS.ALERTS}/${alertId}`, { user_id: userId }), {
-        method: 'DELETE'
-      });
+      const response = await withTimeout(
+        fetch(getApiUrl(`${API_CONFIG.ENDPOINTS.ALERTS}/${alertId}`, { user_id: userId }), {
+          method: 'DELETE'
+        }),
+        API_CONFIG.TIMEOUT,
+        'Request timed out: delete alert'
+      );
 
       const data = await response.json();
 
