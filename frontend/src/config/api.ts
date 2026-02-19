@@ -5,6 +5,11 @@
 
 const DEFAULT_API_BASE_URL = '/api';
 const DEFAULT_WS_ORIGIN = 'https://basegasfeesml-production.up.railway.app';
+const SAME_ORIGIN_API_HOSTS = new Set([
+  'basegasfeesml.pages.dev',
+  'basegasoptimizer.com',
+  'www.basegasoptimizer.com'
+]);
 
 function normalizeApiBaseUrl(url: string): string {
   const trimmed = url.replace(/\/+$/, '');
@@ -15,8 +20,36 @@ function normalizeOrigin(url: string): string {
   return url.replace(/\/+$/, '').replace(/\/api$/, '');
 }
 
+function resolveApiBaseUrl(): string {
+  const configuredApiUrl = import.meta.env.VITE_API_URL?.trim();
+  const normalizedApiUrl = normalizeApiBaseUrl(configuredApiUrl || DEFAULT_API_BASE_URL);
+
+  if (typeof window === 'undefined') {
+    return normalizedApiUrl;
+  }
+
+  if (!/^https?:\/\//i.test(normalizedApiUrl)) {
+    return normalizedApiUrl;
+  }
+
+  const currentHost = window.location.hostname.toLowerCase();
+  const isSameOriginRequiredHost =
+    currentHost.endsWith('.pages.dev') || SAME_ORIGIN_API_HOSTS.has(currentHost);
+
+  if (!isSameOriginRequiredHost) {
+    return normalizedApiUrl;
+  }
+
+  const configuredOrigin = normalizeOrigin(normalizedApiUrl);
+  if (configuredOrigin !== window.location.origin) {
+    return DEFAULT_API_BASE_URL;
+  }
+
+  return normalizedApiUrl;
+}
+
 export const API_CONFIG = {
-  BASE_URL: normalizeApiBaseUrl(import.meta.env.VITE_API_URL || DEFAULT_API_BASE_URL),
+  BASE_URL: resolveApiBaseUrl(),
   ENDPOINTS: {
     HEALTH: '/health',
     CURRENT: '/current',
