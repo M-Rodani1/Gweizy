@@ -4,10 +4,15 @@
  */
 
 const DEFAULT_API_BASE_URL = '/api';
+const DEFAULT_WS_ORIGIN = 'https://basegasfeesml-production.up.railway.app';
 
 function normalizeApiBaseUrl(url: string): string {
   const trimmed = url.replace(/\/+$/, '');
   return trimmed.endsWith('/api') ? trimmed : `${trimmed}/api`;
+}
+
+function normalizeOrigin(url: string): string {
+  return url.replace(/\/+$/, '').replace(/\/api$/, '');
 }
 
 export const API_CONFIG = {
@@ -84,6 +89,20 @@ export function getApiUrl(endpoint: string, params?: Record<string, string | num
 
 export function getApiOrigin(): string {
   return API_CONFIG.BASE_URL.replace(/\/api$/, '');
+}
+
+export function getWebSocketOrigin(): string {
+  const configuredWs = import.meta.env.VITE_WS_URL;
+  if (configuredWs && configuredWs.trim().length > 0) {
+    return normalizeOrigin(configuredWs.trim());
+  }
+
+  const apiOrigin = getApiOrigin();
+  if (!apiOrigin || apiOrigin.startsWith('/')) {
+    return DEFAULT_WS_ORIGIN;
+  }
+
+  return normalizeOrigin(apiOrigin);
 }
 
 /**

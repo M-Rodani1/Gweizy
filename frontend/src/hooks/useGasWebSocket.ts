@@ -10,7 +10,7 @@
 
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
-import { getApiOrigin } from '../config/api';
+import { getWebSocketOrigin } from '../config/api';
 import { acquireSocket, releaseSocket } from '../utils/websocketPool';
 
 // ========================================
@@ -175,12 +175,12 @@ export function useGasWebSocket(
       return;
     }
 
-    const apiOrigin = getApiOrigin();
-    const socketKey = `gas-socket::${apiOrigin}`;
+    const websocketOrigin = getWebSocketOrigin();
+    const socketKey = `gas-socket::${websocketOrigin}`;
 
     // Create Socket.IO connection
     const newSocket = acquireSocket(socketKey, () =>
-      io(apiOrigin, {
+      io(websocketOrigin, {
         transports: ['websocket', 'polling'],
         reconnection: true,
         reconnectionAttempts: MAX_RECONNECT_ATTEMPTS,

@@ -32,7 +32,7 @@ vi.mock('socket.io-client', () => ({
 
 // Mock config/api
 vi.mock('../../config/api', () => ({
-  getApiOrigin: vi.fn(() => 'http://localhost:5000'),
+  getWebSocketOrigin: vi.fn(() => 'http://localhost:5000'),
 }));
 
 describe('useGasWebSocket', () => {
