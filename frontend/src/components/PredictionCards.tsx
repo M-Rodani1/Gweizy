@@ -6,6 +6,7 @@ import ConfidenceBar from './ui/ConfidenceBar';
 import { HybridPrediction } from '../../types';
 import { getColorClasses, getTextColor, getClassificationState } from '../utils/predictionUtils';
 import { withTimeout } from '../utils/withTimeout';
+import { REFRESH_INTERVALS } from '../constants';
 
 interface PredictionCardsProps {
   hybridData?: HybridPrediction;
@@ -196,7 +197,7 @@ const PredictionCards: React.FC<PredictionCardsProps> = ({ hybridData }) => {
         void loadData();
       }
     };
-    const interval = setInterval(refreshIfVisible, 30000); // Refresh every 30 seconds
+    const interval = setInterval(refreshIfVisible, REFRESH_INTERVALS.GAS_DATA);
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
         void loadData();
