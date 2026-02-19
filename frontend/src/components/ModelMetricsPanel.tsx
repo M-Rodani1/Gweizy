@@ -48,26 +48,42 @@ const ModelMetricsPanel: React.FC<ModelMetricsPanelProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   const [isExpanded, setIsExpanded] = useState(!compact);
+  const REQUEST_TIMEOUT_MS = 12000;
+
+  const fetchWithTimeout = useCallback(async (url: string): Promise<Response> => {
+    return Promise.race([
+      fetch(url),
+      new Promise<Response>((_, reject) => {
+        setTimeout(() => reject(new Error(`Request timed out: ${url}`)), REQUEST_TIMEOUT_MS);
+      })
+    ]);
+  }, []);
 
   // Fetch all data
   const fetchData = useCallback(async () => {
     try {
       setError(null);
-      const [metricsRes, driftRes] = await Promise.all([
-        fetch(getApiUrl(API_CONFIG.ENDPOINTS.ACCURACY_METRICS)),
-        fetch(getApiUrl(API_CONFIG.ENDPOINTS.ACCURACY_DRIFT))
+      const [metricsReq, driftReq] = await Promise.allSettled([
+        fetchWithTimeout(getApiUrl(API_CONFIG.ENDPOINTS.ACCURACY_METRICS)),
+        fetchWithTimeout(getApiUrl(API_CONFIG.ENDPOINTS.ACCURACY_DRIFT))
       ]);
+      const metricsRes = metricsReq.status === 'fulfilled' ? metricsReq.value : null;
+      const driftRes = driftReq.status === 'fulfilled' ? driftReq.value : null;
 
-      if (metricsRes.ok) {
+      if (metricsRes?.ok) {
         const data = await metricsRes.json();
         if (data.success && data.metrics) {
           setMetricsData(data);
         }
       }
 
-      if (driftRes.ok) {
+      if (driftRes?.ok) {
         const data = await driftRes.json();
         setDriftData(data);
+      }
+
+      if (!metricsRes && !driftRes && !metricsData && !driftData) {
+        throw new Error('Failed to load model metrics');
       }
 
       setLastUpdated(new Date().toLocaleTimeString('en-US', {
@@ -79,7 +95,7 @@ const ModelMetricsPanel: React.FC<ModelMetricsPanelProps> = ({
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [driftData, fetchWithTimeout, metricsData]);
 
   // Fetch trends for selected horizon
   const fetchTrends = useCallback(async () => {
