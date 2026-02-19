@@ -1,5 +1,6 @@
 import { API_CONFIG, getApiUrl } from '../config/api';
 import { requestDeduplicator } from '../utils/requestDeduplication';
+import { withTimeout } from '../utils/withTimeout';
 
 import {
   CurrentGasData,
@@ -163,15 +164,15 @@ const fetchJsonWithRetry = async <T,>(
     let lastError: unknown;
 
     for (let attempt = 0; attempt < API_CONFIG.RETRY_ATTEMPTS; attempt += 1) {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), API_CONFIG.TIMEOUT);
       try {
-        const response = await fetch(url, {
-          ...options,
-          headers: sanitizeHeadersForGet(options.method, options.headers),
-          signal: controller.signal
-        });
-        clearTimeout(timeoutId);
+        const response = await withTimeout(
+          fetch(url, {
+            ...options,
+            headers: sanitizeHeadersForGet(options.method, options.headers)
+          }),
+          API_CONFIG.TIMEOUT,
+          `Request timed out: ${url}`
+        );
 
         if (!response.ok) {
           const apiError = new GasAPIError(`${errorMessage}: ${response.statusText}`, response.status);
@@ -190,7 +191,6 @@ const fetchJsonWithRetry = async <T,>(
         }
         return data as T;
       } catch (err) {
-        clearTimeout(timeoutId);
         lastError = err;
         if (attempt < API_CONFIG.RETRY_ATTEMPTS - 1) {
           await sleep(API_CONFIG.RETRY_DELAY * (attempt + 1));
@@ -226,7 +226,8 @@ const fetchJsonWithRetry = async <T,>(
     }
     const isAbortError =
       (typeof DOMException !== 'undefined' && lastError instanceof DOMException && lastError.name === 'AbortError') ||
-      (typeof lastError === 'object' && lastError !== null && 'name' in lastError && (lastError as { name?: string }).name === 'AbortError');
+      (typeof lastError === 'object' && lastError !== null && 'name' in lastError && (lastError as { name?: string }).name === 'AbortError') ||
+      (lastError instanceof Error && lastError.message.includes('timed out'));
     if (isAbortError) {
       logApiErrorThrottled(
         `api:${url}:${errorMessage}:timeout`,
@@ -249,14 +250,14 @@ const fetchJsonWithRetry = async <T,>(
  * Check if API is healthy
  */
 export async function checkHealth(): Promise<boolean> {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), API_CONFIG.TIMEOUT);
   try {
-    const response = await fetch(getApiUrl(API_CONFIG.ENDPOINTS.HEALTH), {
-      method: 'GET',
-      signal: controller.signal
-    });
-    clearTimeout(timeoutId);
+    const response = await withTimeout(
+      fetch(getApiUrl(API_CONFIG.ENDPOINTS.HEALTH), {
+        method: 'GET'
+      }),
+      API_CONFIG.TIMEOUT,
+      'Request timed out: health check'
+    );
     if (!response.ok) {
       logApiErrorThrottled(
         `health:http:${response.status}`,
@@ -268,7 +269,6 @@ export async function checkHealth(): Promise<boolean> {
     }
     return true;
   } catch (error) {
-    clearTimeout(timeoutId);
     logApiErrorThrottled('health:network', 'Health check failed:', error);
     logApiErrorThrottled('health:base-url', 'API_BASE_URL:', API_CONFIG.BASE_URL);
     return false;
