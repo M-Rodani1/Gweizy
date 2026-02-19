@@ -37,9 +37,24 @@ const SavingsLeaderboard: React.FC<SavingsLeaderboardProps> = ({ walletAddress }
       }
     };
 
-    loadLeaderboard();
-    const interval = setInterval(loadLeaderboard, 60000); // Refresh every minute
-    return () => clearInterval(interval);
+    void loadLeaderboard();
+    const refreshIfVisible = () => {
+      if (typeof document === 'undefined' || document.visibilityState === 'visible') {
+        void loadLeaderboard();
+      }
+    };
+    const interval = setInterval(refreshIfVisible, 60000); // Refresh every minute
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        void loadLeaderboard();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [walletAddress]);
 
   const formatAddress = (address: string) => {
