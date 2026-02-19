@@ -32,9 +32,12 @@ const AgentRecommendation: React.FC<AgentRecommendationProps> = ({ currentGas: _
   const [urgency, setUrgency] = useState(0.5);
 
   const fetchRecommendation = useCallback(async () => {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), API_CONFIG.TIMEOUT);
     try {
       const response = await fetch(
-        getApiUrl(API_CONFIG.ENDPOINTS.AGENT_RECOMMEND, { urgency })
+        getApiUrl(API_CONFIG.ENDPOINTS.AGENT_RECOMMEND, { urgency }),
+        { signal: controller.signal }
       );
       const data = await response.json();
 
@@ -45,9 +48,14 @@ const AgentRecommendation: React.FC<AgentRecommendationProps> = ({ currentGas: _
         setError(data.error || 'Failed to get recommendation');
       }
     } catch (err) {
-      setError('Unable to connect to agent');
+      if (err instanceof Error && err.name === 'AbortError') {
+        setError('Agent request timed out');
+      } else {
+        setError('Unable to connect to agent');
+      }
       console.error('Agent fetch error:', err);
     } finally {
+      clearTimeout(timeoutId);
       setLoading(false);
     }
   }, [urgency]);
