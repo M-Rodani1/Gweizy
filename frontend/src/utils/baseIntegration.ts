@@ -3,6 +3,8 @@
  * Required for Coinbase x Queen Mary hackathon
  */
 
+import { withTimeout } from './withTimeout';
+
 // Base network configuration
 export const BASE_MAINNET = {
   chainId: 8453,
@@ -29,6 +31,8 @@ export const BASE_TESTNET = {
   rpcUrls: ['https://sepolia.base.org'],
   blockExplorerUrls: ['https://sepolia.basescan.org'],
 };
+
+const BASE_RPC_TIMEOUT_MS = 10000;
 
 // Window.ethereum type is defined in wallet.ts
 
@@ -84,18 +88,25 @@ export async function connectToBase() {
  */
 export async function getBaseGasPrice() {
   try {
-    const response = await fetch('https://mainnet.base.org', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        jsonrpc: '2.0',
-        method: 'eth_gasPrice',
-        params: [],
-        id: 1,
+    const response = await withTimeout(
+      fetch('https://mainnet.base.org', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          method: 'eth_gasPrice',
+          params: [],
+          id: 1,
+        }),
       }),
-    });
+      BASE_RPC_TIMEOUT_MS,
+      'Request timed out: Base eth_gasPrice'
+    );
+    if (!response.ok) {
+      throw new Error(`Base gas price request failed with status ${response.status}`);
+    }
 
     const data = await response.json();
     const gasPriceWei = BigInt(data.result);
@@ -117,27 +128,41 @@ export async function getBaseGasPrice() {
 export async function getBaseNetworkInfo() {
   try {
     const [blockResponse, chainResponse] = await Promise.all([
-      fetch('https://mainnet.base.org', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          jsonrpc: '2.0',
-          method: 'eth_blockNumber',
-          params: [],
-          id: 1,
+      withTimeout(
+        fetch('https://mainnet.base.org', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            jsonrpc: '2.0',
+            method: 'eth_blockNumber',
+            params: [],
+            id: 1,
+          }),
         }),
-      }),
-      fetch('https://mainnet.base.org', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          jsonrpc: '2.0',
-          method: 'eth_chainId',
-          params: [],
-          id: 1,
+        BASE_RPC_TIMEOUT_MS,
+        'Request timed out: Base eth_blockNumber'
+      ),
+      withTimeout(
+        fetch('https://mainnet.base.org', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            jsonrpc: '2.0',
+            method: 'eth_chainId',
+            params: [],
+            id: 1,
+          }),
         }),
-      }),
+        BASE_RPC_TIMEOUT_MS,
+        'Request timed out: Base eth_chainId'
+      ),
     ]);
+    if (!blockResponse.ok) {
+      throw new Error(`Base block number request failed with status ${blockResponse.status}`);
+    }
+    if (!chainResponse.ok) {
+      throw new Error(`Base chain id request failed with status ${chainResponse.status}`);
+    }
 
     const [blockData, chainData] = await Promise.all([
       blockResponse.json(),
@@ -183,16 +208,23 @@ export async function estimateTransactionCost(
 ) {
   try {
     // Estimate gas
-    const gasResponse = await fetch('https://mainnet.base.org', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        jsonrpc: '2.0',
-        method: 'eth_estimateGas',
-        params: [{ to, data, value }],
-        id: 1,
+    const gasResponse = await withTimeout(
+      fetch('https://mainnet.base.org', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          method: 'eth_estimateGas',
+          params: [{ to, data, value }],
+          id: 1,
+        }),
       }),
-    });
+      BASE_RPC_TIMEOUT_MS,
+      'Request timed out: Base eth_estimateGas'
+    );
+    if (!gasResponse.ok) {
+      throw new Error(`Base gas estimate request failed with status ${gasResponse.status}`);
+    }
 
     const gasData = await gasResponse.json();
     const gasLimit = BigInt(gasData.result);
@@ -217,4 +249,3 @@ export async function estimateTransactionCost(
     throw error;
   }
 }
-
