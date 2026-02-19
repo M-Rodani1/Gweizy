@@ -42,25 +42,18 @@ jobs:
         fi
         echo "✓ Build output verified"
 
-    - name: Verify API rewrite rule
+    - name: Verify API proxy function
       run: |
-        if [ ! -f "frontend/dist/_redirects" ]; then
-          echo "Error: frontend/dist/_redirects does not exist"
+        if [ ! -f "frontend/functions/api/[[path]].ts" ]; then
+          echo "Error: frontend/functions/api/[[path]].ts does not exist"
           exit 1
         fi
-        if ! grep -q "^/api/\*  https://basegasfeesml-production.up.railway.app/api/:splat  200$" frontend/dist/_redirects; then
-          echo "Error: /api rewrite rule missing or malformed in frontend/dist/_redirects"
-          cat frontend/dist/_redirects
-          exit 1
-        fi
-        echo "✓ API rewrite rule verified"
+        echo "✓ API proxy function verified"
 
-    - name: Ensure no Functions directory exists
+    - name: Prepare dist metadata
       working-directory: ./frontend/dist
       run: |
-        # Remove any functions directories to prevent Cloudflare from trying to deploy Functions
-        rm -rf functions _functions 2>/dev/null || true
-        # Ensure .cloudflareignore is present
+        # Ensure .cloudflareignore is present for static upload metadata
         echo "wrangler.toml" > .cloudflareignore || true
         echo "cloudflare-worker/" >> .cloudflareignore || true
         echo "*.toml" >> .cloudflareignore || true
@@ -70,7 +63,8 @@ jobs:
       with:
         apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        command: pages deploy frontend/dist --project-name=basegasfeesml
+        workingDirectory: frontend
+        command: pages deploy dist --project-name=basegasfeesml
 
     - name: Smoke check /api proxy
       run: |
@@ -85,7 +79,7 @@ jobs:
 
           status="$(curl -sS -L -D "$headers_file" -o "$body_file" -w "%{http_code}" "$URL" || echo "000")"
 
-          if [ "$status" != "404" ] && ! grep -qi "<!doctype html" "$body_file"; then
+          if [ "$status" != "404" ] && ! grep -qi "<!doctype html" "$body_file" && grep -qi "\"status\"" "$body_file"; then
             echo "✓ API proxy smoke check passed (status $status)"
             rm -f "$body_file" "$headers_file"
             exit 0
