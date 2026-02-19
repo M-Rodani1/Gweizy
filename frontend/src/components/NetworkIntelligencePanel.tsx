@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Network, Activity, Zap, TrendingUp, Box, Code, Gauge } from 'lucide-react';
 import { fetchOnchainCongestionHistory, fetchOnchainNetworkState } from '../api/gasApi';
+import { REFRESH_INTERVALS } from '../constants';
 
 interface NetworkStateResponse {
   network_state: {
@@ -48,7 +49,7 @@ const NetworkIntelligencePanel: React.FC = () => {
 
   useEffect(() => {
     fetchNetworkData();
-    const interval = setInterval(fetchNetworkData, 30000); // Refresh every 30 seconds
+    const interval = setInterval(fetchNetworkData, REFRESH_INTERVALS.GAS_DATA); // Refresh every 30 seconds
     return () => clearInterval(interval);
   }, []);
 

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Activity, CloudOff, RefreshCw, ShieldCheck, Brain, AlertTriangle } from 'lucide-react';
 import { checkHealth, fetchAccuracyDrift, fetchAgentStatus, fetchGasPatterns, GasAPIError } from '../api/gasApi';
+import { REFRESH_INTERVALS } from '../constants';
 import type { DriftInfo } from '../types/modelMetrics';
 
 type StatusState = 'checking' | 'online' | 'offline' | 'degraded';
@@ -98,7 +99,7 @@ const ApiStatusPanel: React.FC = () => {
 
   useEffect(() => {
     fetchStatus();
-    const interval = setInterval(fetchStatus, 60000);
+    const interval = setInterval(fetchStatus, REFRESH_INTERVALS.API_HEALTH);
     return () => clearInterval(interval);
   }, []);
 

@@ -20,6 +20,7 @@ import {
   ChevronDown
 } from 'lucide-react';
 import { fetchAccuracyDrift, fetchAccuracyMetrics, fetchValidationTrends } from '../api/gasApi';
+import { REFRESH_INTERVALS } from '../constants';
 import type {
   DriftResponse,
   MetricsResponse,
@@ -108,7 +109,7 @@ const ModelMetricsPanel: React.FC<ModelMetricsPanelProps> = ({
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 60000);
+    const interval = setInterval(fetchData, REFRESH_INTERVALS.API_HEALTH);
     return () => clearInterval(interval);
   }, [fetchData]);
 
