@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { Bot, CheckCircle, Clock, Coins, Zap } from 'lucide-react';
 import { API_CONFIG, getApiUrl } from '../config/api';
+import { REFRESH_INTERVALS } from '../constants';
 
 interface AgentResponse {
   success: boolean;
@@ -52,9 +53,24 @@ const AgentRecommendation: React.FC<AgentRecommendationProps> = ({ currentGas: _
   }, [urgency]);
 
   useEffect(() => {
-    fetchRecommendation();
-    const interval = setInterval(fetchRecommendation, 30000); // Refresh every 30s
-    return () => clearInterval(interval);
+    void fetchRecommendation();
+    const refreshIfVisible = () => {
+      if (typeof document === 'undefined' || document.visibilityState === 'visible') {
+        void fetchRecommendation();
+      }
+    };
+    const interval = setInterval(refreshIfVisible, REFRESH_INTERVALS.GAS_DATA); // Refresh every 30s
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        void fetchRecommendation();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [fetchRecommendation]);
 
   const getActionConfig = (action: string) => {
