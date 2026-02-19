@@ -61,6 +61,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { API_CONFIG, getApiUrl } from '../config/api';
+import { REFRESH_INTERVALS } from '../constants';
 
 // Types
 interface VolatilityData {
@@ -171,9 +172,24 @@ const AdvancedAnalyticsPanel: React.FC = () => {
   };
 
   useEffect(() => {
-    fetchAllData();
-    const interval = setInterval(fetchAllData, 60000);
-    return () => clearInterval(interval);
+    void fetchAllData();
+    const refreshIfVisible = () => {
+      if (typeof document === 'undefined' || document.visibilityState === 'visible') {
+        void fetchAllData();
+      }
+    };
+    const interval = setInterval(refreshIfVisible, REFRESH_INTERVALS.PREDICTIONS);
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        void fetchAllData();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, []);
 
   const getVolatilityColor = (color: string) => {
