@@ -5,6 +5,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { API_CONFIG, getApiUrl } from '../config/api';
 import { REFRESH_INTERVALS } from '../constants';
+import { withTimeout } from '../utils/withTimeout';
 
 export interface AgentRecommendation {
   action: string;
@@ -37,18 +38,17 @@ export const useRecommendation = (urgency: number): UseRecommendationResult => {
   const [countdown, setCountdown] = useState<number | null>(null);
 
   const fetchRecommendation = useCallback(async () => {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), API_CONFIG.TIMEOUT);
     try {
       setLoading(true);
       setLoadingState('analyzing');
       setError(null);
 
-      const response = await fetch(
-        getApiUrl(API_CONFIG.ENDPOINTS.AGENT_RECOMMEND, { urgency }),
-        {
-          signal: controller.signal
-        }
+      const response = await withTimeout(
+        fetch(getApiUrl(API_CONFIG.ENDPOINTS.AGENT_RECOMMEND, { urgency }), {
+          method: 'GET'
+        }),
+        API_CONFIG.TIMEOUT,
+        'Request timed out: recommendation'
       );
 
       if (!response.ok) {
@@ -78,7 +78,11 @@ export const useRecommendation = (urgency: number): UseRecommendationResult => {
       }
     } catch (err) {
       console.error('Failed to fetch recommendation:', err);
-      const isTimeout = err instanceof Error && (err.name === 'TimeoutError' || err.name === 'AbortError');
+      const isTimeout = err instanceof Error && (
+        err.name === 'TimeoutError' ||
+        err.name === 'AbortError' ||
+        err.message.includes('timed out')
+      );
       setLoadingState(isTimeout ? 'timeout' : 'error');
       setError(isTimeout
         ? 'Analysis taking longer than usual...'
@@ -86,7 +90,6 @@ export const useRecommendation = (urgency: number): UseRecommendationResult => {
       );
       setRetryCount((prev) => prev + 1);
     } finally {
-      clearTimeout(timeoutId);
       setLoading(false);
     }
   }, [urgency]);
