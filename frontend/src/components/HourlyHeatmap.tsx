@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, memo } from 'react';
 import { Calendar, Clock, RefreshCw } from 'lucide-react';
 import { API_CONFIG, getApiUrl } from '../config/api';
+import { withTimeout } from '../utils/withTimeout';
 
 interface HeatmapCell {
   day: number;
@@ -35,7 +36,11 @@ const HourlyHeatmap: React.FC = () => {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const response = await fetch(getApiUrl(API_CONFIG.ENDPOINTS.GAS_PATTERNS));
+      const response = await withTimeout(
+        fetch(getApiUrl(API_CONFIG.ENDPOINTS.GAS_PATTERNS)),
+        API_CONFIG.TIMEOUT,
+        'Request timed out: hourly heatmap'
+      );
 
       if (!response.ok) {
         setData(generateMockData());
