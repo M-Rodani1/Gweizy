@@ -23,6 +23,8 @@ class GasAPIError extends Error {
 
 const CACHE_PREFIX = 'gweizy_api_cache_v1:';
 const ERROR_LOG_THROTTLE_MS = 30000;
+const CIRCUIT_BREAKER_FAILURE_THRESHOLD = 3;
+const CIRCUIT_BREAKER_COOLDOWN_MS = 60000;
 const CACHE_TTL_MS = {
   current: 15000,
   predictions: 60000,
@@ -34,6 +36,12 @@ const CACHE_TTL_MS = {
   leaderboard: 2 * 60 * 1000,
   stats: 60 * 1000
 };
+type CircuitBreakerState = {
+  consecutiveFailures: number;
+  openUntil: number;
+};
+
+const circuitBreakerStates = new Map<string, CircuitBreakerState>();
 
 const getCacheKey = (url: string): string => `${CACHE_PREFIX}${url}`;
 const lastErrorLoggedAt = new Map<string, number>();
@@ -75,6 +83,42 @@ const writeCache = (key: string, data: unknown) => {
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
+const getCircuitState = (key: string): CircuitBreakerState =>
+  circuitBreakerStates.get(key) || { consecutiveFailures: 0, openUntil: 0 };
+
+const isCircuitOpen = (key: string): boolean => {
+  const state = getCircuitState(key);
+  if (state.openUntil <= 0) {
+    return false;
+  }
+  if (Date.now() >= state.openUntil) {
+    circuitBreakerStates.delete(key);
+    return false;
+  }
+  return true;
+};
+
+const recordCircuitSuccess = (key: string): void => {
+  circuitBreakerStates.delete(key);
+};
+
+const recordCircuitFailure = (key: string): void => {
+  const state = getCircuitState(key);
+  const nextFailures = state.consecutiveFailures + 1;
+  if (nextFailures >= CIRCUIT_BREAKER_FAILURE_THRESHOLD) {
+    circuitBreakerStates.set(key, {
+      consecutiveFailures: nextFailures,
+      openUntil: Date.now() + CIRCUIT_BREAKER_COOLDOWN_MS
+    });
+    return;
+  }
+
+  circuitBreakerStates.set(key, {
+    consecutiveFailures: nextFailures,
+    openUntil: 0
+  });
+};
+
 const fetchJsonWithRetry = async <T,>(
   url: string,
   options: RequestInit,
@@ -84,6 +128,21 @@ const fetchJsonWithRetry = async <T,>(
   const dedupeKey = `${options.method || 'GET'}:${url}`;
 
   return requestDeduplicator.deduplicate(dedupeKey, async () => {
+    if (isCircuitOpen(dedupeKey)) {
+      if (cacheConfig) {
+        const cached = readCache<T>(cacheConfig.key, cacheConfig.ttlMs);
+        if (cached) {
+          return cached;
+        }
+      }
+      logApiErrorThrottled(
+        `api:${url}:${errorMessage}:circuit-open`,
+        '[GasAPI]',
+        `${errorMessage}: circuit breaker open`
+      );
+      throw new GasAPIError(`${errorMessage}: temporarily unavailable`, 503);
+    }
+
     let lastError: unknown;
 
     for (let attempt = 0; attempt < API_CONFIG.RETRY_ATTEMPTS; attempt += 1) {
@@ -104,6 +163,7 @@ const fetchJsonWithRetry = async <T,>(
         }
 
         const data = await response.json();
+        recordCircuitSuccess(dedupeKey);
         if (cacheConfig) {
           writeCache(cacheConfig.key, data);
         }
@@ -116,6 +176,16 @@ const fetchJsonWithRetry = async <T,>(
           continue;
         }
       }
+    }
+
+    const isClientError =
+      lastError instanceof GasAPIError &&
+      typeof lastError.status === 'number' &&
+      lastError.status >= 400 &&
+      lastError.status < 500;
+
+    if (!isClientError) {
+      recordCircuitFailure(dedupeKey);
     }
 
     if (cacheConfig) {
@@ -446,3 +516,8 @@ export async function fetchGasPatterns(): Promise<Record<string, unknown>> {
 
 // Export error class
 export { GasAPIError };
+
+// Test-only helper to keep module-level state isolated between tests.
+export function __resetGasApiCircuitBreakerForTests(): void {
+  circuitBreakerStates.clear();
+}

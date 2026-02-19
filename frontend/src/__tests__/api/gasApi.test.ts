@@ -66,6 +66,7 @@ import {
   fetchGlobalStats,
   fetchHybridPrediction,
   GasAPIError,
+  __resetGasApiCircuitBreakerForTests,
 } from '../../api/gasApi';
 import { requestDeduplicator } from '../../utils/requestDeduplication';
 
@@ -109,6 +110,7 @@ describe('gasApi', () => {
     vi.clearAllMocks();
     localStorageMock.clear();
     vi.useFakeTimers();
+    __resetGasApiCircuitBreakerForTests();
   });
 
   afterEach(() => {
@@ -587,6 +589,84 @@ describe('gasApi', () => {
       await vi.advanceTimersByTimeAsync(3000);
 
       await rejection;
+    });
+  });
+
+  describe('Circuit breaker', () => {
+    const advanceRetryDelays = async () => {
+      await vi.advanceTimersByTimeAsync(1000);
+      await vi.advanceTimersByTimeAsync(2000);
+    };
+
+    it('opens after repeated retryable failures and short-circuits subsequent requests', async () => {
+      mockFetch.mockResolvedValue({
+        ok: false,
+        status: 503,
+        statusText: 'Service Unavailable',
+      });
+
+      for (let i = 0; i < 3; i += 1) {
+        const failingRequest = fetchCurrentGas();
+        const failingExpectation = expect(failingRequest).rejects.toMatchObject({ status: 503 });
+        await advanceRetryDelays();
+        await failingExpectation;
+      }
+
+      const callsBeforeShortCircuit = mockFetch.mock.calls.length;
+      await expect(fetchCurrentGas()).rejects.toMatchObject({ status: 503 });
+      expect(mockFetch).toHaveBeenCalledTimes(callsBeforeShortCircuit);
+    });
+
+    it('returns cached data while circuit is open', async () => {
+      mockFetch.mockResolvedValue({
+        ok: false,
+        status: 503,
+        statusText: 'Service Unavailable',
+      });
+
+      for (let i = 0; i < 3; i += 1) {
+        const failingRequest = fetchCurrentGas();
+        const failingExpectation = expect(failingRequest).rejects.toMatchObject({ status: 503 });
+        await advanceRetryDelays();
+        await failingExpectation;
+      }
+
+      const callsBeforeCachedShortCircuit = mockFetch.mock.calls.length;
+      const cachedData = { current_gas: 0.001, source: 'cache' };
+      localStorageMock.getItem.mockReturnValueOnce(
+        JSON.stringify({ timestamp: Date.now(), data: cachedData })
+      );
+
+      const result = await fetchCurrentGas();
+      expect(result).toEqual(cachedData);
+      expect(mockFetch).toHaveBeenCalledTimes(callsBeforeCachedShortCircuit);
+    });
+
+    it('closes after cooldown and allows live requests again', async () => {
+      mockFetch.mockResolvedValue({
+        ok: false,
+        status: 503,
+        statusText: 'Service Unavailable',
+      });
+
+      for (let i = 0; i < 3; i += 1) {
+        const failingRequest = fetchCurrentGas();
+        const failingExpectation = expect(failingRequest).rejects.toMatchObject({ status: 503 });
+        await advanceRetryDelays();
+        await failingExpectation;
+      }
+
+      const callsBeforeCooldownRecovery = mockFetch.mock.calls.length;
+      mockFetch.mockReset();
+      const liveData = { current_gas: 0.002 };
+      mockFetch.mockResolvedValueOnce({ ok: true, json: () => Promise.resolve(liveData) });
+
+      await vi.advanceTimersByTimeAsync(60001);
+      const result = await fetchCurrentGas();
+
+      expect(result).toEqual(liveData);
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+      expect(callsBeforeCooldownRecovery).toBeGreaterThan(0);
     });
   });
 });
