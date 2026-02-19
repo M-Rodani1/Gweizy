@@ -191,8 +191,23 @@ const PredictionCards: React.FC<PredictionCardsProps> = ({ hybridData }) => {
 
   useEffect(() => {
     loadData();
-    const interval = setInterval(loadData, 30000); // Refresh every 30 seconds
-    return () => clearInterval(interval);
+    const refreshIfVisible = () => {
+      if (typeof document === 'undefined' || document.visibilityState === 'visible') {
+        void loadData();
+      }
+    };
+    const interval = setInterval(refreshIfVisible, 30000); // Refresh every 30 seconds
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        void loadData();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [loadData, selectedChainId]);
 
   if (loading && cards.length === 0) {

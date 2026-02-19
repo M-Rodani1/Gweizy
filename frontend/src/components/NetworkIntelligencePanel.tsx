@@ -50,8 +50,23 @@ const NetworkIntelligencePanel: React.FC = () => {
 
   useEffect(() => {
     fetchNetworkData();
-    const interval = setInterval(fetchNetworkData, REFRESH_INTERVALS.GAS_DATA); // Refresh every 30 seconds
-    return () => clearInterval(interval);
+    const refreshIfVisible = () => {
+      if (typeof document === 'undefined' || document.visibilityState === 'visible') {
+        void fetchNetworkData();
+      }
+    };
+    const interval = setInterval(refreshIfVisible, REFRESH_INTERVALS.GAS_DATA); // Refresh every 30 seconds
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        void fetchNetworkData();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, []);
 
   const fetchNetworkData = async () => {
