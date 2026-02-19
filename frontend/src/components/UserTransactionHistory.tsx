@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { fetchUserHistory } from '../api/gasApi';
 import LoadingSpinner from './LoadingSpinner';
 import VirtualizedList from './ui/VirtualizedList';
+import { REFRESH_INTERVALS } from '../constants';
 
 interface Transaction {
   hash: string;
@@ -63,7 +64,7 @@ const UserTransactionHistory: React.FC<UserTransactionHistoryProps> = ({ address
         void loadData();
       }
     };
-    const interval = setInterval(refreshIfVisible, 60000); // Refresh every minute
+    const interval = setInterval(refreshIfVisible, REFRESH_INTERVALS.USER_HISTORY); // Refresh every minute
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
         void loadData();
