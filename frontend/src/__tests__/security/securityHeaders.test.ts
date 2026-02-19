@@ -39,21 +39,16 @@ describe('security headers', () => {
     expect(headers['Strict-Transport-Security']).toBe('max-age=31536000; includeSubDomains; preload');
   });
 
-  it('keeps meta tag headers aligned with _headers', () => {
-    const headersPath = path.resolve(process.cwd(), 'public/_headers');
+  it('does not set security-only response headers via meta tags', () => {
     const htmlPath = path.resolve(process.cwd(), 'index.html');
 
-    const headersContent = fs.readFileSync(headersPath, 'utf8');
     const htmlContent = fs.readFileSync(htmlPath, 'utf8');
-
-    const headers = extractHeaders(headersContent);
     const metaHeaders = extractMetaHeaders(htmlContent);
-
-    expect(metaHeaders['Referrer-Policy']).toBe(headers['Referrer-Policy']);
-    expect(metaHeaders['X-Content-Type-Options']).toBe(headers['X-Content-Type-Options']);
-    expect(metaHeaders['X-Frame-Options']).toBe(headers['X-Frame-Options']);
-    expect(metaHeaders['Permissions-Policy']).toBe(headers['Permissions-Policy']);
-    expect(metaHeaders['Strict-Transport-Security']).toBe(headers['Strict-Transport-Security']);
+    expect(metaHeaders['Content-Security-Policy']).toBeUndefined();
+    expect(metaHeaders['Cross-Origin-Opener-Policy']).toBeUndefined();
+    expect(metaHeaders['Cross-Origin-Embedder-Policy']).toBeUndefined();
+    expect(metaHeaders['X-Frame-Options']).toBeUndefined();
+    expect(metaHeaders['Strict-Transport-Security']).toBeUndefined();
   });
 
   it('enables subresource integrity in Vite config', () => {
