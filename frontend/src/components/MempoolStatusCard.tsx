@@ -10,6 +10,7 @@
 import React, { useEffect, useState, memo } from 'react';
 import { Activity, TrendingUp, TrendingDown, Minus, RefreshCw, AlertTriangle, CheckCircle } from 'lucide-react';
 import { API_CONFIG, getApiUrl } from '../config/api';
+import { REFRESH_INTERVALS } from '../constants';
 
 interface MempoolMetrics {
   pending_count: number;
@@ -84,9 +85,24 @@ const MempoolStatusCard: React.FC = () => {
   };
 
   useEffect(() => {
-    fetchMempoolStatus();
-    const interval = setInterval(fetchMempoolStatus, 30000); // Refresh every 30s
-    return () => clearInterval(interval);
+    void fetchMempoolStatus();
+    const refreshIfVisible = () => {
+      if (typeof document === 'undefined' || document.visibilityState === 'visible') {
+        void fetchMempoolStatus();
+      }
+    };
+    const interval = setInterval(refreshIfVisible, REFRESH_INTERVALS.GAS_DATA); // Refresh every 30s
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        void fetchMempoolStatus();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, []);
 
   const getMomentumIcon = (momentum: number) => {
