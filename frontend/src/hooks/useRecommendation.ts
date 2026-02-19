@@ -37,6 +37,8 @@ export const useRecommendation = (urgency: number): UseRecommendationResult => {
   const [countdown, setCountdown] = useState<number | null>(null);
 
   const fetchRecommendation = useCallback(async () => {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), API_CONFIG.TIMEOUT);
     try {
       setLoading(true);
       setLoadingState('analyzing');
@@ -45,7 +47,7 @@ export const useRecommendation = (urgency: number): UseRecommendationResult => {
       const response = await fetch(
         getApiUrl(API_CONFIG.ENDPOINTS.AGENT_RECOMMEND, { urgency }),
         {
-          signal: AbortSignal.timeout(API_CONFIG.TIMEOUT)
+          signal: controller.signal
         }
       );
 
@@ -76,7 +78,7 @@ export const useRecommendation = (urgency: number): UseRecommendationResult => {
       }
     } catch (err) {
       console.error('Failed to fetch recommendation:', err);
-      const isTimeout = err instanceof Error && err.name === 'TimeoutError';
+      const isTimeout = err instanceof Error && (err.name === 'TimeoutError' || err.name === 'AbortError');
       setLoadingState(isTimeout ? 'timeout' : 'error');
       setError(isTimeout
         ? 'Analysis taking longer than usual...'
@@ -84,6 +86,7 @@ export const useRecommendation = (urgency: number): UseRecommendationResult => {
       );
       setRetryCount((prev) => prev + 1);
     } finally {
+      clearTimeout(timeoutId);
       setLoading(false);
     }
   }, [urgency]);
