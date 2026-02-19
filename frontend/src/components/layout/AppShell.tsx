@@ -5,6 +5,7 @@ import StickyHeader from '../StickyHeader';
 import { useChain } from '../../contexts/ChainContext';
 import { checkHealth } from '../../api/gasApi';
 import { trackEvent } from '../../utils/analytics';
+import { REFRESH_INTERVALS } from '../../constants';
 
 type NavItem = {
   label: string;
@@ -39,10 +40,22 @@ const AppShell: React.FC<AppShellProps> = ({ children, activePath }) => {
       if (mounted) setApiStatus(healthy ? 'online' : 'offline');
     };
     runHealthCheck();
-    const interval = setInterval(runHealthCheck, 60000);
+    const runIfVisible = () => {
+      if (typeof document === 'undefined' || document.visibilityState === 'visible') {
+        void runHealthCheck();
+      }
+    };
+    const interval = setInterval(runIfVisible, REFRESH_INTERVALS.API_HEALTH);
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        void runHealthCheck();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => {
       mounted = false;
       clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, []);
 
