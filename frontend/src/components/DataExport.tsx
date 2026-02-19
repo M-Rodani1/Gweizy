@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Download, FileJson, FileSpreadsheet } from 'lucide-react';
 import { API_CONFIG, getApiUrl } from '../config/api';
+import { withTimeout } from '../utils/withTimeout';
 
 interface DataExportProps {
   className?: string;
@@ -20,7 +21,14 @@ const DataExport: React.FC<DataExportProps> = ({ className = '' }) => {
         window.open(url, '_blank');
       } else {
         // Fetch JSON and download as file
-        const response = await fetch(url);
+        const response = await withTimeout(
+          fetch(url),
+          API_CONFIG.TIMEOUT,
+          'Request timed out: data export'
+        );
+        if (!response.ok) {
+          throw new Error(`Export request failed: ${response.status}`);
+        }
         const data = await response.json();
 
         const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
