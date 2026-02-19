@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useMemo, memo, useCallback } from 'react';
 import { Layers, RefreshCw, Info, ChevronDown, ChevronUp } from 'lucide-react';
 import { API_CONFIG, getApiUrl } from '../config/api';
+import { withTimeout } from '../utils/withTimeout';
 
 interface FeatureData {
   feature: string;
@@ -18,8 +19,10 @@ const FeatureImportanceChart: React.FC = () => {
   const fetchFeatures = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await fetch(
-        getApiUrl(API_CONFIG.ENDPOINTS.ACCURACY_FEATURES) + '/importance?top_n=15'
+      const response = await withTimeout(
+        fetch(getApiUrl(API_CONFIG.ENDPOINTS.ACCURACY_FEATURES) + '/importance?top_n=15'),
+        API_CONFIG.TIMEOUT,
+        'Request timed out: feature importance'
       );
 
       if (!response.ok) {
