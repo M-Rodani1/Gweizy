@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { ChainConfig, SUPPORTED_CHAINS, DEFAULT_CHAIN_ID, getChainById, getEnabledChains } from '../config/chains';
 import { REFRESH_INTERVALS } from '../constants';
+import { withTimeout } from '../utils/withTimeout';
 
 interface MultiChainGas {
   chainId: number;
@@ -117,20 +118,21 @@ export const ChainProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     try {
       // Try each RPC until one works
       for (const rpcUrl of chain.rpcUrls) {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), RPC_TIMEOUT_MS);
         try {
-          const response = await fetch(rpcUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              jsonrpc: '2.0',
-              method: 'eth_gasPrice',
-              params: [],
-              id: 1
+          const response = await withTimeout(
+            fetch(rpcUrl, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                jsonrpc: '2.0',
+                method: 'eth_gasPrice',
+                params: [],
+                id: 1
+              })
             }),
-            signal: controller.signal
-          });
+            RPC_TIMEOUT_MS,
+            `Request timed out: ${rpcUrl}`
+          );
 
           if (!response.ok) continue;
 
@@ -152,8 +154,6 @@ export const ChainProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           }
         } catch {
           continue;
-        } finally {
-          clearTimeout(timeoutId);
         }
       }
 
