@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Lightbulb, ChevronDown, ChevronUp, TrendingUp, TrendingDown, RefreshCw, Sparkles } from 'lucide-react';
 import { API_CONFIG, getApiUrl } from '../config/api';
+import { withTimeout } from '../utils/withTimeout';
 
 interface Factor {
   name: string;
@@ -47,7 +48,11 @@ const PredictionExplanation: React.FC<PredictionExplanationProps> = ({
     try {
       setLoading(true);
 
-      const response = await fetch(getApiUrl(`${API_CONFIG.ENDPOINTS.EXPLAIN}/${horizon}`));
+      const response = await withTimeout(
+        fetch(getApiUrl(`${API_CONFIG.ENDPOINTS.EXPLAIN}/${horizon}`)),
+        API_CONFIG.TIMEOUT,
+        `Request timed out: explanation ${horizon}`
+      );
 
       if (!response.ok) {
         // Generate fallback explanation
