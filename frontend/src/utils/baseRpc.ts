@@ -2,17 +2,24 @@
  * Fetch live gas prices directly from Base network RPC
  */
 
+import { withTimeout } from './withTimeout';
+
 // Try multiple RPC endpoints (fallback if one is rate-limited)
 const BASE_RPC_URLS = [
   'https://mainnet.base.org',
   'https://base.llamarpc.com',
   'https://base-rpc.publicnode.com'
 ];
+const BASE_RPC_TIMEOUT_MS = 10000;
 
 let currentRpcIndex = 0;
 
 function getBaseRPC(): string {
   return BASE_RPC_URLS[currentRpcIndex % BASE_RPC_URLS.length];
+}
+
+function rotateBaseRPC(): void {
+  currentRpcIndex = (currentRpcIndex + 1) % BASE_RPC_URLS.length;
 }
 
 interface BlockData {
@@ -28,6 +35,34 @@ function hexToGwei(hex: string): number {
   return wei / 1e9; // Convert wei to gwei
 }
 
+async function fetchRpcPayload(payload: Record<string, unknown>): Promise<any> {
+  let lastError: Error | null = null;
+
+  for (let attempt = 0; attempt < BASE_RPC_URLS.length; attempt++) {
+    const rpcUrl = getBaseRPC();
+    try {
+      const response = await withTimeout(
+        fetch(rpcUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        }),
+        BASE_RPC_TIMEOUT_MS,
+        `Request timed out: ${rpcUrl}`
+      );
+      if (!response.ok) {
+        throw new Error(`RPC request failed with status ${response.status} (${rpcUrl})`);
+      }
+      return await response.json();
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+      rotateBaseRPC();
+    }
+  }
+
+  throw lastError ?? new Error('All Base RPC endpoints failed');
+}
+
 /**
  * Fetch current Base gas price
  */
@@ -37,18 +72,12 @@ export async function fetchLiveBaseGas(): Promise<{
   timestamp: number;
 }> {
   try {
-    const response = await fetch(getBaseRPC(), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        jsonrpc: '2.0',
-        method: 'eth_getBlockByNumber',
-        params: ['latest', false],
-        id: 1
-      })
+    const data = await fetchRpcPayload({
+      jsonrpc: '2.0',
+      method: 'eth_getBlockByNumber',
+      params: ['latest', false],
+      id: 1
     });
-
-    const data = await response.json();
 
     // Validate RPC response
     if (!data.result || !data.result.baseFeePerGas) {
@@ -82,17 +111,11 @@ export async function fetchHistoricalBaseGas(hoursBack: number = 168): Promise<A
 }>> {
   try {
     // Get latest block number
-    const latestBlockResponse = await fetch(getBaseRPC(), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        jsonrpc: '2.0',
-        method: 'eth_blockNumber',
-        id: 1
-      })
+    const latestBlockData = await fetchRpcPayload({
+      jsonrpc: '2.0',
+      method: 'eth_blockNumber',
+      id: 1
     });
-
-    const latestBlockData = await latestBlockResponse.json();
     const latestBlockNum = parseInt(latestBlockData.result, 16);
 
     // Base network produces ~1 block every 2 seconds
@@ -124,16 +147,12 @@ export async function fetchHistoricalBaseGas(hoursBack: number = 168): Promise<A
         const blockHex = '0x' + blockNum.toString(16);
 
         batchPromises.push(
-          fetch(getBaseRPC(), {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              jsonrpc: '2.0',
-              method: 'eth_getBlockByNumber',
-              params: [blockHex, false],
-              id: i + j
-            })
-          }).then(res => res.json())
+          fetchRpcPayload({
+            jsonrpc: '2.0',
+            method: 'eth_getBlockByNumber',
+            params: [blockHex, false],
+            id: i + j
+          })
         );
       }
 
