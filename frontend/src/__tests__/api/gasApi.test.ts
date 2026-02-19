@@ -530,11 +530,12 @@ describe('gasApi', () => {
         .mockRejectedValueOnce(new Error('Network error'));
 
       const resultPromise = fetchCurrentGas();
+      const rejection = expect(resultPromise).rejects.toThrow(GasAPIError);
 
       await vi.advanceTimersByTimeAsync(1000);
       await vi.advanceTimersByTimeAsync(2000);
 
-      await expect(resultPromise).rejects.toThrow(GasAPIError);
+      await rejection;
     });
   });
 
@@ -559,13 +560,14 @@ describe('gasApi', () => {
       mockFetch.mockRejectedValue(abortError);
 
       const resultPromise = fetchCurrentGas();
+      const rejection = expect(resultPromise).rejects.toThrow('request timed out');
 
       // Advance through all retry delays
       await vi.advanceTimersByTimeAsync(1000);
       await vi.advanceTimersByTimeAsync(2000);
       await vi.advanceTimersByTimeAsync(3000);
 
-      await expect(resultPromise).rejects.toThrow('request timed out');
+      await rejection;
     });
 
     it('should include status code in error', async () => {
@@ -577,19 +579,14 @@ describe('gasApi', () => {
       });
 
       const resultPromise = fetchCurrentGas();
+      const rejection = expect(resultPromise).rejects.toMatchObject({ status: 503 });
 
       // Advance through retry delays
       await vi.advanceTimersByTimeAsync(1000);
       await vi.advanceTimersByTimeAsync(2000);
       await vi.advanceTimersByTimeAsync(3000);
 
-      try {
-        await resultPromise;
-        expect.fail('Should have thrown');
-      } catch (error) {
-        expect(error).toBeInstanceOf(GasAPIError);
-        expect((error as GasAPIError).status).toBe(503);
-      }
+      await rejection;
     });
   });
 });
