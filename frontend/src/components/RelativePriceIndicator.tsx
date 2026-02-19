@@ -1,6 +1,7 @@
 import React, { useEffect, useState, memo } from 'react';
 import { API_CONFIG, getApiUrl } from '../config/api';
 import { REFRESH_INTERVALS } from '../constants';
+import { withTimeout } from '../utils/withTimeout';
 
 interface PriceLevel {
   level: string;
@@ -33,7 +34,14 @@ const RelativePriceIndicator: React.FC<RelativePriceIndicatorProps> = ({
     const fetchAverages = async () => {
       try {
         // Fetch 24h data for hourly and daily averages
-        const dayResponse = await fetch(getApiUrl(API_CONFIG.ENDPOINTS.HISTORICAL, { hours: 24 }));
+        const dayResponse = await withTimeout(
+          fetch(getApiUrl(API_CONFIG.ENDPOINTS.HISTORICAL, { hours: 24 })),
+          API_CONFIG.TIMEOUT,
+          'Request timed out: daily historical data'
+        );
+        if (!dayResponse.ok) {
+          throw new Error(`Daily historical request failed with status ${dayResponse.status}`);
+        }
         const dayData = await dayResponse.json();
 
         if (dayData && dayData.historical && Array.isArray(dayData.historical) && dayData.historical.length > 0) {
@@ -59,7 +67,14 @@ const RelativePriceIndicator: React.FC<RelativePriceIndicatorProps> = ({
 
         // Fetch 7-day data for weekly average
         try {
-          const weekResponse = await fetch(getApiUrl(API_CONFIG.ENDPOINTS.HISTORICAL, { hours: 168 }));
+          const weekResponse = await withTimeout(
+            fetch(getApiUrl(API_CONFIG.ENDPOINTS.HISTORICAL, { hours: 168 })),
+            API_CONFIG.TIMEOUT,
+            'Request timed out: weekly historical data'
+          );
+          if (!weekResponse.ok) {
+            throw new Error(`Weekly historical request failed with status ${weekResponse.status}`);
+          }
           const weekData = await weekResponse.json();
 
           if (weekData && weekData.historical && Array.isArray(weekData.historical) && weekData.historical.length > 0) {
