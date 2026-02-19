@@ -31,27 +31,49 @@ const GasPriceGraph: React.FC = () => {
       }));
   }, [toFiniteNumber]);
 
+  const withTimeout = useCallback(async <T,>(promise: Promise<T>, ms: number, label: string): Promise<T> => {
+    return Promise.race([
+      promise,
+      new Promise<T>((_, reject) => {
+        setTimeout(() => reject(new Error(`${label} timed out`)), ms);
+      })
+    ]);
+  }, []);
+
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
 
-      // Fetch both predictions and current gas
-      const [predictionsResult, currentGasData] = await Promise.all([
-        fetchPredictions(),
-        fetchCurrentGas()
+      const [predictionsResponse, currentGasResponse] = await Promise.allSettled([
+        withTimeout(fetchPredictions(), 12000, 'Predictions request'),
+        withTimeout(fetchCurrentGas(), 12000, 'Current gas request')
       ]);
 
-      setCurrentGas(currentGasData?.current_gas || null);
+      const predictionsResult = predictionsResponse.status === 'fulfilled' ? predictionsResponse.value : null;
+      const currentGasData = currentGasResponse.status === 'fulfilled' ? currentGasResponse.value : null;
+
+      if (!predictionsResult && !currentGasData) {
+        const predictionError = predictionsResponse.status === 'rejected'
+          ? predictionsResponse.reason
+          : null;
+        const currentError = currentGasResponse.status === 'rejected'
+          ? currentGasResponse.reason
+          : null;
+        throw predictionError || currentError || new Error('Failed to load gas chart data');
+      }
+
+      const resolvedCurrentGas = toFiniteNumber(currentGasData?.current_gas);
+      setCurrentGas(resolvedCurrentGas ?? null);
 
       // Get data for selected timeframe - with safe access
       let selectedData = normalizeData(predictionsResult?.predictions?.[timeScale]);
 
       // For prediction timeframes (1h, 4h, 24h), add current gas as first point
-      if (timeScale !== 'historical' && currentGasData?.current_gas) {
+      if (timeScale !== 'historical' && resolvedCurrentGas !== undefined) {
         const currentPoint: GraphDataPoint = {
           time: 'now',
-          gwei: currentGasData.current_gas
+          gwei: resolvedCurrentGas
         };
 
         // Get the first predicted point for this timeframe
@@ -76,7 +98,7 @@ const GasPriceGraph: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [normalizeData, timeScale]);
+  }, [normalizeData, timeScale, toFiniteNumber, withTimeout]);
 
   useEffect(() => {
     loadData();

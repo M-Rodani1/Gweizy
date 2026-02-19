@@ -35,7 +35,7 @@ const meta: Meta<typeof Sparkline> = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-// Sample data sets
+// Sample data sets (commit-only change for CI trigger)
 const upTrend = [10, 12, 15, 14, 18, 22, 25, 28, 32, 35];
 const downTrend = [35, 32, 28, 25, 22, 18, 14, 15, 12, 10];
 const volatile = [20, 35, 15, 40, 25, 45, 20, 50, 30, 35];
