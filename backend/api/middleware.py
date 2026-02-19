@@ -321,13 +321,21 @@ def log_request(app):
 # CORS Headers
 # =============================================================================
 
-def add_cors_headers(response):
+def add_cors_headers(response, request_obj=None):
     """Add CORS headers to a response."""
+    requested_headers = None
+    if request_obj is not None:
+        requested_headers = request_obj.headers.get('Access-Control-Request-Headers')
+
     response.headers['Access-Control-Allow-Origin'] = '*'
     response.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS, PUT, DELETE, PATCH'
-    response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, Cache-Control, Pragma, X-Requested-With'
+    response.headers['Access-Control-Allow-Headers'] = (
+        requested_headers or 'Content-Type, Authorization, Cache-Control, Pragma, X-Requested-With, X-Request-ID'
+    )
     response.headers['Access-Control-Max-Age'] = '3600'
     response.headers['Access-Control-Allow-Credentials'] = 'false'
+    response.headers['Access-Control-Expose-Headers'] = 'X-Request-ID, X-Response-Time'
+    response.headers['Vary'] = 'Origin, Access-Control-Request-Method, Access-Control-Request-Headers'
     return response
 
 
