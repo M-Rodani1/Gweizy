@@ -3,6 +3,7 @@ import { TrendingUp, RefreshCw, Calendar, ChevronDown } from 'lucide-react';
 import { API_CONFIG, getApiUrl } from '../config/api';
 import { useChartKeyboardNav, ChartDataPoint } from '../hooks/useChartKeyboardNav';
 import { LiveRegion } from './ui/LiveRegion';
+import { withTimeout } from '../utils/withTimeout';
 
 interface HistoryPoint {
   timestamp: string;
@@ -36,8 +37,12 @@ const AccuracyHistoryChart: React.FC = () => {
       const hoursBack = timeRange === '24h' ? 24 : timeRange === '7d' ? 168 : 720;
       const resolution = timeRange === '30d' ? 'daily' : 'hourly';
 
-      const response = await fetch(
-        getApiUrl(API_CONFIG.ENDPOINTS.ACCURACY_HISTORY) + `?hours_back=${hoursBack}&resolution=${resolution}`
+      const response = await withTimeout(
+        fetch(
+          getApiUrl(API_CONFIG.ENDPOINTS.ACCURACY_HISTORY) + `?hours_back=${hoursBack}&resolution=${resolution}`
+        ),
+        API_CONFIG.TIMEOUT,
+        'Request timed out: accuracy history'
       );
 
       if (!response.ok) {
