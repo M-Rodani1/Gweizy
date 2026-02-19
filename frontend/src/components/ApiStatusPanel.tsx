@@ -98,9 +98,24 @@ const ApiStatusPanel: React.FC = () => {
   };
 
   useEffect(() => {
-    fetchStatus();
-    const interval = setInterval(fetchStatus, REFRESH_INTERVALS.API_HEALTH);
-    return () => clearInterval(interval);
+    void fetchStatus();
+    const refreshIfVisible = () => {
+      if (typeof document === 'undefined' || document.visibilityState === 'visible') {
+        void fetchStatus();
+      }
+    };
+    const interval = setInterval(refreshIfVisible, REFRESH_INTERVALS.API_HEALTH);
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        void fetchStatus();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, []);
 
   const getStatusStyle = (status: StatusState) => {
