@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { ChainConfig, SUPPORTED_CHAINS, DEFAULT_CHAIN_ID, getChainById, getEnabledChains } from '../config/chains';
+import { REFRESH_INTERVALS } from '../constants';
 
 interface MultiChainGas {
   chainId: number;
@@ -242,7 +243,7 @@ export const ChainProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       }
     };
 
-    const interval = setInterval(refreshIfVisible, 30000);
+    const interval = setInterval(refreshIfVisible, REFRESH_INTERVALS.GAS_DATA);
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
         void refreshMultiChainGas();
