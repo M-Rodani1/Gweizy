@@ -24,8 +24,13 @@ const DriftAlertBanner: React.FC<DriftAlertBannerProps> = ({
   const [loading, setLoading] = useState(true);
 
   const checkDrift = async () => {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), API_CONFIG.TIMEOUT);
     try {
-      const response = await fetch(getApiUrl(API_CONFIG.ENDPOINTS.ACCURACY_DRIFT));
+      const response = await fetch(
+        getApiUrl(API_CONFIG.ENDPOINTS.ACCURACY_DRIFT),
+        { signal: controller.signal }
+      );
 
       if (!response.ok) {
         setLoading(false);
@@ -54,6 +59,7 @@ const DriftAlertBanner: React.FC<DriftAlertBannerProps> = ({
     } catch (err) {
       // Silently fail - don't show alert on error
     } finally {
+      clearTimeout(timeoutId);
       setLoading(false);
     }
   };
