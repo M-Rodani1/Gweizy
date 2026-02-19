@@ -26,6 +26,8 @@ export interface UsePollingOptions<T> {
   onError?: (error: Error) => void;
   /** Dependencies that trigger a re-fetch when changed */
   deps?: unknown[];
+  /** Pause network fetches when document is hidden (default: true) */
+  pauseWhenHidden?: boolean;
 }
 
 export interface UsePollingResult<T> {
@@ -52,7 +54,8 @@ export function usePolling<T>({
   enabled = true,
   onSuccess,
   onError,
-  deps = []
+  deps = [],
+  pauseWhenHidden = true
 }: UsePollingOptions<T>): UsePollingResult<T> {
   const [data, setData] = useState<T | null>(null);
   const [loading, setLoading] = useState(immediate);
@@ -61,6 +64,10 @@ export function usePolling<T>({
 
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const mountedRef = useRef(true);
+  const isDocumentVisible = useCallback(
+    () => typeof document === 'undefined' || document.visibilityState === 'visible',
+    []
+  );
 
   const fetchData = useCallback(async () => {
     if (!mountedRef.current) return;
@@ -91,8 +98,12 @@ export function usePolling<T>({
     if (intervalRef.current) {
       clearInterval(intervalRef.current);
     }
-    intervalRef.current = setInterval(fetchData, interval);
-  }, [fetchData, interval]);
+    intervalRef.current = setInterval(() => {
+      if (!pauseWhenHidden || isDocumentVisible()) {
+        void fetchData();
+      }
+    }, interval);
+  }, [fetchData, interval, isDocumentVisible, pauseWhenHidden]);
 
   const stopPolling = useCallback(() => {
     if (intervalRef.current) {
@@ -108,9 +119,11 @@ export function usePolling<T>({
 
   const resume = useCallback(() => {
     setIsPolling(true);
-    fetchData();
+    if (!pauseWhenHidden || isDocumentVisible()) {
+      void fetchData();
+    }
     startPolling();
-  }, [fetchData, startPolling]);
+  }, [fetchData, isDocumentVisible, pauseWhenHidden, startPolling]);
 
   const refresh = useCallback(async () => {
     await fetchData();
@@ -121,8 +134,8 @@ export function usePolling<T>({
     mountedRef.current = true;
 
     if (enabled && isPolling) {
-      if (immediate) {
-        fetchData();
+      if (immediate && (!pauseWhenHidden || isDocumentVisible())) {
+        void fetchData();
       }
       startPolling();
     }
@@ -132,7 +145,7 @@ export function usePolling<T>({
       stopPolling();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enabled, ...deps]);
+  }, [enabled, isDocumentVisible, pauseWhenHidden, ...deps]);
 
   // Handle enabled/isPolling changes
   useEffect(() => {
@@ -144,6 +157,23 @@ export function usePolling<T>({
 
     return () => stopPolling();
   }, [enabled, isPolling, startPolling, stopPolling]);
+
+  useEffect(() => {
+    if (!pauseWhenHidden) {
+      return;
+    }
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && enabled && isPolling) {
+        void fetchData();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [enabled, fetchData, isPolling, pauseWhenHidden]);
 
   return {
     data,
