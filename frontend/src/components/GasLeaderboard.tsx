@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { CurrentGasData } from '../../types';
 import { fetchCurrentGas } from '../api/gasApi';
 import LoadingSpinner from './LoadingSpinner';
+import { REFRESH_INTERVALS } from '../constants';
 
 const GasLeaderboard: React.FC = () => {
   const [currentGas, setCurrentGas] = useState<CurrentGasData | null>(null);
@@ -22,11 +23,26 @@ const GasLeaderboard: React.FC = () => {
   };
 
   useEffect(() => {
-    loadData();
-    
+    void loadData();
+
     // Auto-refresh every 30 seconds
-    const interval = setInterval(loadData, 30000);
-    return () => clearInterval(interval);
+    const refreshIfVisible = () => {
+      if (typeof document === 'undefined' || document.visibilityState === 'visible') {
+        void loadData();
+      }
+    };
+    const interval = setInterval(refreshIfVisible, REFRESH_INTERVALS.GAS_DATA);
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        void loadData();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, []);
 
   if (loading && !currentGas) {
