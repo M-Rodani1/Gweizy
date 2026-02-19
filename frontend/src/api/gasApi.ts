@@ -22,6 +22,7 @@ class GasAPIError extends Error {
 }
 
 const CACHE_PREFIX = 'gweizy_api_cache_v1:';
+const ERROR_LOG_THROTTLE_MS = 30000;
 const CACHE_TTL_MS = {
   current: 15000,
   predictions: 60000,
@@ -35,6 +36,17 @@ const CACHE_TTL_MS = {
 };
 
 const getCacheKey = (url: string): string => `${CACHE_PREFIX}${url}`;
+const lastErrorLoggedAt = new Map<string, number>();
+
+const logApiErrorThrottled = (key: string, ...args: unknown[]) => {
+  const now = Date.now();
+  const lastLoggedAt = lastErrorLoggedAt.get(key) || 0;
+  if (now - lastLoggedAt < ERROR_LOG_THROTTLE_MS) {
+    return;
+  }
+  lastErrorLoggedAt.set(key, now);
+  console.error(...args);
+};
 
 const readCache = <T,>(key: string, ttlMs: number): T | null => {
   if (typeof window === 'undefined') return null;
@@ -114,14 +126,30 @@ const fetchJsonWithRetry = async <T,>(
     }
 
     if (lastError instanceof GasAPIError) {
+      logApiErrorThrottled(
+        `api:${url}:${errorMessage}:http:${lastError.status || 'unknown'}`,
+        '[GasAPI]',
+        lastError.message
+      );
       throw lastError;
     }
     const isAbortError =
       (typeof DOMException !== 'undefined' && lastError instanceof DOMException && lastError.name === 'AbortError') ||
       (typeof lastError === 'object' && lastError !== null && 'name' in lastError && (lastError as { name?: string }).name === 'AbortError');
     if (isAbortError) {
+      logApiErrorThrottled(
+        `api:${url}:${errorMessage}:timeout`,
+        '[GasAPI]',
+        `${errorMessage}: request timed out`
+      );
       throw new GasAPIError(`${errorMessage}: request timed out`);
     }
+    logApiErrorThrottled(
+      `api:${url}:${errorMessage}:network`,
+      '[GasAPI]',
+      errorMessage,
+      lastError
+    );
     throw new GasAPIError(errorMessage);
   });
 };
@@ -142,14 +170,19 @@ export async function checkHealth(): Promise<boolean> {
     });
     clearTimeout(timeoutId);
     if (!response.ok) {
-      console.error('Health check failed: HTTP', response.status, response.statusText);
+      logApiErrorThrottled(
+        `health:http:${response.status}`,
+        'Health check failed: HTTP',
+        response.status,
+        response.statusText
+      );
       return false;
     }
     return true;
   } catch (error) {
     clearTimeout(timeoutId);
-    console.error('Health check failed:', error);
-    console.error('API_BASE_URL:', API_CONFIG.BASE_URL);
+    logApiErrorThrottled('health:network', 'Health check failed:', error);
+    logApiErrorThrottled('health:base-url', 'API_BASE_URL:', API_CONFIG.BASE_URL);
     return false;
   }
 }
