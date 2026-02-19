@@ -57,9 +57,24 @@ const UserTransactionHistory: React.FC<UserTransactionHistoryProps> = ({ address
       }
     };
 
-    loadData();
-    const interval = setInterval(loadData, 60000); // Refresh every minute
-    return () => clearInterval(interval);
+    void loadData();
+    const refreshIfVisible = () => {
+      if (typeof document === 'undefined' || document.visibilityState === 'visible') {
+        void loadData();
+      }
+    };
+    const interval = setInterval(refreshIfVisible, 60000); // Refresh every minute
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        void loadData();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [address]);
 
   const formatTime = (timestamp: number) => {
