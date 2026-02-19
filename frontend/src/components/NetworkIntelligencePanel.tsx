@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Network, Activity, Zap, TrendingUp, Box, Code, Gauge } from 'lucide-react';
 import { fetchOnchainCongestionHistory, fetchOnchainNetworkState } from '../api/gasApi';
 import { REFRESH_INTERVALS } from '../constants';
+import { withTimeout } from '../utils/withTimeout';
 
 interface NetworkStateResponse {
   network_state: {
@@ -57,18 +58,10 @@ const NetworkIntelligencePanel: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
-      const fetchWithTimeout = async <T,>(promise: Promise<T>, label: string): Promise<T> => {
-        return Promise.race([
-          promise,
-          new Promise<T>((_, reject) => {
-            setTimeout(() => reject(new Error(`Request timed out: ${label}`)), REQUEST_TIMEOUT_MS);
-          })
-        ]);
-      };
 
       const [stateReq, historyReq] = await Promise.allSettled([
-        fetchWithTimeout(fetchOnchainNetworkState(), 'network-state'),
-        fetchWithTimeout(fetchOnchainCongestionHistory(24), 'congestion-history')
+        withTimeout(fetchOnchainNetworkState(), REQUEST_TIMEOUT_MS, 'Request timed out: network-state'),
+        withTimeout(fetchOnchainCongestionHistory(24), REQUEST_TIMEOUT_MS, 'Request timed out: congestion-history')
       ]);
       let gotAnyData = false;
 

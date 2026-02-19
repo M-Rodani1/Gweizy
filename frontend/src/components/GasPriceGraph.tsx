@@ -3,6 +3,7 @@ import { XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Area
 import { GraphDataPoint } from '../../types';
 import { fetchPredictions, fetchCurrentGas } from '../api/gasApi';
 import LoadingSpinner from './LoadingSpinner';
+import { withTimeout } from '../utils/withTimeout';
 
 type TimeScale = '1h' | '4h' | '24h' | 'historical';
 
@@ -31,23 +32,14 @@ const GasPriceGraph: React.FC = () => {
       }));
   }, [toFiniteNumber]);
 
-  const withTimeout = useCallback(async <T,>(promise: Promise<T>, ms: number, label: string): Promise<T> => {
-    return Promise.race([
-      promise,
-      new Promise<T>((_, reject) => {
-        setTimeout(() => reject(new Error(`${label} timed out`)), ms);
-      })
-    ]);
-  }, []);
-
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
 
       const [predictionsResponse, currentGasResponse] = await Promise.allSettled([
-        withTimeout(fetchPredictions(), 12000, 'Predictions request'),
-        withTimeout(fetchCurrentGas(), 12000, 'Current gas request')
+        withTimeout(fetchPredictions(), 12000, 'Predictions request timed out'),
+        withTimeout(fetchCurrentGas(), 12000, 'Current gas request timed out')
       ]);
 
       const predictionsResult = predictionsResponse.status === 'fulfilled' ? predictionsResponse.value : null;
@@ -98,7 +90,7 @@ const GasPriceGraph: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [normalizeData, timeScale, toFiniteNumber, withTimeout]);
+  }, [normalizeData, timeScale, toFiniteNumber]);
 
   useEffect(() => {
     loadData();

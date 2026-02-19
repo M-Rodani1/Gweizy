@@ -5,6 +5,7 @@ import LoadingSpinner from './LoadingSpinner';
 import ConfidenceBar from './ui/ConfidenceBar';
 import { HybridPrediction } from '../../types';
 import { getColorClasses, getTextColor, getClassificationState } from '../utils/predictionUtils';
+import { withTimeout } from '../utils/withTimeout';
 
 interface PredictionCardsProps {
   hybridData?: HybridPrediction;
@@ -41,23 +42,14 @@ const PredictionCards: React.FC<PredictionCardsProps> = ({ hybridData }) => {
   const [showExplanation, setShowExplanation] = useState<string | null>(null);
   const [showShortTerm, setShowShortTerm] = useState(false); // Hide 1h/4h by default
 
-  const withTimeout = useCallback(async <T,>(promise: Promise<T>, ms: number, label: string): Promise<T> => {
-    return Promise.race([
-      promise,
-      new Promise<T>((_, reject) => {
-        setTimeout(() => reject(new Error(`${label} timed out`)), ms);
-      })
-    ]);
-  }, []);
-
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
 
       const [predictionsResponse, currentGasResponse] = await Promise.allSettled([
-        withTimeout(fetchPredictions(selectedChainId), 12000, 'Predictions request'),
-        withTimeout(fetchCurrentGas(), 12000, 'Current gas request')
+        withTimeout(fetchPredictions(selectedChainId), 12000, 'Predictions request timed out'),
+        withTimeout(fetchCurrentGas(), 12000, 'Current gas request timed out')
       ]);
 
       const predictionsResult = predictionsResponse.status === 'fulfilled' ? predictionsResponse.value : null;
@@ -195,7 +187,7 @@ const PredictionCards: React.FC<PredictionCardsProps> = ({ hybridData }) => {
     } finally {
       setLoading(false);
     }
-  }, [selectedChainId, withTimeout]);
+  }, [selectedChainId]);
 
   useEffect(() => {
     loadData();

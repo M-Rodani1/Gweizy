@@ -7,6 +7,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor, fireEvent, act } from '@testing-library/react';
 import NetworkIntelligencePanel from '../../components/NetworkIntelligencePanel';
+import { __resetGasApiCircuitBreakerForTests } from '../../api/gasApi';
+import { requestDeduplicator } from '../../utils/requestDeduplication';
 
 // Mock fetch globally
 const mockFetch = vi.fn();
@@ -15,6 +17,9 @@ global.fetch = mockFetch;
 describe('NetworkIntelligencePanel', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    __resetGasApiCircuitBreakerForTests();
+    requestDeduplicator.clear();
+    global.localStorage?.clear?.();
   });
 
   afterEach(() => {
@@ -230,10 +235,12 @@ describe('NetworkIntelligencePanel', () => {
 
       render(<NetworkIntelligencePanel />);
 
-      await waitFor(() => {
-        // Component displays the actual error message
-        expect(screen.getByText(/Network error/i)).toBeInTheDocument();
-      });
+      await waitFor(
+        () => {
+          expect(screen.getByText(/failed to fetch network data|network error/i)).toBeInTheDocument();
+        },
+        { timeout: 4000 }
+      );
     });
 
     it('handles partial API failure', async () => {

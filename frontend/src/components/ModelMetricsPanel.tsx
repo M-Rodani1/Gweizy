@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { fetchAccuracyDrift, fetchAccuracyMetrics, fetchValidationTrends } from '../api/gasApi';
 import { REFRESH_INTERVALS } from '../constants';
+import { withTimeout } from '../utils/withTimeout';
 import type {
   DriftResponse,
   MetricsResponse,
@@ -51,14 +52,11 @@ const ModelMetricsPanel: React.FC<ModelMetricsPanelProps> = ({
   const [isExpanded, setIsExpanded] = useState(!compact);
   const REQUEST_TIMEOUT_MS = 12000;
 
-  const fetchWithTimeout = useCallback(async <T,>(promise: Promise<T>, label: string): Promise<T> => {
-    return Promise.race([
-      promise,
-      new Promise<T>((_, reject) => {
-        setTimeout(() => reject(new Error(`Request timed out: ${label}`)), REQUEST_TIMEOUT_MS);
-      })
-    ]);
-  }, []);
+  const fetchWithTimeout = useCallback(
+    async <T,>(promise: Promise<T>, label: string): Promise<T> =>
+      withTimeout(promise, REQUEST_TIMEOUT_MS, `Request timed out: ${label}`),
+    []
+  );
 
   // Fetch all data
   const fetchData = useCallback(async () => {

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { TrendingUp, TrendingDown, Activity } from 'lucide-react';
 import { fetchAnalyticsPerformance, fetchAnalyticsTrends } from '../api/gasApi';
+import { withTimeout } from '../utils/withTimeout';
 
 export interface MetricsData {
   horizon: string;
@@ -42,18 +43,8 @@ const AccuracyDashboard: React.FC<AccuracyDashboardProps> = ({ selectedChain = '
     try {
       setLoading(true);
       const [metricsReq, trendsReq] = await Promise.allSettled([
-        Promise.race([
-          fetchAnalyticsPerformance(90),
-          new Promise<never>((_, reject) => {
-            setTimeout(() => reject(new Error('Request timed out: analytics performance')), REQUEST_TIMEOUT_MS);
-          })
-        ]),
-        Promise.race([
-          fetchAnalyticsTrends(selectedHorizon, 90),
-          new Promise<never>((_, reject) => {
-            setTimeout(() => reject(new Error('Request timed out: analytics trends')), REQUEST_TIMEOUT_MS);
-          })
-        ])
+        withTimeout(fetchAnalyticsPerformance(90), REQUEST_TIMEOUT_MS, 'Request timed out: analytics performance'),
+        withTimeout(fetchAnalyticsTrends(selectedHorizon, 90), REQUEST_TIMEOUT_MS, 'Request timed out: analytics trends')
       ]);
       let gotAnyData = false;
 
