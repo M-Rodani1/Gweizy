@@ -12,6 +12,7 @@ import { getWithSWR, type SWRCacheOptions } from './swrCache';
 import { buildCsrfHeaders, getCsrfToken } from './csrf';
 import { getApiKeyHeader, rotateApiKey } from './apiKeys';
 import { logSecurityEvent } from './securityAudit';
+import { withTimeout } from './withTimeout';
 
 /**
  * API client with interceptors
@@ -37,14 +38,17 @@ class ApiClient {
       const fetcher = async () => {
         const response = await retryWithBackoff(
           async () => {
-            const res = await fetch(url, {
-              method: 'GET',
-              headers: {
-                'Content-Type': 'application/json',
-                ...getApiKeyHeader(),
-              },
-              signal: AbortSignal.timeout(API_CONFIG.TIMEOUT),
-            });
+            const res = await withTimeout(
+              fetch(url, {
+                method: 'GET',
+                headers: {
+                  'Content-Type': 'application/json',
+                  ...getApiKeyHeader(),
+                },
+              }),
+              API_CONFIG.TIMEOUT,
+              `Request timed out: ${url}`
+            );
 
             if (!res.ok) {
               if (res.status === 401 || res.status === 403) {
@@ -104,16 +108,19 @@ class ApiClient {
           if (!csrfToken) {
             logSecurityEvent('csrf_token_missing', { route: endpoint });
           }
-          const res = await fetch(url, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              ...buildCsrfHeaders(csrfToken),
-              ...getApiKeyHeader(),
-            },
-            body: body ? JSON.stringify(body) : undefined,
-            signal: AbortSignal.timeout(API_CONFIG.TIMEOUT),
-          });
+          const res = await withTimeout(
+            fetch(url, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                ...buildCsrfHeaders(csrfToken),
+                ...getApiKeyHeader(),
+              },
+              body: body ? JSON.stringify(body) : undefined,
+            }),
+            API_CONFIG.TIMEOUT,
+            `Request timed out: ${url}`
+          );
 
           if (!res.ok) {
             if (res.status === 401 || res.status === 403) {
