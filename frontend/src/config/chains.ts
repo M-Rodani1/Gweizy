@@ -113,9 +113,9 @@ export const SUPPORTED_CHAINS: Record<number, ChainConfig> = {
     shortName: 'MATIC',
     nativeCurrency: { name: 'MATIC', symbol: 'MATIC', decimals: 18 },
     rpcUrls: [
-      'https://polygon-rpc.com',
-      'https://polygon.llamarpc.com',
-      'https://polygon-bor.publicnode.com'
+      'https://polygon-bor-rpc.publicnode.com',
+      'https://rpc.ankr.com/polygon',
+      'https://1rpc.io/matic'
     ],
     blockExplorer: 'https://polygonscan.com',
     icon: '💜',
