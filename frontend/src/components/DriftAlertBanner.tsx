@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { AlertTriangle, X, TrendingDown, ExternalLink } from 'lucide-react';
 import { API_CONFIG, getApiUrl } from '../config/api';
+import { withTimeout } from '../utils/withTimeout';
 
 interface DriftInfo {
   horizon: string;
@@ -24,12 +25,11 @@ const DriftAlertBanner: React.FC<DriftAlertBannerProps> = ({
   const [loading, setLoading] = useState(true);
 
   const checkDrift = async () => {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), API_CONFIG.TIMEOUT);
     try {
-      const response = await fetch(
-        getApiUrl(API_CONFIG.ENDPOINTS.ACCURACY_DRIFT),
-        { signal: controller.signal }
+      const response = await withTimeout(
+        fetch(getApiUrl(API_CONFIG.ENDPOINTS.ACCURACY_DRIFT)),
+        API_CONFIG.TIMEOUT,
+        'Request timed out: drift status'
       );
 
       if (!response.ok) {
@@ -63,7 +63,6 @@ const DriftAlertBanner: React.FC<DriftAlertBannerProps> = ({
       setDriftData([]);
       setShouldRetrain(false);
     } finally {
-      clearTimeout(timeoutId);
       setLoading(false);
     }
   };
