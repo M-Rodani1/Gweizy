@@ -11,6 +11,7 @@ import React, { useEffect, useState, memo } from 'react';
 import { Activity, TrendingUp, TrendingDown, Minus, RefreshCw, AlertTriangle, CheckCircle } from 'lucide-react';
 import { API_CONFIG, getApiUrl } from '../config/api';
 import { REFRESH_INTERVALS } from '../constants';
+import { withTimeout } from '../utils/withTimeout';
 
 interface MempoolMetrics {
   pending_count: number;
@@ -54,18 +55,11 @@ const MempoolStatusCard: React.FC = () => {
     try {
       setLoading(true);
 
-      // Use AbortController for timeout
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), API_CONFIG.TIMEOUT);
-      let response: Response;
-      try {
-        response = await fetch(
-          getApiUrl(API_CONFIG.ENDPOINTS.MEMPOOL_STATUS),
-          { signal: controller.signal }
-        );
-      } finally {
-        clearTimeout(timeoutId);
-      }
+      const response = await withTimeout(
+        fetch(getApiUrl(API_CONFIG.ENDPOINTS.MEMPOOL_STATUS)),
+        API_CONFIG.TIMEOUT,
+        'Request timed out: mempool status'
+      );
 
       if (!response.ok) {
         throw new Error('Failed to fetch mempool status');
@@ -75,7 +69,7 @@ const MempoolStatusCard: React.FC = () => {
       setData(result);
       setError(null);
     } catch (err) {
-      if (err instanceof Error && err.name === 'AbortError') {
+      if (err instanceof Error && (err.name === 'AbortError' || err.message.includes('timed out'))) {
         setError('Request timed out');
       } else {
         setError('Mempool data unavailable');
