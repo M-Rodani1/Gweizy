@@ -6,6 +6,7 @@ import { SkeletonForecast } from './ui/Skeleton';
 import AnimatedNumber from './ui/AnimatedNumber';
 import { CorrectionBadge } from './ui/CorrectionBadge';
 import { BiasCorrection } from '../../types';
+import { REFRESH_INTERVALS } from '../constants';
 
 interface Prediction {
   horizon: '1h' | '4h' | '24h';
@@ -63,9 +64,24 @@ const CompactForecast: React.FC = () => {
       }
     };
 
-    loadPredictions();
-    const interval = setInterval(loadPredictions, 60000);
-    return () => clearInterval(interval);
+    void loadPredictions();
+    const refreshIfVisible = () => {
+      if (typeof document === 'undefined' || document.visibilityState === 'visible') {
+        void loadPredictions();
+      }
+    };
+    const interval = setInterval(refreshIfVisible, REFRESH_INTERVALS.PREDICTIONS);
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        void loadPredictions();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [selectedChain.id, currentGas]);
 
   const getDirectionIcon = (direction: string) => {
