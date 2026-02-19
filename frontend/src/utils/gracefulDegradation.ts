@@ -4,6 +4,8 @@
  */
 
 import { getErrorMessage } from './errorMessages';
+import { API_CONFIG } from '../config/api';
+import { withTimeout } from './withTimeout';
 
 export interface FallbackData<T> {
   data: T;
@@ -108,9 +110,11 @@ export function createResilientFetcher<T>(
     
     for (let i = 0; i < urls.length; i++) {
       try {
-        const response = await fetch(urls[i], {
-          signal: AbortSignal.timeout(5000)
-        });
+        const response = await withTimeout(
+          fetch(urls[i]),
+          API_CONFIG.TIMEOUT,
+          `Request timed out: ${urls[i]}`
+        );
         
         if (!response.ok) {
           throw new Error(`HTTP ${response.status}`);
@@ -142,4 +146,3 @@ export function createResilientFetcher<T>(
     throw new Error('All fetch attempts failed');
   };
 }
-
