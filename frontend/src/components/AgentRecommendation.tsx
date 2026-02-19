@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { Bot, CheckCircle, Clock, Coins, Zap } from 'lucide-react';
 import { API_CONFIG, getApiUrl } from '../config/api';
 import { REFRESH_INTERVALS } from '../constants';
+import { withTimeout } from '../utils/withTimeout';
 
 interface AgentResponse {
   success: boolean;
@@ -32,12 +33,11 @@ const AgentRecommendation: React.FC<AgentRecommendationProps> = ({ currentGas: _
   const [urgency, setUrgency] = useState(0.5);
 
   const fetchRecommendation = useCallback(async () => {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), API_CONFIG.TIMEOUT);
     try {
-      const response = await fetch(
-        getApiUrl(API_CONFIG.ENDPOINTS.AGENT_RECOMMEND, { urgency }),
-        { signal: controller.signal }
+      const response = await withTimeout(
+        fetch(getApiUrl(API_CONFIG.ENDPOINTS.AGENT_RECOMMEND, { urgency })),
+        API_CONFIG.TIMEOUT,
+        'Request timed out: agent recommendation'
       );
       if (!response.ok) {
         setError(`Agent request failed (${response.status})`);
@@ -59,7 +59,6 @@ const AgentRecommendation: React.FC<AgentRecommendationProps> = ({ currentGas: _
       }
       console.error('Agent fetch error:', err);
     } finally {
-      clearTimeout(timeoutId);
       setLoading(false);
     }
   }, [urgency]);
