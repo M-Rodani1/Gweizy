@@ -60,9 +60,9 @@ CHAINS = {
         'name': 'Polygon',
         'shortName': 'MATIC',
         'rpcs': [
-            'https://polygon-rpc.com',
-            'https://polygon.llamarpc.com',
-            'https://polygon-bor.publicnode.com'
+            'https://polygon-bor-rpc.publicnode.com',
+            'https://rpc.ankr.com/polygon',
+            'https://1rpc.io/matic'
         ],
         'isL2': True,
         'owlracle_endpoint': 'polygon'
