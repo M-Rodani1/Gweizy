@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { fetchLeaderboard } from '../api/gasApi';
+import { REFRESH_INTERVALS } from '../constants';
 
 interface LeaderboardEntry {
   address: string;
@@ -43,7 +44,7 @@ const SavingsLeaderboard: React.FC<SavingsLeaderboardProps> = ({ walletAddress }
         void loadLeaderboard();
       }
     };
-    const interval = setInterval(refreshIfVisible, 60000); // Refresh every minute
+    const interval = setInterval(refreshIfVisible, REFRESH_INTERVALS.USER_HISTORY);
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
         void loadLeaderboard();
