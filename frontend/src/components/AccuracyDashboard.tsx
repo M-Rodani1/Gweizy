@@ -32,6 +32,7 @@ const AccuracyDashboard: React.FC<AccuracyDashboardProps> = ({ selectedChain = '
   const [loading, setLoading] = useState(true);
   const [selectedHorizon, setSelectedHorizon] = useState<'1h' | '4h' | '24h'>('1h');
   const [selectedPeriod, setSelectedPeriod] = useState<7 | 30 | 90>(7);
+  const REQUEST_TIMEOUT_MS = 12000;
 
   useEffect(() => {
     fetchAccuracyData();
@@ -40,42 +41,57 @@ const AccuracyDashboard: React.FC<AccuracyDashboardProps> = ({ selectedChain = '
   const fetchAccuracyData = async () => {
     try {
       setLoading(true);
+      const fetchWithTimeout = async (url: string): Promise<Response> => {
+        return Promise.race([
+          fetch(url),
+          new Promise<Response>((_, reject) => {
+            setTimeout(() => reject(new Error(`Request timed out: ${url}`)), REQUEST_TIMEOUT_MS);
+          })
+        ]);
+      };
 
-      const [metricsRes, trendsRes] = await Promise.all([
-        fetch(getApiUrl(`${API_CONFIG.ENDPOINTS.ANALYTICS}/performance?days=90`)),
-        fetch(getApiUrl(`${API_CONFIG.ENDPOINTS.ANALYTICS}/trends?horizon=${selectedHorizon}&days=90`))
+      const [metricsReq, trendsReq] = await Promise.allSettled([
+        fetchWithTimeout(getApiUrl(`${API_CONFIG.ENDPOINTS.ANALYTICS}/performance?days=90`)),
+        fetchWithTimeout(getApiUrl(`${API_CONFIG.ENDPOINTS.ANALYTICS}/trends?horizon=${selectedHorizon}&days=90`))
       ]);
+      let gotAnyData = false;
 
-      const [metricsData, trendsData] = await Promise.all([
-        metricsRes.json(),
-        trendsRes.json()
-      ]);
-
-      if (metricsData.metrics) {
+      if (metricsReq.status === 'fulfilled' && metricsReq.value.ok) {
+        const metricsData = await metricsReq.value.json();
+        if (metricsData.metrics) {
         // Transform metrics data
-        const transformedMetrics: Record<string, MetricsData> = {};
-        Object.entries(metricsData.metrics).forEach(([horizon, data]: [string, any]) => {
-          transformedMetrics[horizon] = {
-            horizon,
-            mae_7d: data['7d']?.mae || 0,
-            mae_30d: data['30d']?.mae || 0,
-            mae_90d: data['90d']?.mae || 0,
-            success_rate_7d: (data['7d']?.success_rate || 0) * 100,
-            success_rate_30d: (data['30d']?.success_rate || 0) * 100,
-            success_rate_90d: (data['90d']?.success_rate || 0) * 100,
-            predictions_count: data['90d']?.count || 0
-          };
-        });
-        setMetrics(transformedMetrics);
+          const transformedMetrics: Record<string, MetricsData> = {};
+          Object.entries(metricsData.metrics).forEach(([horizon, data]: [string, any]) => {
+            transformedMetrics[horizon] = {
+              horizon,
+              mae_7d: data['7d']?.mae || 0,
+              mae_30d: data['30d']?.mae || 0,
+              mae_90d: data['90d']?.mae || 0,
+              success_rate_7d: (data['7d']?.success_rate || 0) * 100,
+              success_rate_30d: (data['30d']?.success_rate || 0) * 100,
+              success_rate_90d: (data['90d']?.success_rate || 0) * 100,
+              predictions_count: data['90d']?.count || 0
+            };
+          });
+          setMetrics(transformedMetrics);
+          gotAnyData = true;
+        }
       }
 
-      if (trendsData.trends) {
-        setTrends({ [selectedHorizon]: trendsData.trends });
+      if (trendsReq.status === 'fulfilled' && trendsReq.value.ok) {
+        const trendsData = await trendsReq.value.json();
+        if (trendsData.trends) {
+          setTrends({ [selectedHorizon]: trendsData.trends });
+          gotAnyData = true;
+        }
       }
 
-      setLoading(false);
+      if (!gotAnyData && Object.keys(metrics).length === 0) {
+        throw new Error('Failed to fetch accuracy data');
+      }
     } catch (error) {
       console.error('Failed to fetch accuracy data:', error);
+    } finally {
       setLoading(false);
     }
   };

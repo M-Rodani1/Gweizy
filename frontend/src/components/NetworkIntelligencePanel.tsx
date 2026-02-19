@@ -44,6 +44,7 @@ const NetworkIntelligencePanel: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isExpanded, setIsExpanded] = useState(true);
+  const REQUEST_TIMEOUT_MS = 12000;
 
   useEffect(() => {
     fetchNetworkData();
@@ -55,35 +56,51 @@ const NetworkIntelligencePanel: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
-
-      const [stateRes, historyRes] = await Promise.all([
-        fetch(getApiUrl(API_CONFIG.ENDPOINTS.ONCHAIN_NETWORK_STATE)),
-        fetch(getApiUrl(API_CONFIG.ENDPOINTS.ONCHAIN_CONGESTION_HISTORY, { hours: 24 }))
-      ]);
-
-      if (!stateRes.ok || !historyRes.ok) {
-        throw new Error('Failed to fetch network data');
-      }
-
-      const stateData: NetworkStateResponse = await stateRes.json();
-      const historyData = await historyRes.json();
-
-      // Transform API response to component format
-      const transformedState: NetworkState = {
-        current_block: stateData.network_state.current_block,
-        gas_price: stateData.network_state.avg_base_fee,
-        network_congestion: stateData.interpretation.congestion_level,
-        congestion_score: stateData.network_state.avg_utilization,
-        tx_per_block_avg: stateData.network_state.avg_tx_count,
-        block_utilization_avg: stateData.network_state.avg_utilization,
+      const fetchWithTimeout = async (url: string): Promise<Response> => {
+        return Promise.race([
+          fetch(url),
+          new Promise<Response>((_, reject) => {
+            setTimeout(() => reject(new Error(`Request timed out: ${url}`)), REQUEST_TIMEOUT_MS);
+          })
+        ]);
       };
 
-      setNetworkState(transformedState);
-      setCongestionHistory(historyData);
-      setLoading(false);
+      const [stateReq, historyReq] = await Promise.allSettled([
+        fetchWithTimeout(getApiUrl(API_CONFIG.ENDPOINTS.ONCHAIN_NETWORK_STATE)),
+        fetchWithTimeout(getApiUrl(API_CONFIG.ENDPOINTS.ONCHAIN_CONGESTION_HISTORY, { hours: 24 }))
+      ]);
+      let gotAnyData = false;
+
+      if (stateReq.status === 'fulfilled' && stateReq.value.ok) {
+        const stateData: NetworkStateResponse = await stateReq.value.json();
+
+        // Transform API response to component format
+        const transformedState: NetworkState = {
+          current_block: stateData.network_state.current_block,
+          gas_price: stateData.network_state.avg_base_fee,
+          network_congestion: stateData.interpretation.congestion_level,
+          congestion_score: stateData.network_state.avg_utilization,
+          tx_per_block_avg: stateData.network_state.avg_tx_count,
+          block_utilization_avg: stateData.network_state.avg_utilization,
+        };
+
+        setNetworkState(transformedState);
+        gotAnyData = true;
+      }
+
+      if (historyReq.status === 'fulfilled' && historyReq.value.ok) {
+        const historyData = await historyReq.value.json();
+        setCongestionHistory(historyData);
+        gotAnyData = true;
+      }
+
+      if (!gotAnyData && !networkState) {
+        throw new Error('Failed to fetch network data');
+      }
     } catch (err) {
       console.error('Error fetching network data:', err);
       setError(err instanceof Error ? err.message : 'Failed to load network data');
+    } finally {
       setLoading(false);
     }
   };
