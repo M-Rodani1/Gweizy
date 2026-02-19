@@ -41,17 +41,34 @@ const PredictionCards: React.FC<PredictionCardsProps> = ({ hybridData }) => {
   const [showExplanation, setShowExplanation] = useState<string | null>(null);
   const [showShortTerm, setShowShortTerm] = useState(false); // Hide 1h/4h by default
 
+  const withTimeout = useCallback(async <T,>(promise: Promise<T>, ms: number, label: string): Promise<T> => {
+    return Promise.race([
+      promise,
+      new Promise<T>((_, reject) => {
+        setTimeout(() => reject(new Error(`${label} timed out`)), ms);
+      })
+    ]);
+  }, []);
+
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
 
-      const [predictionsResult, currentGasData] = await Promise.all([
-        fetchPredictions(selectedChainId),
-        fetchCurrentGas()
+      const [predictionsResponse, currentGasResponse] = await Promise.allSettled([
+        withTimeout(fetchPredictions(selectedChainId), 12000, 'Predictions request'),
+        withTimeout(fetchCurrentGas(), 12000, 'Current gas request')
       ]);
 
-      const current = currentGasData?.current_gas || 0;
+      const predictionsResult = predictionsResponse.status === 'fulfilled' ? predictionsResponse.value : null;
+      const currentGasData = currentGasResponse.status === 'fulfilled' ? currentGasResponse.value : null;
+      if (!predictionsResult && !currentGasData) {
+        const predictionError = predictionsResponse.status === 'rejected' ? predictionsResponse.reason : null;
+        const currentError = currentGasResponse.status === 'rejected' ? currentGasResponse.reason : null;
+        throw predictionError || currentError || new Error('Failed to load predictions');
+      }
+
+      const current = Number(currentGasData?.current_gas) || 0;
       const newCards: PredictionCard[] = [];
 
       // First pass: collect all predictions to find the best one
@@ -178,7 +195,7 @@ const PredictionCards: React.FC<PredictionCardsProps> = ({ hybridData }) => {
     } finally {
       setLoading(false);
     }
-  }, [selectedChainId]);
+  }, [selectedChainId, withTimeout]);
 
   useEffect(() => {
     loadData();
