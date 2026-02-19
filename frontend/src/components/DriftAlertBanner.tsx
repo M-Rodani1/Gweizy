@@ -59,9 +59,24 @@ const DriftAlertBanner: React.FC<DriftAlertBannerProps> = ({
   };
 
   useEffect(() => {
-    checkDrift();
-    const interval = setInterval(checkDrift, checkInterval);
-    return () => clearInterval(interval);
+    void checkDrift();
+    const refreshIfVisible = () => {
+      if (typeof document === 'undefined' || document.visibilityState === 'visible') {
+        void checkDrift();
+      }
+    };
+    const interval = setInterval(refreshIfVisible, checkInterval);
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        void checkDrift();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [checkInterval]);
 
   const handleDismiss = () => {
