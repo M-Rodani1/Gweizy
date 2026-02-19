@@ -4,6 +4,7 @@ import { useVirtualizer } from '@tanstack/react-virtual';
 import { TableRowData } from '../../types';
 import { fetchTransactions } from '../api/gasApi';
 import LoadingSpinner from './LoadingSpinner';
+import { REFRESH_INTERVALS } from '../constants';
 
 // Virtual scrolling threshold - use virtual scrolling for 50+ rows
 const VIRTUAL_SCROLL_THRESHOLD = 50;
@@ -54,11 +55,27 @@ const GasPriceTable: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    loadData();
-    
+    void loadData();
+
+    const refreshIfVisible = () => {
+      if (typeof document === 'undefined' || document.visibilityState === 'visible') {
+        void loadData();
+      }
+    };
+
     // Auto-refresh every 30 seconds
-    const interval = setInterval(loadData, 30000);
-    return () => clearInterval(interval);
+    const interval = setInterval(refreshIfVisible, REFRESH_INTERVALS.GAS_DATA);
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        void loadData();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [loadData]);
 
   // Memoize whether to use virtual scrolling
