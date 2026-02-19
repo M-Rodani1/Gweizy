@@ -321,5 +321,128 @@ export async function fetchHybridPrediction(): Promise<HybridPrediction> {
   );
 }
 
+/**
+ * Fetch analytics performance metrics.
+ */
+export async function fetchAnalyticsPerformance(days: number = 90): Promise<Record<string, unknown>> {
+  const url = getApiUrl(`${API_CONFIG.ENDPOINTS.ANALYTICS}/performance`, { days });
+  return fetchJsonWithRetry<Record<string, unknown>>(
+    url,
+    { method: 'GET', headers: { 'Content-Type': 'application/json' } },
+    { key: getCacheKey(url), ttlMs: CACHE_TTL_MS.accuracy },
+    'Failed to fetch analytics performance'
+  );
+}
+
+/**
+ * Fetch analytics trend data for a horizon.
+ */
+export async function fetchAnalyticsTrends(
+  horizon: '1h' | '4h' | '24h',
+  days: number = 90
+): Promise<Record<string, unknown>> {
+  const url = getApiUrl(`${API_CONFIG.ENDPOINTS.ANALYTICS}/trends`, { horizon, days });
+  return fetchJsonWithRetry<Record<string, unknown>>(
+    url,
+    { method: 'GET', headers: { 'Content-Type': 'application/json' } },
+    { key: getCacheKey(url), ttlMs: CACHE_TTL_MS.accuracy },
+    'Failed to fetch analytics trends'
+  );
+}
+
+/**
+ * Fetch on-chain network state.
+ */
+export async function fetchOnchainNetworkState(): Promise<Record<string, unknown>> {
+  const url = getApiUrl(API_CONFIG.ENDPOINTS.ONCHAIN_NETWORK_STATE);
+  return fetchJsonWithRetry<Record<string, unknown>>(
+    url,
+    { method: 'GET', headers: { 'Content-Type': 'application/json' } },
+    { key: getCacheKey(url), ttlMs: CACHE_TTL_MS.current },
+    'Failed to fetch on-chain network state'
+  );
+}
+
+/**
+ * Fetch on-chain congestion history.
+ */
+export async function fetchOnchainCongestionHistory(hours: number = 24): Promise<Record<string, unknown>> {
+  const url = getApiUrl(API_CONFIG.ENDPOINTS.ONCHAIN_CONGESTION_HISTORY, { hours });
+  return fetchJsonWithRetry<Record<string, unknown>>(
+    url,
+    { method: 'GET', headers: { 'Content-Type': 'application/json' } },
+    { key: getCacheKey(url), ttlMs: CACHE_TTL_MS.historical },
+    'Failed to fetch on-chain congestion history'
+  );
+}
+
+/**
+ * Fetch agent status.
+ */
+export async function fetchAgentStatus(): Promise<Record<string, unknown>> {
+  const url = getApiUrl(API_CONFIG.ENDPOINTS.AGENT_STATUS);
+  return fetchJsonWithRetry<Record<string, unknown>>(
+    url,
+    { method: 'GET', headers: { 'Content-Type': 'application/json' } },
+    { key: getCacheKey(url), ttlMs: CACHE_TTL_MS.current },
+    'Failed to fetch agent status'
+  );
+}
+
+/**
+ * Fetch drift metrics from accuracy tracking.
+ */
+export async function fetchAccuracyDrift(): Promise<Record<string, unknown>> {
+  const url = getApiUrl(API_CONFIG.ENDPOINTS.ACCURACY_DRIFT);
+  return fetchJsonWithRetry<Record<string, unknown>>(
+    url,
+    { method: 'GET', headers: { 'Content-Type': 'application/json' } },
+    { key: getCacheKey(url), ttlMs: CACHE_TTL_MS.accuracy },
+    'Failed to fetch accuracy drift'
+  );
+}
+
+/**
+ * Fetch model accuracy metrics payload.
+ */
+export async function fetchAccuracyMetrics(): Promise<Record<string, unknown>> {
+  const url = getApiUrl(API_CONFIG.ENDPOINTS.ACCURACY_METRICS);
+  return fetchJsonWithRetry<Record<string, unknown>>(
+    url,
+    { method: 'GET', headers: { 'Content-Type': 'application/json' } },
+    { key: getCacheKey(url), ttlMs: CACHE_TTL_MS.accuracy },
+    'Failed to fetch accuracy metrics'
+  );
+}
+
+/**
+ * Fetch validation trends.
+ */
+export async function fetchValidationTrends(
+  horizon: '1h' | '4h' | '24h',
+  days: number
+): Promise<Record<string, unknown>> {
+  const url = getApiUrl(API_CONFIG.ENDPOINTS.VALIDATION_TRENDS, { horizon, days });
+  return fetchJsonWithRetry<Record<string, unknown>>(
+    url,
+    { method: 'GET', headers: { 'Content-Type': 'application/json' } },
+    { key: getCacheKey(url), ttlMs: CACHE_TTL_MS.accuracy },
+    'Failed to fetch validation trends'
+  );
+}
+
+/**
+ * Fetch gas pattern data.
+ */
+export async function fetchGasPatterns(): Promise<Record<string, unknown>> {
+  const url = getApiUrl(API_CONFIG.ENDPOINTS.GAS_PATTERNS);
+  return fetchJsonWithRetry<Record<string, unknown>>(
+    url,
+    { method: 'GET', headers: { 'Content-Type': 'application/json' } },
+    { key: getCacheKey(url), ttlMs: CACHE_TTL_MS.historical },
+    'Failed to fetch gas patterns'
+  );
+}
+
 // Export error class
 export { GasAPIError };

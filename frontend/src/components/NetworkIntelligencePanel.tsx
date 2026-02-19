@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Network, Activity, Zap, TrendingUp, Box, Code, Gauge } from 'lucide-react';
-import { API_CONFIG, getApiUrl } from '../config/api';
+import { fetchOnchainCongestionHistory, fetchOnchainNetworkState } from '../api/gasApi';
 
 interface NetworkStateResponse {
   network_state: {
@@ -56,23 +56,23 @@ const NetworkIntelligencePanel: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
-      const fetchWithTimeout = async (url: string): Promise<Response> => {
+      const fetchWithTimeout = async <T,>(promise: Promise<T>, label: string): Promise<T> => {
         return Promise.race([
-          fetch(url),
-          new Promise<Response>((_, reject) => {
-            setTimeout(() => reject(new Error(`Request timed out: ${url}`)), REQUEST_TIMEOUT_MS);
+          promise,
+          new Promise<T>((_, reject) => {
+            setTimeout(() => reject(new Error(`Request timed out: ${label}`)), REQUEST_TIMEOUT_MS);
           })
         ]);
       };
 
       const [stateReq, historyReq] = await Promise.allSettled([
-        fetchWithTimeout(getApiUrl(API_CONFIG.ENDPOINTS.ONCHAIN_NETWORK_STATE)),
-        fetchWithTimeout(getApiUrl(API_CONFIG.ENDPOINTS.ONCHAIN_CONGESTION_HISTORY, { hours: 24 }))
+        fetchWithTimeout(fetchOnchainNetworkState(), 'network-state'),
+        fetchWithTimeout(fetchOnchainCongestionHistory(24), 'congestion-history')
       ]);
       let gotAnyData = false;
 
-      if (stateReq.status === 'fulfilled' && stateReq.value.ok) {
-        const stateData: NetworkStateResponse = await stateReq.value.json();
+      if (stateReq.status === 'fulfilled') {
+        const stateData = stateReq.value as NetworkStateResponse;
 
         // Transform API response to component format
         const transformedState: NetworkState = {
@@ -88,8 +88,8 @@ const NetworkIntelligencePanel: React.FC = () => {
         gotAnyData = true;
       }
 
-      if (historyReq.status === 'fulfilled' && historyReq.value.ok) {
-        const historyData = await historyReq.value.json();
+      if (historyReq.status === 'fulfilled') {
+        const historyData = historyReq.value as CongestionHistory;
         setCongestionHistory(historyData);
         gotAnyData = true;
       }

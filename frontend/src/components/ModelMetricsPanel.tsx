@@ -19,7 +19,7 @@ import {
   ExternalLink,
   ChevronDown
 } from 'lucide-react';
-import { API_CONFIG, getApiUrl } from '../config/api';
+import { fetchAccuracyDrift, fetchAccuracyMetrics, fetchValidationTrends } from '../api/gasApi';
 import type {
   DriftResponse,
   MetricsResponse,
@@ -50,11 +50,11 @@ const ModelMetricsPanel: React.FC<ModelMetricsPanelProps> = ({
   const [isExpanded, setIsExpanded] = useState(!compact);
   const REQUEST_TIMEOUT_MS = 12000;
 
-  const fetchWithTimeout = useCallback(async (url: string): Promise<Response> => {
+  const fetchWithTimeout = useCallback(async <T,>(promise: Promise<T>, label: string): Promise<T> => {
     return Promise.race([
-      fetch(url),
-      new Promise<Response>((_, reject) => {
-        setTimeout(() => reject(new Error(`Request timed out: ${url}`)), REQUEST_TIMEOUT_MS);
+      promise,
+      new Promise<T>((_, reject) => {
+        setTimeout(() => reject(new Error(`Request timed out: ${label}`)), REQUEST_TIMEOUT_MS);
       })
     ]);
   }, []);
@@ -64,22 +64,21 @@ const ModelMetricsPanel: React.FC<ModelMetricsPanelProps> = ({
     try {
       setError(null);
       const [metricsReq, driftReq] = await Promise.allSettled([
-        fetchWithTimeout(getApiUrl(API_CONFIG.ENDPOINTS.ACCURACY_METRICS)),
-        fetchWithTimeout(getApiUrl(API_CONFIG.ENDPOINTS.ACCURACY_DRIFT))
+        fetchWithTimeout(fetchAccuracyMetrics(), 'accuracy metrics'),
+        fetchWithTimeout(fetchAccuracyDrift(), 'accuracy drift')
       ]);
       const metricsRes = metricsReq.status === 'fulfilled' ? metricsReq.value : null;
       const driftRes = driftReq.status === 'fulfilled' ? driftReq.value : null;
 
-      if (metricsRes?.ok) {
-        const data = await metricsRes.json();
-        if (data.success && data.metrics) {
-          setMetricsData(data);
+      if (metricsRes) {
+        const data = metricsRes as MetricsResponse;
+        if ((data as { success?: boolean }).success && (data as { metrics?: unknown }).metrics) {
+          setMetricsData(data as MetricsResponse);
         }
       }
 
-      if (driftRes?.ok) {
-        const data = await driftRes.json();
-        setDriftData(data);
+      if (driftRes) {
+        setDriftData(driftRes as DriftResponse);
       }
 
       if (!metricsRes && !driftRes && !metricsData && !driftData) {
@@ -100,16 +99,8 @@ const ModelMetricsPanel: React.FC<ModelMetricsPanelProps> = ({
   // Fetch trends for selected horizon
   const fetchTrends = useCallback(async () => {
     try {
-      const response = await fetch(
-        getApiUrl(API_CONFIG.ENDPOINTS.VALIDATION_TRENDS, {
-          horizon: selectedHorizon,
-          days: trendPeriod
-        })
-      );
-      if (response.ok) {
-        const data = await response.json();
-        setTrends(data);
-      }
+      const data = await fetchValidationTrends(selectedHorizon, trendPeriod);
+      setTrends(data as ValidationTrends);
     } catch (err) {
       console.warn('Trends not available');
     }

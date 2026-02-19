@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Activity, CloudOff, RefreshCw, ShieldCheck, Brain, AlertTriangle } from 'lucide-react';
-import { API_CONFIG, getApiUrl } from '../config/api';
+import { checkHealth, fetchAccuracyDrift, fetchAgentStatus, fetchGasPatterns, GasAPIError } from '../api/gasApi';
 import type { DriftInfo } from '../types/modelMetrics';
 
 type StatusState = 'checking' | 'online' | 'offline' | 'degraded';
@@ -15,17 +15,6 @@ interface StatusItem {
 const ApiStatusPanel: React.FC = () => {
   const [items, setItems] = useState<StatusItem[]>([]);
   const [lastUpdated, setLastUpdated] = useState<string>('');
-  const REQUEST_TIMEOUT_MS = 12000;
-
-  const fetchWithTimeout = async (url: string): Promise<Response> => {
-    return Promise.race([
-      fetch(url),
-      new Promise<Response>((_, reject) => {
-        setTimeout(() => reject(new Error(`Request timed out: ${url}`)), REQUEST_TIMEOUT_MS);
-      })
-    ]);
-  };
-
   const fetchStatus = async () => {
     const now = new Date();
     setLastUpdated(now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
@@ -40,29 +29,28 @@ const ApiStatusPanel: React.FC = () => {
 
     try {
       const [healthReq, agentReq, driftReq, patternsReq] = await Promise.allSettled([
-        fetchWithTimeout(getApiUrl(API_CONFIG.ENDPOINTS.HEALTH)),
-        fetchWithTimeout(getApiUrl(API_CONFIG.ENDPOINTS.AGENT_STATUS)),
-        fetchWithTimeout(getApiUrl(API_CONFIG.ENDPOINTS.ACCURACY_DRIFT)),
-        fetchWithTimeout(getApiUrl(API_CONFIG.ENDPOINTS.GAS_PATTERNS))
+        checkHealth(),
+        fetchAgentStatus(),
+        fetchAccuracyDrift(),
+        fetchGasPatterns()
       ]);
 
       const nextItems = [...baseItems];
-      const healthRes = healthReq.status === 'fulfilled' ? healthReq.value : null;
-      const agentRes = agentReq.status === 'fulfilled' ? agentReq.value : null;
-      const driftRes = driftReq.status === 'fulfilled' ? driftReq.value : null;
-      const patternsRes = patternsReq.status === 'fulfilled' ? patternsReq.value : null;
+      const healthRes = healthReq.status === 'fulfilled' ? healthReq.value : false;
+      const agentData = agentReq.status === 'fulfilled' ? agentReq.value : null;
+      const driftData = driftReq.status === 'fulfilled' ? driftReq.value : null;
+      const patternsError = patternsReq.status === 'rejected' ? patternsReq.reason : null;
 
-      if (healthRes?.ok) {
+      if (healthRes) {
         nextItems[0] = { key: 'health', label: 'Core API', status: 'online', detail: 'Streaming live data' };
       } else {
         nextItems[0] = { key: 'health', label: 'Core API', status: 'offline', detail: 'Health check failed' };
       }
 
-      if (agentRes?.ok) {
-        const agentData = await agentRes.json();
+      if (agentData) {
         // Check if agent is loaded - dqn_loaded is the actual response field
-        const agentLoaded = agentData?.dqn_loaded ?? true;
-        const modelType = agentData?.model_type ?? 'Unknown';
+        const agentLoaded = (agentData as { dqn_loaded?: boolean })?.dqn_loaded ?? true;
+        const modelType = (agentData as { model_type?: string })?.model_type ?? 'Unknown';
         nextItems[1] = {
           key: 'agent',
           label: 'AI Agent',
@@ -74,10 +62,9 @@ const ApiStatusPanel: React.FC = () => {
       }
 
       // Model health / drift check
-      if (driftRes?.ok) {
-        const driftData = await driftRes.json();
-        const shouldRetrain = driftData?.should_retrain ?? false;
-        const isDrifting = Object.values(driftData?.drift || {}).some((d) => (d as DriftInfo)?.is_drifting);
+      if (driftData) {
+        const shouldRetrain = (driftData as { should_retrain?: boolean })?.should_retrain ?? false;
+        const isDrifting = Object.values((driftData as { drift?: Record<string, unknown> })?.drift || {}).some((d) => (d as DriftInfo)?.is_drifting);
 
         if (shouldRetrain) {
           nextItems[2] = { key: 'model', label: 'Model Health', status: 'degraded', detail: 'Retrain recommended' };
@@ -90,9 +77,9 @@ const ApiStatusPanel: React.FC = () => {
         nextItems[2] = { key: 'model', label: 'Model Health', status: 'degraded', detail: 'No tracking data' };
       }
 
-      if (patternsRes?.ok) {
+      if (patternsReq.status === 'fulfilled') {
         nextItems[3] = { key: 'patterns', label: 'Patterns', status: 'online', detail: 'Hourly & daily patterns ready' };
-      } else if (patternsRes && (patternsRes.status === 404 || patternsRes.status === 503)) {
+      } else if (patternsError instanceof GasAPIError && (patternsError.status === 404 || patternsError.status === 503)) {
         nextItems[3] = { key: 'patterns', label: 'Patterns', status: 'degraded', detail: 'Using cached patterns' };
       } else {
         nextItems[3] = { key: 'patterns', label: 'Patterns', status: 'offline', detail: 'Patterns unavailable' };

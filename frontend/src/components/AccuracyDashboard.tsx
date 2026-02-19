@@ -1,6 +1,6 @@
 import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { TrendingUp, TrendingDown, Activity } from 'lucide-react';
-import { API_CONFIG, getApiUrl } from '../config/api';
+import { fetchAnalyticsPerformance, fetchAnalyticsTrends } from '../api/gasApi';
 
 export interface MetricsData {
   horizon: string;
@@ -41,23 +41,24 @@ const AccuracyDashboard: React.FC<AccuracyDashboardProps> = ({ selectedChain = '
   const fetchAccuracyData = async () => {
     try {
       setLoading(true);
-      const fetchWithTimeout = async (url: string): Promise<Response> => {
-        return Promise.race([
-          fetch(url),
-          new Promise<Response>((_, reject) => {
-            setTimeout(() => reject(new Error(`Request timed out: ${url}`)), REQUEST_TIMEOUT_MS);
-          })
-        ]);
-      };
-
       const [metricsReq, trendsReq] = await Promise.allSettled([
-        fetchWithTimeout(getApiUrl(`${API_CONFIG.ENDPOINTS.ANALYTICS}/performance?days=90`)),
-        fetchWithTimeout(getApiUrl(`${API_CONFIG.ENDPOINTS.ANALYTICS}/trends?horizon=${selectedHorizon}&days=90`))
+        Promise.race([
+          fetchAnalyticsPerformance(90),
+          new Promise<never>((_, reject) => {
+            setTimeout(() => reject(new Error('Request timed out: analytics performance')), REQUEST_TIMEOUT_MS);
+          })
+        ]),
+        Promise.race([
+          fetchAnalyticsTrends(selectedHorizon, 90),
+          new Promise<never>((_, reject) => {
+            setTimeout(() => reject(new Error('Request timed out: analytics trends')), REQUEST_TIMEOUT_MS);
+          })
+        ])
       ]);
       let gotAnyData = false;
 
-      if (metricsReq.status === 'fulfilled' && metricsReq.value.ok) {
-        const metricsData = await metricsReq.value.json();
+      if (metricsReq.status === 'fulfilled') {
+        const metricsData = metricsReq.value as { metrics?: Record<string, unknown> };
         if (metricsData.metrics) {
         // Transform metrics data
           const transformedMetrics: Record<string, MetricsData> = {};
@@ -78,8 +79,8 @@ const AccuracyDashboard: React.FC<AccuracyDashboardProps> = ({ selectedChain = '
         }
       }
 
-      if (trendsReq.status === 'fulfilled' && trendsReq.value.ok) {
-        const trendsData = await trendsReq.value.json();
+      if (trendsReq.status === 'fulfilled') {
+        const trendsData = trendsReq.value as { trends?: TrendData[] };
         if (trendsData.trends) {
           setTrends({ [selectedHorizon]: trendsData.trends });
           gotAnyData = true;
