@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { fetchGlobalStats } from '../api/gasApi';
+import { REFRESH_INTERVALS } from '../constants';
 
 interface Stats {
   total_saved_k: number;
@@ -28,9 +29,24 @@ const SocialProof: React.FC = () => {
       }
     };
 
-    loadStats();
-    const interval = setInterval(loadStats, 300000); // Refresh every 5 minutes
-    return () => clearInterval(interval);
+    void loadStats();
+    const refreshIfVisible = () => {
+      if (typeof document === 'undefined' || document.visibilityState === 'visible') {
+        void loadStats();
+      }
+    };
+    const interval = setInterval(refreshIfVisible, REFRESH_INTERVALS.HISTORICAL); // Refresh every 5 minutes
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        void loadStats();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, []);
 
   const formatSaved = (value: number) => {
