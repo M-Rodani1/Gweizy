@@ -4,6 +4,7 @@ import { GraphDataPoint } from '../../types';
 import { fetchPredictions, fetchCurrentGas } from '../api/gasApi';
 import LoadingSpinner from './LoadingSpinner';
 import { withTimeout } from '../utils/withTimeout';
+import { REFRESH_INTERVALS } from '../constants';
 
 type TimeScale = '1h' | '4h' | '24h' | 'historical';
 
@@ -101,7 +102,7 @@ const GasPriceGraph: React.FC = () => {
         void loadData();
       }
     };
-    const interval = setInterval(refreshIfVisible, 30000);
+    const interval = setInterval(refreshIfVisible, REFRESH_INTERVALS.GAS_DATA);
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
         void loadData();
