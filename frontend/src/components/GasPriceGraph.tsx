@@ -108,30 +108,6 @@ const GasPriceGraph: React.FC = () => {
     return () => clearInterval(interval);
   }, [loadData]);
 
-  if (loading && data.length === 0) {
-    return (
-      <div className="bg-gray-800 p-4 sm:p-6 rounded-2xl shadow-xl h-64 md:h-80 lg:h-96">
-        <LoadingSpinner message="Loading gas price data..." />
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="bg-gray-800 p-4 sm:p-6 rounded-2xl shadow-xl h-64 md:h-80 lg:h-96">
-        <div className="flex flex-col items-center justify-center h-full">
-          <p className="text-red-400 mb-4">⚠️ {error}</p>
-          <button
-            onClick={loadData}
-            className="px-4 py-2 bg-cyan-500 hover:bg-cyan-600 rounded-md transition-colors"
-          >
-            Retry
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   // Memoize tooltip formatters to avoid recreation on each render
   const tooltipFormatter = useCallback((value: unknown) => {
     if (value === null || value === undefined) return 'N/A';
@@ -162,6 +138,30 @@ const GasPriceGraph: React.FC = () => {
     }
     return parts.join(' ');
   }, [data, currentGas, timeScale]);
+
+  if (loading && data.length === 0) {
+    return (
+      <div className="bg-gray-800 p-4 sm:p-6 rounded-2xl shadow-xl h-64 md:h-80 lg:h-96">
+        <LoadingSpinner message="Loading gas price data..." />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-gray-800 p-4 sm:p-6 rounded-2xl shadow-xl h-64 md:h-80 lg:h-96">
+        <div className="flex flex-col items-center justify-center h-full">
+          <p className="text-red-400 mb-4">⚠️ {error}</p>
+          <button
+            onClick={loadData}
+            className="px-4 py-2 bg-cyan-500 hover:bg-cyan-600 rounded-md transition-colors"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-gradient-to-br from-gray-800 to-gray-900 p-4 sm:p-6 rounded-2xl shadow-2xl border border-gray-700/50 card-hover h-64 md:h-80 lg:h-96">
