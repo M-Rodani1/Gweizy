@@ -62,8 +62,8 @@ Since wrangler CLI has installation issues, use this manual setup guide via the 
 cd /Users/rodan/Documents/gasFeesPrediction-main/frontend
 
 # Create production env file
-echo "VITE_API_URL=https://gas-fees-api.YOUR_USERNAME.workers.dev/api" > .env.production
-# Replace YOUR_USERNAME with your actual Cloudflare username from the worker URL
+echo "VITE_API_URL=/api" > .env.production
+echo "VITE_WS_URL=https://basegasfeesml-production.up.railway.app" >> .env.production
 
 # Build
 npm run build
@@ -96,7 +96,9 @@ npm run build
    - **Build output directory**: `frontend/dist`
    - **Environment variables**: Click **Add variable**
      - Variable name: `VITE_API_URL`
-     - Value: `https://gas-fees-api.YOUR_USERNAME.workers.dev/api`
+     - Value: `/api`
+     - Variable name: `VITE_WS_URL`
+     - Value: `https://basegasfeesml-production.up.railway.app`
 8. Click **Save and Deploy**
 
 **Your site is now live!** Copy the Pages URL (e.g., `https://base-gas-optimizer.pages.dev`)
@@ -120,7 +122,8 @@ Update your environment files with the real URLs:
 
 ```bash
 # Update .env.production
-echo "VITE_API_URL=https://gas-fees-api.YOUR_USERNAME.workers.dev/api" > frontend/.env.production
+echo "VITE_API_URL=/api" > frontend/.env.production
+echo "VITE_WS_URL=https://basegasfeesml-production.up.railway.app" >> frontend/.env.production
 
 # Commit
 git add frontend/.env.production
@@ -141,7 +144,7 @@ If you used GitHub integration, Cloudflare will auto-deploy on every push!
 
 ### Pages not loading
 1. Check build output directory is `frontend/dist`
-2. Verify `VITE_API_URL` environment variable is set
+2. Verify `VITE_API_URL` and `VITE_WS_URL` environment variables are set
 3. Check Pages → **Functions** tab for errors
 
 ### Still seeing slow loads

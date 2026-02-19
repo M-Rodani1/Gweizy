@@ -103,10 +103,12 @@ npx wrangler pages deploy dist --project-name=base-gas-optimizer
 Update `frontend/.env.production`:
 
 ```env
-VITE_API_URL=https://gas-fees-api.YOUR_USERNAME.workers.dev/api
+VITE_API_URL=/api
+VITE_WS_URL=https://basegasfeesml-production.up.railway.app
 ```
 
-Replace `YOUR_USERNAME` with your actual Cloudflare username.
+`VITE_API_URL` should stay same-origin (`/api`) so Pages rewrites handle API proxying.
+`VITE_WS_URL` should point to your socket.io backend origin.
 
 ---
 
@@ -133,7 +135,8 @@ For automatic deployments on git push:
 4. Update `.github/workflows/deploy-cloudflare.yml`:
    ```yaml
    env:
-     VITE_API_URL: https://gas-fees-api.YOUR_USERNAME.workers.dev/api
+     VITE_API_URL: /api
+     VITE_WS_URL: https://basegasfeesml-production.up.railway.app
    ```
 
 5. Push to GitHub - automatic deployment will start!

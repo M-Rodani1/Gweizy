@@ -27,7 +27,8 @@ jobs:
       working-directory: ./frontend
       run: npm run build
       env:
-        VITE_API_URL: ${{ secrets.VITE_API_URL || 'https://basegasfeesml-production.up.railway.app/api' }}
+        VITE_API_URL: ${{ secrets.VITE_API_URL || '/api' }}
+        VITE_WS_URL: ${{ secrets.VITE_WS_URL || 'https://basegasfeesml-production.up.railway.app' }}
 
     - name: Verify build output
       run: |
