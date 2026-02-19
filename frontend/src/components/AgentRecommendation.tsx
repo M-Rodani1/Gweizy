@@ -39,6 +39,10 @@ const AgentRecommendation: React.FC<AgentRecommendationProps> = ({ currentGas: _
         getApiUrl(API_CONFIG.ENDPOINTS.AGENT_RECOMMEND, { urgency }),
         { signal: controller.signal }
       );
+      if (!response.ok) {
+        setError(`Agent request failed (${response.status})`);
+        return;
+      }
       const data = await response.json();
 
       if (data.success) {
