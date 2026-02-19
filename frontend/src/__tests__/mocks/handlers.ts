@@ -7,7 +7,7 @@
 
 import { http, HttpResponse } from 'msw';
 
-const API_BASE = 'https://basegasfeesml-production.up.railway.app/api';
+const API_BASE = '/api';
 
 // Mock data
 const mockCurrentGas = {

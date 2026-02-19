@@ -7,7 +7,7 @@ import sri from 'vite-plugin-sri';
 export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, '.', '');
     const isAnalyze = process.env.ANALYZE === 'true';
-    const apiTarget = (env.VITE_API_URL || 'https://basegasfeesml-production.up.railway.app')
+    const apiTarget = (env.VITE_API_PROXY_TARGET || 'https://basegasfeesml-production.up.railway.app')
       .replace(/\/api\/?$/, '');
     return {
       server: {
