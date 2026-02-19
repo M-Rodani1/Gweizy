@@ -10,6 +10,7 @@
 import React, { useEffect, useState, memo } from 'react';
 import { Search, TrendingUp, TrendingDown, Minus, RefreshCw, Clock, Target } from 'lucide-react';
 import { API_CONFIG, getApiUrl } from '../config/api';
+import { REFRESH_INTERVALS } from '../constants';
 
 interface PatternMatch {
   timestamp: string;
@@ -88,9 +89,24 @@ const PatternMatchingCard: React.FC = () => {
   };
 
   useEffect(() => {
-    fetchPatterns();
-    const interval = setInterval(fetchPatterns, 60000); // Refresh every minute
-    return () => clearInterval(interval);
+    void fetchPatterns();
+    const refreshIfVisible = () => {
+      if (typeof document === 'undefined' || document.visibilityState === 'visible') {
+        void fetchPatterns();
+      }
+    };
+    const interval = setInterval(refreshIfVisible, REFRESH_INTERVALS.PREDICTIONS); // Refresh every minute
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        void fetchPatterns();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, []);
 
   const getTrendIcon = (change: number) => {
