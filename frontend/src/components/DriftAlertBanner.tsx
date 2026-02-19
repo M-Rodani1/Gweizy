@@ -33,6 +33,8 @@ const DriftAlertBanner: React.FC<DriftAlertBannerProps> = ({
       );
 
       if (!response.ok) {
+        setDriftData([]);
+        setShouldRetrain(false);
         setLoading(false);
         return;
       }
@@ -58,6 +60,8 @@ const DriftAlertBanner: React.FC<DriftAlertBannerProps> = ({
       }
     } catch (err) {
       // Silently fail - don't show alert on error
+      setDriftData([]);
+      setShouldRetrain(false);
     } finally {
       clearTimeout(timeoutId);
       setLoading(false);
