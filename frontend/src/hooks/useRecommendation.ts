@@ -4,6 +4,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { API_CONFIG, getApiUrl } from '../config/api';
+import { REFRESH_INTERVALS } from '../constants';
 
 export interface AgentRecommendation {
   action: string;
@@ -89,9 +90,24 @@ export const useRecommendation = (urgency: number): UseRecommendationResult => {
 
   // Fetch on mount and set up polling
   useEffect(() => {
-    fetchRecommendation();
-    const interval = setInterval(fetchRecommendation, 30000);
-    return () => clearInterval(interval);
+    void fetchRecommendation();
+    const refreshIfVisible = () => {
+      if (typeof document === 'undefined' || document.visibilityState === 'visible') {
+        void fetchRecommendation();
+      }
+    };
+    const interval = setInterval(refreshIfVisible, REFRESH_INTERVALS.GAS_DATA);
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        void fetchRecommendation();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [fetchRecommendation]);
 
   // Countdown timer
