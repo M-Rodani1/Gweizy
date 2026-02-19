@@ -4,12 +4,15 @@
  */
 
 import { RETRY_CONFIG } from '../constants';
+import { API_CONFIG } from '../config/api';
+import { withTimeout } from './withTimeout';
 
 export interface RetryOptions {
   maxAttempts?: number;
   baseDelay?: number;
   maxDelay?: number;
   backoffMultiplier?: number;
+  timeoutMs?: number;
   onRetry?: (attempt: number, error: Error) => void;
 }
 
@@ -68,9 +71,14 @@ export function fetchWithRetry(
   options: RequestInit = {},
   retryOptions?: RetryOptions
 ): Promise<Response> {
+  const timeoutMs = retryOptions?.timeoutMs ?? API_CONFIG.TIMEOUT;
   return retryWithBackoff(
     async () => {
-      const response = await fetch(url, options);
+      const response = await withTimeout(
+        fetch(url, options),
+        timeoutMs,
+        `Request timed out: ${url}`
+      );
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
