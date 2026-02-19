@@ -144,8 +144,7 @@ describe('gasApi', () => {
       expect(mockFetch).toHaveBeenCalledWith(
         'https://api.test.com/api/health',
         expect.objectContaining({
-          method: 'GET',
-          headers: { 'Content-Type': 'application/json' },
+          method: 'GET'
         })
       );
     });

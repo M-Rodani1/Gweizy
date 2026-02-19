@@ -81,6 +81,23 @@ const writeCache = (key: string, data: unknown) => {
   }
 };
 
+const sanitizeHeadersForGet = (
+  method: string | undefined,
+  headers: HeadersInit | undefined
+): HeadersInit | undefined => {
+  if (!headers) {
+    return headers;
+  }
+  if ((method || 'GET').toUpperCase() !== 'GET') {
+    return headers;
+  }
+
+  const sanitized = new Headers(headers);
+  sanitized.delete('Content-Type');
+  sanitized.delete('content-type');
+  return sanitized;
+};
+
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 const getCircuitState = (key: string): CircuitBreakerState =>
@@ -149,7 +166,11 @@ const fetchJsonWithRetry = async <T,>(
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), API_CONFIG.TIMEOUT);
       try {
-        const response = await fetch(url, { ...options, signal: controller.signal });
+        const response = await fetch(url, {
+          ...options,
+          headers: sanitizeHeadersForGet(options.method, options.headers),
+          signal: controller.signal
+        });
         clearTimeout(timeoutId);
 
         if (!response.ok) {
@@ -233,9 +254,6 @@ export async function checkHealth(): Promise<boolean> {
   try {
     const response = await fetch(getApiUrl(API_CONFIG.ENDPOINTS.HEALTH), {
       method: 'GET',
-      headers: { 'Content-Type': 'application/json' },
-      mode: 'cors',
-      credentials: 'omit',
       signal: controller.signal
     });
     clearTimeout(timeoutId);
