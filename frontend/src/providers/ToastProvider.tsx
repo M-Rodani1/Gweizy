@@ -27,8 +27,8 @@ function getToastText(message: unknown): string {
     return String(message);
   }
 
-  if (React.isValidElement(message)) {
-    const children = message.props?.children;
+  if (React.isValidElement<{ children?: ReactNode }>(message)) {
+    const { children } = message.props;
     if (typeof children === 'string' || typeof children === 'number') {
       return String(children);
     }

@@ -55,5 +55,18 @@
     "useDefineForClassFields": false
   },
   "include": ["src", "types.ts"],
-  "exclude": ["node_modules", "dist"]
+  "exclude": [
+    "node_modules",
+    "dist",
+    "src/**/__tests__/**",
+    "src/**/*.test.ts",
+    "src/**/*.test.tsx",
+    "src/**/*.spec.ts",
+    "src/**/*.spec.tsx",
+    "src/stories/**",
+    "src/**/*.stories.ts",
+    "src/**/*.stories.tsx",
+    "coverage/**",
+    "e2e/**"
+  ]
 }

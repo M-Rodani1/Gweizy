@@ -1,6 +1,6 @@
 import React, { useEffect, useCallback, useRef, useId } from 'react';
 import { X } from 'lucide-react';
-import { focusFirst, trapFocus, getFocusableElements } from '../../utils/focusManagement';
+import { focusFirst, trapFocus } from '../../utils/focusManagement';
 
 type ModalSize = 'sm' | 'md' | 'lg' | 'xl' | 'full';
 

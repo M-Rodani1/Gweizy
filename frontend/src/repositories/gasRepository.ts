@@ -1,4 +1,4 @@
-import { fetchCurrentGas, fetchGasPredictions } from '../api/gasApi';
+import { fetchCurrentGas, fetchPredictions } from '../api/gasApi';
 import { CurrentGasData, PredictionsResponse } from '../../types';
 
 export interface GasRepository {
@@ -9,7 +9,7 @@ export interface GasRepository {
 export const createGasRepository = (deps: {
   fetchCurrentGas: () => Promise<CurrentGasData>;
   fetchGasPredictions: () => Promise<PredictionsResponse>;
-} = { fetchCurrentGas, fetchGasPredictions }): GasRepository => ({
+} = { fetchCurrentGas, fetchGasPredictions: fetchPredictions }): GasRepository => ({
   getCurrentGas: () => deps.fetchCurrentGas(),
   getPredictions: () => deps.fetchGasPredictions()
 });

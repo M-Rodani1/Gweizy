@@ -44,7 +44,7 @@ interface State {
  * </ErrorBoundary>
  */
 class ErrorBoundary extends Component<Props, State> {
-  public state: State = {
+  public override state: State = {
     hasError: false,
     error: null,
     errorInfo: null
@@ -54,7 +54,7 @@ class ErrorBoundary extends Component<Props, State> {
     return { hasError: true, error };
   }
 
-  public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+  public override componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     // Log to console
     console.error('ErrorBoundary caught an error:', error, errorInfo);
 
@@ -72,7 +72,7 @@ class ErrorBoundary extends Component<Props, State> {
     this.props.onError?.(error, errorInfo);
   }
 
-  public componentDidUpdate(prevProps: Props) {
+  public override componentDidUpdate(prevProps: Props) {
     if (!this.state.hasError) return;
     const prevKeys = prevProps.resetKeys;
     const nextKeys = this.props.resetKeys;
@@ -92,7 +92,7 @@ class ErrorBoundary extends Component<Props, State> {
     window.location.href = '/';
   };
 
-  public render() {
+  public override render() {
     if (this.state.hasError) {
       // Use custom fallback if provided
       if (this.props.fallback) {

@@ -70,14 +70,14 @@ const ModelMetricsPanel: React.FC<ModelMetricsPanelProps> = ({
       const driftRes = driftReq.status === 'fulfilled' ? driftReq.value : null;
 
       if (metricsRes) {
-        const data = metricsRes as MetricsResponse;
+        const data = metricsRes as unknown as MetricsResponse;
         if ((data as { success?: boolean }).success && (data as { metrics?: unknown }).metrics) {
-          setMetricsData(data as MetricsResponse);
+          setMetricsData(data);
         }
       }
 
       if (driftRes) {
-        setDriftData(driftRes as DriftResponse);
+        setDriftData(driftRes as unknown as DriftResponse);
       }
 
       if (!metricsRes && !driftRes && !metricsData && !driftData) {
@@ -99,7 +99,7 @@ const ModelMetricsPanel: React.FC<ModelMetricsPanelProps> = ({
   const fetchTrends = useCallback(async () => {
     try {
       const data = await fetchValidationTrends(selectedHorizon, trendPeriod);
-      setTrends(data as ValidationTrends);
+      setTrends(data as unknown as ValidationTrends);
     } catch (err) {
       console.warn('Trends not available');
     }

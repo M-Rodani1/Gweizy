@@ -68,7 +68,7 @@ export const PredictionsResponseSchema = z.object({
     '24h': z.array(GraphDataPointSchema),
     historical: z.array(GraphDataPointSchema)
   }),
-  model_info: z.record(z.object({
+  model_info: z.record(z.string(), z.object({
     name: z.string(),
     mae: z.number()
   })).optional()
@@ -99,12 +99,12 @@ export const ConfigResponseSchema = z.object({
     name: z.string(),
     enabled: z.boolean()
   })),
-  features: z.record(z.boolean()),
+  features: z.record(z.string(), z.boolean()),
   version: z.string()
 });
 
 export const AccuracyResponseSchema = z.object({
-  horizons: z.record(z.object({
+  horizons: z.record(z.string(), z.object({
     mae: z.number(),
     rmse: z.number().optional(),
     r2: z.number().optional(),

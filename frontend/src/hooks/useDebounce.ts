@@ -98,11 +98,11 @@ export interface DebouncedCallbackOptions {
  * }
  * ```
  */
-export function useDebouncedCallback<T extends (...args: Parameters<T>) => ReturnType<T>>(
-  callback: T,
+export function useDebouncedCallback<TArgs extends unknown[], TResult>(
+  callback: (...args: TArgs) => TResult,
   options: DebouncedCallbackOptions = {}
 ): {
-  debouncedCallback: (...args: Parameters<T>) => void;
+  debouncedCallback: (...args: TArgs) => void;
   cancel: () => void;
   flush: () => void;
   isPending: boolean;
@@ -112,7 +112,7 @@ export function useDebouncedCallback<T extends (...args: Parameters<T>) => Retur
   const [isPending, setIsPending] = useState(false);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const maxTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const lastArgsRef = useRef<Parameters<T> | null>(null);
+  const lastArgsRef = useRef<TArgs | null>(null);
   const lastCallTimeRef = useRef<number | null>(null);
   const callbackRef = useRef(callback);
 
@@ -151,7 +151,7 @@ export function useDebouncedCallback<T extends (...args: Parameters<T>) => Retur
   }, []);
 
   const debouncedCallback = useCallback(
-    (...args: Parameters<T>) => {
+    (...args: TArgs) => {
       lastArgsRef.current = args;
       const now = Date.now();
       const isFirstCall = lastCallTimeRef.current === null;

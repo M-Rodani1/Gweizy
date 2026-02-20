@@ -153,6 +153,10 @@ export async function getCacheInfo(): Promise<CacheInfo | null> {
   if (!('serviceWorker' in navigator) || !navigator.serviceWorker.controller) {
     return null;
   }
+  const controller = navigator.serviceWorker.controller;
+  if (!controller) {
+    return null;
+  }
 
   return new Promise((resolve) => {
     const channel = new MessageChannel();
@@ -163,7 +167,7 @@ export async function getCacheInfo(): Promise<CacheInfo | null> {
       }
     };
 
-    navigator.serviceWorker.controller.postMessage(
+    controller.postMessage(
       { type: 'GET_CACHE_INFO' },
       [channel.port2]
     );

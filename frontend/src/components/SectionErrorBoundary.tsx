@@ -45,7 +45,7 @@ interface State {
  * </SectionErrorBoundary>
  */
 export class SectionErrorBoundary extends Component<SectionErrorBoundaryProps, State> {
-  public state: State = {
+  public override state: State = {
     hasError: false,
     error: null,
   };
@@ -54,7 +54,7 @@ export class SectionErrorBoundary extends Component<SectionErrorBoundaryProps, S
     return { hasError: true, error };
   }
 
-  public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+  public override componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     const { sectionName, onError } = this.props;
 
     // Log with section context
@@ -78,7 +78,7 @@ export class SectionErrorBoundary extends Component<SectionErrorBoundaryProps, S
     this.setState({ hasError: false, error: null });
   };
 
-  public render() {
+  public override render() {
     const { children, sectionName, fallback, className = '' } = this.props;
 
     if (this.state.hasError) {

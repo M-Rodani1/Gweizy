@@ -81,7 +81,7 @@ const NetworkIntelligencePanel: React.FC = () => {
       let gotAnyData = false;
 
       if (stateReq.status === 'fulfilled') {
-        const stateData = stateReq.value as NetworkStateResponse;
+        const stateData = stateReq.value as unknown as NetworkStateResponse;
 
         // Transform API response to component format
         const transformedState: NetworkState = {
@@ -98,7 +98,7 @@ const NetworkIntelligencePanel: React.FC = () => {
       }
 
       if (historyReq.status === 'fulfilled') {
-        const historyData = historyReq.value as CongestionHistory;
+        const historyData = historyReq.value as unknown as CongestionHistory;
         setCongestionHistory(historyData);
         gotAnyData = true;
       }

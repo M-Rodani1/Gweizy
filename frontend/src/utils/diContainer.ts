@@ -1,4 +1,4 @@
-export type Token<T> = string;
+export type Token<T> = string & { readonly __type?: T };
 
 type Provider<T> = () => T;
 

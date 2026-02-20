@@ -26,8 +26,20 @@ const SavingsLeaderboard: React.FC<SavingsLeaderboardProps> = ({ walletAddress }
         setLoading(true);
         setError(null);
         const data = await fetchLeaderboard();
-        setLeaderboard(data.leaderboard || []);
-        setUserRank(data.user_rank || null);
+        const entries: LeaderboardEntry[] = (data.entries || []).map((entry) => ({
+          address: entry.address,
+          savings: entry.total_savings,
+          rank: entry.rank,
+          badge: undefined,
+          streak: undefined,
+        }));
+        setLeaderboard(entries);
+        if (walletAddress) {
+          const rank = entries.find((entry) => entry.address.toLowerCase() === walletAddress.toLowerCase())?.rank ?? null;
+          setUserRank(rank);
+        } else {
+          setUserRank(null);
+        }
       } catch (err) {
         console.error('Error loading leaderboard:', err);
         setError(err instanceof Error ? err.message : 'Failed to load leaderboard');

@@ -186,8 +186,8 @@ export function validateWebSocketMessage(
  * Format Zod error to a readable string.
  */
 function formatZodError(error: z.ZodError): string {
-  return error.errors
-    .map((e) => `${e.path.join('.')}: ${e.message}`)
+  return error.issues
+    .map((e: z.ZodIssue) => `${e.path.join('.')}: ${e.message}`)
     .join(', ');
 }
 

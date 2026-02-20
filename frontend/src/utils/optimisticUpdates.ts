@@ -8,7 +8,7 @@
  */
 
 import type { QueryClient } from '@tanstack/react-query';
-import { featureFlags } from './featureFlags';
+import { isFeatureEnabled } from './featureFlags';
 
 // ========================================
 // Basic Optimistic Update
@@ -27,7 +27,7 @@ interface OptimisticUpdateOptions<T> {
  * Perform optimistic update (basic version).
  */
 export async function optimisticUpdate<T>(options: OptimisticUpdateOptions<T>): Promise<T> {
-  if (!featureFlags.isEnabled('OPTIMISTIC_UPDATES')) {
+  if (!isFeatureEnabled('OPTIMISTIC_UPDATES')) {
     return options.updateFn();
   }
 
@@ -105,7 +105,7 @@ export function createOptimisticMutation<TData, TError, TVariables>(
   queryClient: QueryClient,
   config: OptimisticMutationConfig<TData, TError, TVariables, { previousData: TData | undefined }>
 ) {
-  if (!featureFlags.isEnabled('OPTIMISTIC_UPDATES')) {
+  if (!isFeatureEnabled('OPTIMISTIC_UPDATES')) {
     return {
       onSettled: () => {
         queryClient.invalidateQueries({ queryKey: config.queryKey });

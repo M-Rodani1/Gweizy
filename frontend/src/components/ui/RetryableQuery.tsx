@@ -5,7 +5,7 @@
  * @module components/ui/RetryableQuery
  */
 
-import React, { ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { UseQueryResult } from '@tanstack/react-query';
 import { RefreshCw, AlertTriangle, WifiOff } from 'lucide-react';
 import { Skeleton } from './Skeleton';

@@ -37,7 +37,7 @@ export interface UseIntersectionObserverOptions {
  */
 export interface UseIntersectionObserverReturn<T extends Element> {
   /** Ref to attach to the observed element */
-  ref: React.RefObject<T>;
+  ref: React.RefObject<T | null>;
   /** Whether the element is currently in viewport */
   isIntersecting: boolean;
   /** The intersection entry object */
@@ -299,7 +299,7 @@ export function useMultipleIntersectionObserver<T = string>(
  */
 export function useInViewport<T extends Element = HTMLDivElement>(
   options: Omit<UseIntersectionObserverOptions, 'onEnter' | 'onLeave'> = {}
-): [React.RefObject<T>, boolean] {
+): [React.RefObject<T | null>, boolean] {
   const { ref, isIntersecting } = useIntersectionObserver<T>(options);
   return [ref, isIntersecting];
 }

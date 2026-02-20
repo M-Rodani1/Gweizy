@@ -3,6 +3,7 @@ import { fetchUserHistory } from '../api/gasApi';
 import LoadingSpinner from './LoadingSpinner';
 import VirtualizedList from './ui/VirtualizedList';
 import { REFRESH_INTERVALS } from '../constants';
+import type { UserHistoryResponse } from '../../types';
 
 interface Transaction {
   hash: string;
@@ -28,6 +29,27 @@ interface UserHistoryData {
   };
 }
 
+type HistoryTransaction = UserHistoryResponse['transactions'][number] & {
+  timestamp: string | number;
+  gasUsed?: number;
+  gasPrice?: number;
+  value?: string;
+  from?: string;
+  to?: string;
+};
+
+type UserHistoryResponseExtended = Omit<UserHistoryResponse, 'transactions'> & {
+  total_gas_paid?: number;
+  potential_savings?: number;
+  savings_percentage?: number;
+  recommendations?: {
+    usual_time?: string;
+    best_time?: string;
+    avg_savings?: number;
+  };
+  transactions: HistoryTransaction[];
+};
+
 interface UserTransactionHistoryProps {
   address: string;
 }
@@ -48,8 +70,32 @@ const UserTransactionHistory: React.FC<UserTransactionHistoryProps> = ({ address
       try {
         setLoading(true);
         setError(null);
-        const historyData = await fetchUserHistory(address);
-        setData(historyData);
+        const historyData = await fetchUserHistory(address) as UserHistoryResponseExtended;
+        const rawTransactions = historyData.transactions as unknown as HistoryTransaction[];
+        const transactions: Transaction[] = rawTransactions.map((tx) => {
+          const timestamp =
+            typeof tx.timestamp === 'number'
+              ? tx.timestamp
+              : Math.floor(new Date(tx.timestamp).getTime() / 1000);
+          return {
+            hash: tx.hash,
+            timestamp: Number.isFinite(timestamp) ? timestamp : 0,
+            gasUsed: tx.gasUsed ?? tx.gas_used,
+            gasPrice: tx.gasPrice ?? tx.gas_price,
+            value: tx.value ?? '0',
+            from: tx.from ?? '',
+            to: tx.to ?? '',
+          };
+        });
+
+        setData({
+          transactions,
+          total_transactions: historyData.total_transactions,
+          total_gas_paid: historyData.total_gas_paid ?? historyData.total_savings,
+          potential_savings: historyData.potential_savings ?? historyData.total_savings,
+          savings_percentage: historyData.savings_percentage ?? 0,
+          recommendations: historyData.recommendations ?? {},
+        });
       } catch (err) {
         console.error('Error loading user history:', err);
         setError(err instanceof Error ? err.message : 'Failed to load transaction history');

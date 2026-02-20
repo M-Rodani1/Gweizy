@@ -15,13 +15,13 @@ export type SensitiveAction =
   | 'account_switch'
   | 'api_token_viewed';
 
-export interface SecurityAuditPayload {
+export interface SecurityAuditPayload extends Record<string, string | number | boolean | null | undefined> {
   detail?: string;
   route?: string;
   statusCode?: number;
 }
 
-export interface SensitiveActionPayload {
+export interface SensitiveActionPayload extends Record<string, string | number | boolean | null | undefined> {
   detail?: string;
   route?: string;
   resourceId?: string;
