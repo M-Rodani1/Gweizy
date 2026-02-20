@@ -328,9 +328,13 @@ exports[`Feedback Component Snapshots > EmptyState > should match snapshot with 
 exports[`Feedback Component Snapshots > LoadingSpinner > should match snapshot with custom message 1`] = `
 <div>
   <div
+    aria-atomic="true"
+    aria-live="polite"
     class="flex flex-col items-center justify-center p-8"
+    role="status"
   >
     <div
+      aria-hidden="true"
       class="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-400"
     />
     <p
@@ -345,9 +349,13 @@ exports[`Feedback Component Snapshots > LoadingSpinner > should match snapshot w
 exports[`Feedback Component Snapshots > LoadingSpinner > should match snapshot with default message 1`] = `
 <div>
   <div
+    aria-atomic="true"
+    aria-live="polite"
     class="flex flex-col items-center justify-center p-8"
+    role="status"
   >
     <div
+      aria-hidden="true"
       class="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-400"
     />
     <p

@@ -11,7 +11,7 @@ describe('URL parameter parsing and serialization', () => {
 
     expect(url).toContain(`${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.CURRENT}?`);
 
-    const parsed = new URL(url);
+    const parsed = new URL(url, 'http://localhost');
     expect(parsed.searchParams.get('chainId')).toBe('1');
     expect(parsed.searchParams.get('includeHistory')).toBe('true');
     expect(parsed.searchParams.get('search')).toBe('gas price');
@@ -29,7 +29,7 @@ describe('URL parameter parsing and serialization', () => {
 
     expect(url).toContain('filter=type%3Afast%26sort%3Ddesc');
 
-    const parsed = new URL(url);
+    const parsed = new URL(url, 'http://localhost');
     expect(parsed.searchParams.get('filter')).toBe('type:fast&sort=desc');
   });
 });

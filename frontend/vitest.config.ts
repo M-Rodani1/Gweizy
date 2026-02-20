@@ -2,7 +2,7 @@
  * Vitest configuration for unit testing
  */
 
-import { defineConfig } from 'vitest/config';
+import { configDefaults, defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 
@@ -12,7 +12,14 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: ['./src/__tests__/setup.ts'],
-    exclude: ['e2e/**', 'playwright-report/**'],
+    include: ['src/**/*.{test,spec}.{ts,tsx}'],
+    exclude: [
+      ...configDefaults.exclude,
+      'e2e/**',
+      'playwright-report/**',
+      'coverage/**',
+      'dist/**',
+    ],
     coverage: {
       // Coverage provider
       provider: 'v8',

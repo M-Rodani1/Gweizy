@@ -71,8 +71,11 @@ jobs:
 
     - name: Run frontend tests
       working-directory: ./frontend
+      env:
+        NODE_OPTIONS: --max-old-space-size=6144
       run: |
         npx vitest run \
+          --maxWorkers=50% \
           --reporter=dot \
           --testTimeout=30000 \
           --hookTimeout=30000 \
