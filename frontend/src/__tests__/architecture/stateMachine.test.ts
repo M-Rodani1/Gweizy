@@ -3,7 +3,9 @@ import { createStateMachine } from '../../utils/stateMachine';
 
 describe('state machine patterns', () => {
   it('transitions between states', () => {
-    const machine = createStateMachine('idle', {
+    type State = 'idle' | 'loading' | 'success' | 'error';
+    type Event = 'start' | 'succeed' | 'fail' | 'retry';
+    const machine = createStateMachine<State, Event>('idle', {
       idle: { start: 'loading' },
       loading: { succeed: 'success', fail: 'error' },
       error: { retry: 'loading' }
@@ -18,7 +20,9 @@ describe('state machine patterns', () => {
   });
 
   it('throws on invalid transitions', () => {
-    const machine = createStateMachine('idle', { idle: { start: 'loading' } });
+    type State = 'idle' | 'loading';
+    type Event = 'start' | 'fail';
+    const machine = createStateMachine<State, Event>('idle', { idle: { start: 'loading' } });
     expect(() => machine.transition('fail')).toThrow('Invalid transition');
   });
 });

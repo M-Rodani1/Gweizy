@@ -6,7 +6,7 @@ export interface Command<TPayload = void, TResult = void> {
 export class CommandBus {
   private registry = new Map<string, Command<any, any>>();
 
-  register(command: Command) {
+  register<TPayload = void, TResult = void>(command: Command<TPayload, TResult>) {
     this.registry.set(command.type, command);
   }
 

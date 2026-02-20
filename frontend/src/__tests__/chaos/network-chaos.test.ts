@@ -6,7 +6,7 @@
  * connection drops, and degraded performance.
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 
 // ============================================================================
 // Chaos Testing Utilities
@@ -97,8 +97,8 @@ class ChaosFetch {
   }
 
   private async simulateIntermittentFailure(
-    input: RequestInfo | URL,
-    init?: RequestInit
+    _input: RequestInfo | URL,
+    _init?: RequestInit
   ): Promise<Response> {
     const probability = this.config.probability || 0.5;
 
@@ -113,8 +113,8 @@ class ChaosFetch {
   }
 
   private async simulateSlowResponse(
-    input: RequestInfo | URL,
-    init?: RequestInit
+    _input: RequestInfo | URL,
+    _init?: RequestInit
   ): Promise<Response> {
     const delayMs = this.config.delayMs || 5000;
     await new Promise((resolve) => setTimeout(resolve, delayMs));
@@ -126,8 +126,8 @@ class ChaosFetch {
   }
 
   private async simulatePartialFailure(
-    input: RequestInfo | URL,
-    init?: RequestInit
+    _input: RequestInfo | URL,
+    _init?: RequestInit
   ): Promise<Response> {
     const failureCount = this.config.failureCount || 3;
 
@@ -591,7 +591,7 @@ describe('Network Chaos Tests', () => {
       let currentConnections = 0;
       let peakConnections = 0;
 
-      async function fetchWithBulkhead(url: string): Promise<Response> {
+      async function fetchWithBulkhead(_url: string): Promise<Response> {
         if (currentConnections >= MAX_CONCURRENT) {
           throw new Error('Bulkhead limit reached');
         }

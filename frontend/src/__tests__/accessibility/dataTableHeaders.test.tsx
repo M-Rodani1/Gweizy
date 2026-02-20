@@ -21,6 +21,7 @@ describe('data table accessibility', () => {
         age: '1 min ago',
         gasUsed: 21000,
         gasPrice: 1.2345,
+        timestamp: 1710000000,
       },
     ]);
 
@@ -32,11 +33,14 @@ describe('data table accessibility', () => {
   });
 
   it('exposes row and column metadata for the virtualized table', async () => {
-    mockedFetchUserHistory.mockResolvedValueOnce({
+    const historyResponse = {
+      address: '0x123',
       transactions: [
         {
           hash: '0x123',
           timestamp: 1710000000,
+          gas_used: 21000,
+          gas_price: 1000000000,
           gasUsed: 21000,
           gasPrice: 1000000000,
           value: '0',
@@ -44,12 +48,17 @@ describe('data table accessibility', () => {
           to: '0xto',
         },
       ],
+      total_savings: 0.01,
       total_transactions: 1,
       total_gas_paid: 0.01,
       potential_savings: 0.005,
       savings_percentage: 50,
       recommendations: {},
-    });
+    };
+
+    mockedFetchUserHistory.mockResolvedValueOnce(
+      historyResponse as unknown as Awaited<ReturnType<typeof fetchUserHistory>>
+    );
 
     render(<UserTransactionHistory address="0x123" />);
 
