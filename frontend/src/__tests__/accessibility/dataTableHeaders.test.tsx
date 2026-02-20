@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react';
+import { vi } from 'vitest';
 import GasPriceTable from '../../components/GasPriceTable';
 import UserTransactionHistory from '../../components/UserTransactionHistory';
 import { fetchTransactions, fetchUserHistory } from '../../api/gasApi';

@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react';
+import { vi } from 'vitest';
 import { ToastProvider } from '../../providers/ToastProvider';
 
 vi.mock('react-hot-toast', () => ({

@@ -1,4 +1,5 @@
 import { createSafeMarkup, sanitizeHtml } from '../../utils/safeHtml';
+import { vi } from 'vitest';
 
 describe('safe HTML rendering', () => {
   afterEach(() => {

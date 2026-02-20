@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react';
+import { vi } from 'vitest';
 import Combobox, { ComboboxOption } from '../../components/ui/Combobox';
 
 const options: ComboboxOption[] = [

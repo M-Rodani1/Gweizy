@@ -1,26 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { fetchGlobalStats } from '../api/gasApi';
 import { REFRESH_INTERVALS } from '../constants';
-
-interface Stats {
-  total_saved_k: number;
-  accuracy_percent: number;
-  predictions_k: number;
-}
+import type { GlobalStatsResponse } from '../../types';
 
 const SocialProof: React.FC = () => {
-  const [stats, setStats] = useState<Stats | null>(null);
+  const [stats, setStats] = useState<GlobalStatsResponse | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const loadStats = async () => {
       try {
         const data = await fetchGlobalStats();
-        setStats({
-          total_saved_k: data.total_saved_k || 0,
-          accuracy_percent: data.accuracy_percent || 0,
-          predictions_k: data.predictions_k || 0
-        });
+        setStats(data);
       } catch (err) {
         console.error('Failed to fetch global stats:', err);
         // No fallback - show loading state or zeros
@@ -50,15 +41,19 @@ const SocialProof: React.FC = () => {
   }, []);
 
   const formatSaved = (value: number) => {
-    if (value >= 1000) return `$${(value / 1000).toFixed(0)}M+`;
-    if (value >= 1) return `$${value.toFixed(0)}K+`;
+    if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M+`;
+    if (value >= 1_000) return `$${(value / 1_000).toFixed(0)}K+`;
     return '$0';
   };
 
   const formatPredictions = (value: number) => {
-    if (value >= 1000) return `${(value / 1000).toFixed(0)}M+`;
-    if (value >= 1) return `${value.toFixed(0)}K+`;
+    if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M+`;
+    if (value >= 1_000) return `${(value / 1_000).toFixed(0)}K+`;
     return '0';
+  };
+
+  const getAccuracyPercent = (value: number) => {
+    return value <= 1 ? value * 100 : value;
   };
 
   return (
@@ -86,7 +81,7 @@ const SocialProof: React.FC = () => {
               {loading ? (
                 <span className="animate-pulse">---</span>
               ) : (
-                formatSaved(stats?.total_saved_k || 0)
+                formatSaved(stats?.total_savings_usd || 0)
               )}
             </div>
             <div className="text-xs md:text-sm text-gray-400">
@@ -98,7 +93,7 @@ const SocialProof: React.FC = () => {
               {loading ? (
                 <span className="animate-pulse">--</span>
               ) : (
-                `${stats?.accuracy_percent || 0}%`
+                `${getAccuracyPercent(stats?.average_accuracy || 0).toFixed(0)}%`
               )}
             </div>
             <div className="text-xs md:text-sm text-gray-400">
@@ -110,7 +105,7 @@ const SocialProof: React.FC = () => {
               {loading ? (
                 <span className="animate-pulse">---</span>
               ) : (
-                formatPredictions(stats?.predictions_k || 0)
+                formatPredictions(stats?.predictions_made || 0)
               )}
             </div>
             <div className="text-xs md:text-sm text-gray-400">

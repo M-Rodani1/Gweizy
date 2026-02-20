@@ -1,5 +1,6 @@
 import { logSensitiveAction } from '../../utils/securityAudit';
 import { trackEvent } from '../../utils/analytics';
+import { vi } from 'vitest';
 
 vi.mock('../../utils/analytics', () => ({
   trackEvent: vi.fn(),

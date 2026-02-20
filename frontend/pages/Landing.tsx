@@ -11,22 +11,40 @@ import { fetchGlobalStats } from '../src/api/gasApi';
 import Logo from '../src/components/branding/Logo';
 import { Button, Badge, Stat } from '../src/components/ui';
 import { trackEvent } from '../src/utils/analytics';
+import type { GlobalStatsResponse } from '../types';
 
 const Landing: React.FC = () => {
-  const [stats, setStats] = useState({
-    total_saved_k: 52,
-    accuracy_percent: 82,
-    predictions_k: 15
+  const [stats, setStats] = useState<GlobalStatsResponse>({
+    total_users: 0,
+    total_transactions: 0,
+    total_savings_usd: 52000,
+    predictions_made: 15000,
+    average_accuracy: 82,
+    active_chains: 5,
   });
   const [statsLoading, setStatsLoading] = useState(true);
+
+  const formatCurrency = (value: number): string => {
+    if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M+`;
+    if (value >= 1_000) return `$${(value / 1_000).toFixed(0)}K+`;
+    return `$${value.toFixed(0)}`;
+  };
+
+  const formatCount = (value: number): string => {
+    if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M+`;
+    if (value >= 1_000) return `${(value / 1_000).toFixed(0)}K+`;
+    return `${value.toFixed(0)}`;
+  };
+
+  const getAccuracyPercent = (value: number): number => {
+    return value <= 1 ? value * 100 : value;
+  };
 
   useEffect(() => {
     const loadStats = async () => {
       try {
         const response = await fetchGlobalStats();
-        if (response.success && response.stats) {
-          setStats(response.stats);
-        }
+        setStats(response);
       } catch (error) {
         console.error('Failed to load stats:', error);
       } finally {
@@ -96,9 +114,9 @@ const Landing: React.FC = () => {
 
             {/* Trust Indicators */}
             <div className="landing-stats-row justify-center">
-              <Stat label="Gas Saved" value={statsLoading ? '...' : `$${stats.total_saved_k}K+`} helper="vs peak hours" trend="up" />
-              <Stat label="Accuracy" value={statsLoading ? '...' : `${stats.accuracy_percent}%`} helper="rolling 30d" />
-              <Stat label="Predictions" value={statsLoading ? '...' : `${stats.predictions_k}K+`} helper="served" />
+              <Stat label="Gas Saved" value={statsLoading ? '...' : formatCurrency(stats.total_savings_usd)} helper="vs peak hours" trend="up" />
+              <Stat label="Accuracy" value={statsLoading ? '...' : `${getAccuracyPercent(stats.average_accuracy).toFixed(0)}%`} helper="rolling 30d" />
+              <Stat label="Predictions" value={statsLoading ? '...' : formatCount(stats.predictions_made)} helper="served" />
             </div>
           </div>
         </div>
