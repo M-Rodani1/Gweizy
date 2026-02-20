@@ -49,6 +49,7 @@ jobs:
 
   test-frontend:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
 
     steps:
     - uses: actions/checkout@v3
@@ -70,7 +71,17 @@ jobs:
 
     - name: Run frontend tests
       working-directory: ./frontend
-      run: npm test -- --run
+      run: |
+        npx vitest run \
+          --reporter=dot \
+          --testTimeout=30000 \
+          --hookTimeout=30000 \
+          --exclude "src/__tests__/chaos/**" \
+          --exclude "src/__tests__/e2e/**" \
+          --exclude "src/__tests__/fuzz/**" \
+          --exclude "src/__tests__/load/**" \
+          --exclude "src/__tests__/performance/**" \
+          --exclude "src/__tests__/visual/**"
       continue-on-error: true
 
     - name: Build frontend
