@@ -6,10 +6,6 @@ Base Gas Price Prediction System - ML-powered gas fee predictions
 from flask import Flask, jsonify
 from werkzeug.exceptions import HTTPException
 from flask_cors import CORS
-import sentry_sdk
-from sentry_sdk.integrations.flask import FlaskIntegration
-from sentry_sdk.integrations.logging import LoggingIntegration
-from sentry_sdk.integrations.threading import ThreadingIntegration
 import logging
 from api.routes import api_bp
 from api.base_config import base_config_bp
@@ -50,57 +46,71 @@ from services.gas_collector_service import GasCollectorService
 from services.onchain_collector_service import OnChainCollectorService
 from services.hybrid_predictor import HybridPredictor
 
-# Initialize Sentry for error tracking
-sentry_dsn = os.getenv('SENTRY_DSN')
-if sentry_dsn:
-    # Logging integration - capture logger.error() and above
-    sentry_logging = LoggingIntegration(
-        level=logging.INFO,        # Capture INFO and above as breadcrumbs
-        event_level=logging.ERROR  # Send ERROR and above to Sentry as events
-    )
+def _initialize_sentry() -> None:
+    """Initialize Sentry if configured, without hard-failing app startup."""
+    sentry_dsn = os.getenv('SENTRY_DSN')
+    if not sentry_dsn:
+        return
 
-    def filter_sentry_events(event, hint):
-        """Filter out expected exceptions that aren't real errors."""
-        if 'exc_info' in hint:
-            exc_type, exc_value, tb = hint['exc_info']
-            # StopIteration is used by websocket libraries for control flow
-            # when handling gunicorn WebSocket upgrades - not an actual error
-            if exc_type is StopIteration:
-                return None
-        return event
+    try:
+        import sentry_sdk
+        from sentry_sdk.integrations.flask import FlaskIntegration
+        from sentry_sdk.integrations.logging import LoggingIntegration
+        from sentry_sdk.integrations.threading import ThreadingIntegration
 
-    sentry_sdk.init(
-        dsn=sentry_dsn,
-        integrations=[
-            FlaskIntegration(),      # Flask request errors
-            sentry_logging,          # Python logging integration
-            ThreadingIntegration(    # Background thread errors
-                propagate_hub=True   # Propagate Sentry context to threads
-            ),
-        ],
-        traces_sample_rate=0.1,      # 10% performance monitoring
-        profiles_sample_rate=0.1,    # 10% profiling
-        environment='production' if not Config.DEBUG else 'development',
+        # Logging integration - capture logger.error() and above
+        sentry_logging = LoggingIntegration(
+            level=logging.INFO,        # Capture INFO and above as breadcrumbs
+            event_level=logging.ERROR  # Send ERROR and above to Sentry as events
+        )
 
-        # Filter out expected exceptions (like WebSocket StopIteration)
-        before_send=filter_sentry_events,
+        def filter_sentry_events(event, hint):
+            """Filter out expected exceptions that aren't real errors."""
+            if 'exc_info' in hint:
+                exc_type, exc_value, tb = hint['exc_info']
+                # StopIteration is used by websocket libraries for control flow
+                # when handling gunicorn WebSocket upgrades - not an actual error
+                if exc_type is StopIteration:
+                    return None
+            return event
 
-        # Error capture settings - ALL errors should be captured
-        sample_rate=1.0,             # 100% of errors (default, but explicit)
-        send_default_pii=False,      # Don't send PII for security
-        attach_stacktrace=True,      # Always attach stack traces
-        max_breadcrumbs=50,          # Keep last 50 breadcrumbs for context
+        sentry_sdk.init(
+            dsn=sentry_dsn,
+            integrations=[
+                FlaskIntegration(),      # Flask request errors
+                sentry_logging,          # Python logging integration
+                ThreadingIntegration(    # Background thread errors
+                    propagate_hub=True   # Propagate Sentry context to threads
+                ),
+            ],
+            traces_sample_rate=0.1,      # 10% performance monitoring
+            profiles_sample_rate=0.1,    # 10% profiling
+            environment='production' if not Config.DEBUG else 'development',
 
-        # Enable automatic session tracking
-        auto_session_tracking=True,
+            # Filter out expected exceptions (like WebSocket StopIteration)
+            before_send=filter_sentry_events,
 
-        # Release tracking (if version available)
-        release=os.getenv('APP_VERSION', '1.0.0'),
-    )
-    logger.info("Sentry error tracking initialized with full coverage")
-    logger.info("  - Flask errors: ✓")
-    logger.info("  - Logger.error() calls: ✓")
-    logger.info("  - Background thread errors: ✓")
+            # Error capture settings - ALL errors should be captured
+            sample_rate=1.0,             # 100% of errors (default, but explicit)
+            send_default_pii=False,      # Don't send PII for security
+            attach_stacktrace=True,      # Always attach stack traces
+            max_breadcrumbs=50,          # Keep last 50 breadcrumbs for context
+
+            # Enable automatic session tracking
+            auto_session_tracking=True,
+
+            # Release tracking (if version available)
+            release=os.getenv('APP_VERSION', '1.0.0'),
+        )
+        logger.info("Sentry error tracking initialized with full coverage")
+        logger.info("  - Flask errors: ✓")
+        logger.info("  - Logger.error() calls: ✓")
+        logger.info("  - Background thread errors: ✓")
+    except Exception as exc:
+        logger.warning("Sentry initialization skipped: %s", exc)
+
+
+_initialize_sentry()
 
 
 def create_app():
@@ -465,17 +475,34 @@ else:
 
 # Initialize SocketIO for WebSocket support (if available)
 if SOCKETIO_AVAILABLE:
-    socketio = SocketIO(app, cors_allowed_origins="*", async_mode='gevent')
-    app.socketio = socketio
-    logger.info("WebSocket support enabled")
-
-    # Initialize WebSocket events module
+    configured_async_mode = os.getenv('SOCKETIO_ASYNC_MODE', 'gevent')
     try:
-        from services.websocket_events import init_socketio
-        init_socketio(socketio)
-        logger.info("WebSocket events module initialized")
-    except Exception as e:
-        logger.warning(f"Could not initialize websocket events: {e}")
+        socketio = SocketIO(app, cors_allowed_origins="*", async_mode=configured_async_mode)
+    except ValueError as exc:
+        logger.warning(
+            "SocketIO async_mode '%s' is unavailable (%s). Falling back to 'threading'.",
+            configured_async_mode,
+            exc
+        )
+        try:
+            socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
+        except Exception as fallback_exc:
+            logger.warning("SocketIO disabled after fallback failure: %s", fallback_exc)
+            socketio = None
+
+    app.socketio = socketio
+    if socketio is not None:
+        logger.info("WebSocket support enabled")
+
+        # Initialize WebSocket events module
+        try:
+            from services.websocket_events import init_socketio
+            init_socketio(socketio)
+            logger.info("WebSocket events module initialized")
+        except Exception as e:
+            logger.warning(f"Could not initialize websocket events: {e}")
+    else:
+        logger.warning("WebSocket support disabled - no compatible async_mode")
 else:
     socketio = None
     app.socketio = None
@@ -489,7 +516,7 @@ logger.info(f"Data collection config: USE_WORKER_PROCESS={use_worker_process}, D
 
 if not use_worker_process:
     if not Config.DEBUG or enable_collection:
-        websocket_status = "with WebSocket support" if SOCKETIO_AVAILABLE else "without WebSocket"
+        websocket_status = "with WebSocket support" if socketio is not None else "without WebSocket"
         logger.info(f"Starting data collection in background threads {websocket_status}")
 
         # Import here to avoid circular dependency
@@ -503,7 +530,7 @@ if not use_worker_process:
                 logger.info(f"Collection interval: {Config.COLLECTION_INTERVAL} seconds")
                 logger.info("="*60)
 
-                gas_service = GasCollectorService(Config.COLLECTION_INTERVAL, socketio=socketio if SOCKETIO_AVAILABLE else None)
+                gas_service = GasCollectorService(Config.COLLECTION_INTERVAL, socketio=socketio)
                 onchain_service = OnChainCollectorService(Config.COLLECTION_INTERVAL)
 
                 gas_thread = threading.Thread(target=gas_service.start, name="GasCollector", daemon=True)
@@ -601,7 +628,7 @@ if not use_worker_process:
 else:
     logger.info("Skipping background threads - using separate worker process")
 
-if SOCKETIO_AVAILABLE:
+if socketio is not None:
     @socketio.on('connect')
     def handle_connect():
         """Handle client WebSocket connection"""
@@ -615,7 +642,7 @@ if SOCKETIO_AVAILABLE:
 
 
 if __name__ == '__main__':
-    if SOCKETIO_AVAILABLE:
+    if socketio is not None:
         socketio.run(
             app,
             debug=Config.DEBUG,
