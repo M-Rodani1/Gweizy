@@ -11,7 +11,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useState, useEffect } from 'react';
 import { fetchLiveBaseGas } from '../utils/baseRpc';
 import { fetchPredictions } from '../api/gasApi';
-import { REFRESH_INTERVALS } from '../constants';
+import { FEATURE_FLAGS, REFRESH_INTERVALS } from '../constants';
 import { useGasWebSocket } from './useGasWebSocket';
 
 /**
@@ -43,7 +43,7 @@ import { useGasWebSocket } from './useGasWebSocket';
  * ```
  */
 export function useCurrentGas() {
-  const { isConnected, gasPrice } = useGasWebSocket({ enabled: true });
+  const { isConnected, gasPrice } = useGasWebSocket({ enabled: FEATURE_FLAGS.WEBSOCKET_ENABLED });
   const [currentGas, setCurrentGas] = useState<number | null>(null);
 
   // Update from WebSocket
