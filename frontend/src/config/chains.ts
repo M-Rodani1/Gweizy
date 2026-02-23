@@ -30,8 +30,7 @@ export const SUPPORTED_CHAINS: Record<number, ChainConfig> = {
     nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
     rpcUrls: [
       'https://mainnet.base.org',
-      'https://base.llamarpc.com',
-      'https://base.drpc.org'
+      'https://base-rpc.publicnode.com'
     ],
     blockExplorer: 'https://basescan.org',
     icon: '🔵',
@@ -50,9 +49,8 @@ export const SUPPORTED_CHAINS: Record<number, ChainConfig> = {
     shortName: 'ETH',
     nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
     rpcUrls: [
-      'https://eth.llamarpc.com',
       'https://ethereum.publicnode.com',
-      'https://rpc.ankr.com/eth'
+      'https://cloudflare-eth.com'
     ],
     blockExplorer: 'https://etherscan.io',
     icon: '⟠',
@@ -72,8 +70,7 @@ export const SUPPORTED_CHAINS: Record<number, ChainConfig> = {
     nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
     rpcUrls: [
       'https://arb1.arbitrum.io/rpc',
-      'https://arbitrum.llamarpc.com',
-      'https://arbitrum-one.publicnode.com'
+      'https://arbitrum.llamarpc.com'
     ],
     blockExplorer: 'https://arbiscan.io',
     icon: '🔷',
@@ -93,8 +90,7 @@ export const SUPPORTED_CHAINS: Record<number, ChainConfig> = {
     nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
     rpcUrls: [
       'https://mainnet.optimism.io',
-      'https://optimism.llamarpc.com',
-      'https://optimism.publicnode.com'
+      'https://optimism.llamarpc.com'
     ],
     blockExplorer: 'https://optimistic.etherscan.io',
     icon: '🔴',
@@ -114,8 +110,7 @@ export const SUPPORTED_CHAINS: Record<number, ChainConfig> = {
     nativeCurrency: { name: 'MATIC', symbol: 'MATIC', decimals: 18 },
     rpcUrls: [
       'https://polygon-bor-rpc.publicnode.com',
-      'https://rpc.ankr.com/polygon',
-      'https://1rpc.io/matic'
+      'https://rpc.ankr.com/polygon'
     ],
     blockExplorer: 'https://polygonscan.com',
     icon: '💜',

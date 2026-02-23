@@ -8,7 +8,6 @@ describe('DNS prefetch hints', () => {
 
   it('prefetches DNS for external RPC domains', () => {
     expect(htmlContent).toContain('rel="dns-prefetch" href="https://mainnet.base.org"');
-    expect(htmlContent).toContain('rel="dns-prefetch" href="https://base.llamarpc.com"');
     expect(htmlContent).toContain('rel="dns-prefetch" href="https://base-rpc.publicnode.com"');
   });
 });

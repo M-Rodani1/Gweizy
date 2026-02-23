@@ -7,7 +7,6 @@ import { withTimeout } from './withTimeout';
 // Try multiple RPC endpoints (fallback if one is rate-limited)
 const BASE_RPC_URLS = [
   'https://mainnet.base.org',
-  'https://base.llamarpc.com',
   'https://base-rpc.publicnode.com'
 ];
 const BASE_RPC_TIMEOUT_MS = 10000;

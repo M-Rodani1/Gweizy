@@ -8,7 +8,6 @@ describe('Preconnect origins', () => {
 
   it('preconnects to frequently used RPC origins', () => {
     expect(htmlContent).toContain('rel="preconnect" href="https://mainnet.base.org"');
-    expect(htmlContent).toContain('rel="preconnect" href="https://base.llamarpc.com"');
     expect(htmlContent).toContain('rel="preconnect" href="https://base-rpc.publicnode.com"');
   });
 });

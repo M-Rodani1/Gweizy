@@ -3,6 +3,11 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const DISALLOWED_RPC_HOSTS = [
+  'base.llamarpc.com',
+  'base.drpc.org',
+  'arbitrum-one.publicnode.com',
+  'optimism.publicnode.com',
+  '1rpc.io/matic',
   'polygon-rpc.com',
   'polygon.llamarpc.com',
   'polygon-bor.publicnode.com'

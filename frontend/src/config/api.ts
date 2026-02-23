@@ -144,7 +144,6 @@ export function getWebSocketOrigin(): string {
 export const BASE_RPC_CONFIG = {
   ENDPOINTS: [
     'https://mainnet.base.org',
-    'https://base.llamarpc.com',
     'https://base-rpc.publicnode.com'
   ],
   TIMEOUT: 5000,

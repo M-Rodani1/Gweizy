@@ -11,8 +11,8 @@ describe('Font loading optimization', () => {
     expect(htmlContent).toContain('rel="preconnect" href="https://fonts.gstatic.com"');
   });
 
-  it('preloads critical font assets', () => {
-    expect(htmlContent).toMatch(/rel="preload"[^>]+as="font"[^>]+type="font\/woff2"/i);
+  it('avoids remote font preloads that can produce unused preload warnings', () => {
+    expect(htmlContent).not.toMatch(/rel="preload"[^>]+as="font"/i);
   });
 
   it('requests fonts with font-display swap', () => {
