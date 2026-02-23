@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef, ReactNode } from 'react';
 import { ChainConfig, SUPPORTED_CHAINS, DEFAULT_CHAIN_ID, getChainById, getEnabledChains } from '../config/chains';
 import { REFRESH_INTERVALS } from '../constants';
+import { safeGetLocalStorageItem, safeSetLocalStorageItem } from '../utils/safeStorage';
 
 interface MultiChainGas {
   chainId: number;
@@ -125,13 +126,11 @@ const markEndpointSuccess = (rpcUrl: string) => {
 export const ChainProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   // Load saved chain from localStorage or use default
   const [selectedChainId, setSelectedChainIdState] = useState<number>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        const chainId = parseInt(saved, 10);
-        if (SUPPORTED_CHAINS[chainId]?.enabled) {
-          return chainId;
-        }
+    const saved = safeGetLocalStorageItem(STORAGE_KEY);
+    if (saved) {
+      const chainId = parseInt(saved, 10);
+      if (SUPPORTED_CHAINS[chainId]?.enabled) {
+        return chainId;
       }
     }
     return DEFAULT_CHAIN_ID;
@@ -148,7 +147,7 @@ export const ChainProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const setSelectedChainId = useCallback((chainId: number) => {
     if (SUPPORTED_CHAINS[chainId]?.enabled) {
       setSelectedChainIdState(chainId);
-      localStorage.setItem(STORAGE_KEY, chainId.toString());
+      safeSetLocalStorageItem(STORAGE_KEY, chainId.toString());
     }
   }, []);
 

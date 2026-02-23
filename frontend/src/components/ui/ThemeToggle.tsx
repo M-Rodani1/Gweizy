@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { safeGetLocalStorageItem, safeSetLocalStorageItem } from '../../utils/safeStorage';
 
 const ThemeToggle: React.FC = () => {
   const getPreferred = () => {
     if (typeof window === 'undefined') return true;
-    const savedTheme = localStorage.getItem('theme');
+    const savedTheme = safeGetLocalStorageItem('theme');
     if (savedTheme === 'light') return false;
     if (savedTheme === 'dark') return true;
     return !window.matchMedia('(prefers-color-scheme: light)').matches;
@@ -19,7 +20,7 @@ const ThemeToggle: React.FC = () => {
     // Listen for OS preference changes when user has not overridden
     const mql = window.matchMedia('(prefers-color-scheme: light)');
     const handler = (event: MediaQueryListEvent) => {
-      const savedTheme = localStorage.getItem('theme');
+      const savedTheme = safeGetLocalStorageItem('theme');
       if (!savedTheme) {
         const useDark = !event.matches;
         setIsDark(useDark);
@@ -36,11 +37,11 @@ const ThemeToggle: React.FC = () => {
     if (!newIsDark) {
       // Switching to light mode
       document.documentElement.classList.add('light-mode');
-      localStorage.setItem('theme', 'light');
+      safeSetLocalStorageItem('theme', 'light');
     } else {
       // Switching to dark mode
       document.documentElement.classList.remove('light-mode');
-      localStorage.setItem('theme', 'dark');
+      safeSetLocalStorageItem('theme', 'dark');
     }
   };
 

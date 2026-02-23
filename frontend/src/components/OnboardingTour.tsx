@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { X, ChevronRight, ChevronLeft, Sparkles, Bot, BarChart3, Settings2, Zap } from 'lucide-react';
+import { safeGetLocalStorageItem, safeSetLocalStorageItem, safeRemoveLocalStorageItem } from '../utils/safeStorage';
 
 interface TourStep {
   id: string;
@@ -72,7 +73,7 @@ const OnboardingTour: React.FC<OnboardingTourProps> = ({ onComplete, forceShow =
       return undefined;
     }
 
-    const hasCompleted = localStorage.getItem(STORAGE_KEY);
+    const hasCompleted = safeGetLocalStorageItem(STORAGE_KEY);
     if (!hasCompleted) {
       // Small delay to let the page render
       const timer = setTimeout(() => setIsVisible(true), 1000);
@@ -127,13 +128,13 @@ const OnboardingTour: React.FC<OnboardingTourProps> = ({ onComplete, forceShow =
   };
 
   const handleComplete = () => {
-    localStorage.setItem(STORAGE_KEY, 'true');
+    safeSetLocalStorageItem(STORAGE_KEY, 'true');
     setIsVisible(false);
     onComplete?.();
   };
 
   const handleSkip = () => {
-    localStorage.setItem(STORAGE_KEY, 'true');
+    safeSetLocalStorageItem(STORAGE_KEY, 'true');
     setIsVisible(false);
     onComplete?.();
   };
@@ -296,12 +297,12 @@ export default OnboardingTour;
 // Hook to manually trigger tour
 export function useTour() {
   const resetTour = () => {
-    localStorage.removeItem(STORAGE_KEY);
+    safeRemoveLocalStorageItem(STORAGE_KEY);
     window.location.reload();
   };
 
   const hasSeen = () => {
-    return localStorage.getItem(STORAGE_KEY) === 'true';
+    return safeGetLocalStorageItem(STORAGE_KEY) === 'true';
   };
 
   return { resetTour, hasSeen };

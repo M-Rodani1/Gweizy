@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { useChain } from './ChainContext';
 import { TransactionType } from '../config/chains';
+import { safeGetLocalStorageItem, safeSetLocalStorageItem } from '../utils/safeStorage';
 
 export interface ScheduledTransaction {
   id: string;
@@ -47,7 +48,7 @@ export const SchedulerProvider: React.FC<{ children: ReactNode }> = ({ children 
   const { multiChainGas } = useChain();
   const [transactions, setTransactions] = useState<ScheduledTransaction[]>(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem(STORAGE_KEY);
+      const saved = safeGetLocalStorageItem(STORAGE_KEY);
       if (saved) {
         try {
           return JSON.parse(saved);
@@ -61,7 +62,7 @@ export const SchedulerProvider: React.FC<{ children: ReactNode }> = ({ children 
 
   // Persist to localStorage
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(transactions));
+    safeSetLocalStorageItem(STORAGE_KEY, JSON.stringify(transactions));
   }, [transactions]);
 
   // Check for ready transactions and expired ones

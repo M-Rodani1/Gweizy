@@ -17,6 +17,7 @@ interface State {
   hasError: boolean;
   error: Error | null;
   errorInfo: ErrorInfo | null;
+  errorCode: string;
 }
 
 /**
@@ -47,11 +48,16 @@ class ErrorBoundary extends Component<Props, State> {
   public override state: State = {
     hasError: false,
     error: null,
-    errorInfo: null
+    errorInfo: null,
+    errorCode: `ERR-${Date.now().toString(36).toUpperCase()}`
   };
 
   public static getDerivedStateFromError(error: Error): Partial<State> {
-    return { hasError: true, error };
+    return {
+      hasError: true,
+      error,
+      errorCode: `ERR-${Date.now().toString(36).toUpperCase()}`
+    };
   }
 
   public override componentDidCatch(error: Error, errorInfo: ErrorInfo) {
@@ -84,7 +90,12 @@ class ErrorBoundary extends Component<Props, State> {
   }
 
   private handleReset = () => {
-    this.setState({ hasError: false, error: null, errorInfo: null });
+    this.setState({
+      hasError: false,
+      error: null,
+      errorInfo: null,
+      errorCode: `ERR-${Date.now().toString(36).toUpperCase()}`
+    });
   };
 
   private handleGoHome = () => {
@@ -116,6 +127,11 @@ class ErrorBoundary extends Component<Props, State> {
             <p className="text-gray-400 mb-6">
               We encountered an unexpected error. Don't worry, your data is safe.
             </p>
+            {this.state.error && (
+              <p className="text-xs text-red-300/90 mb-4 break-words">
+                {this.state.error.name}: {this.state.error.message}
+              </p>
+            )}
 
             <div className="space-y-3">
               {showRetry && (
@@ -158,7 +174,7 @@ class ErrorBoundary extends Component<Props, State> {
             )}
 
             <p className="mt-6 text-xs text-gray-500">
-              Error Code: ERR-{Date.now().toString(36).toUpperCase()}
+              Error Code: {this.state.errorCode}
             </p>
           </div>
         </div>

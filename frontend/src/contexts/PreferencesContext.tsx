@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useMemo, useState, ReactNode } from 'react';
 import { TransactionType } from '../config/chains';
+import { safeGetLocalStorageItem, safeSetLocalStorageItem } from '../utils/safeStorage';
 
 export type StrategyProfile = 'saver' | 'balanced' | 'fast' | 'custom';
 
@@ -65,7 +66,7 @@ const PreferencesContext = createContext<PreferencesContextType | undefined>(und
 export const PreferencesProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [preferences, setPreferences] = useState<Preferences>(() => {
     if (typeof window === 'undefined') return DEFAULT_PREFERENCES;
-    const stored = localStorage.getItem(STORAGE_KEY);
+    const stored = safeGetLocalStorageItem(STORAGE_KEY);
     if (!stored) return DEFAULT_PREFERENCES;
     try {
       const parsed = JSON.parse(stored) as Preferences;
@@ -83,7 +84,7 @@ export const PreferencesProvider: React.FC<{ children: ReactNode }> = ({ childre
   });
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(preferences));
+    safeSetLocalStorageItem(STORAGE_KEY, JSON.stringify(preferences));
   }, [preferences]);
 
   const setStrategy = (strategy: StrategyProfile) => {
