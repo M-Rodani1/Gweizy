@@ -1,7 +1,6 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef, ReactNode } from 'react';
 import { ChainConfig, SUPPORTED_CHAINS, DEFAULT_CHAIN_ID, getChainById, getEnabledChains } from '../config/chains';
 import { REFRESH_INTERVALS } from '../constants';
-import { withTimeout } from '../utils/withTimeout';
 
 interface MultiChainGas {
   chainId: number;
@@ -42,6 +41,11 @@ const STORAGE_KEY = 'gweizy_selected_chain';
 const GAS_CACHE_PREFIX = 'gweizy_chain_gas_v1:';
 const GAS_CACHE_TTL_MS = 60 * 1000;
 const RPC_TIMEOUT_MS = 5000;
+const ENDPOINT_BASE_BACKOFF_MS = 60 * 1000;
+const ENDPOINT_MAX_BACKOFF_MS = 15 * 60 * 1000;
+
+const endpointBackoffMs = new Map<string, number>();
+const endpointBlockedUntilMs = new Map<string, number>();
 
 const getGasCacheKey = (chainId: number): string => `${GAS_CACHE_PREFIX}${chainId}`;
 
@@ -79,6 +83,45 @@ const writeCachedGas = (chainId: number, gasPrice: number, timestamp: number) =>
   }
 };
 
+const getRetryAfterMs = (response: Response): number | null => {
+  const retryAfterHeader = response.headers.get('retry-after');
+  if (!retryAfterHeader) return null;
+
+  const retryAfterSeconds = Number.parseInt(retryAfterHeader, 10);
+  if (Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0) {
+    return retryAfterSeconds * 1000;
+  }
+
+  const retryAt = Date.parse(retryAfterHeader);
+  if (!Number.isNaN(retryAt)) {
+    const ms = retryAt - Date.now();
+    return ms > 0 ? ms : null;
+  }
+
+  return null;
+};
+
+const isEndpointCoolingDown = (rpcUrl: string): boolean => {
+  const blockedUntil = endpointBlockedUntilMs.get(rpcUrl) ?? 0;
+  return blockedUntil > Date.now();
+};
+
+const markEndpointFailure = (rpcUrl: string, retryAfterMs?: number) => {
+  const previousBackoff = endpointBackoffMs.get(rpcUrl) ?? ENDPOINT_BASE_BACKOFF_MS;
+  const computedBackoff = Math.min(previousBackoff * 2, ENDPOINT_MAX_BACKOFF_MS);
+  const nextBackoff = retryAfterMs
+    ? Math.min(Math.max(retryAfterMs, ENDPOINT_BASE_BACKOFF_MS), ENDPOINT_MAX_BACKOFF_MS)
+    : computedBackoff;
+
+  endpointBackoffMs.set(rpcUrl, nextBackoff);
+  endpointBlockedUntilMs.set(rpcUrl, Date.now() + nextBackoff);
+};
+
+const markEndpointSuccess = (rpcUrl: string) => {
+  endpointBackoffMs.delete(rpcUrl);
+  endpointBlockedUntilMs.delete(rpcUrl);
+};
+
 export const ChainProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   // Load saved chain from localStorage or use default
   const [selectedChainId, setSelectedChainIdState] = useState<number>(() => {
@@ -96,8 +139,9 @@ export const ChainProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   const [multiChainGas, setMultiChainGas] = useState<Record<number, MultiChainGas>>({});
   const [isLoading, setIsLoading] = useState(true);
+  const refreshInFlightRef = useRef<Promise<void> | null>(null);
 
-  const enabledChains = getEnabledChains();
+  const enabledChains = useMemo(() => getEnabledChains(), []);
   const selectedChain = getChainById(selectedChainId) || SUPPORTED_CHAINS[DEFAULT_CHAIN_ID];
 
   // Persist selected chain
@@ -116,31 +160,37 @@ export const ChainProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }
 
     try {
-      // Try each RPC until one works
-      for (const rpcUrl of chain.rpcUrls) {
-        try {
-          const response = await withTimeout(
-            fetch(rpcUrl, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                jsonrpc: '2.0',
-                method: 'eth_gasPrice',
-                params: [],
-                id: 1
-              })
-            }),
-            RPC_TIMEOUT_MS,
-            `Request timed out: ${rpcUrl}`
-          );
+      const availableRpcUrls = chain.rpcUrls.filter(rpcUrl => !isEndpointCoolingDown(rpcUrl));
+      const rpcUrlsToTry = availableRpcUrls.length > 0 ? availableRpcUrls : chain.rpcUrls;
 
-          if (!response.ok) continue;
+      // Try each RPC until one works
+      for (const rpcUrl of rpcUrlsToTry) {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), RPC_TIMEOUT_MS);
+        try {
+          const response = await fetch(rpcUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              jsonrpc: '2.0',
+              method: 'eth_gasPrice',
+              params: [],
+              id: 1
+            }),
+            signal: controller.signal
+          });
+
+          if (!response.ok) {
+            markEndpointFailure(rpcUrl, getRetryAfterMs(response) ?? undefined);
+            continue;
+          }
 
           const data = await response.json();
           if (data.result) {
             const gasPriceWei = parseInt(data.result, 16);
             const gasPriceGwei = gasPriceWei / 1e9;
             const timestamp = Date.now();
+            markEndpointSuccess(rpcUrl);
             writeCachedGas(chainId, gasPriceGwei, timestamp);
 
             return {
@@ -152,8 +202,12 @@ export const ChainProvider: React.FC<{ children: ReactNode }> = ({ children }) =
               source: 'live'
             };
           }
+          markEndpointFailure(rpcUrl);
         } catch {
+          markEndpointFailure(rpcUrl);
           continue;
+        } finally {
+          clearTimeout(timeoutId);
         }
       }
 
@@ -162,7 +216,7 @@ export const ChainProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         return cached;
       }
       return { chainId, gasPrice: 0, timestamp: Date.now(), loading: false, error: 'All RPCs failed' };
-    } catch (err) {
+    } catch {
       const cached = readCachedGas(chainId);
       if (cached) {
         return cached;
@@ -173,36 +227,53 @@ export const ChainProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   // Fetch gas prices for all enabled chains
   const refreshMultiChainGas = useCallback(async () => {
-    setIsLoading(true);
+    if (refreshInFlightRef.current) {
+      await refreshInFlightRef.current;
+      return;
+    }
 
-    // Set loading state for all chains
-    setMultiChainGas(previousState => {
-      const loadingState: Record<number, MultiChainGas> = {};
-      enabledChains.forEach(chain => {
-        loadingState[chain.id] = {
-          chainId: chain.id,
-          gasPrice: previousState[chain.id]?.gasPrice || 0,
-          timestamp: Date.now(),
-          loading: true,
-          error: null,
-          source: previousState[chain.id]?.source
-        };
-      });
-      return loadingState;
-    });
+    const refreshTask = (async () => {
+      setIsLoading(true);
 
-    // Fetch all chains in parallel
-    const results = await Promise.all(
-      enabledChains.map(chain => fetchChainGas(chain.id))
-    );
+      try {
+        // Set loading state for all chains
+        setMultiChainGas(previousState => {
+          const loadingState: Record<number, MultiChainGas> = {};
+          enabledChains.forEach(chain => {
+            loadingState[chain.id] = {
+              chainId: chain.id,
+              gasPrice: previousState[chain.id]?.gasPrice || 0,
+              timestamp: Date.now(),
+              loading: true,
+              error: null,
+              source: previousState[chain.id]?.source
+            };
+          });
+          return loadingState;
+        });
 
-    // Update state with results
-    const newState: Record<number, MultiChainGas> = {};
-    results.forEach(result => {
-      newState[result.chainId] = result;
-    });
-    setMultiChainGas(newState);
-    setIsLoading(false);
+        // Fetch all chains in parallel
+        const results = await Promise.all(
+          enabledChains.map(chain => fetchChainGas(chain.id))
+        );
+
+        // Update state with results
+        const newState: Record<number, MultiChainGas> = {};
+        results.forEach(result => {
+          newState[result.chainId] = result;
+        });
+        setMultiChainGas(newState);
+      } finally {
+        setIsLoading(false);
+      }
+    })();
+
+    refreshInFlightRef.current = refreshTask;
+    try {
+      await refreshTask;
+    } finally {
+      refreshInFlightRef.current = null;
+    }
   }, [enabledChains, fetchChainGas]);
 
   // Calculate best chain for transaction
