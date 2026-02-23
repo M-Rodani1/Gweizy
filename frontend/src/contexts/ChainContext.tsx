@@ -124,6 +124,17 @@ const markEndpointSuccess = (rpcUrl: string) => {
 };
 
 export const ChainProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  useEffect(() => {
+    // Keep endpoint cooldown scoped to the active provider lifecycle.
+    endpointBackoffMs.clear();
+    endpointBlockedUntilMs.clear();
+
+    return () => {
+      endpointBackoffMs.clear();
+      endpointBlockedUntilMs.clear();
+    };
+  }, []);
+
   // Load saved chain from localStorage or use default
   const [selectedChainId, setSelectedChainIdState] = useState<number>(() => {
     const saved = safeGetLocalStorageItem(STORAGE_KEY);
@@ -160,7 +171,21 @@ export const ChainProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
     try {
       const availableRpcUrls = chain.rpcUrls.filter(rpcUrl => !isEndpointCoolingDown(rpcUrl));
-      const rpcUrlsToTry = availableRpcUrls.length > 0 ? availableRpcUrls : chain.rpcUrls;
+      if (availableRpcUrls.length === 0) {
+        const cached = readCachedGas(chainId);
+        if (cached) {
+          return cached;
+        }
+        return {
+          chainId,
+          gasPrice: 0,
+          timestamp: Date.now(),
+          loading: false,
+          error: 'RPC endpoints cooling down'
+        };
+      }
+
+      const rpcUrlsToTry = availableRpcUrls;
 
       // Try each RPC until one works
       for (const rpcUrl of rpcUrlsToTry) {
