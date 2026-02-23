@@ -13,38 +13,57 @@ import { Button, Badge, Stat } from '../src/components/ui';
 import { trackEvent } from '../src/utils/analytics';
 import type { GlobalStatsResponse } from '../types';
 
+const DEFAULT_STATS: GlobalStatsResponse = {
+  total_users: 0,
+  total_transactions: 0,
+  total_savings_usd: 52000,
+  predictions_made: 15000,
+  average_accuracy: 82,
+  active_chains: 5,
+};
+
+const toFiniteNumber = (value: unknown, fallback = 0): number => {
+  const normalized = typeof value === 'number' ? value : Number(value);
+  return Number.isFinite(normalized) ? normalized : fallback;
+};
+
+const sanitizeGlobalStats = (stats: Partial<GlobalStatsResponse> | null | undefined): GlobalStatsResponse => ({
+  total_users: toFiniteNumber(stats?.total_users, DEFAULT_STATS.total_users),
+  total_transactions: toFiniteNumber(stats?.total_transactions, DEFAULT_STATS.total_transactions),
+  total_savings_usd: toFiniteNumber(stats?.total_savings_usd, DEFAULT_STATS.total_savings_usd),
+  predictions_made: toFiniteNumber(stats?.predictions_made, DEFAULT_STATS.predictions_made),
+  average_accuracy: toFiniteNumber(stats?.average_accuracy, DEFAULT_STATS.average_accuracy),
+  active_chains: toFiniteNumber(stats?.active_chains, DEFAULT_STATS.active_chains),
+});
+
 const Landing: React.FC = () => {
-  const [stats, setStats] = useState<GlobalStatsResponse>({
-    total_users: 0,
-    total_transactions: 0,
-    total_savings_usd: 52000,
-    predictions_made: 15000,
-    average_accuracy: 82,
-    active_chains: 5,
-  });
+  const [stats, setStats] = useState<GlobalStatsResponse>(DEFAULT_STATS);
   const [statsLoading, setStatsLoading] = useState(true);
 
   const formatCurrency = (value: number): string => {
-    if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M+`;
-    if (value >= 1_000) return `$${(value / 1_000).toFixed(0)}K+`;
-    return `$${value.toFixed(0)}`;
+    const safeValue = toFiniteNumber(value, 0);
+    if (safeValue >= 1_000_000) return `$${(safeValue / 1_000_000).toFixed(1)}M+`;
+    if (safeValue >= 1_000) return `$${(safeValue / 1_000).toFixed(0)}K+`;
+    return `$${safeValue.toFixed(0)}`;
   };
 
   const formatCount = (value: number): string => {
-    if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M+`;
-    if (value >= 1_000) return `${(value / 1_000).toFixed(0)}K+`;
-    return `${value.toFixed(0)}`;
+    const safeValue = toFiniteNumber(value, 0);
+    if (safeValue >= 1_000_000) return `${(safeValue / 1_000_000).toFixed(1)}M+`;
+    if (safeValue >= 1_000) return `${(safeValue / 1_000).toFixed(0)}K+`;
+    return `${safeValue.toFixed(0)}`;
   };
 
-  const getAccuracyPercent = (value: number): number => {
-    return value <= 1 ? value * 100 : value;
+  const getAccuracyPercent = (value: number | null | undefined): number => {
+    const safeValue = toFiniteNumber(value, 0);
+    return safeValue <= 1 ? safeValue * 100 : safeValue;
   };
 
   useEffect(() => {
     const loadStats = async () => {
       try {
         const response = await fetchGlobalStats();
-        setStats(response);
+        setStats(sanitizeGlobalStats(response));
       } catch (error) {
         console.error('Failed to load stats:', error);
       } finally {
@@ -115,7 +134,7 @@ const Landing: React.FC = () => {
             {/* Trust Indicators */}
             <div className="landing-stats-row justify-center">
               <Stat label="Gas Saved" value={statsLoading ? '...' : formatCurrency(stats.total_savings_usd)} helper="vs peak hours" trend="up" />
-              <Stat label="Accuracy" value={statsLoading ? '...' : `${getAccuracyPercent(stats.average_accuracy).toFixed(0)}%`} helper="rolling 30d" />
+              <Stat label="Accuracy" value={statsLoading ? '...' : `${toFiniteNumber(getAccuracyPercent(stats.average_accuracy), 0).toFixed(0)}%`} helper="rolling 30d" />
               <Stat label="Predictions" value={statsLoading ? '...' : formatCount(stats.predictions_made)} helper="served" />
             </div>
           </div>

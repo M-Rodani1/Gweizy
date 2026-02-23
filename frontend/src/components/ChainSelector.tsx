@@ -120,10 +120,13 @@ const ChainSelector: React.FC<ChainSelectorProps> = ({
     buttonRef.current?.focus();
   };
 
-  const formatGasPrice = (price: number): string => {
-    if (price >= 1) return price.toFixed(2);
-    if (price >= 0.01) return price.toFixed(4);
-    return price.toFixed(6);
+  const formatGasPrice = (price: number | null | undefined): string => {
+    if (!Number.isFinite(price)) return 'N/A';
+    const safePrice = Number(price);
+    if (safePrice < 0) return 'N/A';
+    if (safePrice >= 1) return safePrice.toFixed(2);
+    if (safePrice >= 0.01) return safePrice.toFixed(4);
+    return safePrice.toFixed(6);
   };
 
   const currentGas = multiChainGas[selectedChain.id];

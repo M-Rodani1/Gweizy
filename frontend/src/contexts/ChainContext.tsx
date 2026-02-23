@@ -57,6 +57,10 @@ const readCachedGas = (chainId: number): MultiChainGas | null => {
     const raw = localStorage.getItem(key);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as { gasPrice: number; timestamp: number };
+    if (!Number.isFinite(parsed?.gasPrice) || !Number.isFinite(parsed?.timestamp)) {
+      localStorage.removeItem(key);
+      return null;
+    }
     if (Date.now() - parsed.timestamp > GAS_CACHE_TTL_MS) {
       localStorage.removeItem(key);
       return null;
