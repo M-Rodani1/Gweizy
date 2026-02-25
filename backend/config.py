@@ -21,8 +21,7 @@ def validate_environment():
     # Detect production environment
     is_production = (
         os.getenv('FLASK_ENV') == 'production' or
-        os.getenv('RAILWAY_ENVIRONMENT') == 'production' or
-        os.getenv('DEBUG', 'True').lower() == 'false'
+        os.getenv('RAILWAY_ENVIRONMENT') == 'production'
     )
 
     # Check RPC URL - critical for operation
@@ -100,7 +99,7 @@ except ConfigValidationError as e:
 
 class Config:
     # Flask
-    DEBUG = os.getenv('DEBUG', 'True') == 'True'
+    DEBUG = os.getenv('DEBUG', 'False') == 'True'
     PORT = int(os.getenv('PORT', 5001))
     
     # Base Network
