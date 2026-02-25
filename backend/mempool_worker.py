@@ -30,11 +30,8 @@ load_dotenv()
 logger = logging.getLogger(__name__)
 
 # Alchemy WebSocket URL - loaded from environment variable
+# Validated at startup rather than import time to avoid crashing the process on import.
 ALCHEMY_WS_URL = os.getenv("BASE_RPC_WSS")
-
-# Safety check: ensure the environment variable is set
-if not ALCHEMY_WS_URL:
-    raise ValueError("❌ Error: BASE_RPC_WSS is not set. Please check your .env file.")
 
 # Database path - prefer root gas_data.db, fallback to backend/gas_data.db
 DB_PATH = 'gas_data.db'
@@ -374,9 +371,12 @@ class BlockHeaderWorker:
 
 async def main():
     """Main entry point for the block header worker."""
+    if not ALCHEMY_WS_URL:
+        raise ValueError("❌ BASE_RPC_WSS is not set. Please check your .env file.")
+
     # Initialize database
     init_db()
-    
+
     # Create and run worker
     worker = BlockHeaderWorker()
     await worker.run()
