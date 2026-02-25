@@ -6,6 +6,7 @@ from flask import Blueprint, request, jsonify
 from datetime import datetime
 import logging
 import numpy as np
+from api.middleware import require_admin_auth
 
 logger = logging.getLogger(__name__)
 
@@ -664,6 +665,7 @@ def get_accuracy_history():
 
 
 @accuracy_bp.route('/seed-test-data', methods=['POST'])
+@require_admin_auth
 def seed_test_data():
     """
     Seed test data for immediate metrics display (for development/testing).
@@ -815,6 +817,7 @@ def get_diagnostics():
 
 
 @accuracy_bp.route('/reset', methods=['POST'])
+@require_admin_auth
 def reset_accuracy_data():
     """
     Reset/clear all accuracy tracking data.

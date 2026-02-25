@@ -15,6 +15,7 @@ from utils.logger import logger, log_error_with_context
 import sys
 from utils.prediction_validator import PredictionValidator
 from api.cache import cached, clear_cache
+from api.middleware import require_admin_auth
 from datetime import datetime, timedelta
 import traceback
 import numpy as np
@@ -219,6 +220,7 @@ _lazy_load_models()
 
 
 @api_bp.route('/models/reload', methods=['POST'])
+@require_admin_auth
 def reload_models_endpoint():
     """
     Manually reload models from disk.
@@ -1720,6 +1722,7 @@ def get_config():
 
 
 @api_bp.route('/cache/clear', methods=['POST'])
+@require_admin_auth
 def clear_all_cache():
     """Clear API cache (admin endpoint)"""
     clear_cache()
