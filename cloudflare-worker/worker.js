@@ -176,7 +176,6 @@ export default {
     const cronTime = new Date(event.scheduledTime);
     const hour = cronTime.getUTCHours();
     const minute = cronTime.getUTCMinutes();
-    const dayOfWeek = cronTime.getUTCDay();
 
     console.log(`[CRON] Triggered at ${cronTime.toISOString()}`);
 
@@ -184,12 +183,6 @@ export default {
     if (minute % 5 === 0) {
       console.log('[CRON] Collecting gas data');
       ctx.waitUntil(collectGasData(env));
-    }
-
-    // Sunday 2 AM: Retrain models
-    if (dayOfWeek === 0 && hour === 2 && minute === 0) {
-      console.log('[CRON] Triggering weekly model retraining');
-      ctx.waitUntil(triggerModelRetraining(env));
     }
 
     // Every 6 hours: Health check
@@ -327,59 +320,6 @@ async function logMetrics(env, metrics) {
   } catch (error) {
     // Fail silently - don't break the request
     console.error('Failed to log metrics:', error);
-  }
-}
-
-/**
- * Trigger model retraining on backend
- */
-async function triggerModelRetraining(env) {
-  try {
-    console.log('[RETRAIN] Calling backend retraining endpoint...');
-
-    const response = await fetch(`${BACKEND_API}/cron/retrain`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'User-Agent': 'Cloudflare-Worker-Cron/1.0',
-        'X-Cron-Trigger': 'weekly-retrain'
-      },
-      body: JSON.stringify({
-        trigger: 'scheduled',
-        timestamp: new Date().toISOString()
-      })
-    });
-
-    const result = await response.json();
-
-    if (response.ok) {
-      console.log('[RETRAIN] ✅ Success:', result);
-
-      // Store retraining result in KV
-      await env.GAS_CACHE.put('last_retrain_result', JSON.stringify({
-        timestamp: new Date().toISOString(),
-        success: true,
-        result
-      }), {
-        expirationTtl: 604800 // Keep for 7 days
-      });
-    } else {
-      console.error('[RETRAIN] ❌ Failed:', result);
-
-      // Store failure for monitoring
-      await env.GAS_CACHE.put('last_retrain_result', JSON.stringify({
-        timestamp: new Date().toISOString(),
-        success: false,
-        error: result
-      }), {
-        expirationTtl: 604800 // Keep for 7 days
-      });
-    }
-
-    return result;
-  } catch (error) {
-    console.error('[RETRAIN] Error triggering retraining:', error);
-    return { success: false, error: error.message };
   }
 }
 
