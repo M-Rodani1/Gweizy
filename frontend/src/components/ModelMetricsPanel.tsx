@@ -20,7 +20,7 @@ import {
   ChevronDown
 } from 'lucide-react';
 import { fetchAccuracyDrift, fetchAccuracyMetrics, fetchValidationTrends } from '../api/gasApi';
-import { REFRESH_INTERVALS } from '../constants';
+import { REFRESH_INTERVALS, FEATURE_FLAGS } from '../constants';
 import { withTimeout } from '../utils/withTimeout';
 import type {
   DriftResponse,
@@ -63,8 +63,8 @@ const ModelMetricsPanel: React.FC<ModelMetricsPanelProps> = ({
     try {
       setError(null);
       const [metricsReq, driftReq] = await Promise.allSettled([
-        fetchWithTimeout(fetchAccuracyMetrics(), 'accuracy metrics'),
-        fetchWithTimeout(fetchAccuracyDrift(), 'accuracy drift')
+        FEATURE_FLAGS.ANALYTICS_ENABLED ? fetchWithTimeout(fetchAccuracyMetrics(), 'accuracy metrics') : Promise.reject(new Error('Analytics disabled')),
+        FEATURE_FLAGS.ANALYTICS_ENABLED ? fetchWithTimeout(fetchAccuracyDrift(), 'accuracy drift') : Promise.reject(new Error('Analytics disabled'))
       ]);
       const metricsRes = metricsReq.status === 'fulfilled' ? metricsReq.value : null;
       const driftRes = driftReq.status === 'fulfilled' ? driftReq.value : null;

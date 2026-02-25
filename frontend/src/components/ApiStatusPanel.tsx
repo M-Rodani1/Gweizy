@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Activity, CloudOff, RefreshCw, ShieldCheck, Brain, AlertTriangle } from 'lucide-react';
 import { checkHealth, fetchAccuracyDrift, fetchAgentStatus, fetchGasPatterns, GasAPIError } from '../api/gasApi';
-import { REFRESH_INTERVALS } from '../constants';
+import { REFRESH_INTERVALS, FEATURE_FLAGS } from '../constants';
 import type { DriftInfo } from '../types/modelMetrics';
 
 type StatusState = 'checking' | 'online' | 'offline' | 'degraded';
@@ -32,7 +32,7 @@ const ApiStatusPanel: React.FC = () => {
       const [healthReq, agentReq, driftReq, patternsReq] = await Promise.allSettled([
         checkHealth(),
         fetchAgentStatus(),
-        fetchAccuracyDrift(),
+        FEATURE_FLAGS.ANALYTICS_ENABLED ? fetchAccuracyDrift() : Promise.reject(new Error('Analytics disabled')),
         fetchGasPatterns()
       ]);
 
