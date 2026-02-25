@@ -20,6 +20,11 @@ from data.database import DatabaseManager, Base, GasPrice
 import numpy as np
 from typing import Dict, List, Optional, Tuple
 import json
+import os
+
+# Set MODEL_VERSION env var at deploy time (e.g. "v2-20260209") to track which
+# model produced each prediction. Defaults to 'current' if not configured.
+_MODEL_VERSION = os.getenv('MODEL_VERSION', 'current')
 
 
 class PredictionLog(Base):
@@ -332,7 +337,7 @@ class PredictionValidator:
                     metric_record = ModelPerformanceMetrics(
                         date=datetime.now(),
                         horizon=horizon,
-                        model_version='current',  # TODO: Track actual version
+                        model_version=_MODEL_VERSION,
                         mae=metrics['mae'],
                         rmse=metrics['rmse'],
                         mape=metrics['mape'],
