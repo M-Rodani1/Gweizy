@@ -257,9 +257,7 @@ def create_app():
                 },
                 'agent': {
                     'recommend': '/api/agent/recommend (GET/POST)',
-                    'status': '/api/agent/status',
-                    'actions': '/api/agent/actions',
-                    'simulate': '/api/agent/simulate (POST)'
+                    'status': '/api/agent/status'
                 },
                 'accuracy_tracking': {
                     'metrics': '/api/accuracy/metrics',
