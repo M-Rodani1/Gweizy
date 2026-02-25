@@ -135,7 +135,7 @@ export const formatBytes = (bytes: number, decimals = 2): string => {
  * Measure component render time (development only)
  */
 export function measureRender(componentName: string): () => void {
-  if (process.env.NODE_ENV !== 'development') {
+  if (!import.meta.env.DEV) {
     return () => {};
   }
   
@@ -177,7 +177,7 @@ export function clearRenderMetrics(): void {
 }
 
 export function createRenderMonitor(componentName: string, thresholdMs = renderThresholdMs): () => void {
-  if (process.env.NODE_ENV !== 'development') {
+  if (!import.meta.env.DEV) {
     return () => {};
   }
 
