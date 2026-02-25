@@ -58,7 +58,7 @@ export const UI = {
 
 export const FEATURE_FLAGS = {
   WEBSOCKET_ENABLED: true,
-  ANALYTICS_ENABLED: false,
+  ANALYTICS_ENABLED: true,
   OFFLINE_MODE: true,
   OPTIMISTIC_UPDATES: true
 } as const;
