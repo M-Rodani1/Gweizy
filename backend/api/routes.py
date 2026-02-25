@@ -1727,10 +1727,10 @@ def clear_all_cache():
     return jsonify({'message': 'Cache cleared'})
 
 
-@api_bp.route('/stats', methods=['GET'])
+@api_bp.route('/gas-stats', methods=['GET'])
 @cached(ttl=300)  # Cache for 5 minutes
 def stats():
-    """Get statistics about gas prices"""
+    """Get historical gas price statistics (min/max/avg). For global platform stats see /stats."""
     try:
         hours = request.args.get('hours', 24, type=int)
         data = db.get_historical_data(hours)
