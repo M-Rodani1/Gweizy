@@ -117,12 +117,14 @@ def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
     
-    # CORS configuration - Allow all origins for all routes
-    # Explicitly allow the frontend domain and all origins
+    # CORS configuration - origins come from ALLOWED_ORIGINS env var
+    # Set ALLOWED_ORIGINS=https://example.com,http://localhost:5173 to restrict
+    _raw_origins = os.getenv('ALLOWED_ORIGINS', '*')
+    _cors_origins = [o.strip() for o in _raw_origins.split(',')] if _raw_origins != '*' else '*'
     CORS(app,
          resources={
              r"/*": {
-                 "origins": ["*", "https://basegasfeesml.pages.dev", "http://localhost:3000", "http://localhost:5173"],
+                 "origins": _cors_origins,
                  "methods": ["GET", "POST", "OPTIONS", "PUT", "DELETE", "PATCH"],
                  "allow_headers": ["Content-Type", "Authorization", "Cache-Control", "Pragma", "X-Requested-With", "X-Request-ID"],
                  "expose_headers": ["Content-Type", "Cache-Control", "X-Request-ID", "X-Response-Time"],
