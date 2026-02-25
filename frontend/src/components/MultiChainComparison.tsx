@@ -18,7 +18,7 @@ interface MultiChainComparisonProps {
 
 const MultiChainComparison: React.FC<MultiChainComparisonProps> = ({
   txType = 'swap',
-  ethPrice = 3000,
+  ethPrice = 0,
   networkUtilization = 0,
   isConnected = false
 }) => {

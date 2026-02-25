@@ -24,7 +24,7 @@ let priceCache: {
 const CACHE_DURATION = 60 * 1000; // 1 minute cache
 
 export function useEthPrice(refreshInterval = 60000): UseEthPriceReturn {
-  const [ethPrice, setEthPrice] = useState<number>(3500); // Default fallback
+  const [ethPrice, setEthPrice] = useState<number>(0);
   const [priceChange24h, setPriceChange24h] = useState<number>(0);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -152,8 +152,8 @@ export async function getEthPrice(): Promise<number> {
     console.error('Error fetching ETH price:', error);
   }
 
-  // Return cached or fallback
-  return priceCache?.price || 3500;
+  // Return cached value or 0 if unavailable
+  return priceCache?.price ?? 0;
 }
 
 // Format USD price
