@@ -10,8 +10,36 @@ from models.accuracy_tracker import get_tracker
 from data.database import DatabaseManager
 import subprocess
 import os
+import requests
 from datetime import datetime, timedelta
 import traceback
+
+
+def _send_discord_alert(title: str, description: str, color: int = 0xFF0000, fields: list = None) -> None:
+    """Send a Discord webhook notification. Silently skips if URL not configured."""
+    webhook_url = os.getenv('DISCORD_WEBHOOK_URL')
+    if not webhook_url:
+        return
+    embed = {
+        'title': title,
+        'description': description,
+        'color': color,
+        'timestamp': datetime.utcnow().isoformat(),
+        'footer': {'text': 'Gweizy Gas Predictor'},
+        'fields': fields or [],
+    }
+    try:
+        resp = requests.post(
+            webhook_url,
+            json={'username': 'Gweizy Bot', 'embeds': [embed]},
+            timeout=5,
+        )
+        if resp.ok:
+            logger.info('[DISCORD] Health alert sent')
+        else:
+            logger.warning(f'[DISCORD] Failed to send alert: {resp.status_code}')
+    except Exception as exc:
+        logger.warning(f'[DISCORD] Error sending alert: {exc}')
 
 cron_bp = Blueprint('cron', __name__)
 
@@ -49,8 +77,16 @@ def cron_health_check():
             logger.warning("⚠️ Model health: DEGRADED")
             logger.warning(f"Alerts: {health['alerts']}")
 
-            # TODO: Send notification (email/Discord/Slack)
-            # For now, just log
+            alert_fields = [
+                {'name': str(a.get('severity', 'warning')).upper(), 'value': a.get('message', ''), 'inline': False}
+                for a in health.get('alerts', [])
+            ]
+            _send_discord_alert(
+                title='⚠️ Model Health Degraded',
+                description='The gas prediction model has failed its health check.',
+                color=0xFF6600,
+                fields=alert_fields,
+            )
 
         return jsonify({
             "success": True,
