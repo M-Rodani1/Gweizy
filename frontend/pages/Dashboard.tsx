@@ -22,8 +22,7 @@ import AppShell from '../src/components/layout/AppShell';
 const ScheduledTransactionsList = lazy(() => import('../src/components/ScheduledTransactionsList'));
 const GasAlertSettings = lazy(() => import('../src/components/GasAlertSettings'));
 const Dashboard: React.FC = () => {
-  // TODO: wire utilization into a shared gas data hook when available
-  const [networkUtilization, setNetworkUtilization] = useState<number>(0.2);
+  const [networkUtilization, setNetworkUtilization] = useState<number>(0);
   const { selectedChain, multiChainGas } = useChain();
   const { ethPrice } = useEthPrice(60000);
   const walletAddress = useWalletAddress();
