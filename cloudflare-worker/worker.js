@@ -3,7 +3,7 @@
  * Provides instant global access with optimized cache strategy and keep-alive
  */
 
-const BACKEND_API = 'https://basegasfeesml-production.up.railway.app/api';
+// BACKEND_API is set via wrangler.toml [vars] and accessed as env.BACKEND_API
 
 // Optimized cache durations - longer times to reduce Render hits
 const CACHE_DURATIONS = {
@@ -61,7 +61,7 @@ export default {
       }
 
       // Fetch from backend with timeout
-      const backendUrl = `${BACKEND_API}/${path}${url.search}`;
+      const backendUrl = `${env.BACKEND_API}/${path}${url.search}`;
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 30000); // 30 second timeout
 
@@ -211,7 +211,7 @@ export default {
  */
 async function collectGasData(env) {
   try {
-    const response = await fetch(`${BACKEND_API}/current?chain=base`, {
+    const response = await fetch(`${env.BACKEND_API}/current?chain=base`, {
       method: 'GET',
       headers: {
         'User-Agent': 'Cloudflare-Worker-Collector/1.0'
@@ -330,7 +330,7 @@ async function updatePredictionAccuracy(env) {
   try {
     console.log('[ACCURACY] Updating prediction accuracy...');
 
-    const response = await fetch(`${BACKEND_API}/cron/update-accuracy`, {
+    const response = await fetch(`${env.BACKEND_API}/cron/update-accuracy`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -410,7 +410,7 @@ async function performHealthCheck(env) {
   try {
     console.log('[HEALTH] Running model health check...');
 
-    const response = await fetch(`${BACKEND_API}/cron/health-check`, {
+    const response = await fetch(`${env.BACKEND_API}/cron/health-check`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -468,7 +468,7 @@ async function validatePredictions(env) {
   try {
     console.log('[VALIDATION] Running prediction validation...');
 
-    const response = await fetch(`${BACKEND_API}/validation/validate`, {
+    const response = await fetch(`${env.BACKEND_API}/validation/validate`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
