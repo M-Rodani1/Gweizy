@@ -14,7 +14,7 @@ const API_CACHE_NAME = `api-cache-${CACHE_VERSION}`;
 const STATIC_ASSET_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.svg', '.gif', '.webp', '.woff', '.woff2', '.ttf', '.eot', '.ico'];
 
 // API endpoints that should be cached for offline use
-const CACHEABLE_API_PATHS = ['/current', '/predictions', '/health', '/hybrid'];
+const CACHEABLE_API_PATHS = ['/current', '/predictions', '/health', '/predictions/hybrid'];
 
 // Maximum age for cached API responses (5 minutes)
 const API_CACHE_MAX_AGE = 5 * 60 * 1000;
@@ -33,8 +33,8 @@ self.addEventListener('activate', (event) => {
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames.map((cacheName) => {
-          // Delete ALL old caches (including old versions)
-          if (cacheName !== CACHE_NAME) {
+          // Delete old caches but keep both current static and API caches
+          if (cacheName !== CACHE_NAME && cacheName !== API_CACHE_NAME) {
             console.log('[SW] Deleting old cache:', cacheName);
             return caches.delete(cacheName);
           }
