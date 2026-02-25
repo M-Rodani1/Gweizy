@@ -15,6 +15,7 @@ import { useEthPrice } from '../src/hooks/useEthPrice';
 import { useWalletAddress } from '../src/hooks/useWalletAddress';
 import { useGasWebSocket } from '../src/hooks/useGasWebSocket';
 import { API_CONFIG, getApiUrl } from '../src/config/api';
+import { FEATURE_FLAGS } from '../src/constants';
 import AppShell from '../src/components/layout/AppShell';
 
 // Lazy load secondary components
@@ -26,7 +27,7 @@ const Dashboard: React.FC = () => {
   const { selectedChain, multiChainGas } = useChain();
   const { ethPrice } = useEthPrice(60000);
   const walletAddress = useWalletAddress();
-  const { isConnected: isWebSocketConnected } = useGasWebSocket({ enabled: true });
+  const { isConnected: isWebSocketConnected } = useGasWebSocket({ enabled: FEATURE_FLAGS.WEBSOCKET_ENABLED });
 
   // Memoize currentGas calculation
   const currentGas = multiChainGas[selectedChain.id]?.gasPrice || 0;
