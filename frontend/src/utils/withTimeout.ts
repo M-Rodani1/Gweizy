@@ -11,7 +11,9 @@ export async function withTimeout<T>(
 
   const timeoutPromise = new Promise<T>((_, reject) => {
     timeoutId = setTimeout(() => {
-      reject(new Error(timeoutMessage));
+      const err = new Error(timeoutMessage);
+      err.name = 'TimeoutError';
+      reject(err);
     }, timeoutMs);
   });
 
