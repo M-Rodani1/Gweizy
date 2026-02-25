@@ -2,5 +2,4 @@
 wrangler.toml
 cloudflare-worker/
 *.toml
-functions/
 _functions/
