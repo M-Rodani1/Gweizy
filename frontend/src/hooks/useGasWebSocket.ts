@@ -232,13 +232,14 @@ export function useGasWebSocket(
     };
     newSocket.on('connect_error', handleConnectError);
 
-    // Gas price update
-    const handleGasPriceUpdate = (data: GasPriceUpdate) => {
+    // Gas price update — backend wraps payload as { type, data: GasPriceUpdate }
+    const handleGasPriceUpdate = (payload: { type: string; data: GasPriceUpdate }) => {
+      const data = payload?.data ?? (payload as unknown as GasPriceUpdate);
       setGasPrice(data);
       setError(null);
       onGasPriceUpdate?.(data);
     };
-    newSocket.on('gas_price_update', handleGasPriceUpdate);
+    newSocket.on('gas_update', handleGasPriceUpdate);
 
     // Prediction update
     const handlePredictionUpdate = (data: PredictionUpdate) => {
@@ -270,7 +271,7 @@ export function useGasWebSocket(
       }
       setError(null);
     };
-    newSocket.on('combined_update', handleCombinedUpdate);
+    newSocket.on('update', handleCombinedUpdate);
 
     // Connection established confirmation
     const handleConnectionEstablished = (_data: { message: string }) => {
@@ -288,10 +289,10 @@ export function useGasWebSocket(
       newSocket.off('connect', handleConnect);
       newSocket.off('disconnect', handleDisconnect);
       newSocket.off('connect_error', handleConnectError);
-      newSocket.off('gas_price_update', handleGasPriceUpdate);
+      newSocket.off('gas_update', handleGasPriceUpdate);
       newSocket.off('prediction_update', handlePredictionUpdate);
       newSocket.off('mempool_update', handleMempoolUpdate);
-      newSocket.off('combined_update', handleCombinedUpdate);
+      newSocket.off('update', handleCombinedUpdate);
       newSocket.off('connection_established', handleConnectionEstablished);
       releaseSocket(socketKey);
       setSocket(null);

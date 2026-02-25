@@ -286,12 +286,15 @@ describe('useGasWebSocket', () => {
       expect(result.current.error).not.toBeNull();
 
       act(() => {
-        eventHandlers['gas_price_update']?.({
-          current_gas: 0.00125,
-          base_fee: 0.001,
-          priority_fee: 0.00025,
-          timestamp: new Date().toISOString(),
-          collection_count: 1,
+        eventHandlers['gas_update']?.({
+          type: 'gas_price',
+          data: {
+            current_gas: 0.00125,
+            base_fee: 0.001,
+            priority_fee: 0.00025,
+            timestamp: new Date().toISOString(),
+            collection_count: 1,
+          },
         });
       });
 
@@ -300,7 +303,7 @@ describe('useGasWebSocket', () => {
   });
 
   describe('data updates', () => {
-    it('should handle gas_price_update event', () => {
+    it('should handle gas_update event', () => {
       const onGasPriceUpdate = vi.fn();
       const { result } = renderHook(() => useGasWebSocket({ onGasPriceUpdate }));
 
@@ -313,7 +316,7 @@ describe('useGasWebSocket', () => {
       };
 
       act(() => {
-        eventHandlers['gas_price_update']?.(gasData);
+        eventHandlers['gas_update']?.({ type: 'gas_price', data: gasData });
       });
 
       expect(result.current.gasPrice).toEqual(gasData);
@@ -362,7 +365,7 @@ describe('useGasWebSocket', () => {
       expect(onMempoolUpdate).toHaveBeenCalledWith(mempoolData);
     });
 
-    it('should handle combined_update event', () => {
+    it('should handle update (combined) event', () => {
       const onGasPriceUpdate = vi.fn();
       const onPredictionUpdate = vi.fn();
       const onMempoolUpdate = vi.fn();
@@ -398,7 +401,7 @@ describe('useGasWebSocket', () => {
       };
 
       act(() => {
-        eventHandlers['combined_update']?.(combinedData);
+        eventHandlers['update']?.(combinedData);
       });
 
       expect(result.current.gasPrice).toEqual(combinedData.gas);
@@ -409,7 +412,7 @@ describe('useGasWebSocket', () => {
       expect(onMempoolUpdate).toHaveBeenCalledWith(combinedData.mempool);
     });
 
-    it('should handle partial combined_update', () => {
+    it('should handle partial update (combined)', () => {
       const onGasPriceUpdate = vi.fn();
       const onPredictionUpdate = vi.fn();
 
@@ -429,7 +432,7 @@ describe('useGasWebSocket', () => {
       };
 
       act(() => {
-        eventHandlers['combined_update']?.(partialUpdate);
+        eventHandlers['update']?.(partialUpdate);
       });
 
       expect(result.current.gasPrice).toEqual(partialUpdate.gas);
