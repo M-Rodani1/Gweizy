@@ -1,0 +1,8 @@
+{
+  "devDependencies": {
+    "@stryker-mutator/core": "^9.5.1",
+    "@stryker-mutator/typescript-checker": "^9.5.1",
+    "@stryker-mutator/vitest-runner": "^9.5.1",
+    "chromatic": "^15.0.0"
+  }
+}
