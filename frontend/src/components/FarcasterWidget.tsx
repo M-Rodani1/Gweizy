@@ -11,7 +11,7 @@ const FarcasterWidget: React.FC = () => {
 
   const handleSharePrediction = () => {
     const shareText = "Just checked gas prices on Base with Gas Optimiser! 📊 Save up to 40% on transaction fees with AI-powered predictions.";
-    const shareUrl = "https://basegasfeesml.netlify.app";
+    const shareUrl = "https://basegasoptimizer.com";
 
     // Farcaster share URL
     const farcasterShareUrl = `https://warpcast.com/~/compose?text=${encodeURIComponent(shareText)}&embeds[]=${encodeURIComponent(shareUrl)}`;
