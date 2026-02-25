@@ -1349,17 +1349,17 @@ def get_accuracy():
         
         # Get real-time metrics from AccuracyTracker
         if accuracy_tracker is None:
-            logger.warning("Accuracy tracker not available, using fallback")
-            # Fallback to hardcoded if tracker unavailable
+            logger.warning("Accuracy tracker not available")
             return jsonify({
-                'mae': 0.000275,
-                'rmse': 0.000442,
-                'r2': 0.0709,
-                'directional_accuracy': 0.5983,
+                'mae': None,
+                'rmse': None,
+                'r2': None,
+                'directional_accuracy': None,
                 'recent_predictions': [],
                 'last_updated': datetime.now().isoformat(),
-                'warning': 'Using fallback metrics - accuracy tracker unavailable'
-            }), 200
+                'available': False,
+                'warning': 'Accuracy tracker unavailable'
+            }), 503
         
         # Get metrics for 1h horizon (primary metric)
         metrics_1h = accuracy_tracker.get_current_metrics('1h')
@@ -1430,18 +1430,17 @@ def get_accuracy():
         
     except Exception as e:
         logger.error(f"Error in /accuracy: {traceback.format_exc()}")
-        # Return fallback metrics on error
         from datetime import datetime
         return jsonify({
-            'mae': 0.000275,
-            'rmse': 0.000442,
-            'r2': 0.0709,
-            'directional_accuracy': 0.5983,
+            'mae': None,
+            'rmse': None,
+            'r2': None,
+            'directional_accuracy': None,
             'recent_predictions': [],
             'last_updated': datetime.now().isoformat(),
+            'available': False,
             'error': str(e),
-            'warning': 'Error calculating metrics, using fallback values'
-        }), 200  # Still return 200 so frontend can display
+        }), 503
 
 
 @api_bp.route('/user-history/<address>', methods=['GET'])
