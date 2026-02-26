@@ -8,15 +8,16 @@ function getProxyTarget(env: { API_PROXY_TARGET?: string }): string {
   return configured.replace(/\/+$/, '');
 }
 
-function buildTargetUrl(requestUrl: string, pathParam: string | undefined, baseTarget: string): string {
+function buildTargetUrl(requestUrl: string, pathParam: string | string[] | undefined, baseTarget: string): string {
   const incoming = new URL(requestUrl);
-  const suffix = pathParam && pathParam.length > 0 ? `/${pathParam}` : '';
+  const pathStr = Array.isArray(pathParam) ? pathParam.join('/') : (pathParam ?? '');
+  const suffix = pathStr.length > 0 ? `/${pathStr}` : '';
   return `${baseTarget}/api${suffix}${incoming.search}`;
 }
 
 export async function onRequest(context: {
   request: Request;
-  params: { path?: string };
+  params: { path?: string | string[] };
   env: { API_PROXY_TARGET?: string };
 }): Promise<Response> {
   const { request, params, env } = context;
