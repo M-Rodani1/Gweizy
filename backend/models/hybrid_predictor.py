@@ -194,6 +194,18 @@ class HybridPredictor:
             df['gas_price'].rolling(window=24, min_periods=1).max() > self.ELEVATED_THRESHOLD
         ).astype(int)
 
+        # Aliases expected by trained spike detector models
+        for window in [6, 12, 24]:
+            df[f'rolling_mean_{window}'] = df[f'mean_{window}']
+            df[f'rolling_std_{window}'] = df[f'volatility_{window}']
+            df[f'rolling_max_{window}'] = df['gas_price'].rolling(window=window, min_periods=1).max()
+        for lag in [1, 3, 6, 12]:
+            df[f'lag_{lag}'] = df['gas_price'].shift(lag).bfill().fillna(df['gas_price'].iloc[0] if len(df) > 0 else 0)
+        df['is_peak_hour'] = df['is_business_hours']
+        df['price_change'] = df['diff_1']
+        df['price_pct_change'] = df['pct_change_1']
+        df['current_price'] = df['gas_price']
+
         # Replace inf/-inf with 0
         df = df.replace([np.inf, -np.inf], 0).fillna(0)
 
