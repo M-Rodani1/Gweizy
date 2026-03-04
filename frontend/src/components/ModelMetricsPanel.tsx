@@ -16,7 +16,6 @@ import {
   Target,
   Compass,
   BarChart3,
-  ExternalLink,
   ChevronDown
 } from 'lucide-react';
 import { fetchAccuracyDrift, fetchAccuracyMetrics, fetchValidationTrends } from '../api/gasApi';
@@ -342,27 +341,6 @@ const ModelMetricsPanel: React.FC<ModelMetricsPanelProps> = ({
                 </div>
               </div>
 
-              {/* Colab Training Info */}
-              <div className="p-4 bg-cyan-500/10 border border-cyan-500/30 rounded-xl">
-                <div className="flex items-start gap-3">
-                  <Activity className="w-5 h-5 text-cyan-400 mt-0.5" />
-                  <div className="flex-1">
-                    <p className="text-sm text-cyan-300 font-medium">Training via Colab</p>
-                    <p className="text-xs text-gray-400 mt-1">
-                      Model training is done using the Colab notebook for better GPU access.
-                    </p>
-                    <a
-                      href="https://colab.research.google.com"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-xs text-cyan-400 hover:text-cyan-300 mt-2 transition-colors"
-                    >
-                      Open train_all_models.ipynb
-                      <ExternalLink className="w-3 h-3" />
-                    </a>
-                  </div>
-                </div>
-              </div>
             </div>
           )}
 
