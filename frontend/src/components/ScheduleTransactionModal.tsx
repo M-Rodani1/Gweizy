@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { ChevronDown, Info } from 'lucide-react';
 import { useChain } from '../contexts/ChainContext';
 import { useScheduler } from '../contexts/SchedulerContext';
@@ -129,25 +130,26 @@ const ScheduleTransactionModal: React.FC<ScheduleTransactionModalProps> = ({
 
   if (!isOpen) return null;
 
-  return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[120] p-4">
-      <div className="bg-gray-900 border border-gray-700 rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
-        {/* Header */}
-        <div className="px-6 py-4 border-b border-gray-700 flex items-center justify-between">
-          <div>
-            <h2 className="text-xl font-bold text-white">Schedule Transaction</h2>
-            <p className="text-sm text-gray-400">Execute when gas price drops</p>
+  const modalContent = (
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[120] p-4 overflow-y-auto">
+      <div className="min-h-full flex items-start justify-center sm:items-center">
+        <div className="bg-gray-900 border border-gray-700 rounded-2xl max-w-lg w-full max-h-[calc(100dvh-2rem)] overflow-y-auto">
+          {/* Header */}
+          <div className="px-6 py-4 border-b border-gray-700 flex items-center justify-between">
+            <div>
+              <h2 className="text-xl font-bold text-white">Schedule Transaction</h2>
+              <p className="text-sm text-gray-400">Execute when gas price drops</p>
+            </div>
+            <button
+              onClick={onClose}
+              className="text-gray-400 hover:text-white text-2xl leading-none"
+              aria-label="Close schedule modal"
+            >
+              ×
+            </button>
           </div>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-white text-2xl leading-none"
-            aria-label="Close schedule modal"
-          >
-            ×
-          </button>
-        </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+          <form onSubmit={handleSubmit} className="p-6 space-y-6">
           {/* Chain Selection */}
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-2">
@@ -398,10 +400,17 @@ const ScheduleTransactionModal: React.FC<ScheduleTransactionModalProps> = ({
               Schedule Transaction
             </button>
           </div>
-        </form>
+          </form>
+        </div>
       </div>
     </div>
   );
+
+  if (typeof document === 'undefined') {
+    return modalContent;
+  }
+
+  return createPortal(modalContent, document.body);
 };
 
 export default ScheduleTransactionModal;
