@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, Column, Integer, Float, String, DateTime, func
+from sqlalchemy import create_engine, Column, Integer, Float, String, DateTime, func, UniqueConstraint
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import QueuePool, NullPool
@@ -29,6 +29,9 @@ Base = declarative_base()
 
 class GasPrice(Base):
     __tablename__ = 'gas_prices'
+    __table_args__ = (
+        UniqueConstraint('block_number', 'chain_id', name='uq_gas_prices_block_chain'),
+    )
 
     id = Column(Integer, primary_key=True)
     timestamp = Column(DateTime, default=datetime.now, index=True)
@@ -56,6 +59,9 @@ class Prediction(Base):
 
 class OnChainFeatures(Base):
     __tablename__ = 'onchain_features'
+    __table_args__ = (
+        UniqueConstraint('block_number', name='uq_onchain_features_block'),
+    )
 
     id = Column(Integer, primary_key=True)
     timestamp = Column(DateTime, default=datetime.now, index=True)
@@ -240,22 +246,33 @@ class DatabaseManager:
         return self.Session()
     
     def save_gas_price(self, data):
-        """Save gas price data"""
+        """Save gas price data, skipping duplicates by block_number + chain_id"""
         session = self._get_session()
         try:
             # Convert ISO timestamp string to datetime if needed
             if 'timestamp' in data and isinstance(data['timestamp'], str):
                 from dateutil import parser
                 data['timestamp'] = parser.parse(data['timestamp'])
-            
+
             # Filter to only include fields that exist in GasPrice model
             # This prevents errors from extra fields like 'rpc_source'
             allowed_fields = {
-                'timestamp', 'chain_id', 'current_gas', 'base_fee', 'priority_fee', 
+                'timestamp', 'chain_id', 'current_gas', 'base_fee', 'priority_fee',
                 'block_number', 'gas_used', 'gas_limit', 'utilization'
             }
             filtered_data = {k: v for k, v in data.items() if k in allowed_fields}
-            
+
+            # Skip duplicate block_number + chain_id
+            block_num = filtered_data.get('block_number')
+            chain_id = filtered_data.get('chain_id', 8453)
+            if block_num is not None:
+                existing = session.query(GasPrice.id).filter(
+                    GasPrice.block_number == block_num,
+                    GasPrice.chain_id == chain_id,
+                ).first()
+                if existing:
+                    return  # Already recorded this block
+
             gas_price = GasPrice(**filtered_data)
             session.add(gas_price)
             session.commit()
@@ -321,13 +338,22 @@ class DatabaseManager:
             session.close()
 
     def save_onchain_features(self, features):
-        """Save on-chain features"""
+        """Save on-chain features, skipping duplicates by block_number"""
         session = self._get_session()
         try:
             # Convert timestamp if needed
             if 'timestamp' in features and isinstance(features['timestamp'], str):
                 from dateutil import parser
                 features['timestamp'] = parser.parse(features['timestamp'])
+
+            # Skip duplicate block_number
+            block_num = features.get('block_number')
+            if block_num is not None:
+                existing = session.query(OnChainFeatures.id).filter(
+                    OnChainFeatures.block_number == block_num,
+                ).first()
+                if existing:
+                    return  # Already recorded this block
 
             onchain = OnChainFeatures(**features)
             session.add(onchain)
