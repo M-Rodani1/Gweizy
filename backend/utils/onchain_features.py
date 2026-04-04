@@ -13,11 +13,13 @@ These features significantly improve ML model accuracy by capturing
 network state that directly influences gas prices.
 """
 
+import time
 from web3 import Web3
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional
 import numpy as np
 from collections import defaultdict
+from requests.exceptions import ConnectionError, ChunkedEncodingError, HTTPError
 from config import Config
 from utils.logger import logger
 
@@ -34,6 +36,22 @@ class OnChainFeatureExtractor:
         """
         self.w3 = w3 or Web3(Web3.HTTPProvider(Config.BASE_RPC_URL))
 
+    def _rpc_call_with_retry(self, fn, max_retries=3):
+        """Execute an RPC call with retry logic for transient errors"""
+        for attempt in range(max_retries):
+            try:
+                return fn()
+            except (ConnectionError, ChunkedEncodingError, HTTPError) as e:
+                is_transient = isinstance(e, (ConnectionError, ChunkedEncodingError)) or \
+                    '503' in str(e) or 'Service Unavailable' in str(e) or \
+                    'Response ended prematurely' in str(e)
+                if is_transient and attempt < max_retries - 1:
+                    wait = 2 ** attempt
+                    logger.warning(f"RPC request failed (attempt {attempt + 1}/{max_retries}), retrying in {wait}s: {e}")
+                    time.sleep(wait)
+                else:
+                    raise
+
     def extract_block_features(self, block_number: int) -> Dict:
         """
         Extract features from a single block
@@ -45,7 +63,9 @@ class OnChainFeatureExtractor:
             Dictionary of on-chain features
         """
         try:
-            block = self.w3.eth.get_block(block_number, full_transactions=True)
+            block = self._rpc_call_with_retry(
+                lambda: self.w3.eth.get_block(block_number, full_transactions=True)
+            )
 
             # Basic block metrics
             gas_used = block.get('gasUsed', 0)
@@ -295,11 +315,15 @@ class OnChainFeatureExtractor:
             Enhanced congestion feature dictionary
         """
         try:
-            block = self.w3.eth.get_block(block_number, full_transactions=True)
+            block = self._rpc_call_with_retry(
+                lambda: self.w3.eth.get_block(block_number, full_transactions=True)
+            )
 
             # Pending transaction count (27% variance explained!)
             try:
-                pending_count = self.w3.eth.get_block_transaction_count('pending')
+                pending_count = self._rpc_call_with_retry(
+                    lambda: self.w3.eth.get_block_transaction_count('pending')
+                )
             except Exception:
                 pending_count = 0  # Fallback if not supported by node
 
@@ -386,7 +410,7 @@ class OnChainFeatureExtractor:
             Current on-chain features
         """
         try:
-            current_block = self.w3.eth.block_number
+            current_block = self._rpc_call_with_retry(lambda: self.w3.eth.block_number)
 
             # Get features from last 5 blocks for stability
             recent_features = []
