@@ -51,12 +51,52 @@ accuracy_tracker = get_tracker()
 @cron_bp.route('/cron/retrain', methods=['POST'])
 def cron_retrain_models():
     """
-    Disabled - model training now done via notebooks/train_all_models.ipynb
+    Triggered when drift is detected or manually via API.
+    Runs lightweight retraining on recent production data.
+    Only activates new models if they outperform the current ones.
     """
-    return jsonify({
-        "success": False,
-        "message": "Automated retraining disabled. Use notebooks/train_all_models.ipynb for training."
-    }), 400
+    try:
+        # Check if retraining is actually needed (skip check if force=true)
+        force = request.args.get('force', 'false').lower() == 'true'
+
+        if not force:
+            should_retrain, reasons = accuracy_tracker.should_retrain()
+            if not should_retrain:
+                return jsonify({
+                    "success": True,
+                    "retrained": False,
+                    "message": "No drift detected, retraining not needed"
+                })
+            logger.info(f"[CRON RETRAIN] Drift detected, triggering retrain: {reasons}")
+
+        from services.retraining_service import retrain_models
+        result = retrain_models()
+
+        if result.get('success'):
+            _send_discord_alert(
+                title='🔄 Models Retrained',
+                description='Automated retraining completed successfully.',
+                color=0x00FF00,
+                fields=[
+                    {'name': h, 'value': f"R²={m['metrics']['r2']:.4f}, MAE={m['metrics']['mae']:.6f}", 'inline': True}
+                    for h, m in result.get('horizons', {}).items() if m.get('success')
+                ],
+            )
+
+        return jsonify({
+            "success": True,
+            "retrained": True,
+            "timestamp": datetime.now().isoformat(),
+            **result
+        })
+
+    except Exception as e:
+        logger.error(f"Error during retraining: {e}")
+        logger.error(traceback.format_exc())
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
 
 
 @cron_bp.route('/cron/health-check', methods=['POST'])
@@ -329,6 +369,24 @@ def cron_update_accuracy():
 
         should_retrain, reasons = accuracy_tracker.should_retrain()
 
+        # Auto-trigger retraining if drift detected
+        retrain_triggered = False
+        if should_retrain:
+            logger.warning(f"[CRON ACCURACY] Drift detected, triggering retrain: {reasons}")
+            try:
+                from services.retraining_service import retrain_models
+                retrain_result = retrain_models()
+                retrain_triggered = retrain_result.get('success', False)
+                if retrain_triggered:
+                    logger.info("[CRON ACCURACY] Auto-retrain completed successfully")
+                    _send_discord_alert(
+                        title='🔄 Auto-Retrain Triggered',
+                        description='Drift detected — models retrained automatically.',
+                        color=0x00FF00,
+                    )
+            except Exception as retrain_err:
+                logger.error(f"[CRON ACCURACY] Auto-retrain failed: {retrain_err}")
+
         return jsonify({
             "success": True,
             "timestamp": now.isoformat(),
@@ -336,7 +394,8 @@ def cron_update_accuracy():
             "updates": updates,
             "drift_status": drift_status,
             "should_retrain": should_retrain,
-            "retrain_reasons": reasons
+            "retrain_reasons": reasons,
+            "retrain_triggered": retrain_triggered
         })
 
     except Exception as e:
