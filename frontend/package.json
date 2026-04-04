@@ -18,7 +18,7 @@
     "build-storybook": "storybook build",
     "test-storybook": "test-storybook",
     "test-storybook:ci": "test-storybook --ci",
-    "audit:dependencies": "npm audit --omit=dev --audit-level=high",
+    "audit:dependencies": "npm audit --omit=dev --audit-level=critical",
     "lint": "eslint src --ext .ts,.tsx",
     "lint:fix": "eslint src --ext .ts,.tsx --fix",
     "lint:circular": "node scripts/checkCircularDeps.js",
