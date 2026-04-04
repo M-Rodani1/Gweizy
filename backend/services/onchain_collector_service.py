@@ -12,6 +12,7 @@ import logging
 from datetime import datetime
 import signal
 import traceback
+from requests.exceptions import ConnectionError, ChunkedEncodingError
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -57,11 +58,27 @@ class OnChainCollectorService:
         logger.info(f"Received signal {signum}, shutting down...")
         self.stop()
 
+    def _get_block_with_retry(self, max_retries=3):
+        """Fetch the latest block with retry logic for transient RPC errors"""
+        for attempt in range(max_retries):
+            try:
+                return self.w3.eth.get_block('latest', full_transactions=True)
+            except (ConnectionError, ChunkedEncodingError, Exception) as e:
+                is_transient = isinstance(e, (ConnectionError, ChunkedEncodingError)) or \
+                    'Response ended prematurely' in str(e) or \
+                    'ConnectionReset' in type(e).__name__
+                if is_transient and attempt < max_retries - 1:
+                    wait = 2 ** attempt
+                    logger.warning(f"RPC request failed (attempt {attempt + 1}/{max_retries}), retrying in {wait}s: {e}")
+                    time.sleep(wait)
+                else:
+                    raise
+
     def collect_onchain_features(self):
         """Collect on-chain metrics for current block"""
         try:
-            # Get latest block
-            block = self.w3.eth.get_block('latest', full_transactions=True)
+            # Get latest block with retry for transient network errors
+            block = self._get_block_with_retry()
             block_number = block['number']
             timestamp = datetime.fromtimestamp(block['timestamp'])
 
