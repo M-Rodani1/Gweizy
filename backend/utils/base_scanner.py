@@ -1,13 +1,15 @@
 from web3 import Web3
 from config import Config
 from utils.logger import logger
+from utils.rpc_manager import get_rpc_manager
 from datetime import datetime
 import requests
 
 
 class BaseScanner:
     def __init__(self):
-        self.w3 = Web3(Web3.HTTPProvider(Config.BASE_RPC_URL))
+        self.rpc_manager = get_rpc_manager()
+        self.w3 = Web3(Web3.HTTPProvider(self.rpc_manager.get_current_rpc()))
         
     def get_recent_transactions(self, limit=10):
         """

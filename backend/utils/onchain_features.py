@@ -22,6 +22,7 @@ from collections import defaultdict
 from requests.exceptions import ConnectionError, ChunkedEncodingError, HTTPError
 from config import Config
 from utils.logger import logger
+from utils.rpc_manager import get_rpc_manager
 
 
 class OnChainFeatureExtractor:
@@ -34,18 +35,30 @@ class OnChainFeatureExtractor:
         Args:
             w3: Web3 instance (creates new one if not provided)
         """
-        self.w3 = w3 or Web3(Web3.HTTPProvider(Config.BASE_RPC_URL))
+        if w3:
+            self.w3 = w3
+            self.rpc_manager = None
+        else:
+            self.rpc_manager = get_rpc_manager()
+            self.w3 = Web3(Web3.HTTPProvider(self.rpc_manager.get_current_rpc()))
 
     def _rpc_call_with_retry(self, fn, max_retries=3):
-        """Execute an RPC call with retry logic for transient errors"""
+        """Execute an RPC call with retry logic and RPC rotation"""
         for attempt in range(max_retries):
+            if self.rpc_manager:
+                current_rpc = self.rpc_manager.get_current_rpc()
+                if self.w3.provider.endpoint_uri != current_rpc:
+                    self.w3 = Web3(Web3.HTTPProvider(current_rpc))
             try:
-                return fn()
-            except (ConnectionError, ChunkedEncodingError, HTTPError) as e:
-                is_transient = isinstance(e, (ConnectionError, ChunkedEncodingError)) or \
-                    '503' in str(e) or 'Service Unavailable' in str(e) or \
-                    'Response ended prematurely' in str(e)
-                if is_transient and attempt < max_retries - 1:
+                result = fn()
+                if self.rpc_manager:
+                    self.rpc_manager.record_success(self.w3.provider.endpoint_uri)
+                return result
+            except Exception as e:
+                if self.rpc_manager:
+                    is_rate_limit = '429' in str(e) or 'Too Many Requests' in str(e)
+                    self.rpc_manager.record_failure(self.w3.provider.endpoint_uri, is_rate_limit=is_rate_limit)
+                if attempt < max_retries - 1:
                     wait = 2 ** attempt
                     logger.warning(f"RPC request failed (attempt {attempt + 1}/{max_retries}), retrying in {wait}s: {e}")
                     time.sleep(wait)

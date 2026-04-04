@@ -19,6 +19,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from data.collector import BaseGasCollector
 from data.database import DatabaseManager
 from utils.onchain_features import OnChainFeatureExtractor
+from utils.rpc_manager import get_rpc_manager
 from web3 import Web3
 from config import Config
 
@@ -38,7 +39,8 @@ class OnChainCollectorService:
 
     def __init__(self, interval_seconds=300, register_signals=True):
         self.interval = interval_seconds
-        self.w3 = Web3(Web3.HTTPProvider(Config.BASE_RPC_URL))
+        self.rpc_manager = get_rpc_manager()
+        self.w3 = Web3(Web3.HTTPProvider(self.rpc_manager.get_current_rpc()))
         self.db = DatabaseManager()
         self.feature_extractor = OnChainFeatureExtractor(self.w3)
         self.running = False
@@ -58,18 +60,28 @@ class OnChainCollectorService:
         logger.info(f"Received signal {signum}, shutting down...")
         self.stop()
 
+    def _refresh_w3(self):
+        """Update Web3 provider if RPC manager rotated to a new endpoint"""
+        current_rpc = self.rpc_manager.get_current_rpc()
+        if self.w3.provider.endpoint_uri != current_rpc:
+            self.w3 = Web3(Web3.HTTPProvider(current_rpc))
+            self.feature_extractor.w3 = self.w3
+            logger.info(f"Rotated RPC to: {current_rpc}")
+
     def _get_block_with_retry(self, max_retries=3):
-        """Fetch the latest block with retry logic for transient RPC errors"""
+        """Fetch the latest block with retry logic and RPC rotation"""
         for attempt in range(max_retries):
+            self._refresh_w3()
             try:
-                return self.w3.eth.get_block('latest', full_transactions=True)
-            except (ConnectionError, ChunkedEncodingError, Exception) as e:
-                is_transient = isinstance(e, (ConnectionError, ChunkedEncodingError)) or \
-                    'Response ended prematurely' in str(e) or \
-                    'ConnectionReset' in type(e).__name__
-                if is_transient and attempt < max_retries - 1:
+                block = self.w3.eth.get_block('latest', full_transactions=True)
+                self.rpc_manager.record_success(self.w3.provider.endpoint_uri)
+                return block
+            except Exception as e:
+                is_rate_limit = '429' in str(e) or 'Too Many Requests' in str(e)
+                self.rpc_manager.record_failure(self.w3.provider.endpoint_uri, is_rate_limit=is_rate_limit)
+                if attempt < max_retries - 1:
                     wait = 2 ** attempt
-                    logger.warning(f"RPC request failed (attempt {attempt + 1}/{max_retries}), retrying in {wait}s: {e}")
+                    logger.warning(f"RPC request failed (attempt {attempt + 1}/{max_retries}), rotating and retrying in {wait}s: {e}")
                     time.sleep(wait)
                 else:
                     raise

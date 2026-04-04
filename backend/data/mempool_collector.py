@@ -100,34 +100,23 @@ class MempoolCollector:
             history_size: Number of snapshots to keep in memory
             rpc_timeout: Timeout for RPC connections in seconds
         """
-        if rpc_urls is None:
-            from config import Config
-            rpc_urls = [
-                Config.BASE_RPC_URL,
-                'https://mainnet.base.org',
-                'https://base.llamarpc.com',
-                'https://base-rpc.publicnode.com'
-            ]
+        from utils.rpc_manager import get_rpc_manager
+        self.rpc_manager = get_rpc_manager()
 
-        self.rpc_urls = rpc_urls
+        self.rpc_urls = rpc_urls  # Keep for backward compat if passed explicitly
         self.snapshot_interval = snapshot_interval
         self.history_size = history_size
         self.rpc_timeout = rpc_timeout
 
-        # Initialize Web3 connections (try only first 2 for faster startup)
+        # Initialize Web3 connection via RPC manager
         self.w3_connections = []
-        for url in rpc_urls[:2]:  # Limit to 2 RPCs for faster init
-            try:
-                w3 = Web3(Web3.HTTPProvider(url, request_kwargs={'timeout': rpc_timeout}))
-                if w3.is_connected():
-                    self.w3_connections.append(w3)
-                    logger.info(f"Connected to RPC: {url}")
-                    break  # One connection is enough for init
-            except Exception as e:
-                logger.debug(f"Could not connect to {url}: {e}")
-
-        if not self.w3_connections:
-            logger.error("No RPC connections available for mempool collector")
+        try:
+            current_rpc = self.rpc_manager.get_current_rpc()
+            w3 = Web3(Web3.HTTPProvider(current_rpc, request_kwargs={'timeout': rpc_timeout}))
+            self.w3_connections.append(w3)
+            logger.info(f"Mempool collector connected to RPC: {current_rpc}")
+        except Exception as e:
+            logger.error(f"No RPC connections available for mempool collector: {e}")
 
         # Snapshot history
         self.snapshots: deque = deque(maxlen=history_size)
