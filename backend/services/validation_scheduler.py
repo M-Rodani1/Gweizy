@@ -5,9 +5,11 @@ Automatically validates predictions and tracks model performance.
 Runs in background to continuously monitor accuracy.
 """
 
+import os
 import time
 import threading
 from datetime import datetime, timedelta
+import requests as http_requests
 from utils.prediction_validator import PredictionValidator
 from utils.logger import logger
 
@@ -126,8 +128,47 @@ class ValidationScheduler:
             logger.error(traceback.format_exc())
             return None
 
+    def _send_alert(self, title: str, description: str, color: int = 0xFF0000, fields: list = None):
+        """Send alerts to configured channels (Discord, Telegram)"""
+        # Discord
+        webhook_url = os.getenv('DISCORD_WEBHOOK_URL')
+        if webhook_url:
+            try:
+                embed = {
+                    'title': title,
+                    'description': description,
+                    'color': color,
+                    'timestamp': datetime.utcnow().isoformat(),
+                    'footer': {'text': 'Gweizy Gas Predictor'},
+                    'fields': fields or [],
+                }
+                http_requests.post(
+                    webhook_url,
+                    json={'username': 'Gweizy Bot', 'embeds': [embed]},
+                    timeout=5,
+                )
+            except Exception as e:
+                logger.warning(f"Failed to send Discord alert: {e}")
+
+        # Telegram
+        bot_token = os.getenv('TELEGRAM_BOT_TOKEN')
+        chat_id = os.getenv('TELEGRAM_CHAT_ID')
+        if bot_token and chat_id:
+            try:
+                text = f"*{title}*\n{description}"
+                if fields:
+                    for f in fields:
+                        text += f"\n• {f.get('name', '')}: {f.get('value', '')}"
+                http_requests.post(
+                    f"https://api.telegram.org/bot{bot_token}/sendMessage",
+                    json={'chat_id': chat_id, 'text': text, 'parse_mode': 'Markdown'},
+                    timeout=5,
+                )
+            except Exception as e:
+                logger.warning(f"Failed to send Telegram alert: {e}")
+
     def check_model_health(self):
-        """Check model health and log alerts"""
+        """Check model health, send alerts if degraded, trigger retrain if drifting"""
         try:
             health = self.validator.check_model_health(threshold_mae=0.001)
 
@@ -145,13 +186,49 @@ class ValidationScheduler:
                 # Store alerts for monitoring
                 self.health_alerts = health['alerts']
 
+                # Send external alerts
+                alert_fields = [
+                    {'name': a.get('severity', 'warning').upper(), 'value': a.get('message', ''), 'inline': False}
+                    for a in health['alerts']
+                ]
+                self._send_alert(
+                    title='⚠️ Model Health Degraded',
+                    description='Gas prediction models are underperforming.',
+                    color=0xFF6600,
+                    fields=alert_fields,
+                )
+
                 logger.warning("="*60)
+
+                # Check if drift warrants retraining
+                try:
+                    from models.accuracy_tracker import get_tracker
+                    tracker = get_tracker()
+                    should_retrain, reasons = tracker.should_retrain()
+                    if should_retrain:
+                        logger.warning(f"Drift detected, triggering auto-retrain: {reasons}")
+                        from services.retraining_service import retrain_models
+                        result = retrain_models()
+                        if result.get('success'):
+                            self._send_alert(
+                                title='🔄 Auto-Retrain Complete',
+                                description='Models retrained due to drift detection.',
+                                color=0x00FF00,
+                            )
+                except Exception as retrain_err:
+                    logger.error(f"Auto-retrain failed during health check: {retrain_err}")
+
             else:
                 logger.info("✓ Model health check passed - all models performing well")
 
-                # Clear previous alerts
+                # Clear previous alerts and notify recovery
                 if self.health_alerts:
                     logger.info("  Previous alerts have been resolved")
+                    self._send_alert(
+                        title='✅ Model Health Recovered',
+                        description='All models are performing within expected thresholds.',
+                        color=0x00FF00,
+                    )
                     self.health_alerts = []
 
             return health
