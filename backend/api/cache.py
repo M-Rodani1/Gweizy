@@ -2,20 +2,91 @@ from cachetools import TTLCache
 from functools import wraps
 import hashlib
 import json
+import os
 from datetime import datetime
 from typing import Dict, Any, Optional
 from utils.logger import logger
 import threading
 
 
-# Enhanced in-memory cache with better tracking
-cache = TTLCache(maxsize=500, ttl=300)  # Increased size
+# Redis-backed cache if REDIS_URL is set, otherwise in-memory TTLCache
+_redis_client = None
+REDIS_URL = os.getenv('REDIS_URL')
+
+if REDIS_URL:
+    try:
+        import redis
+        _redis_client = redis.from_url(REDIS_URL, decode_responses=True)
+        _redis_client.ping()
+        logger.info(f"Redis cache connected")
+    except Exception as e:
+        logger.warning(f"Redis unavailable, falling back to in-memory cache: {e}")
+        _redis_client = None
+
+# In-memory fallback
+_memory_cache = TTLCache(maxsize=500, ttl=300)
 cache_stats: Dict[str, Dict[str, int]] = {
     'hits': {},
     'misses': {},
     'sets': {}
 }
 _cache_lock = threading.Lock()
+
+
+# Unified cache interface
+class _CacheBackend:
+    """Abstracts Redis vs in-memory cache behind a single interface"""
+
+    @staticmethod
+    def get(key: str):
+        if _redis_client:
+            val = _redis_client.get(key)
+            if val is not None:
+                return json.loads(val)
+            return None
+        return _memory_cache.get(key)
+
+    @staticmethod
+    def set(key: str, value, ttl: int = 300):
+        if _redis_client:
+            _redis_client.setex(key, ttl, json.dumps(value, default=str))
+        else:
+            _memory_cache[key] = value
+
+    @staticmethod
+    def contains(key: str) -> bool:
+        if _redis_client:
+            return _redis_client.exists(key) > 0
+        return key in _memory_cache
+
+    @staticmethod
+    def delete_pattern(pattern: str) -> int:
+        if _redis_client:
+            keys = list(_redis_client.scan_iter(match=f"*{pattern}*"))
+            if keys:
+                _redis_client.delete(*keys)
+            return len(keys)
+        else:
+            keys_to_remove = [k for k in _memory_cache.keys() if pattern in k]
+            for key in keys_to_remove:
+                del _memory_cache[key]
+            return len(keys_to_remove)
+
+    @staticmethod
+    def clear():
+        if _redis_client:
+            _redis_client.flushdb()
+        else:
+            _memory_cache.clear()
+
+    @staticmethod
+    def size() -> int:
+        if _redis_client:
+            return _redis_client.dbsize()
+        return len(_memory_cache)
+
+
+cache = _CacheBackend
 
 
 def cache_key(*args, **kwargs):
@@ -36,6 +107,7 @@ def cached(ttl=300, key_prefix: Optional[str] = None):
     """
     Enhanced decorator to cache function results with statistics.
     Includes Flask request args/path in cache key for proper per-request caching.
+    Uses Redis if available, otherwise falls back to in-memory TTLCache.
 
     Args:
         ttl: Time to live in seconds
@@ -73,10 +145,11 @@ def cached(ttl=300, key_prefix: Optional[str] = None):
             key = f"{prefix}_{cache_key(json.dumps(key_data, sort_keys=True, default=str))}"
 
             # Check cache
-            if key in cache:
+            result = _CacheBackend.get(key)
+            if result is not None:
                 _update_stats(func.__name__, 'hits')
                 logger.debug(f"Cache HIT: {func.__name__} (key: {key[:20]}...)")
-                return cache[key]
+                return result
 
             # Execute function
             _update_stats(func.__name__, 'misses')
@@ -84,7 +157,7 @@ def cached(ttl=300, key_prefix: Optional[str] = None):
             result = func(*args, **kwargs)
 
             # Store in cache
-            cache[key] = result
+            _CacheBackend.set(key, result, ttl)
             _update_stats(func.__name__, 'sets')
 
             return result
@@ -95,17 +168,15 @@ def cached(ttl=300, key_prefix: Optional[str] = None):
 def clear_cache(pattern: Optional[str] = None):
     """
     Clear cached data
-    
+
     Args:
         pattern: Optional pattern to match keys (if None, clears all)
     """
     if pattern:
-        keys_to_remove = [k for k in cache.keys() if pattern in k]
-        for key in keys_to_remove:
-            del cache[key]
-        logger.info(f"Cleared {len(keys_to_remove)} cache entries matching '{pattern}'")
+        count = _CacheBackend.delete_pattern(pattern)
+        logger.info(f"Cleared {count} cache entries matching '{pattern}'")
     else:
-        cache.clear()
+        _CacheBackend.clear()
         logger.info("Cache cleared")
 
 
@@ -116,10 +187,10 @@ def get_cache_stats() -> Dict[str, Any]:
         total_misses = sum(cache_stats['misses'].values())
         total_requests = total_hits + total_misses
         hit_rate = (total_hits / total_requests * 100) if total_requests > 0 else 0
-        
+
         return {
-            'cache_size': len(cache),
-            'cache_maxsize': cache.maxsize,
+            'cache_size': _CacheBackend.size(),
+            'cache_backend': 'redis' if _redis_client else 'memory',
             'total_hits': total_hits,
             'total_misses': total_misses,
             'hit_rate_percent': round(hit_rate, 2),
@@ -128,7 +199,7 @@ def get_cache_stats() -> Dict[str, Any]:
                     'hits': cache_stats['hits'].get(func, 0),
                     'misses': cache_stats['misses'].get(func, 0),
                     'hit_rate': round(
-                        (cache_stats['hits'].get(func, 0) / 
+                        (cache_stats['hits'].get(func, 0) /
                          (cache_stats['hits'].get(func, 0) + cache_stats['misses'].get(func, 0)) * 100)
                         if (cache_stats['hits'].get(func, 0) + cache_stats['misses'].get(func, 0)) > 0 else 0,
                         2
@@ -142,7 +213,7 @@ def get_cache_stats() -> Dict[str, Any]:
 def warm_cache(func, *args, **kwargs):
     """
     Pre-warm cache by calling a function
-    
+
     Args:
         func: Function to call
         *args, **kwargs: Arguments to pass to function
@@ -154,4 +225,3 @@ def warm_cache(func, *args, **kwargs):
     except Exception as e:
         logger.warning(f"Failed to warm cache for {func.__name__}: {e}")
         return None
-
