@@ -30,10 +30,10 @@ def validate_environment():
         if is_production:
             warnings.append("BASE_RPC_URL: Using public RPC endpoint. Consider a dedicated provider for reliability.")
 
-    # Check database URL - PostgreSQL required in production for concurrency
+    # Check database URL
     db_url = os.getenv('DATABASE_URL', '')
     if is_production and (not db_url or 'sqlite' in db_url.lower()):
-        errors.append("DATABASE_URL: PostgreSQL is required in production. SQLite cannot handle concurrent writes from collector + API.")
+        warnings.append("DATABASE_URL: Using SQLite in production. Consider PostgreSQL for better concurrency.")
 
     # Check Sentry DSN for error tracking
     sentry_dsn = os.getenv('SENTRY_DSN', '')
