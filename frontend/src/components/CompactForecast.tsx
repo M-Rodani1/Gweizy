@@ -14,6 +14,8 @@ interface Prediction {
   confidence: number;
   direction: 'up' | 'down' | 'stable';
   changePercent: number;
+  lowerBound?: number;
+  upperBound?: number;
   biasCorrection?: BiasCorrection;
 }
 
@@ -48,6 +50,8 @@ const CompactForecast: React.FC = () => {
                 confidence,
                 direction: changePercent > 5 ? 'up' : changePercent < -5 ? 'down' : 'stable',
                 changePercent,
+                lowerBound: data[0].lowerBound || data[0].lower_bound,
+                upperBound: data[0].upperBound || data[0].upper_bound,
                 biasCorrection
               });
             }
@@ -157,10 +161,16 @@ const CompactForecast: React.FC = () => {
                     <AnimatedNumber value={pred.predicted} decimals={4} />
                     <CorrectionBadge biasCorrection={pred.biasCorrection} />
                   </div>
-                  <div className={`text-xs ${getDirectionColor(pred.direction)}`}>
-                    {pred.changePercent > 0 ? '+' : ''}
-                    <AnimatedNumber value={pred.changePercent} decimals={1} suffix="%" />
-                  </div>
+                  {pred.lowerBound != null && pred.upperBound != null ? (
+                    <div className="text-xs text-gray-500 font-mono">
+                      {pred.lowerBound.toFixed(4)}&ndash;{pred.upperBound.toFixed(4)}
+                    </div>
+                  ) : (
+                    <div className={`text-xs ${getDirectionColor(pred.direction)}`}>
+                      {pred.changePercent > 0 ? '+' : ''}
+                      <AnimatedNumber value={pred.changePercent} decimals={1} suffix="%" />
+                    </div>
+                  )}
                 </div>
 
                 {/* Confidence bar */}
