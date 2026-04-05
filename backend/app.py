@@ -8,6 +8,9 @@ from werkzeug.exceptions import HTTPException
 from flask_cors import CORS
 import logging
 from api.routes import api_bp
+from api.prediction_routes import prediction_bp
+from api.gas_routes import gas_bp
+from api.data_routes import data_bp
 from api.base_config import base_config_bp
 from api.stats import stats_bp
 from api.validation_routes import validation_bp
@@ -149,6 +152,9 @@ def create_app():
     
     # Register blueprints
     app.register_blueprint(api_bp, url_prefix='/api')
+    app.register_blueprint(prediction_bp, url_prefix='/api')
+    app.register_blueprint(gas_bp, url_prefix='/api')
+    app.register_blueprint(data_bp, url_prefix='/api')
     app.register_blueprint(stats_bp, url_prefix='/api')
     app.register_blueprint(validation_bp, url_prefix='/api')
     app.register_blueprint(onchain_bp, url_prefix='/api')
