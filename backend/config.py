@@ -30,10 +30,10 @@ def validate_environment():
         if is_production:
             warnings.append("BASE_RPC_URL: Using public RPC endpoint. Consider a dedicated provider for reliability.")
 
-    # Check database URL
+    # Check database URL - PostgreSQL required in production for concurrency
     db_url = os.getenv('DATABASE_URL', '')
     if is_production and (not db_url or 'sqlite' in db_url.lower()):
-        warnings.append("DATABASE_URL: Using SQLite in production. Consider PostgreSQL for better concurrency.")
+        errors.append("DATABASE_URL: PostgreSQL is required in production. SQLite cannot handle concurrent writes from collector + API.")
 
     # Check Sentry DSN for error tracking
     sentry_dsn = os.getenv('SENTRY_DSN', '')
@@ -114,9 +114,12 @@ class Config:
     # Use /data for persistent storage on Railway, fallback to local for development
     # Use absolute path locally to prevent database splits when running from different directories
     _LOCAL_DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'gas_data.db')
-    DATABASE_URL = os.getenv('DATABASE_URL',
+    _raw_db_url = os.getenv('DATABASE_URL',
                             'sqlite:////data/gas_data.db' if os.path.exists('/data')
                             else f'sqlite:///{_LOCAL_DB_PATH}')
+    # Railway provides postgres:// but SQLAlchemy requires postgresql://
+    DATABASE_URL = _raw_db_url.replace('postgres://', 'postgresql://', 1) \
+        if _raw_db_url.startswith('postgres://') else _raw_db_url
     
     # Model Storage
     # Use /data/models for persistent storage on Railway, fallback to local for development
