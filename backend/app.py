@@ -521,7 +521,7 @@ enable_collection = os.getenv('ENABLE_DATA_COLLECTION', 'true').lower() == 'true
 logger.info(f"Data collection config: USE_WORKER_PROCESS={use_worker_process}, DEBUG={Config.DEBUG}, ENABLE_DATA_COLLECTION={enable_collection}")
 
 if not use_worker_process:
-    if not Config.DEBUG or enable_collection:
+    if enable_collection:
         websocket_status = "with WebSocket support" if socketio is not None else "without WebSocket"
         logger.info(f"Starting data collection in background threads {websocket_status}")
 
